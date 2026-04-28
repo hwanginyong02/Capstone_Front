@@ -1,4 +1,4 @@
-import type { TaskType } from "../config/evaluationConfig";
+﻿import type { TaskType } from "../data/evaluationData";
 
 export interface BasicInfoFormData {
   companyName: string;
@@ -40,6 +40,12 @@ export interface TcDetailState {
 
 export type TcDetailStateMap = Record<string, TcDetailState>;
 
+export interface UploadedFileInfo {
+  name: string;
+  size: string;
+  type: string;
+}
+
 export const DEFAULT_BASIC_INFO: BasicInfoFormData = {
   companyName: "",
   representative: "",
@@ -66,3 +72,4 @@ export const DEFAULT_BASIC_INFO: BasicInfoFormData = {
   envMemory: "",
   envSoftware: "",
 };
+

@@ -1,14 +1,14 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { AppHeader } from "./AppHeader";
 import { StepTabs } from "./StepTabs";
 import { ActionBar } from "./ActionBar";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "./ui/card";
-import { Alert, AlertDescription } from "./ui/alert";
-import { Badge } from "./ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "../ui/card";
+import { Alert, AlertDescription } from "../ui/alert";
+import { Badge } from "../ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { Info, Check, X as XIcon } from "lucide-react";
-import { cn } from "./ui/utils";
+import { cn } from "../ui/utils";
 
 interface ClassDetectionProps {
   currentStep: number;
@@ -45,9 +45,9 @@ export function ClassDetection({ currentStep, completedSteps, onStepClick, onNex
 
       <main className="px-8 pt-12 pb-24 max-w-[1344px] mx-auto">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground mb-2">클래스 감지</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">?대옒??媛먯?</h1>
           <p className="text-sm text-muted-foreground">
-            업로드된 데이터의 y_true 컬럼에서 클래스를 자동으로 감지했습니다. 확인 후 필요시 수정해주세요.
+            ?낅줈?쒕맂 ?곗씠?곗쓽 y_true 而щ읆?먯꽌 ?대옒?ㅻ? ?먮룞?쇰줈 媛먯??덉뒿?덈떎. ?뺤씤 ???꾩슂???섏젙?댁＜?몄슂.
           </p>
         </div>
 
@@ -56,17 +56,16 @@ export function ClassDetection({ currentStep, completedSteps, onStepClick, onNex
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              감지된 클래스는 y_true 컬럼의 고유값에서 추출되었습니다. 평가 결과는 여기 표시된 클래스 기준으로 계산됩니다.
+              媛먯????대옒?ㅻ뒗 y_true 而щ읆??怨좎쑀媛믪뿉??異붿텧?섏뿀?듬땲?? ?됯? 寃곌낵???ш린 ?쒖떆???대옒??湲곗??쇰줈 怨꾩궛?⑸땲??
             </AlertDescription>
           </Alert>
 
           {/* Detected Classes Card */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">감지된 클래스</CardTitle>
+              <CardTitle className="text-lg font-semibold">媛먯????대옒??/CardTitle>
               <CardDescription className="text-sm text-muted-foreground">
-                평가 유형: multiclass · 총 {classCount}개 클래스 · 샘플 수: {totalSamples}개
-              </CardDescription>
+                ?됯? ?좏삎: multiclass 쨌 珥?{classCount}媛??대옒??쨌 ?섑뵆 ?? {totalSamples}媛?              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
@@ -77,9 +76,9 @@ export function ClassDetection({ currentStep, completedSteps, onStepClick, onNex
                     className="py-1.5 px-3 text-sm group hover:pr-8 relative"
                   >
                     <span className="font-semibold">{cls.name}</span>
-                    <span className="mx-1.5">·</span>
-                    <span className="font-mono tabular-nums">{cls.count}개</span>
-                    <span className="mx-1.5">·</span>
+                    <span className="mx-1.5">쨌</span>
+                    <span className="font-mono tabular-nums">{cls.count}媛?/span>
+                    <span className="mx-1.5">쨌</span>
                     <span className="font-mono tabular-nums">{cls.percentage.toFixed(1)}%</span>
                   </Badge>
                 ))}
@@ -90,9 +89,9 @@ export function ClassDetection({ currentStep, completedSteps, onStepClick, onNex
           {/* Class Distribution Card */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">클래스 분포</CardTitle>
+              <CardTitle className="text-lg font-semibold">?대옒??遺꾪룷</CardTitle>
               <CardDescription className="text-sm text-muted-foreground">
-                데이터셋 내 클래스별 비율을 확인하세요.
+                ?곗씠?곗뀑 ???대옒?ㅻ퀎 鍮꾩쑉???뺤씤?섏꽭??
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -108,7 +107,7 @@ export function ClassDetection({ currentStep, completedSteps, onStepClick, onNex
                       />
                     </div>
                     <div className="w-[120px] text-right text-sm font-mono tabular-nums">
-                      {cls.count}개 · {cls.percentage.toFixed(1)}%
+                      {cls.count}媛?쨌 {cls.percentage.toFixed(1)}%
                     </div>
                   </div>
                 ))}
@@ -119,28 +118,27 @@ export function ClassDetection({ currentStep, completedSteps, onStepClick, onNex
                 <div className="flex gap-6 flex-wrap">
                   <div className="space-y-1">
                     <div className="text-xs text-muted-foreground uppercase tracking-wide font-mono">
-                      전체 샘플
+                      ?꾩껜 ?섑뵆
                     </div>
-                    <div className="text-base font-semibold">{totalSamples}개</div>
+                    <div className="text-base font-semibold">{totalSamples}媛?/div>
                   </div>
                   <div className="space-y-1">
                     <div className="text-xs text-muted-foreground uppercase tracking-wide font-mono">
-                      클래스 수
-                    </div>
-                    <div className="text-base font-semibold">{classCount}개</div>
+                      ?대옒????                    </div>
+                    <div className="text-base font-semibold">{classCount}媛?/div>
                   </div>
                   <div className="space-y-1">
                     <div className="text-xs text-muted-foreground uppercase tracking-wide font-mono">
-                      불균형 비율
+                      遺덇퇏??鍮꾩쑉
                     </div>
                     <div className="text-base font-semibold">{imbalanceRatio}:1</div>
                   </div>
                   <div className="space-y-1">
                     <div className="text-xs text-muted-foreground uppercase tracking-wide font-mono">
-                      균형 상태
+                      洹좏삎 ?곹깭
                     </div>
                     <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
-                      양호
+                      ?묓샇
                     </Badge>
                   </div>
                 </div>
@@ -153,7 +151,7 @@ export function ClassDetection({ currentStep, completedSteps, onStepClick, onNex
             <Accordion type="single" collapsible>
               <AccordionItem value="details" className="border-none">
                 <AccordionTrigger className="px-6 hover:no-underline">
-                  <span className="text-lg font-semibold">클래스별 상세 정보</span>
+                  <span className="text-lg font-semibold">?대옒?ㅻ퀎 ?곸꽭 ?뺣낫</span>
                 </AccordionTrigger>
                 <AccordionContent className="px-6 pb-6">
                   <div className="rounded-lg border border-border overflow-hidden">
@@ -161,19 +159,18 @@ export function ClassDetection({ currentStep, completedSteps, onStepClick, onNex
                       <TableHeader>
                         <TableRow className="bg-muted/40">
                           <TableHead className="font-medium text-muted-foreground uppercase text-xs">
-                            클래스명
+                            ?대옒?ㅻ챸
                           </TableHead>
                           <TableHead className="font-medium text-muted-foreground uppercase text-xs text-right">
-                            샘플 수
-                          </TableHead>
+                            ?섑뵆 ??                          </TableHead>
                           <TableHead className="font-medium text-muted-foreground uppercase text-xs text-right">
-                            비율
+                            鍮꾩쑉
                           </TableHead>
                           <TableHead className="font-medium text-muted-foreground uppercase text-xs text-center">
-                            y_pred에서 사용
+                            y_pred?먯꽌 ?ъ슜
                           </TableHead>
                           <TableHead className="font-medium text-muted-foreground uppercase text-xs">
-                            상태
+                            ?곹깭
                           </TableHead>
                         </TableRow>
                       </TableHeader>
@@ -195,7 +192,7 @@ export function ClassDetection({ currentStep, completedSteps, onStepClick, onNex
                               )}
                             </TableCell>
                             <TableCell>
-                              <Badge variant="secondary">정상</Badge>
+                              <Badge variant="secondary">?뺤긽</Badge>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -213,3 +210,4 @@ export function ClassDetection({ currentStep, completedSteps, onStepClick, onNex
     </div>
   );
 }
+

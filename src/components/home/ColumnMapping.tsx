@@ -1,21 +1,21 @@
 import { useState } from "react";
+import { AlertCircle, CheckCircle2, Info } from "lucide-react";
+import { ActionBar } from "./ActionBar";
 import { AppHeader } from "./AppHeader";
 import { StepTabs } from "./StepTabs";
-import { ActionBar } from "./ActionBar";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "./ui/card";
-import { Alert, AlertDescription } from "./ui/alert";
-import { Badge } from "./ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
-import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
-import { Label } from "./ui/label";
-import { Input } from "./ui/input";
-import { Slider } from "./ui/slider";
-import { Info, CheckCircle2, AlertCircle } from "lucide-react";
-import { cn } from "./ui/utils";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
+import { Alert, AlertDescription } from "../ui/alert";
+import { Badge } from "../ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Slider } from "../ui/slider";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { cn } from "../ui/utils";
 
-interface ColumnMapping {
+interface ColumnMappingRow {
   originalName: string;
   sampleValues: string;
   inferredRole: string;
@@ -32,12 +32,12 @@ const roleOptions = [
 ];
 
 const roleDescriptions = [
-  { role: "id", description: "각 샘플을 고유하게 식별하는 컬럼" },
-  { role: "y_true", description: "실제 정답 레이블" },
-  { role: "y_pred", description: "모델의 예측 레이블" },
-  { role: "score", description: "이진 분류의 양성 클래스 확률값" },
-  { role: "prob_class_*", description: "다중 클래스의 클래스별 확률값" },
-  { role: "ignore", description: "평가에 사용하지 않는 컬럼" },
+  { role: "id", description: "A unique identifier for each sample." },
+  { role: "y_true", description: "The ground-truth label column." },
+  { role: "y_pred", description: "The model prediction column." },
+  { role: "score", description: "A binary confidence or score column." },
+  { role: "prob_class_*", description: "One probability column per class." },
+  { role: "ignore", description: "A column that should not be used for evaluation." },
 ];
 
 interface ColumnMappingProps {
@@ -48,70 +48,61 @@ interface ColumnMappingProps {
   onPrevious: () => void;
 }
 
-export function ColumnMapping({ currentStep, completedSteps, onStepClick, onNext, onPrevious }: ColumnMappingProps) {
-  // In real app, taskType comes from Step 1
+export function ColumnMapping({
+  currentStep,
+  completedSteps,
+  onStepClick,
+  onNext,
+  onPrevious,
+}: ColumnMappingProps) {
   const taskType = "multiclass";
 
-  const [mappings, setMappings] = useState<ColumnMapping[]>([
+  const [mappings, setMappings] = useState<ColumnMappingRow[]>([
     { originalName: "sample_id", sampleValues: "S001, S002, S003", inferredRole: "id", modified: false },
-    { originalName: "정답값", sampleValues: "cat, dog, bird", inferredRole: "y_true", modified: false },
-    { originalName: "예측값", sampleValues: "cat, cat, dog", inferredRole: "y_pred", modified: false },
+    { originalName: "actual_label", sampleValues: "cat, dog, bird", inferredRole: "y_true", modified: false },
+    { originalName: "predicted_label", sampleValues: "cat, cat, dog", inferredRole: "y_pred", modified: false },
     { originalName: "p_cat", sampleValues: "0.92, 0.10, 0.08", inferredRole: "prob_class_*", modified: false },
     { originalName: "p_dog", sampleValues: "0.05, 0.62, 0.86", inferredRole: "prob_class_*", modified: false },
     { originalName: "p_bird", sampleValues: "0.03, 0.28, 0.06", inferredRole: "prob_class_*", modified: false },
-    { originalName: "메모", sampleValues: "test, final, v2", inferredRole: "ignore", modified: false },
+    { originalName: "memo", sampleValues: "test, final, v2", inferredRole: "ignore", modified: false },
   ]);
-
   const [positiveClass, setPositiveClass] = useState("cat");
   const [threshold, setThreshold] = useState(0.5);
 
   const handleRoleChange = (index: number, newRole: string) => {
-    setMappings((prev) =>
-      prev.map((m, i) =>
-        i === index ? { ...m, inferredRole: newRole, modified: true } : m
-      )
-    );
+    setMappings((prev) => prev.map((m, i) => (i === index ? { ...m, inferredRole: newRole, modified: true } : m)));
   };
 
-  // Check for duplicate roles
   const getDuplicateRoles = () => {
     const roleCounts: Record<string, number> = {};
-    mappings.forEach((m) => {
-      if (m.inferredRole !== "ignore" && m.inferredRole !== "prob_class_*") {
-        roleCounts[m.inferredRole] = (roleCounts[m.inferredRole] || 0) + 1;
+    mappings.forEach((mapping) => {
+      if (mapping.inferredRole !== "ignore" && mapping.inferredRole !== "prob_class_*") {
+        roleCounts[mapping.inferredRole] = (roleCounts[mapping.inferredRole] || 0) + 1;
       }
     });
     return Object.keys(roleCounts).filter((role) => roleCounts[role] > 1);
   };
 
   const duplicateRoles = getDuplicateRoles();
-
-  // Calculate summary stats
   const totalColumns = mappings.length;
   const mappedColumns = mappings.filter((m) => m.inferredRole !== "ignore").length;
   const ignoredColumns = mappings.filter((m) => m.inferredRole === "ignore").length;
-
-  // Check required columns and mappings
   const hasYTrue = mappings.some((m) => m.inferredRole === "y_true");
   const hasYPred = mappings.some((m) => m.inferredRole === "y_pred");
   const hasScore = mappings.some((m) => m.inferredRole === "score");
   const hasProbClass = mappings.some((m) => m.inferredRole === "prob_class_*");
-
-  // Determine if additional config is needed
   const needsPositiveClass = taskType === "binary" && hasYTrue;
-  const needsThreshold =
-    (taskType === "binary" && hasScore && !hasYPred) ||
-    (taskType === "multilabel" && mappings.some((m) => m.inferredRole === "prob_label_*") && !hasYPred);
-
+  const needsThreshold = taskType === "binary" && hasScore && !hasYPred;
   const isValid = hasYTrue && (hasYPred || hasScore || hasProbClass) && duplicateRoles.length === 0;
 
   const missingRequired: string[] = [];
-  if (!hasYTrue) missingRequired.push("y_true");
+  if (!hasYTrue) {
+    missingRequired.push("y_true");
+  }
   if (!hasYPred && !hasScore && !hasProbClass) {
-    missingRequired.push("y_pred 또는 확률 컬럼");
+    missingRequired.push("y_pred or probability columns");
   }
 
-  // Detected classes from y_true sample values (simplified)
   const detectedClasses = ["cat", "dog", "bird"];
 
   return (
@@ -120,29 +111,26 @@ export function ColumnMapping({ currentStep, completedSteps, onStepClick, onNext
       <StepTabs currentStep={currentStep} completedSteps={completedSteps} onStepClick={onStepClick} />
 
       <main className="px-8 pt-12 pb-24 max-w-[1344px] mx-auto">
-        {/* Page Title */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground mb-2">컬럼 매핑 확인</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Column mapping</h1>
           <p className="text-sm text-muted-foreground">
-            업로드한 파일의 컬럼을 시스템이 자동으로 인식했습니다. 잘못 매핑된 항목이 있다면 수정해주세요.
+            Review the auto-detected roles for each uploaded column and adjust them if needed.
           </p>
         </div>
 
         <div className="space-y-6">
-          {/* Info Alert */}
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              AI가 데이터 샘플을 분석하여 각 컬럼의 역할을 자동으로 추론했습니다. 아래 매핑을 검토하고 필요시 수정해주세요.
+              The sample values were analyzed automatically. Check the inferred mapping before continuing.
             </AlertDescription>
           </Alert>
 
-          {/* Mapping Table Card */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">자동 매핑 결과</CardTitle>
+              <CardTitle className="text-lg font-semibold">Detected mapping</CardTitle>
               <CardDescription className="text-sm text-muted-foreground">
-                평가 유형: multiclass · 총 {totalColumns}개 컬럼 감지됨
+                Task type: {taskType} / {totalColumns} columns detected
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -150,18 +138,10 @@ export function ColumnMapping({ currentStep, completedSteps, onStepClick, onNext
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/40">
-                      <TableHead className="font-medium text-muted-foreground uppercase text-xs">
-                        원본 컬럼명
-                      </TableHead>
-                      <TableHead className="font-medium text-muted-foreground uppercase text-xs">
-                        샘플 값 미리보기
-                      </TableHead>
-                      <TableHead className="font-medium text-muted-foreground uppercase text-xs">
-                        추론된 역할
-                      </TableHead>
-                      <TableHead className="font-medium text-muted-foreground uppercase text-xs w-24">
-                        수정
-                      </TableHead>
+                      <TableHead className="font-medium text-muted-foreground uppercase text-xs">Column name</TableHead>
+                      <TableHead className="font-medium text-muted-foreground uppercase text-xs">Sample values</TableHead>
+                      <TableHead className="font-medium text-muted-foreground uppercase text-xs">Assigned role</TableHead>
+                      <TableHead className="font-medium text-muted-foreground uppercase text-xs w-24">Edited</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -173,30 +153,14 @@ export function ColumnMapping({ currentStep, completedSteps, onStepClick, onNext
                       const isIgnored = mapping.inferredRole === "ignore";
 
                       return (
-                        <TableRow
-                          key={index}
-                          className={cn(
-                            "hover:bg-muted/50",
-                            isIgnored && "text-muted-foreground"
-                          )}
-                        >
-                          <TableCell className="font-mono text-sm">
-                            {mapping.originalName}
-                          </TableCell>
+                        <TableRow key={mapping.originalName} className={cn("hover:bg-muted/50", isIgnored && "text-muted-foreground")}>
+                          <TableCell className="font-mono text-sm">{mapping.originalName}</TableCell>
                           <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
                             {mapping.sampleValues}
                           </TableCell>
                           <TableCell>
-                            <Select
-                              value={mapping.inferredRole}
-                              onValueChange={(value) => handleRoleChange(index, value)}
-                            >
-                              <SelectTrigger
-                                className={cn(
-                                  "w-full",
-                                  hasDuplicateRole && "border-destructive"
-                                )}
-                              >
+                            <Select value={mapping.inferredRole} onValueChange={(value) => handleRoleChange(index, value)}>
+                              <SelectTrigger className={cn("w-full", hasDuplicateRole && "border-destructive")}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -209,14 +173,14 @@ export function ColumnMapping({ currentStep, completedSteps, onStepClick, onNext
                             </Select>
                             {hasDuplicateRole && (
                               <p className="text-xs text-destructive mt-1">
-                                {mapping.inferredRole}는 하나의 컬럼에만 지정할 수 있습니다
+                                Only one column can be assigned to {mapping.inferredRole}.
                               </p>
                             )}
                           </TableCell>
                           <TableCell>
                             {mapping.modified && (
                               <Badge variant="secondary" className="text-xs">
-                                수정됨
+                                Edited
                               </Badge>
                             )}
                           </TableCell>
@@ -229,51 +193,36 @@ export function ColumnMapping({ currentStep, completedSteps, onStepClick, onNext
             </CardContent>
           </Card>
 
-          {/* Mapping Summary Card */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">매핑 요약</CardTitle>
+              <CardTitle className="text-lg font-semibold">Mapping summary</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="space-y-1">
-                  <div className="text-xs text-muted-foreground uppercase tracking-wide">
-                    감지된 컬럼
-                  </div>
-                  <div className="text-2xl font-bold font-mono tabular-nums">
-                    {totalColumns}개
-                  </div>
+                  <div className="text-xs text-muted-foreground uppercase tracking-wide">Total columns</div>
+                  <div className="text-2xl font-bold font-mono tabular-nums">{totalColumns}</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-xs text-muted-foreground uppercase tracking-wide">
-                    매핑 완료
-                  </div>
-                  <div className="text-2xl font-bold font-mono tabular-nums">
-                    {mappedColumns}개
-                  </div>
+                  <div className="text-xs text-muted-foreground uppercase tracking-wide">Mapped</div>
+                  <div className="text-2xl font-bold font-mono tabular-nums">{mappedColumns}</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-xs text-muted-foreground uppercase tracking-wide">
-                    무시됨(ignore)
-                  </div>
-                  <div className="text-2xl font-bold font-mono tabular-nums">
-                    {ignoredColumns}개
-                  </div>
+                  <div className="text-xs text-muted-foreground uppercase tracking-wide">Ignored</div>
+                  <div className="text-2xl font-bold font-mono tabular-nums">{ignoredColumns}</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-xs text-muted-foreground uppercase tracking-wide">
-                    상태
-                  </div>
+                  <div className="text-xs text-muted-foreground uppercase tracking-wide">Status</div>
                   <div>
                     {isValid ? (
                       <Badge variant="default" className="bg-green-600 hover:bg-green-700">
                         <CheckCircle2 className="h-3 w-3 mr-1" />
-                        정상
+                        Valid
                       </Badge>
                     ) : (
                       <Badge variant="destructive">
                         <AlertCircle className="h-3 w-3 mr-1" />
-                        오류
+                        Incomplete
                       </Badge>
                     )}
                   </div>
@@ -283,21 +232,18 @@ export function ColumnMapping({ currentStep, completedSteps, onStepClick, onNext
               {!isValid && missingRequired.length > 0 && (
                 <Alert variant="destructive" className="mt-4">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    필수 컬럼이 누락되었습니다: {missingRequired.join(", ")}
-                  </AlertDescription>
+                  <AlertDescription>Missing required mapping: {missingRequired.join(", ")}</AlertDescription>
                 </Alert>
               )}
             </CardContent>
           </Card>
 
-          {/* Conditional: Positive Class Selection (Binary only) */}
           {needsPositiveClass && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg font-semibold">Positive Class 지정</CardTitle>
+                <CardTitle className="text-lg font-semibold">Positive class</CardTitle>
                 <CardDescription className="text-sm text-muted-foreground">
-                  Binary 분류에서 "양성" 클래스를 선택하세요. Precision, Recall 등이 이 클래스 기준으로 계산됩니다.
+                  Choose the positive class used by binary metrics such as precision and recall.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -309,16 +255,14 @@ export function ColumnMapping({ currentStep, completedSteps, onStepClick, onNext
                         htmlFor={`class-${cls}`}
                         className={cn(
                           "flex flex-col p-5 rounded-lg border-2 cursor-pointer transition-colors",
-                          positiveClass === cls
-                            ? "border-primary bg-blue-50"
-                            : "border-border bg-card hover:border-gray-400"
+                          positiveClass === cls ? "border-primary bg-blue-50" : "border-border bg-card hover:border-gray-400",
                         )}
                       >
                         <div className="flex items-start gap-2">
                           <RadioGroupItem value={cls} id={`class-${cls}`} />
                           <div className="flex-1">
                             <div className="text-sm font-semibold font-mono mb-1">{cls}</div>
-                            <div className="text-xs text-muted-foreground">74개 샘플</div>
+                            <div className="text-xs text-muted-foreground">Detected in sample rows</div>
                           </div>
                         </div>
                       </label>
@@ -329,22 +273,19 @@ export function ColumnMapping({ currentStep, completedSteps, onStepClick, onNext
             </Card>
           )}
 
-          {/* Conditional: Threshold Setting */}
           {needsThreshold && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg font-semibold">Threshold 설정</CardTitle>
+                <CardTitle className="text-lg font-semibold">Threshold</CardTitle>
                 <CardDescription className="text-sm text-muted-foreground">
-                  확률값을 하드 레이블로 변환할 임계값을 설정하세요.
+                  Set the score threshold used to convert probabilities into labels.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="threshold">임계값</Label>
-                    <span className="text-sm font-mono tabular-nums text-muted-foreground">
-                      {threshold.toFixed(2)}
-                    </span>
+                    <Label htmlFor="threshold">Threshold</Label>
+                    <span className="text-sm font-mono tabular-nums text-muted-foreground">{threshold.toFixed(2)}</span>
                   </div>
                   <Slider
                     id="threshold"
@@ -366,31 +307,24 @@ export function ColumnMapping({ currentStep, completedSteps, onStepClick, onNext
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {taskType === "binary"
-                    ? "score가 이 값 이상이면 양성으로 판정합니다."
-                    : "각 레이블의 확률이 이 값 이상이면 해당 레이블을 예측합니다."}
+                  Samples at or above this threshold will be treated as positive predictions.
                 </p>
               </CardContent>
             </Card>
           )}
 
-          {/* Help Accordion */}
           <Card>
             <Accordion type="single" collapsible>
               <AccordionItem value="help" className="border-none">
                 <AccordionTrigger className="px-6 hover:no-underline">
-                  <span className="text-lg font-semibold">역할 설명</span>
+                  <span className="text-lg font-semibold">Role definitions</span>
                 </AccordionTrigger>
                 <AccordionContent className="px-6 pb-6">
                   <div className="space-y-3">
                     {roleDescriptions.map((item) => (
                       <div key={item.role} className="flex gap-3">
-                        <span className="font-mono text-sm font-medium min-w-[120px]">
-                          {item.role}:
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {item.description}
-                        </span>
+                        <span className="font-mono text-sm font-medium min-w-[120px]">{item.role}:</span>
+                        <span className="text-sm text-muted-foreground">{item.description}</span>
                       </div>
                     ))}
                   </div>
@@ -401,12 +335,7 @@ export function ColumnMapping({ currentStep, completedSteps, onStepClick, onNext
         </div>
       </main>
 
-      <ActionBar
-        showPrevious={true}
-        onPrevious={onPrevious}
-        onNext={onNext}
-        nextDisabled={!isValid}
-      />
+      <ActionBar showPrevious={true} onPrevious={onPrevious} onNext={onNext} nextDisabled={!isValid} />
     </div>
   );
 }

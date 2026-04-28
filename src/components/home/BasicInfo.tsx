@@ -1,18 +1,18 @@
-import * as React from "react";
+﻿import * as React from "react";
 import { AppHeader } from "./AppHeader";
 import { StepTabs } from "./StepTabs";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
-import { Button } from "./ui/button";
-import { Textarea } from "./ui/textarea";
-import { Calendar } from "./ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+import { Button } from "../ui/button";
+import { Textarea } from "../ui/textarea";
+import { Calendar } from "../ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { format } from "date-fns";
 import { CalendarIcon, ChevronRight, ChevronDown } from "lucide-react";
-import { cn } from "./ui/utils";
-import type { BasicInfoFormData } from "../types/workflow";
+import { cn } from "../ui/utils";
+import type { BasicInfoFormData } from "../../types/workflow.types";
 
 interface BasicInfoProps {
   currentStep: number;
@@ -398,3 +398,4 @@ function ExpandableEnvironment({
     </>
   );
 }
+
