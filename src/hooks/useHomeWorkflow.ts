@@ -44,6 +44,8 @@ export function useHomeWorkflow() {
   const commonStep = {
     currentStep,
     completedSteps,
+    taskType,
+    selectedTCIds,
     onStepClick: handleStepClick,
     onNext: handleNext,
     onPrevious: handlePrevious,
@@ -65,15 +67,11 @@ export function useHomeWorkflow() {
     },
     tcDetailStep: {
       ...commonStep,
-      taskType,
-      selectedTCIds,
       tcDetails,
       onTcDetailsChange: setTcDetails,
     },
     dataUploadStep: {
       ...commonStep,
-      selectedTCIds,
-      taskType,
       uploadedFile,
       onUploadedFileChange: setUploadedFile,
     },
