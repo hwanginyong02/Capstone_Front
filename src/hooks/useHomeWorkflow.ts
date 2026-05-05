@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { TaskType } from "../data/evaluationData";
+import { createEvaluationReport } from "../lib/report/createEvaluationReport";
 import {
   DEFAULT_BASIC_INFO,
   DEFAULT_DATASET_INFO,
@@ -54,6 +55,15 @@ export function useHomeWorkflow() {
     onPrevious: handlePrevious,
   };
 
+  const report = createEvaluationReport({
+    basicInfo,
+    datasetInfo,
+    taskType,
+    selectedTCIds,
+    tcDetails,
+    uploadedFile,
+  });
+
   return {
     currentStep,
     commonStep,
@@ -79,6 +89,10 @@ export function useHomeWorkflow() {
       onDatasetInfoChange: setDatasetInfo,
       uploadedFile,
       onUploadedFileChange: setUploadedFile,
+    },
+    reportStep: {
+      ...commonStep,
+      report,
     },
   };
 }

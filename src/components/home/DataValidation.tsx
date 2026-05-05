@@ -1,13 +1,21 @@
-import { AlertTriangle, Info } from "lucide-react";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { ActionBar } from "./ActionBar";
 import { AppHeader } from "./AppHeader";
 import { StepTabs } from "./StepTabs";
+import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table";
+import {
   TASK_TYPE_LABELS,
-  getSelectedTestCases,
-  selectionRequiresProbability,
+  selectionNeedsField,
   type TaskType,
 } from "../../data/evaluationData";
 
@@ -21,169 +29,214 @@ interface DataValidationProps {
   onPrevious: () => void;
 }
 
-type CheckStatus = "pass" | "warning" | "info";
+type ValidationStatus = "pass" | "warning" | "error";
 
-interface ValidationCheck {
+interface ExecutionSummaryItem {
+  label: string;
+  value: string;
+  note: string;
+}
+
+interface ValidationDetailItem {
   name: string;
-  detail: string;
-  status: CheckStatus;
+  result: string;
+  handling: string;
+  status: ValidationStatus;
 }
 
-interface ValidationSection {
-  title: string;
-  description: string;
-  checks: ValidationCheck[];
+interface ValidationResponse {
+  taskType: TaskType;
+  selectedTcIds: string[];
+  executionSummary: ExecutionSummaryItem[];
+  validationDetails: ValidationDetailItem[];
+  errorCount: number;
+  warningCount: number;
 }
 
-function buildValidationSections(taskType?: TaskType | "", selectedTCIds: string[] = []): ValidationSection[] {
-  const commonChecks: ValidationCheck[] = [
+function buildMockValidationResponse(
+  taskType?: TaskType | "",
+  selectedTCIds: string[] = [],
+): ValidationResponse {
+  const resolvedTaskType: TaskType = taskType || "multiclass";
+  const hasPositiveClassRequirement =
+    resolvedTaskType === "binary" && selectionNeedsField(resolvedTaskType, selectedTCIds, "positiveClass");
+  const hasLatencyColumn = false;
+
+  const validationDetails: ValidationDetailItem[] = [
     {
-      name: "Required values",
-      detail: "Mapped fields needed for evaluation do not contain blank values.",
+      name: "Missing value",
+      result: "None",
+      handling: "Exclude affected rows from evaluation",
       status: "pass",
     },
     {
-      name: "Unique IDs",
-      detail: "Sample identifiers are present and unique across all rows.",
+      name: "Duplicate ID",
+      result: "None",
+      handling: "Keep the first row and exclude later duplicates",
       status: "pass",
     },
     {
-      name: "Label consistency",
-      detail: "Ground-truth and prediction labels follow the same label set.",
+      name: "Class mismatch",
+      result: "None",
+      handling: "Exclude affected rows from evaluation",
+      status: "pass",
+    },
+    {
+      name: "Missing required column",
+      result: "None",
+      handling: "Stop evaluation",
+      status: "pass",
+    },
+    {
+      name: "Excluded samples",
+      result: "0 rows",
+      handling: "Exclude only rows with missing or invalid values",
       status: "pass",
     },
   ];
 
-  if (!taskType) {
-    return [
+  if (resolvedTaskType === "multiclass") {
+    validationDetails.push(
       {
-        title: "Common checks",
-        description: "Basic checks that apply before any evaluation run.",
-        checks: commonChecks,
-      },
-    ];
-  }
-
-  const taskChecks: ValidationCheck[] = [];
-
-  if (taskType === "binary") {
-    taskChecks.push({
-      name: "Prediction format",
-      detail: "If a score column is used, values must stay within the 0 to 1 range.",
-      status: "pass",
-    });
-  }
-
-  if (taskType === "multiclass") {
-    taskChecks.push(
-      {
-        name: "Prediction format",
-        detail: "Predicted labels should match the observed class vocabulary.",
+        name: "Missing probability column",
+        result: "None",
+        handling: "Stop evaluation when required by selected TCs",
         status: "pass",
       },
       {
-        name: "Probability rows",
-        detail: "Per-class probabilities should stay within 0 to 1 and sum close to 1.",
-        status: "warning",
-      },
-    );
-  }
-
-  if (taskType === "multilabel") {
-    taskChecks.push(
-      {
-        name: "Prediction format",
-        detail: "Label arrays or separators should be consistent across rows.",
+        name: "Probability sum error",
+        result: "0 rows",
+        handling: "Warn and continue",
         status: "pass",
       },
       {
-        name: "Probability rows",
-        detail: "Per-label probabilities, if present, should stay within the 0 to 1 range.",
+        name: "Argmax and y_pred mismatch",
+        result: "0 rows",
+        handling: "Warn and continue",
+        status: "pass",
+      },
+      {
+        name: "Unknown class detected",
+        result: "None",
+        handling: "Exclude affected rows from evaluation",
         status: "pass",
       },
     );
   }
 
-  const selectedTcs = getSelectedTestCases(taskType, selectedTCIds);
-  const tcChecks: ValidationCheck[] = [];
-  const probabilityRequired = selectionRequiresProbability(taskType, selectedTCIds);
-  const tcNames = selectedTcs.map((tc) => tc.name).join(", ");
-
-  if (selectedTcs.length > 0) {
-    tcChecks.push({
-      name: "Selected TC scope",
-      detail: `Active checks are based on the selected metrics: ${tcNames}.`,
-      status: "info",
-    });
+  if (resolvedTaskType === "binary") {
+    validationDetails.push(
+      {
+        name: "Missing positive class",
+        result: hasPositiveClassRequirement ? "None" : "Not applicable",
+        handling: hasPositiveClassRequirement ? "Stop evaluation" : "Skip this check",
+        status: "pass",
+      },
+      {
+        name: "Score range error",
+        result: "0 rows",
+        handling: "Exclude affected rows from evaluation",
+        status: "pass",
+      },
+      {
+        name: "Binary class system error",
+        result: "None",
+        handling: "Exclude affected rows from evaluation",
+        status: "pass",
+      },
+    );
   }
 
-  if (taskType === "binary" && probabilityRequired) {
-    tcChecks.push({
-      name: "Score-ready metrics",
-      detail: "Selected TCs require a usable score column for probability-based evaluation.",
-      status: "pass",
-    });
+  if (resolvedTaskType === "multilabel") {
+    validationDetails.push(
+      {
+        name: "Label format mismatch",
+        result: "None",
+        handling: "Exclude affected rows from evaluation",
+        status: "pass",
+      },
+      {
+        name: "Missing prob_label_* column",
+        result: "None",
+        handling: "Stop evaluation when required by selected TCs",
+        status: "pass",
+      },
+      {
+        name: "Label vocabulary mismatch",
+        result: "None",
+        handling: "Exclude affected rows from evaluation",
+        status: "pass",
+      },
+    );
   }
 
-  if (taskType === "multiclass" && selectedTCIds.includes("TC6")) {
-    tcChecks.push({
-      name: "KL divergence input",
-      detail: "TC6 requires per-class probability columns for each sample row.",
-      status: "pass",
-    });
+  if (hasLatencyColumn) {
+    validationDetails.push(
+      {
+        name: "Latency value error",
+        result: "0 rows",
+        handling: "Exclude from latency statistics",
+        status: "pass",
+      },
+      {
+        name: "Latency missing value",
+        result: "0 rows",
+        handling: "Exclude from latency statistics",
+        status: "pass",
+      },
+    );
   }
 
-  if (taskType === "multilabel" && selectedTCIds.includes("TC23") && selectedTCIds.length === 1) {
-    tcChecks.push({
-      name: "Distribution-only run",
-      detail: "TC23 can proceed with true labels only, so prediction fields remain optional.",
-      status: "info",
-    });
-  }
+  const errorCount = validationDetails.filter((item) => item.status === "error").length;
+  const warningCount = validationDetails.filter((item) => item.status === "warning").length;
 
-  return [
-    {
-      title: "Common checks",
-      description: "Always validate the core dataset shape before running any metric.",
-      checks: commonChecks,
-    },
-    {
-      title: `${TASK_TYPE_LABELS[taskType]} checks`,
-      description: "Format rules that depend on the selected task type.",
-      checks: taskChecks,
-    },
-    {
-      title: "TC-specific checks",
-      description: "Extra checks appear only when the selected test cases need them.",
-      checks:
-        tcChecks.length > 0
-          ? tcChecks
-          : [
-              {
-                name: "No extra TC requirement",
-                detail: "The current metric selection does not add any extra validation rule.",
-                status: "info",
-              },
-            ],
-    },
-  ];
+  return {
+    taskType: resolvedTaskType,
+    selectedTcIds: selectedTCIds,
+    executionSummary: [
+      {
+        label: "Total validated rows",
+        value: "[N rows]",
+        note: "Uploaded row count used as the base for validation.",
+      },
+      {
+        label: "Valid prediction rows",
+        value: "[N rows]",
+        note: "Rows actually used for metric calculation after exclusions.",
+      },
+      {
+        label: "Excluded samples",
+        value: "[N rows]",
+        note: "Rows excluded because of missing or invalid values.",
+      },
+      {
+        label: "Selected TC count",
+        value: `[${selectedTCIds.length || "N"} items]`,
+        note:
+          selectedTCIds.length > 0
+            ? `Selected TCs: [${selectedTCIds.join(", ")}]`
+            : "No test cases selected.",
+      },
+      {
+        label: "Validation result",
+        value: `Errors [${errorCount}] / Warnings [${warningCount}]`,
+        note: "See the detailed table below.",
+      },
+    ],
+    validationDetails,
+    errorCount,
+    warningCount,
+  };
 }
 
-function getBadgeVariant(status: CheckStatus) {
-  if (status === "pass") {
-    return "secondary" as const;
-  }
-  return "outline" as const;
-}
-
-function getBadgeLabel(status: CheckStatus) {
-  if (status === "pass") {
-    return "Pass";
+function getStatusBadge(status: ValidationStatus) {
+  if (status === "error") {
+    return <Badge variant="destructive">Error</Badge>;
   }
   if (status === "warning") {
-    return "Warning";
+    return <Badge variant="outline">Warning</Badge>;
   }
-  return "Info";
+  return <Badge variant="secondary">Pass</Badge>;
 }
 
 export function DataValidation({
@@ -195,9 +248,8 @@ export function DataValidation({
   onNext,
   onPrevious,
 }: DataValidationProps) {
-  const sections = buildValidationSections(taskType, selectedTCIds);
-  const allChecks = sections.flatMap((section) => section.checks);
-  const warningCount = allChecks.filter((check) => check.status === "warning").length;
+  const validationResponse = buildMockValidationResponse(taskType, selectedTCIds);
+  const hasBlockingError = validationResponse.errorCount > 0;
 
   return (
     <div className="min-h-screen bg-[#FAFAFA]">
@@ -208,83 +260,92 @@ export function DataValidation({
         <div>
           <h1 className="mb-2 text-2xl font-bold text-foreground">Data validation</h1>
           <p className="text-sm text-muted-foreground">
-            Final checks for the confirmed mapping and the selected evaluation scope.
+            Review the backend validation result before running the evaluation.
           </p>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold">Validation checks</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {sections.map((section) => (
-                <section key={section.title} className="space-y-3">
-                  <div>
-                    <h2 className="font-semibold text-foreground">{section.title}</h2>
-                    <p className="text-sm text-muted-foreground">{section.description}</p>
-                  </div>
-
-                  <div className="space-y-3">
-                    {section.checks.map((check) => (
-                      <div
-                        key={`${section.title}-${check.name}`}
-                        className="flex items-start justify-between gap-4 rounded-lg border border-border p-4"
-                      >
-                        <div className="space-y-1">
-                          <div className="font-medium text-foreground">{check.name}</div>
-                          <div className="text-sm text-muted-foreground">{check.detail}</div>
-                        </div>
-                        <Badge variant={getBadgeVariant(check.status)}>{getBadgeLabel(check.status)}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card className="h-fit">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold">Validation scope</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-lg border border-border bg-background p-4">
-                <div className="text-sm font-medium text-muted-foreground">Task type</div>
-                <div className="mt-1 font-semibold text-foreground">
-                  {taskType ? TASK_TYPE_LABELS[taskType] : "Not selected"}
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-border bg-background p-4">
-                <div className="text-sm font-medium text-muted-foreground">Selected TCs</div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedTCIds.length > 0 ? (
-                    selectedTCIds.map((id) => (
-                      <Badge key={id} variant="outline">
-                        {id}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="text-sm text-muted-foreground">No test case selected.</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                <div className="mb-2 flex items-center gap-2 text-amber-700">
-                  {warningCount > 0 ? <AlertTriangle className="h-4 w-4" /> : <Info className="h-4 w-4" />}
-                  <span className="text-sm font-medium">
-                    {warningCount > 0 ? "Review before run" : "Minimal validation set"}
-                  </span>
-                </div>
-                <p className="text-sm text-amber-800">
-                  This step focuses on required values, unique IDs, prediction format, and label consistency only.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline">{TASK_TYPE_LABELS[validationResponse.taskType]}</Badge>
+          {validationResponse.selectedTcIds.map((id) => (
+            <Badge key={id} variant="outline">
+              {id}
+            </Badge>
+          ))}
         </div>
+
+        {hasBlockingError ? (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Validation errors were found. Review the detail table before continuing.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Alert>
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>
+              No blocking validation error was found in the current mock response.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">6.0 Execution summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-hidden rounded-lg border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40">
+                    <TableHead className="w-[220px]">Item</TableHead>
+                    <TableHead className="w-[180px]">Value</TableHead>
+                    <TableHead>Note</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {validationResponse.executionSummary.map((item) => (
+                    <TableRow key={item.label}>
+                      <TableCell className="align-top whitespace-normal font-semibold">{item.label}</TableCell>
+                      <TableCell className="align-top whitespace-normal">{item.value}</TableCell>
+                      <TableCell className="align-top whitespace-normal text-muted-foreground">{item.note}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">6.0.1 Validation details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-hidden rounded-lg border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40">
+                    <TableHead className="w-[320px]">Check</TableHead>
+                    <TableHead className="w-[220px]">Result</TableHead>
+                    <TableHead>Handling</TableHead>
+                    <TableHead className="w-[120px]">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {validationResponse.validationDetails.map((item) => (
+                    <TableRow key={item.name}>
+                      <TableCell className="align-top whitespace-normal font-medium">{item.name}</TableCell>
+                      <TableCell className="align-top whitespace-normal">{item.result}</TableCell>
+                      <TableCell className="align-top whitespace-normal text-muted-foreground">{item.handling}</TableCell>
+                      <TableCell className="align-top">{getStatusBadge(item.status)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       </main>
 
       <ActionBar showPrevious={true} onPrevious={onPrevious} onNext={onNext} nextLabel="Run evaluation" />
