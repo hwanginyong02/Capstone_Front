@@ -13,12 +13,10 @@ export interface BasicInfoFormData {
   projectName: string;
   projectAgency: string;
   projectNumber: string;
-  productName: string;
   versionName: string;
-  testStartDate?: Date;
-  testEndDate?: Date;
   modelName: string;
-  testPurpose: string;
+  modelPurpose: string;
+  modelCategory: string;
   taskType: TaskType | "";
   envOS: string;
   envCPU: string;
@@ -46,6 +44,12 @@ export interface UploadedFileInfo {
   type: string;
 }
 
+export interface DatasetInfoFormData {
+  datasetFormat: string;
+  trainingSampleCount: string;
+  evaluationSampleCount: string;
+}
+
 export const DEFAULT_BASIC_INFO: BasicInfoFormData = {
   companyName: "",
   representative: "",
@@ -59,17 +63,21 @@ export const DEFAULT_BASIC_INFO: BasicInfoFormData = {
   projectName: "",
   projectAgency: "",
   projectNumber: "",
-  productName: "",
   versionName: "v1.0.0",
-  testStartDate: undefined,
-  testEndDate: undefined,
   modelName: "",
-  testPurpose: "",
+  modelPurpose: "",
+  modelCategory: "",
   taskType: "",
   envOS: "",
   envCPU: "",
   envGPU: "",
   envMemory: "",
   envSoftware: "",
+};
+
+export const DEFAULT_DATASET_INFO: DatasetInfoFormData = {
+  datasetFormat: "",
+  trainingSampleCount: "",
+  evaluationSampleCount: "",
 };
 

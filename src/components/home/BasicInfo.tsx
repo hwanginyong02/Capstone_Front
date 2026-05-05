@@ -6,7 +6,6 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Button } from "../ui/button";
-import { Textarea } from "../ui/textarea";
 import { Calendar } from "../ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { format } from "date-fns";
@@ -53,12 +52,10 @@ export function BasicInfo({
       formData.address &&
       formData.contractDate &&
       formData.reportPurpose &&
-      formData.productName &&
       formData.versionName &&
-      formData.testStartDate &&
-      formData.testEndDate &&
       formData.modelName &&
-      formData.testPurpose &&
+      formData.modelPurpose &&
+      formData.modelCategory &&
       formData.taskType;
 
     if (formData.reportPurpose === "project") {
@@ -162,12 +159,12 @@ export function BasicInfo({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">Product and model</CardTitle>
+              <CardTitle className="text-lg font-semibold">Model information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Field label="Product name" required>
-                  <Input value={formData.productName} onChange={(e) => update("productName", e.target.value)} />
+                <Field label="Model name" required>
+                  <Input value={formData.modelName} onChange={(e) => update("modelName", e.target.value)} />
                 </Field>
                 <Field label="Version" required>
                   <Input value={formData.versionName} onChange={(e) => update("versionName", e.target.value)} />
@@ -175,32 +172,21 @@ export function BasicInfo({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <DateField
-                  label="Test start date"
-                  required
-                  value={formData.testStartDate}
-                  onChange={(value) => update("testStartDate", value)}
-                />
-                <DateField
-                  label="Test end date"
-                  required
-                  value={formData.testEndDate}
-                  onChange={(value) => update("testEndDate", value)}
-                />
+                <Field label="Model purpose" required>
+                  <Input
+                    value={formData.modelPurpose}
+                    onChange={(e) => update("modelPurpose", e.target.value)}
+                    placeholder="e.g. Vision-based surface defect prediction"
+                  />
+                </Field>
+                <Field label="Model category" required>
+                  <Input
+                    value={formData.modelCategory}
+                    onChange={(e) => update("modelCategory", e.target.value)}
+                    placeholder="e.g. Classification model (Neural Network)"
+                  />
+                </Field>
               </div>
-
-              <Field label="Model name" required>
-                <Input value={formData.modelName} onChange={(e) => update("modelName", e.target.value)} />
-              </Field>
-
-              <Field label="Test purpose" required>
-                <Textarea
-                  rows={3}
-                  className="resize-none"
-                  value={formData.testPurpose}
-                  onChange={(e) => update("testPurpose", e.target.value)}
-                />
-              </Field>
 
               <div className="space-y-3">
                 <Label>
@@ -329,11 +315,13 @@ function ClassifierCard({
   title,
   description,
   selected,
+  radioValue,
 }: {
   id: string;
   title: string;
   description: string;
   selected: boolean;
+  radioValue?: string;
 }) {
   return (
     <label
@@ -344,7 +332,7 @@ function ClassifierCard({
       )}
     >
       <div className="flex items-start gap-2">
-        <RadioGroupItem value={id} id={id} className="mt-0.5" />
+        <RadioGroupItem value={radioValue ?? id} id={id} className="mt-0.5" />
         <div className="flex-1">
           <div className="text-sm font-semibold mb-1">{title}</div>
           <div className="text-xs text-muted-foreground">{description}</div>

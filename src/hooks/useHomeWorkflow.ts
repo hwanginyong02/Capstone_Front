@@ -2,7 +2,9 @@ import { useState } from "react";
 import type { TaskType } from "../data/evaluationData";
 import {
   DEFAULT_BASIC_INFO,
+  DEFAULT_DATASET_INFO,
   type BasicInfoFormData,
+  type DatasetInfoFormData,
   type TcDetailStateMap,
   type UploadedFileInfo,
 } from "../types/workflow.types";
@@ -15,6 +17,7 @@ export function useHomeWorkflow() {
   const [basicInfo, setBasicInfo] = useState<BasicInfoFormData>(DEFAULT_BASIC_INFO);
   const [tcDetails, setTcDetails] = useState<TcDetailStateMap>({});
   const [uploadedFile, setUploadedFile] = useState<UploadedFileInfo | null>(null);
+  const [datasetInfo, setDatasetInfo] = useState<DatasetInfoFormData>(DEFAULT_DATASET_INFO);
 
   const handleTaskTypeChange = (type: string) => {
     setTaskType(type as TaskType);
@@ -72,6 +75,8 @@ export function useHomeWorkflow() {
     },
     dataUploadStep: {
       ...commonStep,
+      datasetInfo,
+      onDatasetInfoChange: setDatasetInfo,
       uploadedFile,
       onUploadedFileChange: setUploadedFile,
     },

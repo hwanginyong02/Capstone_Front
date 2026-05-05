@@ -1,4 +1,4 @@
-import { useMemo, useRef, type ChangeEvent } from "react";
+import { useMemo, useRef, type ChangeEvent, type ReactNode } from "react";
 import { FileText, Lightbulb, Upload, X } from "lucide-react";
 import { AppHeader } from "./AppHeader";
 import { StepTabs } from "./StepTabs";
@@ -8,13 +8,18 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "..
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 import {
   getRequiredColumnsForSelection,
   selectionRequiresProbability,
   TASK_TYPE_LABELS,
   type TaskType,
 } from "../../data/evaluationData";
-import type { UploadedFileInfo } from "../../types/workflow.types";
+import type {
+  DatasetInfoFormData,
+  UploadedFileInfo,
+} from "../../types/workflow.types";
 
 interface DataUploadProps {
   currentStep: number;
@@ -24,6 +29,10 @@ interface DataUploadProps {
   onPrevious: () => void;
   selectedTCIds?: string[];
   taskType?: TaskType | "";
+  datasetInfo: DatasetInfoFormData;
+  onDatasetInfoChange: (
+    value: DatasetInfoFormData | ((prev: DatasetInfoFormData) => DatasetInfoFormData),
+  ) => void;
   uploadedFile: UploadedFileInfo | null;
   onUploadedFileChange: (value: UploadedFileInfo | null) => void;
 }
@@ -82,6 +91,8 @@ export function DataUpload({
   onPrevious,
   selectedTCIds = [],
   taskType = "",
+  datasetInfo,
+  onDatasetInfoChange,
   uploadedFile,
   onUploadedFileChange,
 }: DataUploadProps) {
@@ -94,9 +105,26 @@ export function DataUpload({
   );
   const csvExample = getCsvExample(resolvedTaskType, requiresProb);
   const jsonExample = getJsonExample(resolvedTaskType, requiresProb);
+  const trainingCount = Number(datasetInfo.trainingSampleCount);
+  const evaluationCount = Number(datasetInfo.evaluationSampleCount);
+  const hasDatasetCounts = Number.isFinite(trainingCount) && Number.isFinite(evaluationCount) && trainingCount >= 0 && evaluationCount >= 0;
+  const totalCount = hasDatasetCounts ? trainingCount + evaluationCount : null;
+  const trainingRatio = hasDatasetCounts && totalCount ? trainingCount / totalCount : null;
+  const evaluationRatio = hasDatasetCounts && totalCount ? evaluationCount / totalCount : null;
+  const isDatasetInfoValid =
+    datasetInfo.datasetFormat.trim() !== "" &&
+    datasetInfo.trainingSampleCount.trim() !== "" &&
+    datasetInfo.evaluationSampleCount.trim() !== "";
 
   const openFilePicker = () => {
     inputRef.current?.click();
+  };
+
+  const updateDatasetInfo = <K extends keyof DatasetInfoFormData>(
+    field: K,
+    value: DatasetInfoFormData[K],
+  ) => {
+    onDatasetInfoChange((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -141,6 +169,49 @@ export function DataUpload({
         />
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-semibold">Dataset information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <p className="text-sm text-muted-foreground">
+                Enter the dataset details that will be shown in the detailed test result section of the report.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <Field label="Dataset format" required>
+                  <Input
+                    value={datasetInfo.datasetFormat}
+                    onChange={(event) => updateDatasetInfo("datasetFormat", event.target.value)}
+                    placeholder="e.g. PNG image dataset"
+                  />
+                </Field>
+                <Field label="Training samples" required>
+                  <Input
+                    inputMode="numeric"
+                    value={datasetInfo.trainingSampleCount}
+                    onChange={(event) => updateDatasetInfo("trainingSampleCount", event.target.value)}
+                    placeholder="1161"
+                  />
+                </Field>
+                <Field label="Evaluation samples" required>
+                  <Input
+                    inputMode="numeric"
+                    value={datasetInfo.evaluationSampleCount}
+                    onChange={(event) => updateDatasetInfo("evaluationSampleCount", event.target.value)}
+                    placeholder="291"
+                  />
+                </Field>
+              </div>
+
+              {hasDatasetCounts && totalCount !== null && totalCount > 0 && (
+                <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+                  Total samples {totalCount.toLocaleString()} | Train/Eval ratio {trainingRatio?.toFixed(2)} / {evaluationRatio?.toFixed(2)}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {!uploadedFile && (
             <Card
               className="border-2 border-dashed border-border hover:border-primary hover:bg-blue-50/30 transition-colors cursor-pointer"
@@ -270,7 +341,31 @@ export function DataUpload({
         </div>
       </main>
 
-      <ActionBar showPrevious={true} onPrevious={onPrevious} onNext={onNext} nextDisabled={!uploadedFile} />
+      <ActionBar
+        showPrevious={true}
+        onPrevious={onPrevious}
+        onNext={onNext}
+        nextDisabled={!uploadedFile || !isDatasetInfoValid}
+      />
+    </div>
+  );
+}
+
+function Field({
+  label,
+  required = false,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label>
+        {label} {required && <span className="text-red-600">*</span>}
+      </Label>
+      {children}
     </div>
   );
 }
