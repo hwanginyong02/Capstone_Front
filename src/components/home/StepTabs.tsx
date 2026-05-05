@@ -8,7 +8,7 @@ const steps = [
   "Data upload",
   "Column mapping",
   "Validation",
-  "Result preview",
+  "Final report",
 ];
 
 interface StepTabsProps {

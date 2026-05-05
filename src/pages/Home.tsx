@@ -2,7 +2,7 @@ import { BasicInfo } from "../components/home/BasicInfo";
 import { ColumnMapping } from "../components/home/ColumnMapping";
 import { DataUpload } from "../components/home/DataUpload";
 import { DataValidation } from "../components/home/DataValidation";
-import { ResultPreview } from "../components/home/ResultPreview";
+import { EvaluationReportStep } from "../components/home/EvaluationReportStep";
 import { TCDetailInput } from "../components/home/TCDetailInput";
 import { TestItems } from "../components/home/TestItems";
 import { useHomeWorkflow } from "../hooks/useHomeWorkflow";
@@ -34,5 +34,5 @@ export function Home() {
     return <DataValidation {...workflow.commonStep} />;
   }
 
-  return <ResultPreview {...workflow.commonStep} />;
+  return <EvaluationReportStep {...workflow.reportStep} />;
 }
