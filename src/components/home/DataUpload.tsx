@@ -50,37 +50,37 @@ function formatFileSize(bytes: number): string {
 function getCsvExample(taskType: TaskType, requiresProb: boolean): string {
   if (taskType === "binary") {
     return requiresProb
-      ? "id,y_true,y_pred,score\nS001,1,1,0.92\nS002,0,1,0.67\nS003,1,1,0.88"
-      : "id,y_true,y_pred\nS001,1,1\nS002,0,1\nS003,1,1";
+      ? "id,y_true,y_pred,score,inference_time_ms\nS001,1,1,0.92,12.4\nS002,0,1,0.67,11.8\nS003,1,1,0.88,9.3"
+      : "id,y_true,y_pred,inference_time_ms\nS001,1,1,12.4\nS002,0,1,11.8\nS003,1,1,9.3";
   }
 
   if (taskType === "multilabel") {
     return requiresProb
-      ? "id,true_labels,pred_labels,prob_label_sports,prob_label_news\nS001,sports,sports,0.92,0.08\nS002,news,news,0.14,0.86"
-      : "id,true_labels,pred_labels\nS001,sports,sports\nS002,news,news";
+      ? "id,true_labels,pred_labels,prob_label_sports,prob_label_news,inference_time_ms\nS001,sports,sports,0.92,0.08,12.4\nS002,news,news,0.14,0.86,11.8"
+      : "id,true_labels,pred_labels,inference_time_ms\nS001,sports,sports,12.4\nS002,news,news,11.8";
   }
 
   return requiresProb
-    ? "id,y_true,y_pred,prob_class_cat,prob_class_dog,prob_class_bird\nS001,cat,cat,0.92,0.05,0.03\nS002,bird,dog,0.10,0.62,0.28"
-    : "id,y_true,y_pred\nS001,cat,cat\nS002,bird,dog";
+    ? "id,y_true,y_pred,prob_class_cat,prob_class_dog,prob_class_bird,inference_time_ms\nS001,cat,cat,0.92,0.05,0.03,12.4\nS002,bird,dog,0.10,0.62,0.28,11.8"
+    : "id,y_true,y_pred,inference_time_ms\nS001,cat,cat,12.4\nS002,bird,dog,11.8";
 }
 
 function getJsonExample(taskType: TaskType, requiresProb: boolean): string {
   if (taskType === "binary") {
     return requiresProb
-      ? '{\n  "samples": [\n    { "id": "S001", "y_true": 1, "y_pred": 1, "score": 0.92 }\n  ]\n}'
-      : '{\n  "samples": [\n    { "id": "S001", "y_true": 1, "y_pred": 1 }\n  ]\n}';
+      ? '{\n  "samples": [\n    { "id": "S001", "y_true": 1, "y_pred": 1, "score": 0.92, "inference_time_ms": 12.4 }\n  ]\n}'
+      : '{\n  "samples": [\n    { "id": "S001", "y_true": 1, "y_pred": 1, "inference_time_ms": 12.4 }\n  ]\n}';
   }
 
   if (taskType === "multilabel") {
     return requiresProb
-      ? '{\n  "samples": [\n    { "id": "S001", "true_labels": "sports", "pred_labels": "sports", "prob_label_sports": 0.92 }\n  ]\n}'
-      : '{\n  "samples": [\n    { "id": "S001", "true_labels": "sports", "pred_labels": "sports" }\n  ]\n}';
+      ? '{\n  "samples": [\n    { "id": "S001", "true_labels": "sports", "pred_labels": "sports", "prob_label_sports": 0.92, "inference_time_ms": 12.4 }\n  ]\n}'
+      : '{\n  "samples": [\n    { "id": "S001", "true_labels": "sports", "pred_labels": "sports", "inference_time_ms": 12.4 }\n  ]\n}';
   }
 
   return requiresProb
-    ? '{\n  "samples": [\n    { "id": "S001", "y_true": "cat", "y_pred": "cat", "prob_class_cat": 0.92 }\n  ]\n}'
-    : '{\n  "samples": [\n    { "id": "S001", "y_true": "cat", "y_pred": "cat" }\n  ]\n}';
+    ? '{\n  "samples": [\n    { "id": "S001", "y_true": "cat", "y_pred": "cat", "prob_class_cat": 0.92, "inference_time_ms": 12.4 }\n  ]\n}'
+    : '{\n  "samples": [\n    { "id": "S001", "y_true": "cat", "y_pred": "cat", "inference_time_ms": 12.4 }\n  ]\n}';
 }
 
 export function DataUpload({
@@ -298,6 +298,27 @@ export function DataUpload({
           </Card>
 
           <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-semibold">Optional columns</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                These columns are not required for evaluation, but they enable extra report sections when provided.
+              </p>
+
+              <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="outline">inference_time_ms</Badge>
+                  <span className="text-sm font-semibold text-slate-900">Inference latency</span>
+                </div>
+                <p className="text-sm text-slate-700">
+                  Add one latency value per sample in milliseconds if you want the report to include mean, P95, P99, max, and min latency metrics.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
             <Accordion type="single" collapsible>
               <AccordionItem value="template" className="border-none">
                 <AccordionTrigger className="px-6 hover:no-underline">
@@ -332,6 +353,11 @@ export function DataUpload({
                     <Lightbulb className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                     <p className="text-sm text-muted-foreground">
                       Column names can differ from these examples for now. You said mapping will be implemented in the backend repository later.
+                    </p>
+                  </div>
+                  <div className="mt-3 p-3 rounded-md bg-muted/60 border border-border">
+                    <p className="text-sm text-muted-foreground">
+                      `inference_time_ms` is optional. If included, the report can calculate latency statistics and charts from the uploaded data.
                     </p>
                   </div>
                 </AccordionContent>
