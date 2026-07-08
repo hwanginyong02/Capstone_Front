@@ -64,7 +64,7 @@ export function WorkflowShell({
         envSoftware: prev.envSoftware || "Python 3.11 / PyTorch 2.x",
       }));
       store.setTaskType("binary");
-      store.setSelectedMetricIds(["TC1", "TC2", "TC3", "TC4", "TC9", "TC21", "TC22", "TC23"]);
+      store.setSelectedMetricIds(["M1", "M2", "M3", "M4", "M9", "M21", "M22", "M23"]);
       store.setColumnMapping([
         {
           originalName: "row_id",

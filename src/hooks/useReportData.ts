@@ -100,7 +100,7 @@ export function useReportData(id: string): UseReportDataResult {
           class_distribution: workflowState.metadata?.class_distribution || {},
         };
 
-        const beta = parseFloat(workflowState.metricDetails["TC5"]?.beta || "1.0");
+        const beta = parseFloat(workflowState.metricDetails["M5"]?.beta || "1.0");
 
         const payload = {
           task_type: workflowState.taskType || "multiclass",
@@ -177,7 +177,7 @@ export function useReportData(id: string): UseReportDataResult {
 
             const val = success_metrics[tcId];
 
-            // dict 반환 메트릭 (TC11/TC12/TC13): f1_score를 대표값으로, 세부값은 subMetrics로
+            // dict 반환 메트릭 (M11/M12/M13): f1_score를 대표값으로, 세부값은 subMetrics로
             let resolvedValue = 0;
             let subMetrics: { precision: number; recall: number; f1Score: number } | undefined;
 
@@ -194,15 +194,15 @@ export function useReportData(id: string): UseReportDataResult {
             }
 
             let perClass: Array<{ label: string; value: number; status: string }> | undefined;
-            if (["TC2", "TC3", "TC4"].includes(tcId) && success_metrics["TC22"]) {
-              const classReport = success_metrics["TC22"];
+            if (["M2", "M3", "M4"].includes(tcId) && success_metrics["M22"]) {
+              const classReport = success_metrics["M22"];
               const excludeKeys = ["accuracy", "macro avg", "weighted avg", "micro avg", "samples avg"];
               const classValues = Object.keys(classReport).filter(k => !excludeKeys.includes(k));
 
               const metricKeyMap: Record<string, string> = {
-                "TC2": "precision",
-                "TC3": "recall",
-                "TC4": "f1-score",
+                "M2": "precision",
+                "M3": "recall",
+                "M4": "f1-score",
               };
               const key = metricKeyMap[tcId];
 
@@ -237,8 +237,8 @@ export function useReportData(id: string): UseReportDataResult {
 
         // 2. 오차 행렬(Confusion Matrix) 치환
         let confusionMatrix = null;
-        if (success_metrics.TC21) {
-          const cm = success_metrics.TC21;
+        if (success_metrics.M21) {
+          const cm = success_metrics.M21;
           if (cm.type === "multilabel") {
             const classLabels = cm.labels || workflowState.metadata?.detected_labels || [];
             const multilabelMatrices = cm.matrix.map((mat: number[][], idx: number) => {
@@ -268,14 +268,14 @@ export function useReportData(id: string): UseReportDataResult {
           ? {
               fpr: success_metrics.roc_curve.fpr,
               tpr: success_metrics.roc_curve.tpr,
-              auroc: typeof success_metrics.TC9 === "number" ? success_metrics.TC9 : undefined,
+              auroc: typeof success_metrics.M9 === "number" ? success_metrics.M9 : undefined,
             }
           : null;
         const prCurve = success_metrics.pr_curve
           ? {
               recall: success_metrics.pr_curve.recall,
               precision: success_metrics.pr_curve.precision,
-              auprc: typeof success_metrics.TC10 === "number" ? success_metrics.TC10 : undefined,
+              auprc: typeof success_metrics.M10 === "number" ? success_metrics.M10 : undefined,
             }
           : null;
 
@@ -293,9 +293,9 @@ export function useReportData(id: string): UseReportDataResult {
             }
           : null;
 
-        // 3. 데이터셋 진단 문구 — 실제 클래스 분포 + 불균형비(TC23) + 제외 행수로 구성
+        // 3. 데이터셋 진단 문구 — 실제 클래스 분포 + 불균형비(M23) + 제외 행수로 구성
         const imbalanceRatio =
-          typeof success_metrics.TC23 === "number" ? success_metrics.TC23 : undefined;
+          typeof success_metrics.M23 === "number" ? success_metrics.M23 : undefined;
         
         // 백엔드 EvaluateResponse 에서 최신 class_distribution 이 오면 우선 사용, 없으면 metadata 폴백
         const resolvedClassDistribution = result.class_distribution && Object.keys(result.class_distribution).length > 0 
@@ -339,7 +339,7 @@ export function useReportData(id: string): UseReportDataResult {
           droppedRows: result.dropped_rows,
           verdict: ruleConclusion.verdict,
           score: ruleConclusion.score,
-          classReport: success_metrics.TC22 ?? null,
+          classReport: success_metrics.M22 ?? null,
           classLabels,
           latencyStats,
           positiveClass: workflowState.metadata?.positive_class ?? null,

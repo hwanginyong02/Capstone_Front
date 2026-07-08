@@ -29,7 +29,7 @@ export function ChartSection({ charts }: ChartSectionProps) {
 
       {!hasAnyChart && (
         <p className="rounded border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-400">
-          시각화할 차트가 없습니다. (혼동 행렬은 TC21, ROC/PR 곡선은 binary 평가에서 AUROC/AUPRC 선택 시 표시됩니다.)
+          시각화할 차트가 없습니다. (혼동 행렬은 M21, ROC/PR 곡선은 binary 평가에서 AUROC/AUPRC 선택 시 표시됩니다.)
         </p>
       )}
     </div>

@@ -130,7 +130,7 @@ export interface KpiResult {
   /** status=unavailable 일 때 백엔드가 준 계산 실패 사유(디버그/안내용). */
   errorMessage?: string;
   perClass?: PerClassKpi[];
-  /** TC11/12/13 등 dict 반환 메트릭의 세부 수치 (Precision / Recall / F1) */
+  /** M11/12/13 등 dict 반환 메트릭의 세부 수치 (Precision / Recall / F1) */
   subMetrics?: { precision: number; recall: number; f1Score: number };
 }
 

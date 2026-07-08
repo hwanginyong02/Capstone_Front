@@ -23,25 +23,25 @@ export function parseNumericValue(value: string): number | null {
  */
 export function getTargetValueRule(tcId: string): { summary: string; validate: (value: number) => string | null } {
   const zeroToOneIds = new Set([
-    "TC1",
-    "TC2",
-    "TC3",
-    "TC4",
-    "TC5",
-    "TC7",
-    "TC8",
-    "TC9",
-    "TC10",
-    "TC11",
-    "TC12",
-    "TC13",
-    "TC15",
-    "TC16",
-    "TC17",
-    "TC22",
+    "M1",
+    "M2",
+    "M3",
+    "M4",
+    "M5",
+    "M7",
+    "M8",
+    "M9",
+    "M10",
+    "M11",
+    "M12",
+    "M13",
+    "M15",
+    "M16",
+    "M17",
+    "M22",
   ]);
 
-  const nonNegativeIds = new Set(["TC6", "TC14", "TC18", "TC19"]);
+  const nonNegativeIds = new Set(["M6", "M14", "M18", "M19"]);
 
   if (zeroToOneIds.has(tcId)) {
     return {
@@ -57,14 +57,14 @@ export function getTargetValueRule(tcId: string): { summary: string; validate: (
     };
   }
 
-  if (tcId === "TC20") {
+  if (tcId === "M20") {
     return {
       summary: "Enter a number between -1 and 1.",
       validate: (value) => (value < -1 || value > 1 ? "Target value must be between -1 and 1 for MCC." : null),
     };
   }
 
-  if (tcId === "TC23") {
+  if (tcId === "M23") {
     return {
       summary: "Enter a number greater than or equal to 1.",
       validate: (value) => (value < 1 ? "Target value must be 1 or greater for imbalance ratio." : null),
@@ -82,5 +82,5 @@ export function getTargetValueRule(tcId: string): { summary: string; validate: (
  * M21(Confusion Matrix)은 결과 매트릭스 자체를 확인하는 정보성 항목이므로 타겟값을 받지 않습니다.
  */
 export function metricNeedsTargetValue(metricId: string): boolean {
-  return metricId !== "TC21";
+  return metricId !== "M21";
 }

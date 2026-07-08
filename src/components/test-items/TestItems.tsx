@@ -275,7 +275,7 @@ export function TestItems({
           </div>
         )}
 
-        {selectedMetrics.includes("TC5") && (
+        {selectedMetrics.includes("M5") && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg font-semibold">F-beta note</CardTitle>
