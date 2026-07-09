@@ -15,7 +15,7 @@ This project uses **shadcn/ui** as the base component library, with Tailwind CSS
 | `Checkbox` + custom cards | Multi-select options | 시험항목 선택. See **Selectable Card**. |
 | `Badge` | Short status label | 감지된 클래스, 상태 표시 (정상, 진행 중). |
 | `Alert` | Warnings, success, errors | 검증 결과, 샘플 부족 경고. |
-| `Table` | Tabular data | Class-wise metrics, class distribution, TC selection summary. |
+| `Table` | Tabular data | Class-wise metrics, class distribution, 지표 selection summary. |
 | `Tabs` | Top step navigation | See **Step Tabs** pattern below. |
 | `Tooltip` | Contextual help | Field-level help icons, metric definitions. |
 | Drop zone (custom) | File upload | Step 3. See `components/drop-zone.md`. |
@@ -110,17 +110,17 @@ Used for 시험결과서 용도, 평가 유형, 예측값 입력 방식.
 
 ### Selectable Card (multi-select grid cards)
 
-Used for 시험항목 선택 (TC1~TC23).
+Used for 시험항목 선택 (M1~M23).
 
 - Grid: 4 columns at `xl`, 3 at `lg`, 2 at `md`, 1 at `sm`.
 - Gap: `--space-3`.
 - Checkbox (16×16) in the top-left of the card.
-- TC ID in small uppercase mono label (`text-mono-small`, e.g., `TC1`).
+- 지표 ID in small uppercase mono label (`text-mono-small`, e.g., `M1`).
 - Metric English name as primary title (`text-body-medium font-semibold`, e.g., `Accuracy`).
 - Korean description in `text-body-small text-muted` (e.g., `전체 예측 정확도`).
 - Selected state: 2px `border-primary`, `bg-primary-subtle`, checkbox filled with check icon.
 - Hover (unselected): `border-border-strong`.
-- Conditional settings (e.g., TC5 β value input) appear in a separate card below the grid, NOT inline within the selected card.
+- Conditional settings (e.g., M5 β value input) appear in a separate card below the grid, NOT inline within the selected card.
 
 ### Metric Block (horizontal grid on result preview)
 
@@ -128,7 +128,7 @@ Large dashboard-style metric display, used on step 7.
 
 ```
 ┌─────────────────────────┬─────────────────────────┬─────────────────────────┐
-│ ACCURACY (TC1)          │ MACRO PRECISION         │ MACRO RECALL            │
+│ ACCURACY (M1)          │ MACRO PRECISION         │ MACRO RECALL            │
 │ 0.8000                  │ 0.8024                  │ 0.8000                  │
 │ 전체 정확도 · 36/45     │ 클래스 평균 Precision   │ 클래스 평균 Recall      │
 └─────────────────────────┴─────────────────────────┴─────────────────────────┘
@@ -141,7 +141,7 @@ Large dashboard-style metric display, used on step 7.
 
 ### Data Table (metrics, distribution, etc.)
 
-Used for class-wise Precision/Recall/F1 breakdown, class distribution comparison, TC summary.
+Used for class-wise Precision/Recall/F1 breakdown, class distribution comparison, 지표 summary.
 
 - shadcn `Table`.
 - Header row: `text-body-small font-medium text-muted uppercase` with `bg-muted/40`.

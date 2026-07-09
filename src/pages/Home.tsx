@@ -1,6 +1,6 @@
 import { BasicInfo } from "./BasicInfo";
 import { TestItems } from "./TestItems";
-import { TCDetail } from "./TCDetail";
+import { MetricDetail } from "./MetricDetail";
 import { DataUpload } from "./DataUpload";
 import { ColumnMapping } from "./ColumnMapping";
 import { DataValidation } from "./DataValidation";
@@ -13,4 +13,4 @@ export function Home() {
   return <LandingPage />;
 }
 
-export { BasicInfo, TestItems, TCDetail, DataUpload, ColumnMapping, DataValidation };
+export { BasicInfo, TestItems, MetricDetail, DataUpload, ColumnMapping, DataValidation };

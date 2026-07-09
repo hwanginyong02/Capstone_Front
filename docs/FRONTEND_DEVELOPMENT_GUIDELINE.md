@@ -30,7 +30,7 @@
 **`src/components/ui/` 폴더는 재사용 가능한 '원시(Primitive) 컴포넌트'의 성역입니다.**
 
 *   **규칙 1**: `button`, `input`, `card`, `badge` 등 애플리케이션 전반에서 공통으로 재사용되는 컴포넌트만 `components/ui/`에 위치할 수 있습니다.
-*   **규칙 2**: 특정 페이지나 화면(예: TC Detail, Data Validation)에서만 단발성으로 쓰이는 컴포넌트들을 `ui/` 폴더에 몰아넣지 마세요. 이들은 반드시 `src/components/<해당도메인>/` 폴더 내부로 코로케이션(Colocation) 되어야 합니다.
+*   **규칙 2**: 특정 페이지나 화면(예: Metric Detail, Data Validation)에서만 단발성으로 쓰이는 컴포넌트들을 `ui/` 폴더에 몰아넣지 마세요. 이들은 반드시 `src/components/<해당도메인>/` 폴더 내부로 코로케이션(Colocation) 되어야 합니다.
 
 ---
 

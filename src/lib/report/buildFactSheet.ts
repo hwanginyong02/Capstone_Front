@@ -11,7 +11,7 @@ import type { KpiResult, LatencyStats } from "../../types/finalReport.types";
 import type { ConfusionMatrixData } from "../../types/report.types";
 
 export interface FactSheetMetric {
-  tc_id: string;
+  metric_id: string;
   display_name: string;
   value: number;
   threshold: number | null;
@@ -120,7 +120,7 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
     .map((r) => {
     const hasThreshold = r.threshold > 0;
     return {
-      tc_id: r.tcId,
+      metric_id: r.metricId,
       display_name: r.name,
       value: r.value,
       threshold: hasThreshold ? r.threshold : null,

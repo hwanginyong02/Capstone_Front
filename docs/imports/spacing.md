@@ -79,7 +79,7 @@ When two fields sit side-by-side:
 - Collapse to single column below `768px`.
 - Both columns equal width.
 
-### Grid of selectable cards (TC selection)
+### Grid of selectable cards (지표 selection)
 
 - 4 columns at `≥1280px`, 3 at `≥1024px`, 2 at `≥768px`, 1 below.
 - Gap: `--space-3` (12px).
@@ -137,10 +137,10 @@ Following Tailwind defaults:
 
 | Breakpoint | Min width | Behavior |
 |-----------|-----------|----------|
-| `sm` | `640px` | Single column forms, single column TC grid |
-| `md` | `768px` | Two-column form rows, 2-column TC grid, tab labels show full text |
-| `lg` | `1024px` | 3-column TC grid, metric blocks in 2 columns |
-| `xl` | `1280px` | 4-column TC grid, metric blocks in 4 columns, inner max-width kicks in |
+| `sm` | `640px` | Single column forms, single column 지표 grid |
+| `md` | `768px` | Two-column form rows, 2-column 지표 grid, tab labels show full text |
+| `lg` | `1024px` | 3-column 지표 grid, metric blocks in 2 columns |
+| `xl` | `1280px` | 4-column 지표 grid, metric blocks in 4 columns, inner max-width kicks in |
 
 ### Below `md` (mobile)
 

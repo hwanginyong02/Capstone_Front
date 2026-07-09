@@ -73,13 +73,13 @@ export const METRICS: MetricDefinition[] = [
   { id: "M23", higherIsBetter: false, name: "Imbalance Ratio", subtitle: "Class balance check", description: "Measures the balance of the evaluation dataset itself.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], formula: "max(class count) / min(class count)", isCommon: true },
 ];
 
-const RECOMMENDED_TCS: Record<TaskType, string[]> = {
+const RECOMMENDED_METRICS: Record<TaskType, string[]> = {
   binary: ["M1", "M2", "M3", "M4", "M9", "M21", "M22", "M23"],
   multiclass: ["M1", "M2", "M3", "M4", "M11", "M21", "M22", "M23"],
   multilabel: ["M1", "M2", "M3", "M4", "M15", "M21", "M22", "M23"],
 };
 
-const REQUIRED_COLUMNS_BY_TC: Record<TaskType, Partial<Record<string, RequiredColumnCode[]>>> = {
+const REQUIRED_COLUMNS_BY_METRIC: Record<TaskType, Partial<Record<string, RequiredColumnCode[]>>> = {
   binary: {
     M1: ["id", "y_true", "y_pred"],
     M2: ["id", "y_true", "y_pred"],
@@ -188,7 +188,7 @@ export function getAvailableMetrics(taskType?: string): MetricDefinition[] {
 }
 
 export function getMetricDisplayId(metricId: string): string {
-  return metricId.replace(/^TC(\d+)$/, "M$1");
+  return metricId;
 }
 
 export function getRecommendedMetricIds(taskType?: string): string[] {
@@ -196,7 +196,7 @@ export function getRecommendedMetricIds(taskType?: string): string[] {
     return [];
   }
 
-  return RECOMMENDED_TCS[taskType];
+  return RECOMMENDED_METRICS[taskType];
 }
 
 export function getSelectedMetrics(taskType: TaskType, selectedIds: string[]): MetricDefinition[] {
@@ -218,14 +218,14 @@ export function selectionNeedsField(taskType: TaskType, selectedIds: string[], f
 }
 
 export function getUploadColumnGuide(taskType: TaskType, selectedIds: string[]): UploadColumnGuide {
-  const onlyTc23 = selectedIds.length > 0 && selectedIds.every((id) => id === "M23");
+  const onlyM23 = selectedIds.length > 0 && selectedIds.every((id) => id === "M23");
   const requiresProbability = selectionRequiresProbability(taskType, selectedIds);
 
   const probabilityColumn =
     taskType === "binary" ? "score" : taskType === "multiclass" ? "prob_class_*" : "prob_label_*";
 
   const alwaysRequired = ["id", "y_true"];
-  const conditionallyRequired = onlyTc23 ? [] : ["y_pred"];
+  const conditionallyRequired = onlyM23 ? [] : ["y_pred"];
   const optional = requiresProbability ? [] : [probabilityColumn];
   const notes = ["id values must be unique.", "Probability values must be between 0 and 1."];
 
@@ -238,7 +238,7 @@ export function getUploadColumnGuide(taskType: TaskType, selectedIds: string[]):
   if (taskType === "multilabel") {
     notes.push("Use a consistent label separator or one-hot label columns for multi-label data.");
   }
-  if (onlyTc23) {
+  if (onlyM23) {
     notes.push("M23 can be computed with dataset distribution only, so prediction columns are optional.");
   }
 
@@ -257,7 +257,7 @@ export function getProbabilityColumnLabel(taskType: TaskType): string {
 
 export function getRequiredColumnsForSelection(taskType: TaskType, selectedIds: string[]): RequiredColumnDisplay[] {
   const columns = new Set<RequiredColumnCode>();
-  const mapping = REQUIRED_COLUMNS_BY_TC[taskType];
+  const mapping = REQUIRED_COLUMNS_BY_METRIC[taskType];
 
   for (const id of selectedIds) {
     for (const column of mapping[id] ?? []) {
@@ -269,13 +269,13 @@ export function getRequiredColumnsForSelection(taskType: TaskType, selectedIds: 
 }
 
 export function getRequiredColumnsForMetric(taskType: TaskType, metricId: string): RequiredColumnDisplay[] {
-  const columns = new Set<RequiredColumnCode>(REQUIRED_COLUMNS_BY_TC[taskType][metricId] ?? []);
+  const columns = new Set<RequiredColumnCode>(REQUIRED_COLUMNS_BY_METRIC[taskType][metricId] ?? []);
   return COLUMN_ORDER.filter((code) => columns.has(code)).map((code) => COLUMN_DISPLAY[code]);
 }
 
 export function getRequiredColumnsForTaskType(taskType: TaskType): RequiredColumnDisplay[] {
   const columns = new Set<RequiredColumnCode>();
-  const mapping = REQUIRED_COLUMNS_BY_TC[taskType];
+  const mapping = REQUIRED_COLUMNS_BY_METRIC[taskType];
 
   for (const metricColumns of Object.values(mapping)) {
     for (const column of metricColumns ?? []) {

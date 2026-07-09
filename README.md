@@ -5,7 +5,7 @@ ML 모델 성능 평가 보고서("시험성적서")를 **KS X ISO/IEC TS 4213:2
 ## 프로젝트 구조
 
 ```
-├── SPEC.md                    # TC별 컬럼 요구사항 스펙 (단일 진실 문서)
+├── SPEC.md                    # 지표별 컬럼 요구사항 스펙 (단일 진실 문서)
 ├── guidelines/                # 디자인 가이드라인
 │   ├── Guidelines.md          # 전체 디자인 철학 및 규칙
 │   ├── overview-components.md # 컴포넌트 카탈로그
@@ -31,7 +31,7 @@ ML 모델 성능 평가 보고서("시험성적서")를 **KS X ISO/IEC TS 4213:2
 ## 6단계 워크플로우
 
 1. **기본 정보** - 회사 정보, 모델 정보, 평가 유형(binary/multiclass/multilabel) 선택
-2. **시험항목** - TC(Test Case) 선택, TC5 선택 시 β값 입력
+2. **시험항목** - 지표(Metric) 선택, M5 선택 시 β값 입력
 3. **데이터 업로드** - CSV/JSON 파일 업로드
 4. **컬럼 매핑** - AI 자동 매핑 검토, positive_class 및 threshold 설정(조건부)
 5. **데이터 검증** - 최종 검증 및 전체 설정 요약
@@ -57,7 +57,7 @@ Linear, Vercel, Supabase 대시보드에서 영감을 받은 정밀하고 깔끔
 ### 타이포그래피
 
 - **Sans**: Pretendard Variable (한글), Inter (영문)
-- **Mono**: JetBrains Mono (숫자, 코드, TC ID)
+- **Mono**: JetBrains Mono (숫자, 코드, 지표 ID)
 - 모든 숫자에 `tabular-nums` 적용 필수
 
 ### 레이아웃
@@ -74,10 +74,10 @@ Linear, Vercel, Supabase 대시보드에서 영감을 받은 정밀하고 깔끔
 - 선택: 2px border-primary + bg-primary-subtle
 - 상단 좌측에 작은 원형 인디케이터
 
-### Selectable Card (TC Selection)
-- 체크박스 + TC ID(mono) + 메트릭명 + 설명
+### Selectable Card (지표 Selection)
+- 체크박스 + 지표 ID(mono) + 메트릭명 + 설명
 - 그리드: xl=4열, lg=3열, md=2열, sm=1열
-- TC5 선택 시 하단에 β값 입력 카드 표시
+- M5 선택 시 하단에 β값 입력 카드 표시
 - 요구사항 Badge: "score 필요", "prob 필요", "β값 필요"
 
 ### Metric Block
@@ -125,7 +125,7 @@ pnpm install
 
 ### 데이터 처리
 
-- **SPEC.md 참조**: TC별 필수 컬럼, 검증 규칙
+- **SPEC.md 참조**: 지표별 필수 컬럼, 검증 규칙
 - Binary: positive_class 필수, score 사용 시 threshold 필요
 - Multiclass: argmax 기본, prob_class_* 컬럼 수 = 클래스 수
 - Multilabel: 레이블별 독립 threshold

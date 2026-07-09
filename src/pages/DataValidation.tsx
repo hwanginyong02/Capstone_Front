@@ -82,7 +82,7 @@ export function DataValidation() {
         const payload = {
           task_type: store.taskType || "multiclass",
           column_mappings: backendMappings,
-          selected_tcs: store.selectedMetricIds,
+          selected_metric_ids: store.selectedMetricIds,
           metadata: metadata,
           beta: beta,
         };

@@ -21,7 +21,7 @@ export function parseNumericValue(value: string): number | null {
  * Get the validation rule for a metric target value based on its internal ID.
  * Returns the range description and a validate function.
  */
-export function getTargetValueRule(tcId: string): { summary: string; validate: (value: number) => string | null } {
+export function getTargetValueRule(metricId: string): { summary: string; validate: (value: number) => string | null } {
   const zeroToOneIds = new Set([
     "M1",
     "M2",
@@ -43,28 +43,28 @@ export function getTargetValueRule(tcId: string): { summary: string; validate: (
 
   const nonNegativeIds = new Set(["M6", "M14", "M18", "M19"]);
 
-  if (zeroToOneIds.has(tcId)) {
+  if (zeroToOneIds.has(metricId)) {
     return {
       summary: "Enter a number between 0 and 1.",
       validate: (value) => (value < 0 || value > 1 ? "Target value must be between 0 and 1 for this metric." : null),
     };
   }
 
-  if (nonNegativeIds.has(tcId)) {
+  if (nonNegativeIds.has(metricId)) {
     return {
       summary: "Enter a number greater than or equal to 0.",
       validate: (value) => (value < 0 ? "Target value must be 0 or greater for this metric." : null),
     };
   }
 
-  if (tcId === "M20") {
+  if (metricId === "M20") {
     return {
       summary: "Enter a number between -1 and 1.",
       validate: (value) => (value < -1 || value > 1 ? "Target value must be between -1 and 1 for MCC." : null),
     };
   }
 
-  if (tcId === "M23") {
+  if (metricId === "M23") {
     return {
       summary: "Enter a number greater than or equal to 1.",
       validate: (value) => (value < 1 ? "Target value must be 1 or greater for imbalance ratio." : null),

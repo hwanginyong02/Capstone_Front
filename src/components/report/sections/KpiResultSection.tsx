@@ -18,8 +18,8 @@ const KPI_CORE_IDS_BY_TASK: Record<TaskType, Set<string>> = {
 
 export function KpiResultSection({ kpiResults, taskType, meta }: KpiResultSectionProps) {
   const coreIds = KPI_CORE_IDS_BY_TASK[taskType] || KPI_CORE_IDS_BY_TASK.binary;
-  const kpiCore   = kpiResults.filter((r) => coreIds.has(r.tcId));
-  const kpiDetail = kpiResults.filter((r) => !coreIds.has(r.tcId));
+  const kpiCore   = kpiResults.filter((r) => coreIds.has(r.metricId));
+  const kpiDetail = kpiResults.filter((r) => !coreIds.has(r.metricId));
 
   return (
     <div className="space-y-8 pt-8">
@@ -31,7 +31,7 @@ export function KpiResultSection({ kpiResults, taskType, meta }: KpiResultSectio
           {taskType === "binary" && (
             <li>본 성적서의 이진 분류 평가 지표는 사용자가 매핑 단계에서 지정한 {meta?.positiveClass ? `[ ${meta.positiveClass} ]` : "Target"} 클래스 기준으로 산출되었습니다.</li>
           )}
-          {kpiResults.some(r => r.tcId === "M6") && (
+          {kpiResults.some(r => r.metricId === "M6") && (
             <li>KL Divergence(M6) 지표는 예측 확률(Probability) 분포가 아닌, 정답 레이블과 모델이 예측한 클래스 레이블 간의 분포 차이(Target Drift)를 기반으로 산출되었습니다.</li>
           )}
         </ul>
@@ -53,8 +53,8 @@ export function KpiResultSection({ kpiResults, taskType, meta }: KpiResultSectio
           <tbody>
             {kpiCore.map((r) => (
               <MetricRow
-                key={r.tcId}
-                tcId={r.tcId}
+                key={r.metricId}
+                metricId={r.metricId}
                 name={r.name}
                 value={r.value}
                 threshold={r.threshold}
@@ -82,8 +82,8 @@ export function KpiResultSection({ kpiResults, taskType, meta }: KpiResultSectio
           <tbody>
             {kpiDetail.map((r) => (
               <MetricRow
-                key={r.tcId}
-                tcId={r.tcId}
+                key={r.metricId}
+                metricId={r.metricId}
                 name={r.name}
                 value={r.value}
                 threshold={r.threshold}
@@ -101,9 +101,9 @@ export function KpiResultSection({ kpiResults, taskType, meta }: KpiResultSectio
             {kpiResults
               .filter((r) => r.perClass?.length)
               .map((r) => (
-                <div key={r.tcId} className="space-y-1">
+                <div key={r.metricId} className="space-y-1">
                   <p className="text-xs font-medium text-slate-500">
-                    {r.tcId} — {r.name}
+                    {r.metricId} — {r.name}
                   </p>
                   <table className="w-full text-sm border-collapse">
                     <thead>
@@ -136,9 +136,9 @@ export function KpiResultSection({ kpiResults, taskType, meta }: KpiResultSectio
             {kpiResults
               .filter((r) => r.subMetrics)
               .map((r) => (
-                <div key={`${r.tcId}-sub`} className="space-y-1">
+                <div key={`${r.metricId}-sub`} className="space-y-1">
                   <p className="text-xs font-medium text-slate-500">
-                    {r.tcId} — {r.name}
+                    {r.metricId} — {r.name}
                   </p>
                   <table className="w-full text-sm border-collapse">
                     <thead>

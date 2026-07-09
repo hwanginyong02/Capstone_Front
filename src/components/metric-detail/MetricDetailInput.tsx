@@ -15,7 +15,7 @@ import {
 import type { MetricDetailState, MetricDetailStateMap } from "../../types/workflow.types";
 import { parseNumericValue, getTargetValueRule, metricNeedsTargetValue } from "../../utils/domain/validation";
 
-interface TCDetailInputProps {
+interface MetricDetailInputProps {
   taskType?: TaskType | "";
   selectedMetricIds?: string[];
   metricDetails: MetricDetailStateMap;
@@ -36,14 +36,14 @@ function createDefaultState(id: string, name: string): MetricDetailState {
   };
 }
 
-export function TCDetailInput({
+export function MetricDetailInput({
   taskType = "",
   selectedMetricIds = [],
   metricDetails,
   onMetricDetailsChange,
   currentMetricIndex,
   onCurrentMetricIndexChange,
-}: TCDetailInputProps) {
+}: MetricDetailInputProps) {
   const resolvedTaskType = taskType || "multiclass";
   const selectedMetrics = useMemo(() => getSelectedMetrics(resolvedTaskType, selectedMetricIds), [resolvedTaskType, selectedMetricIds]);
 

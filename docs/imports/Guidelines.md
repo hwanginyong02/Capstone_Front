@@ -100,7 +100,7 @@ IMPORTANT: Always prefer shadcn/ui components over custom HTML.
 
 Because this is a full-width, data-dense product, follow these rules:
 
-- **Use tables over card lists** when showing 4+ items with the same structure (e.g., class-wise metrics, TC list).
+- **Use tables over card lists** when showing 4+ items with the same structure (e.g., class-wise metrics, 지표 list).
 - **Show multiple metrics side-by-side** on the result preview. Use a horizontal grid of metric blocks, not stacked cards.
 - **Inline status with data** rather than separating them. A sample count like `45` should sit next to a `warning` badge when it's too low, not be explained in a separate alert far below.
 - **Use tabular numeric alignment.** Numbers in tables align right. Metric values on dashboards use tabular-nums font feature.

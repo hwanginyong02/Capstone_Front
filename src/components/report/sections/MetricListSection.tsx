@@ -1,17 +1,17 @@
-import type { MetricFormula, TcItem } from "../../../types/finalReport.types";
+import type { MetricFormula, MetricItem } from "../../../types/finalReport.types";
 import { SectionTitle } from "../ui/SectionTitle";
 
-interface TcListSectionProps {
-  tcList: TcItem[];
+interface MetricListSectionProps {
+  metricList: MetricItem[];
   metricFormulas: MetricFormula[];
   taskTypeLabel: string;
 }
 
-export function TcListSection({ tcList, metricFormulas, taskTypeLabel }: TcListSectionProps) {
-  const formulaMap = new Map(metricFormulas.map((f) => [f.tcId, f]));
+export function MetricListSection({ metricList, metricFormulas, taskTypeLabel }: MetricListSectionProps) {
+  const formulaMap = new Map(metricFormulas.map((f) => [f.metricId, f]));
 
-  const commonItems = tcList.filter((tc) => formulaMap.get(tc.tcId)?.isCommon);
-  const specialItems = tcList.filter((tc) => !formulaMap.get(tc.tcId)?.isCommon);
+  const commonItems = metricList.filter((metric) => formulaMap.get(metric.metricId)?.isCommon);
+  const specialItems = metricList.filter((metric) => !formulaMap.get(metric.metricId)?.isCommon);
 
   return (
     <section className="space-y-8 border-t border-slate-200 py-10">
@@ -41,7 +41,7 @@ function MetricTable({
   items,
   formulaMap,
 }: {
-  items: TcItem[];
+  items: MetricItem[];
   formulaMap: Map<string, MetricFormula>;
 }) {
   return (
@@ -55,16 +55,16 @@ function MetricTable({
         </tr>
       </thead>
       <tbody>
-        {items.map((tc) => {
-          const formula = formulaMap.get(tc.tcId);
+        {items.map((metric) => {
+          const formula = formulaMap.get(metric.metricId);
           return (
-            <tr key={tc.tcId} className="border-b border-slate-100 last:border-b-0 align-top">
-              <td className="py-2.5 pr-3 font-mono text-xs text-slate-400">{tc.tcId}</td>
-              <td className="py-2.5 pr-4 font-medium text-slate-800">{tc.name}</td>
+            <tr key={metric.metricId} className="border-b border-slate-100 last:border-b-0 align-top">
+              <td className="py-2.5 pr-3 font-mono text-xs text-slate-400">{metric.metricId}</td>
+              <td className="py-2.5 pr-4 font-medium text-slate-800">{metric.name}</td>
               <td className="py-2.5 pr-4 text-slate-600 text-xs leading-relaxed">
                 {formula?.description ?? "—"}
                 <br />
-                <span className="font-mono text-slate-400">합격 기준: {tc.passCriteria}</span>
+                <span className="font-mono text-slate-400">합격 기준: {metric.passCriteria}</span>
               </td>
               <td className="py-2.5 font-mono text-xs text-slate-600">{formula?.formula ?? "—"}</td>
             </tr>
