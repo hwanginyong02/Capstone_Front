@@ -129,7 +129,7 @@ function buildMeta(input: MapWorkflowToReportInput, taskType: TaskType): FinalRe
     // 사용자가 매핑 단계에서 고른 값은 metadata.positive_class 에 저장됨(metricDetails 는 미기입).
     positiveClass:
       input.metadata?.positive_class ||
-      input.metricDetails["TC2"]?.positiveClass ||
+      input.metricDetails["M2"]?.positiveClass ||
       undefined,
   };
 }

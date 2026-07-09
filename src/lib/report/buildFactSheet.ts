@@ -62,7 +62,7 @@ export interface BuildFactSheetInput {
   droppedRows: number;
   verdict: string;
   score: number;
-  /** success_metrics.TC22 (classification report) — 클래스별 precision/recall/f1/support */
+  /** success_metrics.M22 (classification report) — 클래스별 precision/recall/f1/support */
   classReport?: Record<string, any> | null;
   /** per_class 순서를 정하는 클래스 라벨 목록 (감지된 클래스/레이블 또는 y_true 고유값) */
   classLabels: string[];
@@ -76,7 +76,7 @@ function num(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
-/** classification report(TC22)에서 클래스별 지표를 추출. 집계행(accuracy/avg)은 제외. */
+/** classification report(M22)에서 클래스별 지표를 추출. 집계행(accuracy/avg)은 제외. */
 function buildPerClass(
   classReport: Record<string, any> | null | undefined,
   classLabels: string[],

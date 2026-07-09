@@ -77,7 +77,7 @@ export function DataValidation() {
           class_distribution: store.metadata?.class_distribution || {},
         };
 
-        const beta = parseFloat(store.metricDetails?.["TC5"]?.beta || "1.0");
+        const beta = parseFloat(store.metricDetails?.["M5"]?.beta || "1.0");
 
         const payload = {
           task_type: store.taskType || "multiclass",
