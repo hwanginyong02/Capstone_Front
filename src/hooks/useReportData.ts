@@ -105,7 +105,7 @@ export function useReportData(id: string): UseReportDataResult {
         const payload = {
           task_type: workflowState.taskType || "multiclass",
           column_mappings: backendMappings,
-          selected_tcs: workflowState.selectedMetricIds,
+          selected_metric_ids: workflowState.selectedMetricIds,
           metadata: metadata,
           beta: beta,
         };
@@ -143,27 +143,27 @@ export function useReportData(id: string): UseReportDataResult {
         }, workflowState.validationResult);
 
         const success_metrics = result.results.success_metrics || {};
-        // 계산 실패 지표({tcId: 에러문자열}). value 0/fail 위장 대신 'unavailable' 처리(D4).
+        // 계산 실패 지표({metricId: 에러문자열}). value 0/fail 위장 대신 'unavailable' 처리(D4).
         const failed_metrics = result.results.failed_metrics || {};
 
         // 1. KPI 지표 계산값 치환
         const updatedKpiResults = workflowState.selectedMetricIds
-          .map((tcId) => {
-            const metric = METRICS.find((m) => m.id === tcId);
+          .map((metricId) => {
+            const metric = METRICS.find((m) => m.id === metricId);
             if (!metric) return null;
 
             // 방향성(높을수록/낮을수록 좋음) — 판정·기준 표기의 단일 출처(evaluationData.ts)
             const higherIsBetter = metric.higherIsBetter !== false;
-            const detail = workflowState.metricDetails[tcId];
+            const detail = workflowState.metricDetails[metricId];
             const target = parseFloat(detail?.targetValue ?? "");
             const hasThreshold = Number.isFinite(target) && target > 0;
-            const displayId = getMetricDisplayId(tcId);
+            const displayId = getMetricDisplayId(metricId);
 
             // 계산 실패 지표: 판정/집계에서 제외되도록 'unavailable' 로 표기(value 0/fail 위장 금지)
-            const failReason = failed_metrics[tcId];
+            const failReason = failed_metrics[metricId];
             if (failReason !== undefined) {
               return {
-                tcId: displayId,
+                metricId: displayId,
                 name: metric.name,
                 value: 0,
                 threshold: hasThreshold ? target : 0,
@@ -175,7 +175,7 @@ export function useReportData(id: string): UseReportDataResult {
               };
             }
 
-            const val = success_metrics[tcId];
+            const val = success_metrics[metricId];
 
             // dict 반환 메트릭 (M11/M12/M13): f1_score를 대표값으로, 세부값은 subMetrics로
             let resolvedValue = 0;
@@ -194,7 +194,7 @@ export function useReportData(id: string): UseReportDataResult {
             }
 
             let perClass: Array<{ label: string; value: number; status: string }> | undefined;
-            if (["M2", "M3", "M4"].includes(tcId) && success_metrics["M22"]) {
+            if (["M2", "M3", "M4"].includes(metricId) && success_metrics["M22"]) {
               const classReport = success_metrics["M22"];
               const excludeKeys = ["accuracy", "macro avg", "weighted avg", "micro avg", "samples avg"];
               const classValues = Object.keys(classReport).filter(k => !excludeKeys.includes(k));
@@ -204,7 +204,7 @@ export function useReportData(id: string): UseReportDataResult {
                 "M3": "recall",
                 "M4": "f1-score",
               };
-              const key = metricKeyMap[tcId];
+              const key = metricKeyMap[metricId];
 
               if (classValues.length > 0 && key) {
                 perClass = classValues.map((val) => {
@@ -223,7 +223,7 @@ export function useReportData(id: string): UseReportDataResult {
             }
 
             return {
-              tcId: displayId,
+              metricId: displayId,
               name: metric.name,
               value: resolvedValue,
               threshold: hasThreshold ? target : 0,

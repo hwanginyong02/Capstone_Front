@@ -53,10 +53,10 @@ export function computeVerdict(
   const score = Math.round((passed / target.length) * 1000) / 10;
 
   const anyFailed = target.some((r) => r.status === "fail");
-  const coreFailed = target.some((r) => coreIds.has(r.tcId) && r.status === "fail");
+  const coreFailed = target.some((r) => coreIds.has(r.metricId) && r.status === "fail");
   // 핵심 지표가 계산 불가라 확인 자체가 안 되면 PASS 로 단정하지 않고 조건부로 하향.
   const coreUnavailable = kpiResults.some(
-    (r) => coreIds.has(r.tcId) && r.status === "unavailable",
+    (r) => coreIds.has(r.metricId) && r.status === "unavailable",
   );
 
   let verdict: VerdictResult["verdict"];

@@ -2,13 +2,13 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { useWorkflowStore, stepToPath } from "../utils/stores/useWorkflowStore";
 import { WorkflowShell } from "../layout/WorkflowShell";
-import { TCDetailInput, isCurrentMetricValid } from "../components/tc-detail/TCDetailInput";
+import { MetricDetailInput, isCurrentMetricValid } from "../components/metric-detail/MetricDetailInput";
 import { getSelectedMetrics } from "../data/evaluationData";
 
 /**
  * Step 3 — Metric detail page
  */
-export function TCDetail() {
+export function MetricDetail() {
   const navigate = useNavigate();
   const store = useWorkflowStore();
   const [currentMetricIndex, setCurrentMetricIndex] = useState(0);
@@ -84,7 +84,7 @@ export function TCDetail() {
       nextDisabled={!isComplete}
       nextLabel={currentMetricIndex < selectedMetrics.length - 1 ? "Next metric" : "Finish"}
     >
-      <TCDetailInput
+      <MetricDetailInput
         taskType={store.taskType}
         selectedMetricIds={store.selectedMetricIds}
         metricDetails={store.metricDetails}

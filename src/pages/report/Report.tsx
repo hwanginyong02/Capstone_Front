@@ -8,7 +8,7 @@ import { CompanyInfoSection } from "../../components/report/sections/CompanyInfo
 import { EvalScopeSection } from "../../components/report/sections/EvalScopeSection";
 import { DatasetSection } from "../../components/report/sections/DatasetSection";
 import { EvalEnvSection } from "../../components/report/sections/EvalEnvSection";
-import { TcListSection } from "../../components/report/sections/TcListSection";
+import { MetricListSection } from "../../components/report/sections/MetricListSection";
 import { DataValidationSection } from "../../components/report/sections/DataValidationSection";
 import { KpiResultSection } from "../../components/report/sections/KpiResultSection";
 import { ChartSection } from "../../components/report/sections/ChartSection";
@@ -101,7 +101,7 @@ export function Report() {
         trainingDatasetInfo={data.trainingDatasetInfo}
       />
       <EvalEnvSection meta={data.meta} evalScope={data.evalScope} evalEnv={data.evalEnv} />
-      <TcListSection tcList={data.tcList} metricFormulas={data.metricFormulas} taskTypeLabel={data.meta.taskTypeLabel} />
+      <MetricListSection metricList={data.metricList} metricFormulas={data.metricFormulas} taskTypeLabel={data.meta.taskTypeLabel} />
       <DataValidationSection
         dataValidation={data.dataValidation}
         kpiResults={data.kpiResults}

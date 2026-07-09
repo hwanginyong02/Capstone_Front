@@ -83,8 +83,8 @@ export interface DatasetSampleRow {
   score: number;
 }
 
-export interface TcItem {
-  tcId: string;
+export interface MetricItem {
+  metricId: string;
   name: string;
   threshold: number;
   passCriteria: string;
@@ -105,7 +105,7 @@ export interface ValidationSummary {
 }
 
 export interface MetricFormula {
-  tcId: string;
+  metricId: string;
   name: string;
   formula: string;
   description: string;
@@ -119,7 +119,7 @@ export interface PerClassKpi {
 }
 
 export interface KpiResult {
-  tcId: string;
+  metricId: string;
   name: string;
   value: number;
   threshold: number;
@@ -201,7 +201,7 @@ export interface FinalReportData {
   datasetDiagnosis: string;
   trainingDatasetInfo?: TrainingDatasetInfo;
   evalEnv: EvalEnvironment;
-  tcList: TcItem[];
+  metricList: MetricItem[];
   metricFormulas: MetricFormula[];
   dataValidation: ValidationResult[];
   /** 검증 수행 요약 수치 (없으면 섹션이 fallback 처리) */
