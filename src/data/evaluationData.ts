@@ -188,7 +188,7 @@ export function getAvailableMetrics(taskType?: string): MetricDefinition[] {
 }
 
 export function getMetricDisplayId(metricId: string): string {
-  return metricId.replace(/^TC(\d+)$/, "M$1");
+  return metricId;
 }
 
 export function getRecommendedMetricIds(taskType?: string): string[] {
@@ -218,14 +218,14 @@ export function selectionNeedsField(taskType: TaskType, selectedIds: string[], f
 }
 
 export function getUploadColumnGuide(taskType: TaskType, selectedIds: string[]): UploadColumnGuide {
-  const onlyTc23 = selectedIds.length > 0 && selectedIds.every((id) => id === "M23");
+  const onlyM23 = selectedIds.length > 0 && selectedIds.every((id) => id === "M23");
   const requiresProbability = selectionRequiresProbability(taskType, selectedIds);
 
   const probabilityColumn =
     taskType === "binary" ? "score" : taskType === "multiclass" ? "prob_class_*" : "prob_label_*";
 
   const alwaysRequired = ["id", "y_true"];
-  const conditionallyRequired = onlyTc23 ? [] : ["y_pred"];
+  const conditionallyRequired = onlyM23 ? [] : ["y_pred"];
   const optional = requiresProbability ? [] : [probabilityColumn];
   const notes = ["id values must be unique.", "Probability values must be between 0 and 1."];
 
@@ -238,7 +238,7 @@ export function getUploadColumnGuide(taskType: TaskType, selectedIds: string[]):
   if (taskType === "multilabel") {
     notes.push("Use a consistent label separator or one-hot label columns for multi-label data.");
   }
-  if (onlyTc23) {
+  if (onlyM23) {
     notes.push("M23 can be computed with dataset distribution only, so prediction columns are optional.");
   }
 

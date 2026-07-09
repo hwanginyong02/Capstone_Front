@@ -42,7 +42,6 @@ export function pathToStep(path: string): number {
   const segment = path.replace("/step/", "").replace("/app/", "");
   const legacySegments: Record<string, StepPath> = {
     "test-items": "metrics",
-    "tc-detail": "metric-detail",
   };
   const normalizedSegment = legacySegments[segment] ?? segment;
   const index = STEP_PATHS.indexOf(normalizedSegment as StepPath);

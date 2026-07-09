@@ -31,7 +31,7 @@ export const routes = [
   { path: "/app/data-validation", Component: DataValidation },
   { path: "/step/basic-info", Component: BasicInfo },
   { path: "/step/test-items", Component: TestItems },
-  { path: "/step/tc-detail", Component: MetricDetail },
+  { path: "/step/metric-detail", Component: MetricDetail },
   { path: "/step/data-upload", Component: DataUpload },
   { path: "/step/column-mapping", Component: ColumnMapping },
   { path: "/step/data-validation", Component: DataValidation },
