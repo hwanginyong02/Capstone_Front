@@ -1,6 +1,6 @@
 import type { FinalReportMeta, KpiResult } from "../../../types/finalReport.types";
-import { MetricRow } from "../ui/MetricRow";
-import { PassBadge } from "../ui/PassBadge";
+import { MetricRow } from "../shared/MetricRow";
+import { PassBadge } from "../shared/PassBadge";
 
 import type { TaskType } from "../../../data/evaluationData";
 

@@ -3,7 +3,7 @@ import { Info, Search } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Checkbox } from "./checkbox";
+import { Checkbox } from "../ui/checkbox";
 import { Input } from "../ui/input";
 import { cn } from "../../utils/styling/styles";
 import {

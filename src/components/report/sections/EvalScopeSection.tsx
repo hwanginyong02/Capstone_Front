@@ -1,5 +1,5 @@
 import type { FinalReportMeta } from "../../../types/finalReport.types";
-import { SectionTitle } from "../ui/SectionTitle";
+import { SectionTitle } from "../shared/SectionTitle";
 
 const EVAL_PROCEDURE_STEPS = [
   { step: "시험신청서 제출", desc: "신규 프로젝트 생성 및 요구되는 형식에 맞춘 데이터셋 업로드" },

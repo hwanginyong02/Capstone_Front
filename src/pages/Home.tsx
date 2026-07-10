@@ -1,16 +1,8 @@
-import { BasicInfo } from "./BasicInfo";
-import { TestItems } from "./TestItems";
-import { MetricDetail } from "./MetricDetail";
-import { DataUpload } from "./DataUpload";
-import { ColumnMapping } from "./ColumnMapping";
-import { DataValidation } from "./DataValidation";
 import { LandingPage } from "./LandingPage";
 
 /**
- * Home page — redirects to the first workflow step.
+ * Home 페이지 — 루트("/") 경로에서 랜딩 페이지를 렌더한다.
  */
 export function Home() {
   return <LandingPage />;
 }
-
-export { BasicInfo, TestItems, MetricDetail, DataUpload, ColumnMapping, DataValidation };

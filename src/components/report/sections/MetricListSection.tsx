@@ -1,5 +1,5 @@
 import type { MetricFormula, MetricItem } from "../../../types/finalReport.types";
-import { SectionTitle } from "../ui/SectionTitle";
+import { SectionTitle } from "../shared/SectionTitle";
 
 interface MetricListSectionProps {
   metricList: MetricItem[];

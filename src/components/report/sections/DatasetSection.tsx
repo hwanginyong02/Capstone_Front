@@ -4,8 +4,8 @@ import type {
   DatasetSampleRow,
   TrainingDatasetInfo,
 } from "../../../types/finalReport.types";
-import { SectionTitle } from "../ui/SectionTitle";
-import { TwoColTable } from "../ui/TwoColTable";
+import { SectionTitle } from "../shared/SectionTitle";
+import { TwoColTable } from "../shared/TwoColTable";
 
 interface DatasetSectionProps {
   datasetInfo: DatasetInfo;
