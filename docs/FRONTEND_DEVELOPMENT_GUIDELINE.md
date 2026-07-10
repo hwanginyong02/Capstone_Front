@@ -44,12 +44,16 @@
     *   `src/utils/domain/`: 비즈니스/도메인 로직 유틸리티 (`validation.ts`, `mappingHelpers.ts`)
     *   `src/utils/stores/`: 전역 상태 관리 (`useWorkflowStore.ts`)
 *   **규칙 2 (문서화)**: 모든 유틸리티 및 스토어 파일의 최상단에는 해당 모듈이 어떤 역할을 하는지, 주로 어디서 사용되는지를 설명하는 **한국어 JSDoc 주석**을 반드시 작성해야 합니다.
+*   **규칙 3 (형제 계층 구분)**: `src/utils/` 와 별개로 다음 최상위 계층을 인정하며, 목적에 맞게 배치합니다. (신규 코드는 성격에 맞는 계층을 선택하세요.)
+    *   `src/lib/`: **백엔드 계약·외부 연동(API)·리포트 도메인 로직** 계층. `fetch` 등 부수효과 코드와 snake_case↔camelCase 매핑, 성적서 조립 로직이 여기에 응집되며, 관련 단위 테스트를 코로케이션합니다. (`utils/domain/` 은 순수·동기 UI 헬퍼 전용이므로 대형 도메인/IO 로직을 여기에 섞지 마세요.)
+    *   `src/hooks/`: React 런타임에 결합된 재사용 로직(데이터 페칭 훅 등). 각 파일 상단에 한국어 JSDoc 을 작성합니다.
+    *   `src/data/`: 정적 도메인 데이터/카탈로그(지표 정의, 예시, showcase 목 데이터 등).
 
 ---
 
 ## 5. 레이아웃 내부 구성요소의 분리
 
-*   **규칙 1**: `src/layout/`의 최상위에는 외부(Pages)로 노출되는 가장 중요한 래퍼(Wrapper)인 `WorkflowShell.tsx`만 남겨둡니다.
+*   **규칙 1**: `src/layout/`의 최상위에는 외부(Pages)로 노출되는 **공개 셸(Wrapper)만** 남겨둡니다. 현재는 워크플로우 스텝용 `WorkflowShell.tsx` 와 비-워크플로우(워크스페이스 등) 페이지용 경량 셸 `AppShell.tsx` 두 개가 있습니다. 페이지는 `layout/components/` 내부 부품을 직접 import 하지 말고 반드시 공개 셸을 거쳐야 합니다.
 *   **규칙 2**: 레이아웃을 구성하는 내부 부품(`AppHeader.tsx`, `ActionBar.tsx`, `StepTabs.tsx`)은 `src/layout/components/` 디렉토리 내부에 분리하여 은닉성(Encapsulation)을 유지합니다.
 
 ---

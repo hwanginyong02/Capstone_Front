@@ -9,8 +9,6 @@ import {
   getRequiredColumnsForMetric,
 } from "../../data/evaluationData";
 import type { MappingRow } from "../../types/mapping.types";
-import { useNavigate } from "react-router";
-import { useWorkflowStore, stepToPath } from "../../utils/stores/useWorkflowStore";
 import { MappingResolutionView } from "./MappingResolutionView";
 
 interface MappingStatusPanelProps {
@@ -21,23 +19,29 @@ interface MappingStatusPanelProps {
   };
   resolvedTaskType: TaskType;
   selectedMetrics: MetricDefinition[];
+  selectedMetricIds: string[];
   positiveClass: string;
   yTrueRow: MappingRow | undefined;
+  /** 지표 선택 변경(지표 제외). 페이지에서 store.setSelectedMetricIds 를 주입한다. */
+  onSelectedMetricIdsChange: (ids: string[]) => void;
+  /** 데이터 업로드 단계로 복귀. 페이지의 handlePrevious 를 주입한다(스텝 상태 일관성 유지). */
+  onGoBackToUpload: () => void;
 }
 
 export function MappingStatusPanel({
   mappingSummary,
   resolvedTaskType,
   selectedMetrics,
+  selectedMetricIds,
   positiveClass,
   yTrueRow,
+  onSelectedMetricIdsChange,
+  onGoBackToUpload,
 }: MappingStatusPanelProps) {
-  const navigate = useNavigate();
-  const { selectedMetricIds, setSelectedMetricIds } = useWorkflowStore();
   const [isResolutionMode, setIsResolutionMode] = useState(false);
 
   const handleRemoveMetric = (id: string) => {
-    setSelectedMetricIds(selectedMetricIds.filter((mId) => mId !== id));
+    onSelectedMetricIdsChange(selectedMetricIds.filter((mId) => mId !== id));
   };
 
   const handleExcludeAllAffected = () => {
@@ -49,7 +53,7 @@ export function MappingStatusPanel({
         }
       });
     });
-    setSelectedMetricIds(selectedMetricIds.filter((id) => !affectedMetricIds.has(id)));
+    onSelectedMetricIdsChange(selectedMetricIds.filter((id) => !affectedMetricIds.has(id)));
     setIsResolutionMode(false);
   };
   if (mappingSummary.isValid) {
@@ -75,7 +79,7 @@ export function MappingStatusPanel({
                 <div className="space-y-1">
                   <div className="font-bold text-lg text-red-800">Missing required columns</div>
                   <p className="text-red-700">
-                    {mappingSummary.missingRoles.length} required roles are not assigned yet. 
+                    {mappingSummary.missingRoles.length} required roles are not assigned yet.
                     You cannot proceed to the next step.
                   </p>
                 </div>
@@ -90,7 +94,7 @@ export function MappingStatusPanel({
                   <Button
                     variant="outline"
                     className="bg-white hover:bg-slate-50 border-slate-200 text-slate-700 px-5"
-                    onClick={() => navigate(stepToPath(4))}
+                    onClick={onGoBackToUpload}
                   >
                     <Undo2 className="mr-2 h-4 w-4" />
                     Go back to Upload
@@ -106,7 +110,7 @@ export function MappingStatusPanel({
               onClose={() => setIsResolutionMode(false)}
               onRemoveMetric={handleRemoveMetric}
               onExcludeAllAffected={handleExcludeAllAffected}
-              onGoBackToUpload={() => navigate(stepToPath(4))}
+              onGoBackToUpload={onGoBackToUpload}
             />
           )}
         </>

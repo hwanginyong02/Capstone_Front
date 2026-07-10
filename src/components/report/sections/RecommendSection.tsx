@@ -3,8 +3,8 @@ import type {
   RecommendationNarrative,
   NarrativeSource,
 } from "../../../types/finalReport.types";
-import { SectionTitle } from "../ui/SectionTitle";
-import { NarrativeSourceBadge } from "../ui/NarrativeSourceBadge";
+import { SectionTitle } from "../shared/SectionTitle";
+import { NarrativeSourceBadge } from "../shared/NarrativeSourceBadge";
 import { cn } from "../../../utils/styling/styles";
 
 const PRIORITY_CONFIG = {

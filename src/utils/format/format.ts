@@ -16,3 +16,17 @@ export function formatFileSize(bytes: number): string {
   }
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
+
+/**
+ * ISO 날짜 문자열을 ko-KR 로케일의 "YYYY. MM. DD. HH:MM" 형태로 변환한다.
+ * (예: Workspace 상세의 평가 실행 생성 일시 표시)
+ */
+export function formatCreatedAt(value: string): string {
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}

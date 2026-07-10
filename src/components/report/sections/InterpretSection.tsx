@@ -2,8 +2,8 @@ import type {
   InterpretationData,
   NarrativeSource,
 } from "../../../types/finalReport.types";
-import { SectionTitle } from "../ui/SectionTitle";
-import { NarrativeSourceBadge } from "../ui/NarrativeSourceBadge";
+import { SectionTitle } from "../shared/SectionTitle";
+import { NarrativeSourceBadge } from "../shared/NarrativeSourceBadge";
 
 interface InterpretSectionProps {
   interpretation: InterpretationData;

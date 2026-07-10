@@ -19,20 +19,23 @@ export function MetricDetail() {
     [resolvedTaskType, store.selectedMetricIds]
   );
 
-  const handleNext = () => {
+  // 현재 지표의 유효성을 계산해 completed 플래그를 스토어에 반영한다.
+  // handleNext(다음 지표/단계 이동)와 handleMetricSelect(탭 클릭 이동) 양쪽에서 공유한다.
+  const markCurrentMetricCompleted = () => {
     const currentMetric = selectedMetrics[currentMetricIndex];
     const currentState = currentMetric ? store.metricDetails[currentMetric.id] : undefined;
-    const currentMetricIsValid =
-      currentMetric && currentState
-        ? isCurrentMetricValid(store.taskType, currentMetric.id, currentState)
-        : false;
 
     if (currentMetric && currentState) {
+      const completed = isCurrentMetricValid(store.taskType, currentMetric.id, currentState);
       store.setMetricDetails((prev) => ({
         ...prev,
-        [currentMetric.id]: { ...prev[currentMetric.id], completed: currentMetricIsValid },
+        [currentMetric.id]: { ...prev[currentMetric.id], completed },
       }));
     }
+  };
+
+  const handleNext = () => {
+    markCurrentMetricCompleted();
 
     if (currentMetricIndex < selectedMetrics.length - 1) {
       setCurrentMetricIndex((prev) => prev + 1);
@@ -53,17 +56,7 @@ export function MetricDetail() {
   };
 
   const handleMetricSelect = (nextIndex: number) => {
-    const currentMetric = selectedMetrics[currentMetricIndex];
-    const currentState = currentMetric ? store.metricDetails[currentMetric.id] : undefined;
-
-    if (currentMetric && currentState) {
-      const completed = isCurrentMetricValid(store.taskType, currentMetric.id, currentState);
-      store.setMetricDetails((prev) => ({
-        ...prev,
-        [currentMetric.id]: { ...prev[currentMetric.id], completed },
-      }));
-    }
-
+    markCurrentMetricCompleted();
     setCurrentMetricIndex(nextIndex);
   };
 

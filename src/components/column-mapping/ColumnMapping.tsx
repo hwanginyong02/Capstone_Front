@@ -34,6 +34,10 @@ interface ColumnMappingProps {
   positiveClassAmbiguous?: boolean;
   detectedClasses?: string[];
   columnUniqueValues?: Record<string, string[]>;
+  /** 지표 선택 변경(매핑 해결 과정에서 지표 제외). 페이지에서 store.setSelectedMetricIds 주입. */
+  onSelectedMetricIdsChange?: (ids: string[]) => void;
+  /** 데이터 업로드 단계로 복귀. 페이지의 handlePrevious 주입. */
+  onGoBackToUpload?: () => void;
 }
 
 const roleOptions: Array<{ value: MappingRole; label: string }> = [
@@ -60,6 +64,8 @@ export function ColumnMapping({
   positiveClassAmbiguous = false,
   detectedClasses = [],
   columnUniqueValues = {},
+  onSelectedMetricIdsChange = () => {},
+  onGoBackToUpload = () => {},
 }: ColumnMappingProps) {
   const resolvedTaskType: TaskType = taskType || "multiclass";
   const selectedMetrics = useMemo(
@@ -223,8 +229,11 @@ export function ColumnMapping({
           mappingSummary={mappingSummary}
           resolvedTaskType={resolvedTaskType}
           selectedMetrics={selectedMetrics}
+          selectedMetricIds={selectedMetricIds}
           positiveClass={positiveClass}
           yTrueRow={yTrueRow}
+          onSelectedMetricIdsChange={onSelectedMetricIdsChange}
+          onGoBackToUpload={onGoBackToUpload}
         />
       </main>
     </>

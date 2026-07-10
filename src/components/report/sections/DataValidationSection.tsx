@@ -5,7 +5,7 @@ import type {
   ValidationSummary,
 } from "../../../types/finalReport.types";
 import type { ValidationGroup } from "../../../types/validation.types";
-import { SectionTitle } from "../ui/SectionTitle";
+import { SectionTitle } from "../shared/SectionTitle";
 import { cn } from "../../../utils/styling/styles";
 
 const STATUS_CONFIG = {
