@@ -104,8 +104,8 @@ export function BasicInfo({
                 <DateField
                   label="Evaluation request date"
                   required
-                  value={formData.contractDate}
-                  onChange={(value) => update("contractDate", value)}
+                  value={formData.contractDate ?? new Date()}
+                  onChange={(value) => update("contractDate", value ?? new Date())}
                 />
               </div>
             </CardContent>

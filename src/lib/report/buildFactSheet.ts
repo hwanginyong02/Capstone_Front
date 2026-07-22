@@ -118,13 +118,13 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
   const metrics: FactSheetMetric[] = kpiResults
     .filter((r) => r.status !== "unavailable")
     .map((r) => {
-    const hasThreshold = r.threshold > 0;
+    const isInfoOnly = r.metricId === "M21" || r.metricId === "M22" || r.threshold <= 0;
     return {
       metric_id: r.metricId,
       display_name: r.name,
       value: r.value,
-      threshold: hasThreshold ? r.threshold : null,
-      status: hasThreshold ? r.status : "info",
+      threshold: isInfoOnly ? null : r.threshold,
+      status: isInfoOnly ? "info" : r.status,
     };
   });
 
