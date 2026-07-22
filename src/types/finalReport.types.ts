@@ -2,6 +2,7 @@ import type { TaskType } from "../data/evaluationData";
 import type { ConfusionMatrixData, ReportRecommendation } from "./report.types";
 import type { ValidationGroup } from "./validation.types";
 import type { UploadedFileInfo } from "./workflow.types";
+export type { UploadedFileInfo };
 
 export type ReportPurposeKey = "internal" | "external" | "project";
 

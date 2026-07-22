@@ -222,12 +222,14 @@ export function useReportData(id: string): UseReportDataResult {
               }
             }
 
+            const isVisualOnly = metricId === "M21" || metricId === "M22";
+
             return {
               metricId: displayId,
               name: metric.name,
               value: resolvedValue,
-              threshold: hasThreshold ? target : 0,
-              status,
+              threshold: (hasThreshold && !isVisualOnly) ? target : 0,
+              status: isVisualOnly ? "pass" : status,
               higherIsBetter,
               perClass,
               subMetrics,

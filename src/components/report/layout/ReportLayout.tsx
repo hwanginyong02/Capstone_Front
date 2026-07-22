@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { ArrowLeft, BadgeCheck, Download, RefreshCw, Stamp } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Download, Home, LayoutDashboard, RefreshCw, Stamp } from "lucide-react";
 import { Button } from "../../ui/button";
 
 interface ReportLayoutProps {
@@ -46,15 +46,39 @@ export function ReportLayout({
     <div className="min-h-screen bg-slate-50">
       {/* Top nav bar */}
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3 print:hidden">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate(-1)}
-          className="gap-1.5 text-slate-600"
-        >
-          <ArrowLeft className="size-4" />
-          뒤로가기
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(-1)}
+            className="gap-1.5 text-slate-600"
+          >
+            <ArrowLeft className="size-4" />
+            뒤로가기
+          </Button>
+
+          <div className="h-4 w-px bg-slate-200" />
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/")}
+            className="gap-1.5 text-slate-600 hover:text-slate-900"
+          >
+            <Home className="size-4" />
+            메인 홈
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/workspaces")}
+            className="gap-1.5 text-slate-600 hover:text-slate-900"
+          >
+            <LayoutDashboard className="size-4" />
+            내 워크스페이스
+          </Button>
+        </div>
 
         <div className="flex items-center gap-2">
           {issued ? (
@@ -109,6 +133,22 @@ export function ReportLayout({
 
       {/* Report body */}
       <main className="mx-auto max-w-4xl px-6 py-10">
+        {issued && (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 print:hidden">
+            <div className="flex items-center gap-2">
+              <BadgeCheck className="size-5 text-emerald-600 shrink-0" />
+              <span>성적서가 성공적으로 발급되었습니다. 발급 번호: <strong>{reportId ?? "확정 완료"}</strong></span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => navigate("/")} className="gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-100">
+                <Home className="size-3.5" /> 메인 홈
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => navigate("/workspaces")} className="gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-100">
+                <LayoutDashboard className="size-3.5" /> 내 워크스페이스
+              </Button>
+            </div>
+          </div>
+        )}
         {children}
       </main>
     </div>
