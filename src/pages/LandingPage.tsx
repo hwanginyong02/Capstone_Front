@@ -52,15 +52,15 @@ export function LandingPage() {
               ML Evaluation helps teams configure metrics, validate data, and
               produce a structured report through one guided workflow.
             </p>
+            {/* 평가는 워크스페이스 안에서만 시작한다. 워크스페이스 없이 워크플로우로 바로
+                들어가면 결과를 저장·발급·재조회할 수 없어(활성 워크스페이스가 없으면 run 이
+                생성되지 않음) 진입로를 하나로 통합했다. */}
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button asChild size="lg">
                 <Link to="/workspaces">
                   Create Workspace
                   <ArrowRight className="h-4 w-4" />
                 </Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link to="/app/basic-info">Start Evaluation</Link>
               </Button>
             </div>
           </div>
@@ -126,14 +126,11 @@ export function LandingPage() {
               Start organizing model evaluations.
             </h2>
             <p className="mt-4 text-muted-foreground">
-              Create a workspace or go directly into the evaluation workflow.
+              Create a workspace to run an evaluation and keep its report.
             </p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Button asChild size="lg">
                 <Link to="/workspaces">Create Workspace</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link to="/app/basic-info">Start Evaluation</Link>
               </Button>
             </div>
           </div>
