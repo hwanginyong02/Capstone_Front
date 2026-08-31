@@ -53,7 +53,7 @@ export const METRICS: MetricDefinition[] = [
   { id: "M3", name: "Recall", subtitle: "Sensitivity", description: "Measures how many true positives are successfully detected.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "TP / (TP + FN)", isCommon: true },
   { id: "M4", name: "F1 Score", subtitle: "Harmonic mean", description: "Balances precision and recall in a single metric.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "2 * (Precision * Recall) / (Precision + Recall)", isCommon: true },
   { id: "M5", name: "F-beta Score", subtitle: "Weighted F score", description: "Adjusts the balance between precision and recall using beta.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["beta", "positiveClass"], formula: "(1 + β²) * (P * R) / (β² * P + R)", isCommon: true },
-  { id: "M6", higherIsBetter: false, name: "KL Divergence", subtitle: "Distribution divergence", description: "정답 레이블의 분포와 모델이 예측한 클래스 레이블의 분포 간의 차이(Target Drift)를 계산합니다.", supportedTaskTypes: ["binary", "multiclass"], probabilityRequiredFor: ["binary", "multiclass"], formula: "∑ P(x) * log(P(x) / Q(x))", isCommon: true },
+  { id: "M6", higherIsBetter: false, name: "KL Divergence", subtitle: "Distribution divergence", description: "정답 레이블의 분포와 모델이 예측한 클래스 레이블의 분포 간의 차이(Target Drift)를 계산합니다.", supportedTaskTypes: ["binary", "multiclass"], formula: "∑ P(x) * log(P(x) / Q(x))", isCommon: true },
   { id: "M7", name: "Specificity", subtitle: "True negative rate", description: "Measures how many true negatives are correctly predicted.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], formula: "TN / (TN + FP)" },
   { id: "M8", higherIsBetter: false, name: "FPR", subtitle: "False positive rate", description: "Measures how often negatives are incorrectly marked positive.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], formula: "FP / (FP + TN)" },
   { id: "M9", name: "AUROC", subtitle: "ROC area", description: "Measures ranking quality across classification thresholds.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], probabilityRequiredFor: ["binary"], formula: "Area under ROC Curve" },
@@ -86,7 +86,7 @@ const REQUIRED_COLUMNS_BY_METRIC: Record<TaskType, Partial<Record<string, Requir
     M3: ["id", "y_true", "y_pred"],
     M4: ["id", "y_true", "y_pred"],
     M5: ["id", "y_true", "y_pred"],
-    M6: ["id", "y_true", "score"],
+    M6: ["id", "y_true", "y_pred"],
     M7: ["id", "y_true", "y_pred"],
     M8: ["id", "y_true", "y_pred"],
     M9: ["id", "y_true", "score"],
@@ -103,7 +103,7 @@ const REQUIRED_COLUMNS_BY_METRIC: Record<TaskType, Partial<Record<string, Requir
     M3: ["id", "y_true", "y_pred"],
     M4: ["id", "y_true", "y_pred"],
     M5: ["id", "y_true", "y_pred"],
-    M6: ["id", "y_true", "prob_class_*"],
+    M6: ["id", "y_true", "y_pred"],
     M11: ["id", "y_true", "y_pred"],
     M12: ["id", "y_true", "y_pred"],
     M13: ["id", "y_true", "y_pred"],
@@ -129,6 +129,23 @@ const REQUIRED_COLUMNS_BY_METRIC: Record<TaskType, Partial<Record<string, Requir
     M22: ["id", "y_true", "y_pred"],
     M23: ["id", "y_true"],
   },
+};
+
+/**
+ * task_type 별로 매핑 가능한 역할 (백엔드 app/core/schemas.py 의 VALID_ROLES_BY_TASK 와 대응).
+ *
+ * 매핑 화면 드롭다운의 선택지가 여기서 나온다. 여기에 없는 역할을 고르면
+ * translateRoleToBackend 가 조용히 "ignore" 로 강등해버려서, 사용자는 매핑했다고 믿는데
+ * 그 컬럼이 평가에서 통째로 빠진다. 그래서 애초에 선택지로 노출하지 않는다.
+ * ("ignore" 는 모든 task 공통이라 여기 넣지 않고 드롭다운에서 따로 붙인다.)
+ */
+export const MAPPABLE_ROLES_BY_TASK: Record<TaskType, RequiredColumnCode[]> = {
+  binary: ["id", "y_true", "y_pred", "score", "latency"],
+  // multiclass/multilabel 은 확률 컬럼을 받지 않는다. 두 task 의 지표 중 확률을 읽는 것이
+  // 하나도 없어 값을 주지 못하면서, 매핑되면 그 컬럼의 결측이 평가 표본을 깎고
+  // 범위 이탈은 평가를 중단시킨다. 확률 기반 파생·지표가 생기면 그때 다시 넣는다.
+  multiclass: ["id", "y_true", "y_pred", "latency"],
+  multilabel: ["id", "y_true", "y_pred", "latency"],
 };
 
 const COLUMN_ORDER: RequiredColumnCode[] = [

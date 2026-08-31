@@ -18,6 +18,7 @@ import { buildFactSheet } from "../lib/report/buildFactSheet";
 import { evaluateStatus } from "../lib/report/evaluateStatus";
 import { fetchNarrative } from "../lib/report/fetchNarrative";
 import { translateRoleToBackend } from "../lib/mapping/translateRoleToBackend";
+import { metricNeedsTargetValue } from "../utils/domain/validation";
 
 interface UseReportDataResult {
   data: FinalReportData | null;
@@ -156,7 +157,10 @@ export function useReportData(id: string): UseReportDataResult {
             const higherIsBetter = metric.higherIsBetter !== false;
             const detail = workflowState.metricDetails[metricId];
             const target = parseFloat(detail?.targetValue ?? "");
-            const hasThreshold = Number.isFinite(target) && target > 0;
+            // 정보성 지표(M21/M22)는 타겟값을 받지 않는다. 과거 세션에 저장된 값이
+            // 남아 있어도 판정 대상이 되지 않도록 여기서도 같은 규칙을 적용한다.
+            const hasThreshold =
+              metricNeedsTargetValue(metricId) && Number.isFinite(target) && target > 0;
             const displayId = getMetricDisplayId(metricId);
 
             // 계산 실패 지표: 판정/집계에서 제외되도록 'unavailable' 로 표기(value 0/fail 위장 금지)

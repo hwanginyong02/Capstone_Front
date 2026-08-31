@@ -79,8 +79,14 @@ export function getTargetValueRule(metricId: string): { summary: string; validat
 
 /**
  * 단일 숫자 판정 기준이 필요한 메트릭인지 확인합니다.
- * M21(Confusion Matrix)은 결과 매트릭스 자체를 확인하는 정보성 항목이므로 타겟값을 받지 않습니다.
+ *
+ * M21(Confusion Matrix)·M22(Class별 Metric)는 단일 숫자가 아니라 표/행렬을 산출하는
+ * 정보성 항목이라 타겟값을 받지 않습니다. 이 둘은 백엔드가 dict 를 반환하는데,
+ * 성적서 변환 계층은 대표 숫자를 뽑지 못해 값 0 으로 둡니다. 그 상태에서 타겟값을
+ * 받으면 "0 < 기준" 이 되어 항상 미달로 집계되고, 종합판정이 절대 PASS 가 될 수
+ * 없게 됩니다(두 지표 모두 추천 지표 세트에 포함되어 기본 경로에서 발생).
+ * 표시 계층(MetricRow)도 이 둘을 "시각화 참조"로 렌더하므로 화면상 드러나지도 않습니다.
  */
 export function metricNeedsTargetValue(metricId: string): boolean {
-  return metricId !== "M21";
+  return metricId !== "M21" && metricId !== "M22";
 }
