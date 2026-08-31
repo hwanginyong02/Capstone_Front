@@ -1,19 +1,29 @@
 import { cn } from "../../utils/styling/styles";
 
 /**
+ * 랜딩 미리보기에 인쇄되는 지표 카드 내용(정적).
+ *
+ * 의도적으로 실제 지표 표에서 파생하지 않는다 — 마케팅용 화면이라 표시 항목·순서를
+ * 디자인이 정하고, `beta` 처럼 컬럼이 아닌 UI 입력값도 섞여 있기 때문이다.
+ * 대신 컬럼 목록이 실제 요구사항과 어긋나지 않는지는 계약 테스트가 지킨다
+ * (MetricSelectionPreview.test.ts — 과거 M6 가 옛 정보를 계속 보여준 적 있음).
+ */
+export const PREVIEW_METRICS = [
+  ["M1", "Accuracy", "Overall correctness", ["id", "y_true", "y_pred"]],
+  ["M2", "Precision", "Positive predictive value", ["id", "y_true", "y_pred"]],
+  ["M3", "Recall", "Sensitivity", ["id", "y_true", "y_pred"]],
+  ["M4", "F1 Score", "Harmonic mean", ["id", "y_true", "y_pred"]],
+  ["M5", "F-beta Score", "Weighted F score", ["id", "y_true", "y_pred", "beta"]],
+  ["M6", "KL Divergence", "Distribution divergence", ["id", "y_true", "y_pred"]],
+  ["M7", "Specificity", "True negative rate", ["id", "y_true", "y_pred"]],
+  ["M8", "FPR", "False positive rate", ["id", "y_true", "y_pred"]],
+] as const;
+
+/**
  * ScreenShowcase 두 번째(지표 선택) 카드의 정적 미리보기(iframe 대신 렌더).
  */
 export function MetricSelectionPreview() {
-  const metrics = [
-    ["M1", "Accuracy", "Overall correctness", ["id", "y_true", "y_pred"]],
-    ["M2", "Precision", "Positive predictive value", ["id", "y_true", "y_pred"]],
-    ["M3", "Recall", "Sensitivity", ["id", "y_true", "y_pred"]],
-    ["M4", "F1 Score", "Harmonic mean", ["id", "y_true", "y_pred"]],
-    ["M5", "F-beta Score", "Weighted F score", ["id", "y_true", "y_pred", "beta"]],
-    ["M6", "KL Divergence", "Distribution divergence", ["id", "y_true", "score"]],
-    ["M7", "Specificity", "True negative rate", ["id", "y_true", "y_pred"]],
-    ["M8", "FPR", "False positive rate", ["id", "y_true", "y_pred"]],
-  ] as const;
+  const metrics = PREVIEW_METRICS;
 
   return (
     <div className="h-full overflow-hidden">

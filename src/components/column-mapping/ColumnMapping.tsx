@@ -5,6 +5,7 @@ import { Badge } from "../ui/badge";
 import {
   TASK_TYPE_LABELS,
   METRICS,
+  MAPPABLE_ROLES_BY_TASK,
   type TaskType,
   getRequiredColumnsForSelection,
 } from "../../data/evaluationData";
@@ -40,16 +41,25 @@ interface ColumnMappingProps {
   onGoBackToUpload?: () => void;
 }
 
-const roleOptions: Array<{ value: MappingRole; label: string }> = [
-  { value: "id", label: "id" },
-  { value: "y_true", label: "y_true" },
-  { value: "y_pred", label: "y_pred" },
-  { value: "score", label: "score" },
-  { value: "prob_class_*", label: "prob_class_*" },
-  { value: "prob_label_*", label: "prob_label_*" },
-  { value: "latency", label: "latency" },
-  { value: "ignore", label: "ignore" },
-];
+/**
+ * 드롭다운 선택지를 task_type 에 맞는 역할로 좁힌다.
+ *
+ * 이미 배정된 역할(assignedRoles)은 목록에서 빠지지 않도록 합집합으로 둔다.
+ * task_type 을 나중에 바꾸면 기존 매핑이 초기화되지 않아, 필터링만 하면 Select 가
+ * 값에 해당하는 항목을 못 찾아 빈 칸으로 렌더되기 때문이다.
+ */
+function buildRoleOptions(
+  taskType: TaskType,
+  assignedRoles: Iterable<MappingRole>,
+): Array<{ value: MappingRole; label: string }> {
+  const codes: MappingRole[] = [...MAPPABLE_ROLES_BY_TASK[taskType]];
+  for (const role of assignedRoles) {
+    if (role !== "ignore" && !codes.includes(role)) {
+      codes.push(role);
+    }
+  }
+  return [...codes, "ignore" as const].map((value) => ({ value, label: value }));
+}
 
 export function ColumnMapping({
   taskType = "multiclass",
@@ -77,6 +87,15 @@ export function ColumnMapping({
     [resolvedTaskType, selectedMetricIds],
   );
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
+
+  const roleOptions = useMemo(
+    () =>
+      buildRoleOptions(
+        resolvedTaskType,
+        rows.map((row) => row.confirmedRole).filter((role): role is MappingRole => role !== null),
+      ),
+    [resolvedTaskType, rows],
+  );
 
   const yTrueRow = useMemo(() => rows.find((r) => r.confirmedRole === "y_true"), [rows]);
   const yTrueValues = useMemo(() => {
