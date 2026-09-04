@@ -41,6 +41,23 @@ export interface IssuePayload {
   modelVersion?: string;
   note?: string;
   issuer?: string;
+  /**
+   * 발급 시점의 성적서 원본(FinalReportData). 서버가 그대로 보관해 번호로 복원하고
+   * 인쇄물 진위를 대조할 수 있게 한다(ISSUES.md F-01). 상한 1 MiB.
+   */
+  content?: unknown;
+}
+
+export interface ReissueOptions {
+  /**
+   * 발급 시 사용한 run 식별자 — **소지 증명**(ISSUES.md G-02).
+   * report_no 는 RPT-{연도}-{순번} 이라 전수 열거가 가능하지만 run_id 는
+   * crypto.randomUUID 라 추측할 수 없다. 백엔드가 불일치 시 403 을 낸다.
+   */
+  runId: string;
+  /** 정정된 성적서 원본. 이전 차수 스냅샷은 서버가 보존한다. */
+  content?: unknown;
+  issuer?: string;
 }
 
 // ── KST 표시 포맷터 ────────────────────────────────────────────────────────────
@@ -146,6 +163,7 @@ export async function issueReport(payload: IssuePayload): Promise<IssuanceResult
       model_version: payload.modelVersion ?? null,
       note: payload.note ?? null,
       issuer: payload.issuer ?? null,
+      content: payload.content ?? null,
     }),
   });
   if (!resp.ok) throw new Error(await errorDetail(resp, "발급에 실패했습니다."));
@@ -156,12 +174,17 @@ export async function issueReport(payload: IssuePayload): Promise<IssuanceResult
 export async function reissueReport(
   reportNo: string,
   note: string,
-  issuer?: string,
+  options: ReissueOptions,
 ): Promise<IssuanceResult> {
   const resp = await fetch(apiUrl(`/api/reports/${encodeURIComponent(reportNo)}/reissue`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ note, issuer: issuer ?? null }),
+    body: JSON.stringify({
+      run_id: options.runId,
+      note,
+      issuer: options.issuer ?? null,
+      content: options.content ?? null,
+    }),
   });
   if (!resp.ok) throw new Error(await errorDetail(resp, "재발급에 실패했습니다."));
   return mapIssuance(await resp.json());
