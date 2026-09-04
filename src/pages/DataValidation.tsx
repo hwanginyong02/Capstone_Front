@@ -7,6 +7,10 @@ import { WorkflowShell } from "../layout/WorkflowShell";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { DataValidation as DataValidationContent } from "../components/data-validation/DataValidation";
 import { useDataValidation } from "../hooks/useDataValidation";
+import {
+  describeValidationGate,
+  getValidationGateReason,
+} from "../utils/domain/validationGate";
 
 /** 평가 실행(성적서 생성) 중 발생한 예외를 사용자가 읽을 수 있는 문장으로 바꾼다. */
 function describeSubmitError(err: unknown): string {
@@ -40,7 +44,11 @@ export function DataValidation() {
 
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const hasBlockingError = (validationData?.error_count ?? 0) > 0;
+  // 검증이 실패했거나 아예 수행되지 않은 경우(validationData === null)를 '오류 0건'으로
+  // 읽지 않는다. 종전 판정 `(validationData?.error_count ?? 0) > 0` 은 그 둘을 `?? 0` 에
+  // 흡수시켜, 검증 절이 통째로 빈 성적서를 발급 가능 상태까지 통과시켰다(ISSUES.md E-04).
+  const gateReason = getValidationGateReason({ validationData, isLoading, error });
+  const gateMessage = describeValidationGate(gateReason);
 
   // 이 핸들러에서 예외가 나면 React 는 잡아주지 않는다(ErrorBoundary 도 없음).
   // 감싸지 않으면 "버튼을 눌러도 아무 일도 안 일어나는" 무증상 실패가 된다.
@@ -87,13 +95,19 @@ export function DataValidation() {
       showNext={true}
       onPrevious={handlePrevious}
       onNext={handleNext}
-      nextDisabled={hasBlockingError || isLoading}
+      nextDisabled={gateReason !== "ok"}
       nextLabel="Run evaluation"
     >
       {submitError && (
         <Alert variant="destructive" className="mb-6">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{submitError}</AlertDescription>
+        </Alert>
+      )}
+      {gateMessage && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{gateMessage}</AlertDescription>
         </Alert>
       )}
       <DataValidationContent
