@@ -15,7 +15,7 @@ import {
 import type { MetricDetailState, MetricDetailStateMap } from "../../types/workflow.types";
 import { parseNumericValue, getTargetValueRule, metricNeedsTargetValue } from "../../utils/domain/validation";
 
-interface TCDetailInputProps {
+interface MetricDetailInputProps {
   taskType?: TaskType | "";
   selectedMetricIds?: string[];
   metricDetails: MetricDetailStateMap;
@@ -30,20 +30,20 @@ function createDefaultState(id: string, name: string): MetricDetailState {
     name,
     description: "",
     targetValue: "",
-    beta: id === "TC5" ? "1.0" : "",
+    beta: id === "M5" ? "1.0" : "",
     positiveClass: "",
     completed: false,
   };
 }
 
-export function TCDetailInput({
+export function MetricDetailInput({
   taskType = "",
   selectedMetricIds = [],
   metricDetails,
   onMetricDetailsChange,
   currentMetricIndex,
   onCurrentMetricIndexChange,
-}: TCDetailInputProps) {
+}: MetricDetailInputProps) {
   const resolvedTaskType = taskType || "multiclass";
   const selectedMetrics = useMemo(() => getSelectedMetrics(resolvedTaskType, selectedMetricIds), [resolvedTaskType, selectedMetricIds]);
 
@@ -262,13 +262,13 @@ export function isCurrentMetricValid(
 }
 
 function getTargetValueHint(metricId: string): string {
-  const lowerIsBetter = new Set(["TC6", "TC8", "TC14", "TC15", "TC18", "TC19", "TC23"]);
+  const lowerIsBetter = new Set(["M6", "M8", "M14", "M15", "M18", "M19", "M23"]);
 
   if (lowerIsBetter.has(metricId)) {
     return "Enter the largest value that is still acceptable for this metric.";
   }
 
-  if (metricId === "TC20") {
+  if (metricId === "M20") {
     return "Enter the minimum acceptable MCC value. MCC ranges from -1 to 1, where higher is better.";
   }
 

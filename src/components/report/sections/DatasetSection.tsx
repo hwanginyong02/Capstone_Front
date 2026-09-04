@@ -1,11 +1,13 @@
-import { FileImage } from "lucide-react";
+import { useState } from "react";
+import { FileImage, ZoomIn, X } from "lucide-react";
 import type {
   DatasetInfo,
   DatasetSampleRow,
   TrainingDatasetInfo,
+  UploadedFileInfo,
 } from "../../../types/finalReport.types";
-import { SectionTitle } from "../ui/SectionTitle";
-import { TwoColTable } from "../ui/TwoColTable";
+import { SectionTitle } from "../shared/SectionTitle";
+import { TwoColTable } from "../shared/TwoColTable";
 
 interface DatasetSectionProps {
   datasetInfo: DatasetInfo;
@@ -20,6 +22,8 @@ export function DatasetSection({
   datasetDiagnosis,
   trainingDatasetInfo,
 }: DatasetSectionProps) {
+  const [activeImage, setActiveImage] = useState<{ url: string; title: string } | null>(null);
+
   const trainingRows = trainingDatasetInfo
     ? [
         { label: "학습 데이터셋명", value: trainingDatasetInfo.name },
@@ -78,18 +82,11 @@ export function DatasetSection({
               trainingDatasetInfo.edgeExamples.length > 0) && (
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-slate-700">학습 데이터 예시</h4>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <ExampleFileList
-                    title="대표 적합 샘플"
-                    files={trainingDatasetInfo.validExamples}
-                    emptyText="등록된 적합 샘플 없음"
-                  />
-                  <ExampleFileList
-                    title="부적합 / Edge 샘플 (옵션)"
-                    files={trainingDatasetInfo.edgeExamples}
-                    emptyText="등록된 부적합 샘플 없음"
-                  />
-                </div>
+                <TrainingDatasetExampleTable
+                  validExamples={trainingDatasetInfo.validExamples}
+                  edgeExamples={trainingDatasetInfo.edgeExamples}
+                  onImageClick={(url, title) => setActiveImage({ url, title })}
+                />
               </div>
             )}
           </>
@@ -198,39 +195,133 @@ export function DatasetSection({
           </blockquote>
         </div>
       </div>
+
+      {/* 이미지 확대 미리보기 모달 */}
+      {activeImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 print:hidden"
+          onClick={() => setActiveImage(null)}
+        >
+          <div
+            className="relative max-h-[90vh] max-w-3xl overflow-hidden rounded-lg bg-white p-2 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-800">{activeImage.title}</h3>
+              <button
+                type="button"
+                onClick={() => setActiveImage(null)}
+                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+            <div className="p-2">
+              <img
+                src={activeImage.url}
+                alt={activeImage.title}
+                className="max-h-[75vh] w-auto max-w-full rounded object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
 
-function ExampleFileList({
-  title,
-  files,
-  emptyText,
+function TrainingDatasetExampleTable({
+  validExamples,
+  edgeExamples,
+  onImageClick,
 }: {
-  title: string;
-  files: { name: string; size: string; type: string }[];
-  emptyText: string;
+  validExamples: UploadedFileInfo[];
+  edgeExamples: UploadedFileInfo[];
+  onImageClick?: (url: string, title: string) => void;
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 p-4 space-y-3">
-      <p className="text-xs font-semibold text-slate-600">{title}</p>
-      {files.length === 0 ? (
-        <p className="text-xs text-slate-400">{emptyText}</p>
+    <div className="overflow-hidden rounded-md border border-slate-300 bg-white">
+      {/* 표 헤더 */}
+      <div className="grid grid-cols-2 border-b border-slate-300 bg-slate-100 text-center text-xs font-bold text-slate-800 divide-x divide-slate-300">
+        <div className="py-2.5 px-3">정상 데이터</div>
+        <div className="py-2.5 px-3">불량 데이터</div>
+      </div>
+
+      {/* 표 본문 (흰색 깔끔한 셀 2분할) */}
+      <div className="grid grid-cols-2 divide-x divide-slate-300 bg-white">
+        {/* 정상 데이터 셀 */}
+        <div className="flex items-center justify-center p-3 overflow-hidden">
+          {validExamples.length > 0 ? (
+            <div className="w-full space-y-2">
+              {validExamples.map((file, idx) => (
+                <ExampleImageCell
+                  key={`valid-${file.name}-${idx}`}
+                  file={file}
+                  label="정상 데이터"
+                  onImageClick={onImageClick}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 p-6">등록된 정상 데이터 없음</p>
+          )}
+        </div>
+
+        {/* 불량 데이터 셀 */}
+        <div className="flex items-center justify-center p-3 overflow-hidden">
+          {edgeExamples.length > 0 ? (
+            <div className="w-full space-y-2">
+              {edgeExamples.map((file, idx) => (
+                <ExampleImageCell
+                  key={`edge-${file.name}-${idx}`}
+                  file={file}
+                  label="불량 데이터"
+                  onImageClick={onImageClick}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 p-6">등록된 불량 데이터 없음</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExampleImageCell({
+  file,
+  label,
+  onImageClick,
+}: {
+  file: UploadedFileInfo;
+  label: string;
+  onImageClick?: (url: string, title: string) => void;
+}) {
+  const hasPreview = !!file.previewUrl;
+  return (
+    <div
+      className="group relative flex w-full items-center justify-center overflow-hidden cursor-pointer bg-white py-2"
+      onClick={() => hasPreview && onImageClick?.(file.previewUrl!, `${label} - ${file.name}`)}
+    >
+      {hasPreview ? (
+        <>
+          <img
+            src={file.previewUrl}
+            alt={file.name}
+            className="w-full max-h-[300px] object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+          />
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-semibold text-white shadow">
+              <ZoomIn className="size-4 text-teal-400" /> 클릭하여 확대
+            </span>
+          </div>
+        </>
       ) : (
-        <ul className="space-y-2">
-          {files.map((file, i) => (
-            <li key={`${file.name}-${i}`} className="flex items-center gap-3 text-sm">
-              <FileImage className="size-5 text-slate-400" />
-              <div className="flex-1 min-w-0">
-                <p className="truncate font-medium text-slate-700">{file.name}</p>
-                <p className="text-xs text-slate-400">
-                  {file.size}
-                  {file.type && file.type !== "unknown" ? ` · ${file.type}` : ""}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div className="flex flex-col items-center gap-2 text-slate-400 py-6">
+          <FileImage className="size-10 stroke-[1.5]" />
+          <span className="text-xs text-slate-600">{file.name}</span>
+        </div>
       )}
     </div>
   );

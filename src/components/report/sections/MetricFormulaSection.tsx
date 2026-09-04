@@ -1,5 +1,5 @@
 import type { MetricFormula } from "../../../types/finalReport.types";
-import { SectionTitle } from "../ui/SectionTitle";
+import { SectionTitle } from "../shared/SectionTitle";
 
 interface MetricFormulaSectionProps {
   metricFormulas: MetricFormula[];
@@ -21,8 +21,8 @@ export function MetricFormulaSection({ metricFormulas }: MetricFormulaSectionPro
         </thead>
         <tbody>
           {metricFormulas.map((m) => (
-            <tr key={m.tcId} className="border-b border-slate-100 last:border-b-0">
-              <td className="py-2.5 pr-4 font-mono text-xs text-slate-400">{m.tcId}</td>
+            <tr key={m.metricId} className="border-b border-slate-100 last:border-b-0">
+              <td className="py-2.5 pr-4 font-mono text-xs text-slate-400">{m.metricId}</td>
               <td className="py-2.5 pr-4 font-medium text-slate-800">{m.name}</td>
               <td className="py-2.5 pr-4 font-mono text-xs text-slate-600 whitespace-nowrap">{m.formula}</td>
               <td className="py-2.5 text-slate-600">{m.description}</td>

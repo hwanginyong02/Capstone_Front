@@ -39,13 +39,9 @@ export function stepToPath(step: number): string {
 
 /** Convert a route path segment to a 1-based step number */
 export function pathToStep(path: string): number {
-  const segment = path.replace("/step/", "").replace("/app/", "");
-  const legacySegments: Record<string, StepPath> = {
-    "test-items": "metrics",
-    "tc-detail": "metric-detail",
-  };
-  const normalizedSegment = legacySegments[segment] ?? segment;
-  const index = STEP_PATHS.indexOf(normalizedSegment as StepPath);
+  // 워크플로우 페이지는 항상 정식 /app/* 경로로 렌더된다(레거시 /step/* 는 routes.ts 에서 리다이렉트).
+  const segment = path.replace("/app/", "");
+  const index = STEP_PATHS.indexOf(segment as StepPath);
   return index >= 0 ? index + 1 : 1;
 }
 

@@ -1,6 +1,6 @@
 import type { EvalEnvironment, EvalScope, FinalReportMeta } from "../../../types/finalReport.types";
-import { SectionTitle } from "../ui/SectionTitle";
-import { TwoColTable } from "../ui/TwoColTable";
+import { SectionTitle } from "../shared/SectionTitle";
+import { TwoColTable } from "../shared/TwoColTable";
 
 interface EvalEnvSectionProps {
   meta: FinalReportMeta;

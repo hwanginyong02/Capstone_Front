@@ -2,7 +2,7 @@ import { PassBadge } from "./PassBadge";
 import { cn } from "../../../utils/styling/styles";
 
 interface MetricRowProps {
-  tcId: string;
+  metricId: string;
   name: string;
   formula?: string;
   value: number;
@@ -13,21 +13,21 @@ interface MetricRowProps {
   className?: string;
 }
 
-export function MetricRow({ tcId, name, formula, value, threshold, status, higherIsBetter, className }: MetricRowProps) {
+export function MetricRow({ metricId, name, formula, value, threshold, status, higherIsBetter, className }: MetricRowProps) {
   // 표시 모드
   // 1) threshold > 0            → 일반 KPI (값 + 기준 + 판정)
   // 2) threshold == 0 & value>0 → 정보 제공 (MCC 등 — 값은 표시, 기준 "—", "ℹ 정보 제공")
   // 3) threshold == 0 & value==0 → 시각화 참조 (CM/Class별 — 값 "—", 기준 "정보 제공", "ℹ 시각화 참조")
   // 4) status == unavailable    → 측정 불가 (값 "—", 기준 "—", "측정 불가" 배지)
   const isUnavailable   = status === "unavailable";
-  const isVisualOnly    = tcId === "M21" || tcId === "M22";
+  const isVisualOnly    = metricId === "M21" || metricId === "M22";
   const isInfoWithValue = !isVisualOnly && !isUnavailable && threshold === 0;
   const isThresholded   = !isVisualOnly && !isUnavailable && threshold > 0;
   const criteriaOp      = higherIsBetter === false ? "≤" : "≥";
 
   return (
     <tr className={cn("border-b border-slate-100 last:border-b-0", className)}>
-      <td className="py-2.5 pr-3 font-mono text-xs text-slate-400">{tcId}</td>
+      <td className="py-2.5 pr-3 font-mono text-xs text-slate-400">{metricId}</td>
       <td className="py-2.5 pr-4 font-medium text-slate-800">{name}</td>
       {formula !== undefined && (
         <td className="py-2.5 pr-4 font-mono text-xs text-slate-500">{formula}</td>

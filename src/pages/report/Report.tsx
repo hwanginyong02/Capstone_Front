@@ -3,12 +3,14 @@ import { useReportData } from "../../hooks/useReportData";
 import { useIssuance } from "../../hooks/useIssuance";
 import { usePdfDownload } from "../../hooks/usePdfDownload";
 import { ReportLayout } from "../../components/report/layout/ReportLayout";
+import { ReportLoadingState } from "../../components/report/ReportLoadingState";
+import { ReportErrorState } from "../../components/report/ReportErrorState";
 import { ReportCoverSection } from "../../components/report/sections/ReportCoverSection";
 import { CompanyInfoSection } from "../../components/report/sections/CompanyInfoSection";
 import { EvalScopeSection } from "../../components/report/sections/EvalScopeSection";
 import { DatasetSection } from "../../components/report/sections/DatasetSection";
 import { EvalEnvSection } from "../../components/report/sections/EvalEnvSection";
-import { TcListSection } from "../../components/report/sections/TcListSection";
+import { MetricListSection } from "../../components/report/sections/MetricListSection";
 import { DataValidationSection } from "../../components/report/sections/DataValidationSection";
 import { KpiResultSection } from "../../components/report/sections/KpiResultSection";
 import { ChartSection } from "../../components/report/sections/ChartSection";
@@ -26,46 +28,11 @@ export function Report() {
   const { download } = usePdfDownload(id);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#FAFAFA] flex flex-col items-center justify-center p-6">
-        <div className="max-w-md w-full text-center space-y-6">
-          <div className="relative w-16 h-16 mx-auto">
-            <div className="absolute inset-0 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-            <div className="absolute inset-2 rounded-full border-4 border-slate-200 border-t-teal-500 animate-ping opacity-75"></div>
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold text-slate-800">평가 엔진 연산 수행 중...</h2>
-            <p className="text-sm text-slate-500">
-              선택한 ISO/IEC 4213 시험 지표를 계산하고 성적서를 자동 구성하고 있습니다. 잠시만 기다려 주세요.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <ReportLoadingState />;
   }
 
   if (error) {
-    return (
-      <div className="min-h-screen bg-[#FAFAFA] flex flex-col items-center justify-center p-6">
-        <div className="max-w-md w-full bg-white rounded-lg border border-red-200 shadow-sm p-6 space-y-4">
-          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto text-red-600">
-            <span className="text-xl font-bold">!</span>
-          </div>
-          <div className="text-center space-y-2">
-            <h2 className="text-lg font-semibold text-slate-800">평가 연산 실패</h2>
-            <p className="text-sm text-red-600 font-mono bg-red-50 p-3 rounded border border-red-100 break-all text-left">
-              {error}
-            </p>
-          </div>
-          <button
-            onClick={() => window.history.back()}
-            className="w-full py-2 px-4 bg-slate-800 text-white rounded hover:bg-slate-700 transition-colors text-sm font-medium"
-          >
-            이전 단계로 돌아가기
-          </button>
-        </div>
-      </div>
-    );
+    return <ReportErrorState error={error} onBack={() => window.history.back()} />;
   }
 
   if (!data) return null;
@@ -101,7 +68,7 @@ export function Report() {
         trainingDatasetInfo={data.trainingDatasetInfo}
       />
       <EvalEnvSection meta={data.meta} evalScope={data.evalScope} evalEnv={data.evalEnv} />
-      <TcListSection tcList={data.tcList} metricFormulas={data.metricFormulas} taskTypeLabel={data.meta.taskTypeLabel} />
+      <MetricListSection metricList={data.metricList} metricFormulas={data.metricFormulas} taskTypeLabel={data.meta.taskTypeLabel} />
       <DataValidationSection
         dataValidation={data.dataValidation}
         kpiResults={data.kpiResults}

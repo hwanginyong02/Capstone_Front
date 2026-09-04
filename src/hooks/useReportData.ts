@@ -18,6 +18,7 @@ import { buildFactSheet } from "../lib/report/buildFactSheet";
 import { evaluateStatus } from "../lib/report/evaluateStatus";
 import { fetchNarrative } from "../lib/report/fetchNarrative";
 import { translateRoleToBackend } from "../lib/mapping/translateRoleToBackend";
+import { metricNeedsTargetValue } from "../utils/domain/validation";
 
 interface UseReportDataResult {
   data: FinalReportData | null;
@@ -100,12 +101,12 @@ export function useReportData(id: string): UseReportDataResult {
           class_distribution: workflowState.metadata?.class_distribution || {},
         };
 
-        const beta = parseFloat(workflowState.metricDetails["TC5"]?.beta || "1.0");
+        const beta = parseFloat(workflowState.metricDetails["M5"]?.beta || "1.0");
 
         const payload = {
           task_type: workflowState.taskType || "multiclass",
           column_mappings: backendMappings,
-          selected_tcs: workflowState.selectedMetricIds,
+          selected_metric_ids: workflowState.selectedMetricIds,
           metadata: metadata,
           beta: beta,
         };
@@ -143,27 +144,30 @@ export function useReportData(id: string): UseReportDataResult {
         }, workflowState.validationResult);
 
         const success_metrics = result.results.success_metrics || {};
-        // 계산 실패 지표({tcId: 에러문자열}). value 0/fail 위장 대신 'unavailable' 처리(D4).
+        // 계산 실패 지표({metricId: 에러문자열}). value 0/fail 위장 대신 'unavailable' 처리(D4).
         const failed_metrics = result.results.failed_metrics || {};
 
         // 1. KPI 지표 계산값 치환
         const updatedKpiResults = workflowState.selectedMetricIds
-          .map((tcId) => {
-            const metric = METRICS.find((m) => m.id === tcId);
+          .map((metricId) => {
+            const metric = METRICS.find((m) => m.id === metricId);
             if (!metric) return null;
 
             // 방향성(높을수록/낮을수록 좋음) — 판정·기준 표기의 단일 출처(evaluationData.ts)
             const higherIsBetter = metric.higherIsBetter !== false;
-            const detail = workflowState.metricDetails[tcId];
+            const detail = workflowState.metricDetails[metricId];
             const target = parseFloat(detail?.targetValue ?? "");
-            const hasThreshold = Number.isFinite(target) && target > 0;
-            const displayId = getMetricDisplayId(tcId);
+            // 정보성 지표(M21/M22)는 타겟값을 받지 않는다. 과거 세션에 저장된 값이
+            // 남아 있어도 판정 대상이 되지 않도록 여기서도 같은 규칙을 적용한다.
+            const hasThreshold =
+              metricNeedsTargetValue(metricId) && Number.isFinite(target) && target > 0;
+            const displayId = getMetricDisplayId(metricId);
 
             // 계산 실패 지표: 판정/집계에서 제외되도록 'unavailable' 로 표기(value 0/fail 위장 금지)
-            const failReason = failed_metrics[tcId];
+            const failReason = failed_metrics[metricId];
             if (failReason !== undefined) {
               return {
-                tcId: displayId,
+                metricId: displayId,
                 name: metric.name,
                 value: 0,
                 threshold: hasThreshold ? target : 0,
@@ -175,9 +179,9 @@ export function useReportData(id: string): UseReportDataResult {
               };
             }
 
-            const val = success_metrics[tcId];
+            const val = success_metrics[metricId];
 
-            // dict 반환 메트릭 (TC11/TC12/TC13): f1_score를 대표값으로, 세부값은 subMetrics로
+            // dict 반환 메트릭 (M11/M12/M13): f1_score를 대표값으로, 세부값은 subMetrics로
             let resolvedValue = 0;
             let subMetrics: { precision: number; recall: number; f1Score: number } | undefined;
 
@@ -194,17 +198,17 @@ export function useReportData(id: string): UseReportDataResult {
             }
 
             let perClass: Array<{ label: string; value: number; status: string }> | undefined;
-            if (["TC2", "TC3", "TC4"].includes(tcId) && success_metrics["TC22"]) {
-              const classReport = success_metrics["TC22"];
+            if (["M2", "M3", "M4"].includes(metricId) && success_metrics["M22"]) {
+              const classReport = success_metrics["M22"];
               const excludeKeys = ["accuracy", "macro avg", "weighted avg", "micro avg", "samples avg"];
               const classValues = Object.keys(classReport).filter(k => !excludeKeys.includes(k));
 
               const metricKeyMap: Record<string, string> = {
-                "TC2": "precision",
-                "TC3": "recall",
-                "TC4": "f1-score",
+                "M2": "precision",
+                "M3": "recall",
+                "M4": "f1-score",
               };
-              const key = metricKeyMap[tcId];
+              const key = metricKeyMap[metricId];
 
               if (classValues.length > 0 && key) {
                 perClass = classValues.map((val) => {
@@ -222,12 +226,14 @@ export function useReportData(id: string): UseReportDataResult {
               }
             }
 
+            const isVisualOnly = metricId === "M21" || metricId === "M22";
+
             return {
-              tcId: displayId,
+              metricId: displayId,
               name: metric.name,
               value: resolvedValue,
-              threshold: hasThreshold ? target : 0,
-              status,
+              threshold: (hasThreshold && !isVisualOnly) ? target : 0,
+              status: isVisualOnly ? "pass" : status,
               higherIsBetter,
               perClass,
               subMetrics,
@@ -237,8 +243,8 @@ export function useReportData(id: string): UseReportDataResult {
 
         // 2. 오차 행렬(Confusion Matrix) 치환
         let confusionMatrix = null;
-        if (success_metrics.TC21) {
-          const cm = success_metrics.TC21;
+        if (success_metrics.M21) {
+          const cm = success_metrics.M21;
           if (cm.type === "multilabel") {
             const classLabels = cm.labels || workflowState.metadata?.detected_labels || [];
             const multilabelMatrices = cm.matrix.map((mat: number[][], idx: number) => {
@@ -268,14 +274,14 @@ export function useReportData(id: string): UseReportDataResult {
           ? {
               fpr: success_metrics.roc_curve.fpr,
               tpr: success_metrics.roc_curve.tpr,
-              auroc: typeof success_metrics.TC9 === "number" ? success_metrics.TC9 : undefined,
+              auroc: typeof success_metrics.M9 === "number" ? success_metrics.M9 : undefined,
             }
           : null;
         const prCurve = success_metrics.pr_curve
           ? {
               recall: success_metrics.pr_curve.recall,
               precision: success_metrics.pr_curve.precision,
-              auprc: typeof success_metrics.TC10 === "number" ? success_metrics.TC10 : undefined,
+              auprc: typeof success_metrics.M10 === "number" ? success_metrics.M10 : undefined,
             }
           : null;
 
@@ -293,9 +299,9 @@ export function useReportData(id: string): UseReportDataResult {
             }
           : null;
 
-        // 3. 데이터셋 진단 문구 — 실제 클래스 분포 + 불균형비(TC23) + 제외 행수로 구성
+        // 3. 데이터셋 진단 문구 — 실제 클래스 분포 + 불균형비(M23) + 제외 행수로 구성
         const imbalanceRatio =
-          typeof success_metrics.TC23 === "number" ? success_metrics.TC23 : undefined;
+          typeof success_metrics.M23 === "number" ? success_metrics.M23 : undefined;
         
         // 백엔드 EvaluateResponse 에서 최신 class_distribution 이 오면 우선 사용, 없으면 metadata 폴백
         const resolvedClassDistribution = result.class_distribution && Object.keys(result.class_distribution).length > 0 
@@ -339,7 +345,7 @@ export function useReportData(id: string): UseReportDataResult {
           droppedRows: result.dropped_rows,
           verdict: ruleConclusion.verdict,
           score: ruleConclusion.score,
-          classReport: success_metrics.TC22 ?? null,
+          classReport: success_metrics.M22 ?? null,
           classLabels,
           latencyStats,
           positiveClass: workflowState.metadata?.positive_class ?? null,

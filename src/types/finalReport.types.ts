@@ -2,6 +2,7 @@ import type { TaskType } from "../data/evaluationData";
 import type { ConfusionMatrixData, ReportRecommendation } from "./report.types";
 import type { ValidationGroup } from "./validation.types";
 import type { UploadedFileInfo } from "./workflow.types";
+export type { UploadedFileInfo };
 
 export type ReportPurposeKey = "internal" | "external" | "project";
 
@@ -83,8 +84,8 @@ export interface DatasetSampleRow {
   score: number;
 }
 
-export interface TcItem {
-  tcId: string;
+export interface MetricItem {
+  metricId: string;
   name: string;
   threshold: number;
   passCriteria: string;
@@ -105,7 +106,7 @@ export interface ValidationSummary {
 }
 
 export interface MetricFormula {
-  tcId: string;
+  metricId: string;
   name: string;
   formula: string;
   description: string;
@@ -119,7 +120,7 @@ export interface PerClassKpi {
 }
 
 export interface KpiResult {
-  tcId: string;
+  metricId: string;
   name: string;
   value: number;
   threshold: number;
@@ -130,7 +131,7 @@ export interface KpiResult {
   /** status=unavailable 일 때 백엔드가 준 계산 실패 사유(디버그/안내용). */
   errorMessage?: string;
   perClass?: PerClassKpi[];
-  /** TC11/12/13 등 dict 반환 메트릭의 세부 수치 (Precision / Recall / F1) */
+  /** M11/12/13 등 dict 반환 메트릭의 세부 수치 (Precision / Recall / F1) */
   subMetrics?: { precision: number; recall: number; f1Score: number };
 }
 
@@ -201,7 +202,7 @@ export interface FinalReportData {
   datasetDiagnosis: string;
   trainingDatasetInfo?: TrainingDatasetInfo;
   evalEnv: EvalEnvironment;
-  tcList: TcItem[];
+  metricList: MetricItem[];
   metricFormulas: MetricFormula[];
   dataValidation: ValidationResult[];
   /** 검증 수행 요약 수치 (없으면 섹션이 fallback 처리) */

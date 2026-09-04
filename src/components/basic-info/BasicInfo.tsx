@@ -2,10 +2,10 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { RadioGroup, RadioGroupItem } from "./radio-group";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Button } from "../ui/button";
-import { Calendar } from "./calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import { Calendar } from "../ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { format } from "date-fns";
 import { CalendarIcon, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "../../utils/styling/styles";
@@ -104,8 +104,8 @@ export function BasicInfo({
                 <DateField
                   label="Evaluation request date"
                   required
-                  value={formData.contractDate}
-                  onChange={(value) => update("contractDate", value)}
+                  value={formData.contractDate ?? new Date()}
+                  onChange={(value) => update("contractDate", value ?? new Date())}
                 />
               </div>
             </CardContent>

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { apiUrl } from "@/lib/apiBase";
 import { useWorkflowStore, stepToPath } from "../utils/stores/useWorkflowStore";
 import { WorkflowShell } from "../layout/WorkflowShell";
 import { ColumnMapping as ColumnMappingContent } from "../components/column-mapping/ColumnMapping";
+import { confirmMapping } from "../lib/report/confirmMappingApi";
 
 /**
  * Step 5 ??Column Mapping page
@@ -18,56 +18,14 @@ export function ColumnMapping() {
   const handleNext = async () => {
     setIsConfirming(true);
     try {
-      const translateRoleToBackend = (role: string | null, taskType: string) => {
-        if (!role) return "ignore";
-        if (role === "id") return "sample_id";
-        if (role === "ignore") return "ignore";
-        
-        if (taskType === "binary") {
-          if (role === "y_true") return "y_true";
-          if (role === "y_pred") return "y_pred";
-          if (role === "score") return "score_positive";
-        } else if (taskType === "multiclass") {
-          if (role === "y_true") return "y_true";
-          if (role === "y_pred") return "y_pred";
-          if (role === "prob_class_*") return "prob_per_class";
-        } else if (taskType === "multilabel") {
-          if (role === "y_true") return "true_labels";
-          if (role === "y_pred") return "pred_labels";
-          if (role === "prob_label_*") return "score_per_label";
-        }
-        return "ignore";
-      };
-
-      const backendMappings = store.columnMapping.map((row) => ({
-        column: row.originalName,
-        role: translateRoleToBackend(row.confirmedRole, store.taskType || "multiclass"),
-        sample_values: row.sampleValues,
-      }));
-
-      const payload = {
-        task_type: store.taskType || "multiclass",
-        column_mappings: backendMappings,
-        selected_tcs: store.selectedMetricIds,
-      };
-
-      const response = await fetch(apiUrl("/api/confirm-mapping"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+      const result = await confirmMapping({
+        columnMapping: store.columnMapping,
+        taskType: store.taskType,
+        selectedMetricIds: store.selectedMetricIds,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.detail || `Server error: ${response.status}`;
-        throw new Error(errorMessage);
-      }
-
-      const result = await response.json();
       if (!result.is_valid) {
-        const errorMsgs = result.errors.map((e: any) => `• ${e.message}`).join("\n");
+        const errorMsgs = result.errors.map((e) => `• ${e.message}`).join("\n");
         alert(`매핑 유효성 검사 실패:\n${errorMsgs}`);
         return;
       }
@@ -111,6 +69,8 @@ export function ColumnMapping() {
         rows={store.columnMapping}
         onRowsChange={store.setColumnMapping}
         onValidationChange={setIsValid}
+        onSelectedMetricIdsChange={store.setSelectedMetricIds}
+        onGoBackToUpload={handlePrevious}
         classLabelDescriptions={store.classLabelDescriptions}
         onClassLabelDescriptionsChange={store.setClassLabelDescriptions}
         positiveClass={store.metadata?.positive_class || ""}

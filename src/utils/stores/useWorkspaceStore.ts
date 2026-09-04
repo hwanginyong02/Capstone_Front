@@ -1,3 +1,11 @@
+/**
+ * 워크스페이스(프로젝트) 및 평가 실행(run) 이력 전역 상태 관리 (Zustand + persist).
+ *
+ * 워크스페이스 CRUD, 활성 워크스페이스 선택, 평가 실행 결과(reportData·workflowSnapshot 포함)의
+ * 영속 저장을 담당한다. WorkspaceList/WorkspaceDetail 페이지에서 목록·상세를 렌더링하고,
+ * DataValidation 페이지가 평가 완료 시 실행 이력을 추가하며, useReportData/useIssuance가
+ * 저장된 실행 데이터를 조회하는 데 사용된다.
+ */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {

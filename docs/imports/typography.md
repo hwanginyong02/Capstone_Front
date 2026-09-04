@@ -9,7 +9,7 @@ Following **Linear/Vercel/Supabase** conventions: precise sans-serif for all UI,
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--font-sans` | `'Pretendard Variable', 'Pretendard', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif` | All UI text |
-| `--font-mono` | `'JetBrains Mono', 'D2Coding', 'SF Mono', Menlo, monospace` | TC IDs, metric values, code, filenames, tabular numbers |
+| `--font-mono` | `'JetBrains Mono', 'D2Coding', 'SF Mono', Menlo, monospace` | 지표 IDs, metric values, code, filenames, tabular numbers |
 
 Do NOT use a display/serif font anywhere. Do NOT use Geist (Vercel's font) — Pretendard is better for Korean.
 
@@ -49,7 +49,7 @@ Sizes use rem. Line-heights tuned for Korean readability.
 |-------|-------------------|--------|-------|
 | `--text-metric-large` | `2rem / 2.5rem` (32px/40px) | 700 | Hero metric values on result preview ("0.8000") |
 | `--text-metric-medium` | `1.25rem / 1.75rem` (20px/28px) | 600 | Secondary metric values in compact dashboards |
-| `--text-mono-small` | `0.75rem / 1.125rem` (12px/18px) | 500 | TC IDs ("TC1"), uppercase column labels, code snippets |
+| `--text-mono-small` | `0.75rem / 1.125rem` (12px/18px) | 500 | 지표 IDs ("M1"), uppercase column labels, code snippets |
 
 ## Usage Rules
 
@@ -95,7 +95,7 @@ No icons in the CardTitle. If a section genuinely needs a category indicator, us
 ```jsx
 <div className="space-y-1">
   <span className="text-mono-small text-foreground-muted uppercase tracking-wide">
-    ACCURACY (TC1)
+    ACCURACY (M1)
   </span>
   <div className="text-metric-large font-mono tabular-nums text-foreground">
     0.8000
@@ -108,15 +108,15 @@ No icons in the CardTitle. If a section genuinely needs a category indicator, us
 
 Metric values ALWAYS use `font-mono` + `tabular-nums` to prevent visual jitter.
 
-### TC ID Badge Pattern
+### 지표 ID Badge Pattern
 
-TC IDs render in monospace and uppercase:
+지표 IDs render in monospace and uppercase:
 
 ```jsx
-<span className="text-mono-small font-medium uppercase">TC1</span>
+<span className="text-mono-small font-medium uppercase">M1</span>
 ```
 
-Never write TC IDs in the sans-serif default font.
+Never write 지표 IDs in the sans-serif default font.
 
 ### Tab Label Pattern
 

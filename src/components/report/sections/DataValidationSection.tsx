@@ -5,7 +5,7 @@ import type {
   ValidationSummary,
 } from "../../../types/finalReport.types";
 import type { ValidationGroup } from "../../../types/validation.types";
-import { SectionTitle } from "../ui/SectionTitle";
+import { SectionTitle } from "../shared/SectionTitle";
 import { cn } from "../../../utils/styling/styles";
 
 const STATUS_CONFIG = {
@@ -147,9 +147,9 @@ export function DataValidationSection({
                 )}
               </td>
               <td className="py-2.5 text-slate-500 text-xs">
-                선택된 Metric ID 목록: {performedKpis.map((r) => r.tcId).join(", ")}
+                선택된 Metric ID 목록: {performedKpis.map((r) => r.metricId).join(", ")}
                 {unavailableKpis.length > 0 && (
-                  <> · 측정 불가: {unavailableKpis.map((r) => r.tcId).join(", ")}</>
+                  <> · 측정 불가: {unavailableKpis.map((r) => r.metricId).join(", ")}</>
                 )}
               </td>
             </tr>

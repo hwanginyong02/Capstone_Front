@@ -5,7 +5,7 @@ import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import {
   getRequiredColumnsForSelection,
   selectionRequiresProbability,
@@ -109,23 +109,25 @@ export function DataUpload({
     onUploadedFileChange(toUploadedFileInfo(file), file);
   };
 
-  const handleTrainingExampleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleTrainingExampleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
       return;
     }
 
-    onTrainingExampleFilesChange((prev) => [...prev, toUploadedFileInfo(file)]);
+    const info = await toUploadedFileInfoAsync(file);
+    onTrainingExampleFilesChange((prev) => [...prev, info]);
     event.target.value = "";
   };
 
-  const handleTrainingUnsuitableExampleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleTrainingUnsuitableExampleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
       return;
     }
 
-    onTrainingUnsuitableExampleFilesChange((prev) => [...prev, toUploadedFileInfo(file)]);
+    const info = await toUploadedFileInfoAsync(file);
+    onTrainingUnsuitableExampleFilesChange((prev) => [...prev, info]);
     event.target.value = "";
   };
 
@@ -144,16 +146,19 @@ export function DataUpload({
     onTrainingUnsuitableExampleFilesChange((prev) => prev.filter((_, fileIndex) => fileIndex !== index));
   };
 
-  const handleEvaluationFileDrop = (file: File) => {
-    onUploadedFileChange(toUploadedFileInfo(file), file);
+  const handleEvaluationFileDrop = async (file: File) => {
+    const info = await toUploadedFileInfoAsync(file);
+    onUploadedFileChange(info, file);
   };
 
-  const handleTrainingExampleFileDrop = (file: File) => {
-    onTrainingExampleFilesChange((prev) => [...prev, toUploadedFileInfo(file)]);
+  const handleTrainingExampleFileDrop = async (file: File) => {
+    const info = await toUploadedFileInfoAsync(file);
+    onTrainingExampleFilesChange((prev) => [...prev, info]);
   };
 
-  const handleTrainingUnsuitableFileDrop = (file: File) => {
-    onTrainingUnsuitableExampleFilesChange((prev) => [...prev, toUploadedFileInfo(file)]);
+  const handleTrainingUnsuitableFileDrop = async (file: File) => {
+    const info = await toUploadedFileInfoAsync(file);
+    onTrainingUnsuitableExampleFilesChange((prev) => [...prev, info]);
   };
 
   return (
@@ -832,5 +837,23 @@ function toUploadedFileInfo(file: File): UploadedFileInfo {
     name: file.name,
     size: formatFileSize(file.size),
     type: file.type || "unknown",
+  };
+}
+
+async function toUploadedFileInfoAsync(file: File): Promise<UploadedFileInfo> {
+  let previewUrl: string | undefined = undefined;
+  if (file.type.startsWith("image/")) {
+    previewUrl = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(URL.createObjectURL(file));
+      reader.readAsDataURL(file);
+    });
+  }
+  return {
+    name: file.name,
+    size: formatFileSize(file.size),
+    type: file.type || "unknown",
+    previewUrl,
   };
 }

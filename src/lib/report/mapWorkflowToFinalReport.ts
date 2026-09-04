@@ -23,7 +23,7 @@ import type {
   MetricFormula,
   ReportPurposeKey,
   SignatureData,
-  TcItem,
+  MetricItem,
   TrainingDatasetInfo,
 } from "../../types/finalReport.types";
 import type { MappingRow } from "../../types/mapping.types";
@@ -85,7 +85,7 @@ export function mapWorkflowToFinalReport(
     datasetDiagnosis: "",
     trainingDatasetInfo: buildTrainingDatasetInfo(input),
     evalEnv: buildEvalEnv(input.basicInfo),
-    tcList: buildTcList(resolvedTaskType, input.selectedMetricIds, input.metricDetails),
+    metricList: buildMetricList(resolvedTaskType, input.selectedMetricIds, input.metricDetails),
     metricFormulas: buildMetricFormulas(resolvedTaskType, input.selectedMetricIds),
     dataValidation: mappedValidation ? mappedValidation.dataValidation : [],
     validationSummary: mappedValidation ? mappedValidation.summary : undefined,
@@ -129,7 +129,7 @@ function buildMeta(input: MapWorkflowToReportInput, taskType: TaskType): FinalRe
     // 사용자가 매핑 단계에서 고른 값은 metadata.positive_class 에 저장됨(metricDetails 는 미기입).
     positiveClass:
       input.metadata?.positive_class ||
-      input.metricDetails["TC2"]?.positiveClass ||
+      input.metricDetails["M2"]?.positiveClass ||
       undefined,
   };
 }
@@ -256,21 +256,21 @@ function buildEvalEnv(basicInfo: BasicInfoFormData): EvalEnvironment {
   };
 }
 
-function buildTcList(
+function buildMetricList(
   taskType: TaskType,
   selectedMetricIds: string[],
   metricDetails: MetricDetailStateMap,
-): TcItem[] {
+): MetricItem[] {
   if (selectedMetricIds.length === 0) {
     return [];
   }
 
   return selectedMetricIds
-    .map((tcId) => {
-      const metric = METRICS.find((m) => m.id === tcId);
+    .map((metricId) => {
+      const metric = METRICS.find((m) => m.id === metricId);
       if (!metric || !metric.supportedTaskTypes.includes(taskType)) return null;
 
-      const detail = metricDetails[tcId];
+      const detail = metricDetails[metricId];
       const target = parseFloat(detail?.targetValue ?? "");
       const hasThreshold = Number.isFinite(target) && target > 0;
 
@@ -283,13 +283,13 @@ function buildTcList(
       const displayName = showsBeta ? `${metric.name} (β=${betaVal})` : metric.name;
 
       return {
-        tcId: getMetricDisplayId(tcId),
+        metricId: getMetricDisplayId(metricId),
         name: displayName,
         threshold: hasThreshold ? target : 0,
         passCriteria: hasThreshold ? `${criteriaOp} ${target.toFixed(2)}` : "정보 제공",
       };
     })
-    .filter((item): item is TcItem => item !== null);
+    .filter((item): item is MetricItem => item !== null);
 }
 
 function buildMetricFormulas(taskType: TaskType, selectedMetricIds: string[]): MetricFormula[] {
@@ -297,14 +297,14 @@ function buildMetricFormulas(taskType: TaskType, selectedMetricIds: string[]): M
   if (ids.length === 0) return [];
 
   return ids
-    .map((tcId) => {
-      const metric = METRICS.find((m) => m.id === tcId);
+    .map((metricId) => {
+      const metric = METRICS.find((m) => m.id === metricId);
       if (!metric || !metric.supportedTaskTypes.includes(taskType)) return null;
 
-      const displayId = getMetricDisplayId(tcId);
+      const displayId = getMetricDisplayId(metricId);
 
       return {
-        tcId: displayId,
+        metricId: displayId,
         name: metric.name,
         formula: metric.formula || "—",
         description: metric.description,

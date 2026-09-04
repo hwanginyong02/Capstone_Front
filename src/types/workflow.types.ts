@@ -41,6 +41,7 @@ export interface UploadedFileInfo {
   name: string;
   size: string;
   type: string;
+  previewUrl?: string;
 }
 
 export interface DatasetInfoFormData {
@@ -60,7 +61,7 @@ export const DEFAULT_BASIC_INFO: BasicInfoFormData = {
   phone: "",
   fax: "",
   address: "",
-  contractDate: undefined,
+  contractDate: new Date(),
   reportPurpose: "",
   projectName: "",
   projectAgency: "",

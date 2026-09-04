@@ -2,13 +2,13 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { useWorkflowStore, stepToPath } from "../utils/stores/useWorkflowStore";
 import { WorkflowShell } from "../layout/WorkflowShell";
-import { TCDetailInput, isCurrentMetricValid } from "../components/tc-detail/TCDetailInput";
+import { MetricDetailInput, isCurrentMetricValid } from "../components/metric-detail/MetricDetailInput";
 import { getSelectedMetrics } from "../data/evaluationData";
 
 /**
  * Step 3 — Metric detail page
  */
-export function TCDetail() {
+export function MetricDetail() {
   const navigate = useNavigate();
   const store = useWorkflowStore();
   const [currentMetricIndex, setCurrentMetricIndex] = useState(0);
@@ -19,20 +19,23 @@ export function TCDetail() {
     [resolvedTaskType, store.selectedMetricIds]
   );
 
-  const handleNext = () => {
+  // 현재 지표의 유효성을 계산해 completed 플래그를 스토어에 반영한다.
+  // handleNext(다음 지표/단계 이동)와 handleMetricSelect(탭 클릭 이동) 양쪽에서 공유한다.
+  const markCurrentMetricCompleted = () => {
     const currentMetric = selectedMetrics[currentMetricIndex];
     const currentState = currentMetric ? store.metricDetails[currentMetric.id] : undefined;
-    const currentMetricIsValid =
-      currentMetric && currentState
-        ? isCurrentMetricValid(store.taskType, currentMetric.id, currentState)
-        : false;
 
     if (currentMetric && currentState) {
+      const completed = isCurrentMetricValid(store.taskType, currentMetric.id, currentState);
       store.setMetricDetails((prev) => ({
         ...prev,
-        [currentMetric.id]: { ...prev[currentMetric.id], completed: currentMetricIsValid },
+        [currentMetric.id]: { ...prev[currentMetric.id], completed },
       }));
     }
+  };
+
+  const handleNext = () => {
+    markCurrentMetricCompleted();
 
     if (currentMetricIndex < selectedMetrics.length - 1) {
       setCurrentMetricIndex((prev) => prev + 1);
@@ -53,17 +56,7 @@ export function TCDetail() {
   };
 
   const handleMetricSelect = (nextIndex: number) => {
-    const currentMetric = selectedMetrics[currentMetricIndex];
-    const currentState = currentMetric ? store.metricDetails[currentMetric.id] : undefined;
-
-    if (currentMetric && currentState) {
-      const completed = isCurrentMetricValid(store.taskType, currentMetric.id, currentState);
-      store.setMetricDetails((prev) => ({
-        ...prev,
-        [currentMetric.id]: { ...prev[currentMetric.id], completed },
-      }));
-    }
-
+    markCurrentMetricCompleted();
     setCurrentMetricIndex(nextIndex);
   };
 
@@ -84,7 +77,7 @@ export function TCDetail() {
       nextDisabled={!isComplete}
       nextLabel={currentMetricIndex < selectedMetrics.length - 1 ? "Next metric" : "Finish"}
     >
-      <TCDetailInput
+      <MetricDetailInput
         taskType={store.taskType}
         selectedMetricIds={store.selectedMetricIds}
         metricDetails={store.metricDetails}
