@@ -189,3 +189,47 @@ export async function reissueReport(
   if (!resp.ok) throw new Error(await errorDetail(resp, "재발급에 실패했습니다."));
   return mapIssuance(await resp.json());
 }
+
+
+export interface ReportContent {
+  reportNo: string;
+  version: string;
+  /** offset 포함 ISO8601 (백엔드 원본) */
+  issuedAt: string;
+  /** content 의 SHA-256 — 인쇄물 진위 대조용 */
+  contentHash: string;
+  /** 발급 시점의 성적서 원본(FinalReportData 형태) */
+  content: unknown;
+}
+
+/**
+ * 성적서 번호로 발급 시점 원본을 복원한다(ISSUES.md F-01·F-04).
+ *
+ * 브라우저 저장소를 지웠거나 다른 기기에서 접속해도 번호만 알면 문서를 되살릴 수 있다.
+ * 내용 보관 도입(2026-09-05) 이전에 발급된 문서는 서버에 사본이 없어 null 이 된다 —
+ * 소급 백필은 하지 않는다(없던 사실을 만들어 넣지 않는다).
+ *
+ * @param version 미지정 시 최신 차수. 이전 차수를 지정하면 정정 전 문서를 볼 수 있다.
+ */
+export async function getReportContent(
+  reportNo: string,
+  version?: string,
+): Promise<ReportContent | null> {
+  try {
+    const qs = version ? `?version=${encodeURIComponent(version)}` : "";
+    const resp = await fetch(
+      apiUrl(`/api/reports/${encodeURIComponent(reportNo)}/content${qs}`),
+    );
+    if (!resp.ok) return null;
+    const body = await resp.json();
+    return {
+      reportNo: body.report_no ?? reportNo,
+      version: body.version ?? "",
+      issuedAt: body.issued_at ?? "",
+      contentHash: body.content_hash ?? "",
+      content: body.content ?? null,
+    };
+  } catch {
+    return null;
+  }
+}

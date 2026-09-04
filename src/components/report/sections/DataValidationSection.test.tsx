@@ -65,21 +65,36 @@ describe("검증 요약 수치", () => {
  * 이 결함의 본체는 컴포넌트가 아니라 **두 호출부의 어긋남**이므로, 두 소스에서
  * DataValidationSection 에 넘기는 prop 이름 집합을 직접 대조한다.
  */
-function propsPassedTo(component: string, file: string): string[] {
-  const src = readFileSync(resolve(__dirname, "../../../pages/report", file), "utf-8");
+function propsPassedTo(component: string, relPath: string): string[] {
+  const src = readFileSync(resolve(__dirname, relPath), "utf-8");
   const open = src.indexOf(`<${component}`);
-  if (open === -1) throw new Error(`${file} 에 <${component}> 사용처가 없다`);
+  if (open === -1) throw new Error(`${relPath} 에 <${component}> 사용처가 없다`);
   const close = src.indexOf("/>", open);
   const block = src.slice(open + component.length + 1, close);
   return [...block.matchAll(/(\w+)=\{/g)].map((m) => m[1]).sort();
 }
 
+/** 화면 본문의 단일 출처. /report/:id 와 /report/no/:reportNo 가 함께 쓴다. */
+const SCREEN = "../ReportSections.tsx";
+const PRINT = "../../../pages/report/ReportPrint.tsx";
+
 describe("화면 ↔ 인쇄본 배선", () => {
-  it("[E-17] ReportPrint 와 Report 가 DataValidationSection 에 같은 prop 을 넘긴다", () => {
-    const onScreen = propsPassedTo("DataValidationSection", "Report.tsx");
-    const onPrint = propsPassedTo("DataValidationSection", "ReportPrint.tsx");
+  it("[E-17] 인쇄본이 화면과 같은 prop 을 DataValidationSection 에 넘긴다", () => {
+    const onScreen = propsPassedTo("DataValidationSection", SCREEN);
+    const onPrint = propsPassedTo("DataValidationSection", PRINT);
 
     expect(onScreen).toContain("validationSummary"); // 화면 쪽 전제 확인
     expect(onPrint).toEqual(onScreen);
+  });
+
+  it("[E-17] 화면과 인쇄본이 같은 섹션 집합을 렌더한다", () => {
+    const sectionsIn = (relPath: string) =>
+      [
+        ...readFileSync(resolve(__dirname, relPath), "utf-8").matchAll(/<(\w+Section)\b/g),
+      ]
+        .map((m) => m[1])
+        .sort();
+
+    expect(sectionsIn(PRINT)).toEqual(sectionsIn(SCREEN));
   });
 });

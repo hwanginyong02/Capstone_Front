@@ -9,6 +9,7 @@ import { ColumnMapping } from "./pages/ColumnMapping";
 import { DataValidation } from "./pages/DataValidation";
 import { Report } from "./pages/report/Report";
 import { ReportPrint } from "./pages/report/ReportPrint";
+import { ReportByNumber } from "./pages/report/ReportByNumber";
 import { WorkspaceDetail } from "./pages/workspaces/WorkspaceDetail";
 import { WorkspaceList } from "./pages/workspaces/WorkspaceList";
 
@@ -35,6 +36,11 @@ export const routes = [
   { path: "/step/data-upload", Component: redirectTo("/app/data-upload") },
   { path: "/step/column-mapping", Component: redirectTo("/app/column-mapping") },
   { path: "/step/data-validation", Component: redirectTo("/app/data-validation") },
+  // 성적서 번호로 서버 보관본 복원(ISSUES.md F-04).
+  // react-router 는 정적 세그먼트("no")를 동적 세그먼트(":id")보다 높게 랭크하므로
+  // 이 항목의 배열 위치와 무관하게 "/report/no/RPT-..." 가 이긴다
+  // (ReportByNumber.test.tsx 의 '라우팅' 테스트가 그 전제를 고정한다).
+  { path: "/report/no/:reportNo", Component: ReportByNumber },
   { path: "/report/:id", Component: Report },
   { path: "/report/:id/print", Component: ReportPrint },
 ] as const;
