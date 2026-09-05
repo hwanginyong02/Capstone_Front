@@ -12,6 +12,7 @@ import { ReportPrint } from "./pages/report/ReportPrint";
 import { ReportByNumber } from "./pages/report/ReportByNumber";
 import { WorkspaceDetail } from "./pages/workspaces/WorkspaceDetail";
 import { WorkspaceList } from "./pages/workspaces/WorkspaceList";
+import { NotFound } from "./pages/NotFound";
 
 /** 지정 경로로 replace 리다이렉트하는 라우트 컴포넌트를 만든다. */
 function redirectTo(path: string) {
@@ -43,4 +44,7 @@ export const routes = [
   { path: "/report/no/:reportNo", Component: ReportByNumber },
   { path: "/report/:id", Component: Report },
   { path: "/report/:id/print", Component: ReportPrint },
+  // 미매칭 URL 은 백지 대신 안내 화면으로(ISSUES.md E-12).
+  // react-router 는 "*" 를 가장 낮게 랭크하므로 다른 라우트를 가리지 않는다.
+  { path: "*", Component: NotFound },
 ] as const;
