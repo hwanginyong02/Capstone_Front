@@ -27,6 +27,7 @@ import type {
   TrainingDatasetInfo,
 } from "../../types/finalReport.types";
 import type { MappingRow } from "../../types/mapping.types";
+import { normalizeIsoDate } from "../../utils/domain/isoDate";
 import type { ValidateDataResponseData } from "../../types/validation.types";
 import { mapValidationResultToReport } from "./mapValidationResultToReport";
 import { buildConclusion } from "./computeVerdict";
@@ -110,9 +111,9 @@ export function mapWorkflowToFinalReport(
 
 function buildMeta(input: MapWorkflowToReportInput, taskType: TaskType): FinalReportMeta {
   const today = formatDate(new Date());
-  const contractDate = input.basicInfo.contractDate
-    ? formatDate(input.basicInfo.contractDate)
-    : undefined;
+  // contractDate 는 이미 "YYYY-MM-DD" 문자열이다(ISSUES.md E-09 — 직렬화 왕복 안전).
+  // 저장소에 남아 있는 구 형식(Date 의 toJSON 결과)도 정규화해 받는다.
+  const contractDate = normalizeIsoDate(input.basicInfo.contractDate);
 
   return {
     // 미발급(초안). 발급 시 백엔드 IssuanceOut 의 report_no / issued_at(KST)으로 채운다(P2-11).
