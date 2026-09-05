@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { AlertTriangle, Sparkles } from "lucide-react";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import {
@@ -10,6 +10,10 @@ import {
   getRequiredColumnsForSelection,
 } from "../../data/evaluationData";
 import type { MappingRole, MappingRow, FilterMode } from "../../types/mapping.types";
+import {
+  describeMappingValidity,
+  getMappingValidityReason,
+} from "../../utils/domain/mappingValidity";
 
 import { RequiredColumnsCard } from "./RequiredColumnsCard";
 import { BinaryClassificationCard } from "./BinaryClassificationCard";
@@ -162,13 +166,30 @@ export function ColumnMapping({
       return count === 0;
     });
 
+    // 판정은 순수 함수에 위임한다(ISSUES.md E-13). 특히 taskType 은 **둔갑 전 원본**을 넘긴다 —
+    // resolvedTaskType 을 쓰면 빈 taskType 이 "multiclass" 로 둔갑해 binary 검사를 건너뛴다.
+    const assignedRoleCount = rows.filter(
+      (row) => row.confirmedRole && row.confirmedRole !== "ignore",
+    ).length;
+    const missingRoleCodes = missingRoles.map((role) => role.code);
+    const validityReason = getMappingValidityReason({
+      taskType,
+      selectedMetricIds,
+      assignedRoleCount,
+      missingRoleCodes,
+      duplicateRoleCount: duplicateCount,
+      positiveClass,
+    });
+
     return {
       editedCount,
       duplicateCount,
       missingRoles,
-      isValid: missingRoles.length === 0 && duplicateCount === 0 && (resolvedTaskType !== "binary" || positiveClass !== ""),
+      validityReason,
+      validityMessage: describeMappingValidity(validityReason, missingRoleCodes),
+      isValid: validityReason === "ok",
     };
-  }, [requiredRoles, roleCounts, rows, resolvedTaskType, positiveClass]);
+  }, [requiredRoles, roleCounts, rows, taskType, selectedMetricIds, positiveClass]);
 
   useEffect(() => {
     onValidationChange?.(mappingSummary.isValid);
@@ -209,6 +230,15 @@ export function ColumnMapping({
             The system has automatically mapped your columns based on their contents. Please review and confirm the assignments before proceeding.
           </AlertDescription>
         </Alert>
+
+        {/* 왜 진행할 수 없는지 이 화면에서 알려준다 — 종전에는 버튼만 막히고, 실제 사유는
+            백엔드 왕복 뒤 raw alert 로만 드러났다(ISSUES.md E-13). */}
+        {mappingSummary.validityMessage && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{mappingSummary.validityMessage}</AlertDescription>
+          </Alert>
+        )}
 
         <RequiredColumnsCard
           selectedMetrics={selectedMetrics}
