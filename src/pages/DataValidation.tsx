@@ -69,7 +69,10 @@ export function DataValidation() {
         });
 
         // 저장에 성공한 뒤에만 단계를 넘긴다(실패 시 6단계에 머물러 재시도 가능).
+        // run id 를 남겨야 성적서를 벗어난 뒤 7번 탭으로 돌아올 수 있다(ISSUES.md E-16).
+        store.setLastRunId(run.id);
         store.markStepCompleted(6);
+        store.markStepCompleted(7);
         store.setCurrentStep(7);
         navigate(`/report/${run.id}`);
         return;
