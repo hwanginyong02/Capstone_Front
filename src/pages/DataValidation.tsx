@@ -11,6 +11,7 @@ import {
   describeValidationGate,
   getValidationGateReason,
 } from "../utils/domain/validationGate";
+import { FileReuploadNotice } from "../components/workflow/FileReuploadNotice";
 
 /** 평가 실행(성적서 생성) 중 발생한 예외를 사용자가 읽을 수 있는 문장으로 바꾼다. */
 function describeSubmitError(err: unknown): string {
@@ -110,6 +111,7 @@ export function DataValidation() {
           <AlertDescription>{gateMessage}</AlertDescription>
         </Alert>
       )}
+      <FileReuploadNotice />
       <DataValidationContent
         validationData={validationData}
         isLoading={isLoading}
