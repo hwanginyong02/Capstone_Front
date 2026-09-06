@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from "react";
 import { CheckCircle2, FileImage, FileText, Lightbulb, Upload, X } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -18,6 +20,7 @@ import type {
 } from "../../types/workflow.types";
 import { getCsvExample, getJsonExample } from "../../data/templateExamples";
 import { formatFileSize } from "../../utils/format/format";
+import { MAX_UPLOAD_LABEL, checkUploadSize } from "../../lib/upload/uploadLimits";
 
 export type DataUploadPhase = "evaluation" | "training";
 
@@ -76,6 +79,9 @@ export function DataUpload({
   onTrainingUnsuitableExampleFilesChange,
 }: DataUploadProps) {
   const evaluationInputRef = useRef<HTMLInputElement>(null);
+  // 백엔드 상한(20 MiB)을 넘는 파일은 올리기 전에 막는다 — 종전에는 안내문이 100MB 라
+  // 사용자가 전부 올린 뒤에야 413 을 봤다(G-04a·D-15).
+  const [sizeError, setSizeError] = useState<string | null>(null);
   const trainingExampleInputRef = useRef<HTMLInputElement>(null);
   const trainingUnsuitableExampleInputRef = useRef<HTMLInputElement>(null);
   const resolvedTaskType = taskType || "multiclass";
@@ -106,6 +112,14 @@ export function DataUpload({
       return;
     }
 
+    const tooBig = checkUploadSize(file);
+    if (tooBig) {
+      setSizeError(tooBig);
+      event.target.value = "";  // 같은 파일을 다시 고를 수 있게 비운다
+      return;
+    }
+
+    setSizeError(null);
     onUploadedFileChange(toUploadedFileInfo(file), file);
   };
 
@@ -147,6 +161,13 @@ export function DataUpload({
   };
 
   const handleEvaluationFileDrop = async (file: File) => {
+    const tooBig = checkUploadSize(file);
+    if (tooBig) {
+      setSizeError(tooBig);
+      return;
+    }
+
+    setSizeError(null);
     const info = await toUploadedFileInfoAsync(file);
     onUploadedFileChange(info, file);
   };
@@ -186,6 +207,13 @@ export function DataUpload({
           onClick={() => onPhaseChange("training")}
         />
       </div>
+
+      {sizeError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{sizeError}</AlertDescription>
+        </Alert>
+      )}
 
       {phase === "evaluation" ? (
         <EvaluationDataSection
@@ -317,7 +345,7 @@ function EvaluationDataSection({
         <UploadDropzone
           icon={<Upload className="h-12 w-12 text-muted-foreground mb-4" />}
           title="Click to choose evaluation data"
-          description="CSV or JSON, up to 100MB"
+          description={`CSV or JSON, up to ${MAX_UPLOAD_LABEL}`}
           onClick={openFilePicker}
           onFileDrop={onFileDrop}
         />

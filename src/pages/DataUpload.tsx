@@ -1,5 +1,8 @@
 import { useNavigate } from "react-router";
 import { useState } from "react";
+import { AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "../components/ui/alert";
+import { Button } from "../components/ui/button";
 import { useWorkflowStore, stepToPath } from "../utils/stores/useWorkflowStore";
 import { WorkflowShell } from "../layout/WorkflowShell";
 import {
@@ -20,7 +23,9 @@ export function DataUpload() {
   const navigate = useNavigate();
   const store = useWorkflowStore();
   const [phase, setPhase] = useState<DataUploadPhase>("evaluation");
-  const { analyzeColumns, isAnalyzing } = useColumnAnalysis();
+  const { analyzeColumns, isAnalyzing, cancel } = useColumnAnalysis();
+  // 종전에는 raw alert() 로만 드러났다. 화면 안에 남겨야 사용자가 읽고 조치할 수 있다(E-18).
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const handleNext = async () => {
     if (phase === "evaluation") {
@@ -29,10 +34,11 @@ export function DataUpload() {
     }
 
     if (!store.rawFile) {
-      alert("Evaluation file is missing. Please re-upload.");
+      setAnalysisError("Evaluation file is missing. Please re-upload it in this step.");
       return;
     }
 
+    setAnalysisError(null);
     try {
       const { rows, metadata } = await analyzeColumns(
         store.rawFile,
@@ -47,7 +53,7 @@ export function DataUpload() {
       navigate(stepToPath(5));
     } catch (err: any) {
       console.error("Column analysis failed:", err);
-      alert(`자동 컬럼 매핑 분석 실패: ${err.message || err}`);
+      setAnalysisError(err?.message || String(err));
     }
   };
 
@@ -75,7 +81,20 @@ export function DataUpload() {
       onNext={handleNext}
       nextDisabled={nextDisabled}
       nextLabel={isAnalyzing ? "Analyzing..." : (phase === "evaluation" ? "Next: training dataset" : "Next step")}
+      leftAction={
+        isAnalyzing ? (
+          <Button variant="outline" onClick={cancel}>
+            Cancel analysis
+          </Button>
+        ) : undefined
+      }
     >
+      {analysisError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{analysisError}</AlertDescription>
+        </Alert>
+      )}
       <DataUploadContent
         phase={phase}
         onPhaseChange={setPhase}
