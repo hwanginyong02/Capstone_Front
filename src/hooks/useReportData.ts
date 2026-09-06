@@ -310,7 +310,13 @@ export function useReportData(id: string): UseReportDataResult {
 
         const taskTypeResolved = workflowState.taskType || "binary";
         // 혼동행렬의 totalSamples가 가장 정확한 평가 데이터의 row 수 (멀티레이블의 경우 200)
-        const datasetSize = confusionMatrix?.totalSamples || Number(workflowState.datasetInfo?.validationSampleCount) || undefined;
+        // 서버가 확정한 표본 수를 최우선으로 쓴다. validationSampleCount 는 4단계에서
+        // 사용자가 손으로 적은 값이라 실제 평가 행 수와 무관할 수 있다(ISSUES.md B-02·E-17).
+        const datasetSize =
+          result.n_samples ||
+          confusionMatrix?.totalSamples ||
+          Number(workflowState.datasetInfo?.validationSampleCount) ||
+          undefined;
 
         const datasetDiagnosis = buildDatasetDiagnosis(
           { class_distribution: resolvedClassDistribution },
@@ -341,6 +347,9 @@ export function useReportData(id: string): UseReportDataResult {
           kpiResults: updatedKpiResults,
           confusionMatrix,
           classDistribution: resolvedClassDistribution,
+          // 표본 수는 서버가 확정한 값을 그대로 쓴다. 분포 합계로 추측하면 멀티레이블에서
+          // 200행이 408 이 된다(ISSUES.md B-02).
+          nSamples: result.n_samples ?? confusionMatrix?.totalSamples ?? 0,
           imbalanceRatio,
           droppedRows: result.dropped_rows,
           verdict: ruleConclusion.verdict,

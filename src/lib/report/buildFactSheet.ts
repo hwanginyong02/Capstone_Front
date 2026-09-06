@@ -57,9 +57,19 @@ export interface NarrativeRequestPayload {
 export interface BuildFactSheetInput {
   kpiResults: KpiResult[];
   confusionMatrix: ConfusionMatrixData | null;
+  /**
+   * 클래스별 등장 횟수. multilabel 은 **레이블 등장 횟수**라 합계가 표본 수를 넘는다
+   * — 표본 수로 쓰면 안 된다(ISSUES.md B-02). 표본 수는 nSamples 를 쓸 것.
+   */
   classDistribution: Record<string, number>;
   imbalanceRatio?: number;
   droppedRows: number;
+  /**
+   * 서버가 확정한 평가 표본 수(EvaluateResponse.n_samples — 결측 제거 후 실제로 지표를
+   * 계산한 행 수). 종전에는 이 값을 혼동행렬 합계나 분포 합계로 **추측**했고, M21
+   * 미선택 멀티레이블에서 200행이 408 이 됐다. 추측하는 자리를 없애기 위해 필수다.
+   */
+  nSamples: number;
   verdict: string;
   score: number;
   /** success_metrics.M22 (classification report) — 클래스별 precision/recall/f1/support */
@@ -103,6 +113,7 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
     kpiResults,
     confusionMatrix,
     classDistribution,
+    nSamples,
     imbalanceRatio,
     droppedRows,
     verdict,
@@ -127,10 +138,6 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
       status: isInfoOnly ? "info" : r.status,
     };
   });
-
-  // 평가 샘플 수: 혼동행렬 합계 > 분포 합계 순으로 도출
-  const distTotal = Object.values(classDistribution).reduce((a, b) => a + b, 0);
-  const nSamples = confusionMatrix?.totalSamples ?? distTotal ?? 0;
 
   const hasDistribution = Object.keys(classDistribution).length > 0;
 
