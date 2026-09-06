@@ -19,13 +19,6 @@ export interface MetricDefinition {
   higherIsBetter?: boolean;
 }
 
-export interface UploadColumnGuide {
-  alwaysRequired: string[];
-  conditionallyRequired: string[];
-  optional: string[];
-  notes: string[];
-}
-
 export type RequiredColumnCode =
   | "id"
   | "y_true"
@@ -65,7 +58,7 @@ export const METRICS: MetricDefinition[] = [
   { id: "M15", higherIsBetter: false, name: "Hamming Loss", subtitle: "Label mismatch ratio", description: "Measures label-wise disagreement in multi-label classification.", supportedTaskTypes: ["multilabel"], formula: "∑ (y_true ≠ y_pred) / (Samples * Labels)" },
   { id: "M16", name: "Exact Match Ratio", subtitle: "Strict set match", description: "Counts samples where all labels exactly match.", supportedTaskTypes: ["multilabel"], formula: "∑ (All_labels_match) / Samples" },
   { id: "M17", name: "Jaccard Index", subtitle: "Set overlap score", description: "Measures intersection over union of predicted and actual labels.", supportedTaskTypes: ["multilabel"], formula: "|y_true ∩ y_pred| / |y_true ∪ y_pred|" },
-  { id: "M18", higherIsBetter: false, name: "Distribution Diff (ML)", subtitle: "Label distribution gap", description: "Compares actual and predicted label distributions.", supportedTaskTypes: ["multilabel"], formula: "0.5 * ∑ |P(l) - Q(l)|" },
+  { id: "M18", higherIsBetter: false, name: "Distribution Diff (ML)", subtitle: "Label distribution gap", description: "Compares actual and predicted label distributions.", supportedTaskTypes: ["multilabel"], formula: "1 - cos(freq(y_true), freq(y_pred))" },
   { id: "M19", higherIsBetter: false, name: "Log Loss", subtitle: "Probabilistic error", description: "Penalizes confident but wrong probabilistic predictions.", supportedTaskTypes: ["binary"], probabilityRequiredFor: ["binary"], formula: "- (y * log(p) + (1-y) * log(1-p))" },
   { id: "M20", name: "MCC", subtitle: "Balanced correlation", description: "A robust binary metric that considers all confusion matrix cells.", supportedTaskTypes: ["binary"], formula: "(TP*TN - FP*FN) / √((TP+FP)(TP+FN)(TN+FP)(TN+FN))" },
   { id: "M21", name: "Confusion Matrix", subtitle: "Prediction matrix", description: "Shows actual versus predicted counts by class or label.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], formula: "실제/예측 클래스의 교차 분포를 행렬로 산출", isCommon: true },
@@ -79,55 +72,63 @@ const RECOMMENDED_METRICS: Record<TaskType, string[]> = {
   multilabel: ["M1", "M2", "M3", "M4", "M15", "M21", "M22", "M23"],
 };
 
+/**
+ * 지표별 요구 컬럼 — 백엔드 `METRIC_REQUIREMENTS`(app/core/schemas.py)와 대응한다.
+ *
+ * **`id`(sample_id)는 여기 들어가지 않는다.** SPEC §0 이 '선택(권장)'으로 규정하고
+ * 백엔드 요구표에도 sample_id 가 한 번도 없는데, 종전에는 43개 항목이 전부 "id" 로
+ * 시작해 매핑 화면이 '다음'을 하드 차단했다 — id 컬럼이 없는 데이터셋은 백엔드까지
+ * 가보지도 못했다(ISSUES.md A-13). id 는 여전히 매핑 **가능**하고 중복 검사에 쓰인다.
+ */
 const REQUIRED_COLUMNS_BY_METRIC: Record<TaskType, Partial<Record<string, RequiredColumnCode[]>>> = {
   binary: {
-    M1: ["id", "y_true", "y_pred"],
-    M2: ["id", "y_true", "y_pred"],
-    M3: ["id", "y_true", "y_pred"],
-    M4: ["id", "y_true", "y_pred"],
-    M5: ["id", "y_true", "y_pred"],
-    M6: ["id", "y_true", "y_pred"],
-    M7: ["id", "y_true", "y_pred"],
-    M8: ["id", "y_true", "y_pred"],
-    M9: ["id", "y_true", "score"],
-    M10: ["id", "y_true", "score"],
-    M19: ["id", "y_true", "score"],
-    M20: ["id", "y_true", "y_pred"],
-    M21: ["id", "y_true", "y_pred"],
-    M22: ["id", "y_true", "y_pred"],
-    M23: ["id", "y_true"],
+    M1: ["y_true", "y_pred"],
+    M2: ["y_true", "y_pred"],
+    M3: ["y_true", "y_pred"],
+    M4: ["y_true", "y_pred"],
+    M5: ["y_true", "y_pred"],
+    M6: ["y_true", "y_pred"],
+    M7: ["y_true", "y_pred"],
+    M8: ["y_true", "y_pred"],
+    M9: ["y_true", "score"],
+    M10: ["y_true", "score"],
+    M19: ["y_true", "score"],
+    M20: ["y_true", "y_pred"],
+    M21: ["y_true", "y_pred"],
+    M22: ["y_true", "y_pred"],
+    M23: ["y_true"],
   },
   multiclass: {
-    M1: ["id", "y_true", "y_pred"],
-    M2: ["id", "y_true", "y_pred"],
-    M3: ["id", "y_true", "y_pred"],
-    M4: ["id", "y_true", "y_pred"],
-    M5: ["id", "y_true", "y_pred"],
-    M6: ["id", "y_true", "y_pred"],
-    M11: ["id", "y_true", "y_pred"],
-    M12: ["id", "y_true", "y_pred"],
-    M13: ["id", "y_true", "y_pred"],
-    M14: ["id", "y_true", "y_pred"],
-    M21: ["id", "y_true", "y_pred"],
-    M22: ["id", "y_true", "y_pred"],
-    M23: ["id", "y_true"],
+    M1: ["y_true", "y_pred"],
+    M2: ["y_true", "y_pred"],
+    M3: ["y_true", "y_pred"],
+    M4: ["y_true", "y_pred"],
+    M5: ["y_true", "y_pred"],
+    M6: ["y_true", "y_pred"],
+    M11: ["y_true", "y_pred"],
+    M12: ["y_true", "y_pred"],
+    M13: ["y_true", "y_pred"],
+    M14: ["y_true", "y_pred"],
+    M21: ["y_true", "y_pred"],
+    M22: ["y_true", "y_pred"],
+    M23: ["y_true"],
   },
   multilabel: {
-    M1: ["id", "y_true", "y_pred"],
-    M2: ["id", "y_true", "y_pred"],
-    M3: ["id", "y_true", "y_pred"],
-    M4: ["id", "y_true", "y_pred"],
-    M5: ["id", "y_true", "y_pred"],
-    M11: ["id", "y_true", "y_pred"],
-    M12: ["id", "y_true", "y_pred"],
-    M13: ["id", "y_true", "y_pred"],
-    M15: ["id", "y_true", "y_pred"],
-    M16: ["id", "y_true", "y_pred"],
-    M17: ["id", "y_true", "y_pred"],
-    M18: ["id", "y_true", "y_pred"],
-    M21: ["id", "y_true", "y_pred"],
-    M22: ["id", "y_true", "y_pred"],
-    M23: ["id", "y_true"],
+    M1: ["y_true", "y_pred"],
+    M2: ["y_true", "y_pred"],
+    M3: ["y_true", "y_pred"],
+    M4: ["y_true", "y_pred"],
+    M5: ["y_true", "y_pred"],
+    M11: ["y_true", "y_pred"],
+    M12: ["y_true", "y_pred"],
+    M13: ["y_true", "y_pred"],
+    M15: ["y_true", "y_pred"],
+    M16: ["y_true", "y_pred"],
+    M17: ["y_true", "y_pred"],
+    M18: ["y_true", "y_pred"],
+    M21: ["y_true", "y_pred"],
+    M22: ["y_true", "y_pred"],
+    M23: ["y_true"],
   },
 };
 
@@ -272,44 +273,6 @@ export function selectionNeedsField(taskType: TaskType, selectedIds: string[], f
     }
     return field !== "positiveClass" || taskType === "binary";
   });
-}
-
-export function getUploadColumnGuide(taskType: TaskType, selectedIds: string[]): UploadColumnGuide {
-  const onlyM23 = selectedIds.length > 0 && selectedIds.every((id) => id === "M23");
-  const requiresProbability = selectionRequiresProbability(taskType, selectedIds);
-
-  const probabilityColumn =
-    taskType === "binary" ? "score" : taskType === "multiclass" ? "prob_class_*" : "prob_label_*";
-
-  const alwaysRequired = ["id", "y_true"];
-  const conditionallyRequired = onlyM23 ? [] : ["y_pred"];
-  const optional = requiresProbability ? [] : [probabilityColumn];
-  const notes = ["id values must be unique.", "Probability values must be between 0 and 1."];
-
-  if (requiresProbability) {
-    conditionallyRequired.push(probabilityColumn);
-  }
-  if (taskType === "multiclass") {
-    notes.push("For multiclass probabilities, the per-row probability sum should be close to 1.");
-  }
-  if (taskType === "multilabel") {
-    notes.push("Use a consistent label separator or one-hot label columns for multi-label data.");
-  }
-  if (onlyM23) {
-    notes.push("M23 can be computed with dataset distribution only, so prediction columns are optional.");
-  }
-
-  return { alwaysRequired, conditionallyRequired, optional, notes };
-}
-
-export function getProbabilityColumnLabel(taskType: TaskType): string {
-  if (taskType === "binary") {
-    return "positive class score column";
-  }
-  if (taskType === "multiclass") {
-    return "per-class probability columns (prob_class_*)";
-  }
-  return "per-label probability columns (prob_label_*)";
 }
 
 export function getRequiredColumnsForSelection(taskType: TaskType, selectedIds: string[]): RequiredColumnDisplay[] {

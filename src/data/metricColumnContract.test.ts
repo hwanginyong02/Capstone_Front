@@ -74,15 +74,19 @@ const BACKEND_METRIC_REQUIREMENTS: Record<TaskType, Record<string, string[]>> = 
 
 const TASK_TYPES: TaskType[] = ["binary", "multiclass", "multilabel"];
 
-/** 지표 요구사항과 무관한 역할(모든 지표에 공통이거나 선택 컬럼). */
-const NON_METRIC_ROLES = new Set(["sample_id", "latency", "ignore"]);
-
 const PROBABILITY_CODES = new Set<RequiredColumnCode>(["score", "prob_class_*", "prob_label_*"]);
 
+/**
+ * 프론트 요구 컬럼 → 백엔드 역할. **필터가 없다.**
+ *
+ * 종전에는 `NON_METRIC_ROLES`(sample_id/latency/ignore)를 비교에서 빼고 있었고,
+ * 그 필터가 정확히 A-13 을 가리고 있었다 — 프론트 요구표 43개 항목이 전부 "id" 로
+ * 시작했는데 백엔드 표에는 sample_id 가 한 번도 없었다. 필터를 걷어내면 42건이
+ * red 가 됐을 자리다. 이제 양쪽이 실제로 같으므로 필터 없이 대조한다.
+ */
 function frontendRolesFor(taskType: TaskType, metricId: string): string[] {
   const roles = getRequiredColumnsForMetric(taskType, metricId)
-    .map((column) => translateRoleToBackend(column.code, taskType))
-    .filter((role) => !NON_METRIC_ROLES.has(role));
+    .map((column) => translateRoleToBackend(column.code, taskType));
   return [...new Set(roles)].sort();
 }
 
