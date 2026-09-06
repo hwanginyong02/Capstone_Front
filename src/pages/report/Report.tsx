@@ -8,7 +8,8 @@ import { ReportErrorState } from "../../components/report/ReportErrorState";
 import { ReportSections } from "../../components/report/ReportSections";
 
 export function Report() {
-  const { id = "preview" } = useParams();
+  // 기본값을 두지 않는다 — 폐지된 임시 성적서("preview")로 조용히 떨어지지 않게(E-06).
+  const { id = "" } = useParams();
   const { data: reportData, isLoading, narrativePending, error } = useReportData(id);
   const issuance = useIssuance(id, reportData);
   const data = issuance.data; // 발급 반영본(있으면) — 섹션은 이 값을 렌더한다

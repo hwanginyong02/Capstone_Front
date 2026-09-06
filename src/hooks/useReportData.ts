@@ -1,8 +1,12 @@
 /**
  * 최종 성적서 데이터 페칭 훅.
  *
- * - id === "preview": 워크플로우 store에서 입력값을 읽어 백엔드 /api/evaluate를 호출하여 데이터 계산 및 병합
- * - 그 외 id: 향후 백엔드 API 호출로 교체 (현재는 MOCK_FINAL_REPORT fallback)
+ * 워크스페이스에 저장된 run(`/report/:id`)의 성적서를 만든다. 캐시된 완성본이 있으면
+ * 그대로 쓰고, 없으면 워크플로우 store 의 입력으로 `/api/evaluate` → `/api/generate-narrative`
+ * 를 호출해 조립한다.
+ *
+ * 종전에는 `id === "preview"` 라는 임시 경로가 있어 워크스페이스 없이도 성적서가
+ * 렌더됐다 — 그 성적서는 어디에도 저장되지 않아 발급·재조회가 불가능했다(ISSUES.md E-02·E-06).
  */
 import { useEffect, useState } from "react";
 
@@ -51,7 +55,7 @@ export function useReportData(id: string): UseReportDataResult {
       return;
     }
 
-    if (id !== "preview" && !workflowState.rawFile) {
+    if (!workflowState.rawFile) {
       setData(run?.reportData || null);
       return;
     }
@@ -385,7 +389,7 @@ export function useReportData(id: string): UseReportDataResult {
           charts: { confusionMatrix, rocCurve, prCurve },
           latency: latencyStats,
         };
-        // id!=='preview' 라도 stage1(서술 없음)은 스토어에 저장하지 않는다(캐시 오염 방지) — 로컬 렌더만.
+        // stage1(서술 없음)은 스토어에 저장하지 않는다(캐시 오염 방지) — 로컬 렌더만.
         setData(stage1Report);
         setIsLoading(false);
         setNarrativePending(true);
@@ -412,7 +416,7 @@ export function useReportData(id: string): UseReportDataResult {
         };
 
         // 완성본(서술 포함)만 isEvaluated=true 로 스토어에 저장한다(캐시 히트 시 완성본 서빙).
-        if (id !== "preview") {
+        if (id) {
           const evaluatedReport = { ...mergedReport, isEvaluated: true };
           useWorkspaceStore.setState((state) => ({
             evaluationRuns: state.evaluationRuns.map((r) =>

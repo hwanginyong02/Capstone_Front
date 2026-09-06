@@ -42,7 +42,10 @@ export type StepPath = (typeof STEP_PATHS)[number];
 
 /** Convert a 1-based step number to a route path */
 export function stepToPath(step: number): string {
-  if (step === 7) return "/report/preview";
+  // 7단계(성적서)는 실제 run id 로만 열 수 있다. 여기서는 목적지가 정해지지 않으므로
+  // 항상 유효한 워크스페이스 목록으로 보낸다 — 종전의 "/report/preview" 는 저장되지
+  // 않는 임시 성적서를 만들어 발급·재조회를 불가능하게 했다(ISSUES.md E-02·E-06).
+  if (step === 7) return "/workspaces";
   return `/app/${STEP_PATHS[step - 1] ?? STEP_PATHS[0]}`;
 }
 

@@ -37,6 +37,9 @@ export const routes = [
   { path: "/step/data-upload", Component: redirectTo("/app/data-upload") },
   { path: "/step/column-mapping", Component: redirectTo("/app/column-mapping") },
   { path: "/step/data-validation", Component: redirectTo("/app/data-validation") },
+  // 폐지된 임시 성적서 경로. 옛 북마크가 `/report/:id` 에 id="preview" 로 매칭돼
+  // 빈 성적서를 렌더하지 않도록 명시적으로 앞에 둔다(ISSUES.md E-06).
+  { path: "/report/preview", Component: redirectTo("/workspaces") },
   // 성적서 번호로 서버 보관본 복원(ISSUES.md F-04).
   // react-router 는 정적 세그먼트("no")를 동적 세그먼트(":id")보다 높게 랭크하므로
   // 이 항목의 배열 위치와 무관하게 "/report/no/RPT-..." 가 이긴다
