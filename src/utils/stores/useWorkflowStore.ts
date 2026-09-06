@@ -1,10 +1,19 @@
 /**
- * 워크플로우 전역 상태 관리 (Zustand)
+ * 워크플로우 전역 상태 관리 (Zustand + persist)
  *
  * 이 스토어는 전체 평가 워크플로우의 상태(각 스텝의 입력 데이터, 현재 단계, 완료 여부 등)를
  * 관리하며, 최종 평가 리포트 데이터를 생성하는 로직을 포함합니다.
+ *
+ * ISSUES.md E-01 — 종전에는 persist 가 없어 **새로고침 한 번으로 1~5단계 입력이 전부
+ * 사라졌다.** 수십 분간 입력한 기업정보·모델정보·지표·매핑이 날아가고, 그것을 알리는
+ * 신호는 6단계의 "업로드된 파일이 없습니다" 문구뿐이었다.
+ *
+ * `rawFile` 은 File 객체라 JSON 직렬화가 원리적으로 불가능하므로 persist 대상에서 뺀다.
+ * 대신 `uploadedFile`(파일 메타)은 저장해, 재수화 후 **"파일이 있었는데 지금은 없다"** 를
+ * 감지해 재업로드를 유도할 수 있게 한다.
  */
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 import type { TaskType } from "../../data/evaluationData";
 import type { MappingRow } from "../../types/mapping.types";
 import type { ValidateDataResponseData } from "../../types/validation.types";
@@ -76,6 +85,15 @@ interface WorkflowState {
   // Step 6 — Data validation result (백엔드 /api/validate-data 응답, 리포트에서 재사용)
   validationResult: ValidateDataResponseData | null;
 
+  /**
+   * 과거 평가 스냅샷을 복원했거나 저장소에서 재수화해, 입력은 있는데 원본 파일이 없는 상태.
+   * 파일은 어떤 경우에도 복원할 수 없으므로 재업로드를 유도해야 한다(ISSUES.md E-01·E-09).
+   */
+  needsFileReupload: boolean;
+
+  /** 가장 최근에 만든 평가 run 의 id. 성적서로 되돌아가는 경로에 쓴다(ISSUES.md E-16). */
+  lastRunId: string | null;
+
   // Actions — Navigation
   setCurrentStep: (step: number) => void;
   markStepCompleted: (step: number) => void;
@@ -122,6 +140,7 @@ interface WorkflowState {
 
   // Actions — Step 6
   setValidationResult: (result: ValidateDataResponseData | null) => void;
+  setLastRunId: (runId: string | null) => void;
 
   // Reset
   resetWorkflow: () => void;
@@ -144,111 +163,190 @@ const INITIAL_STATE = {
   columnMapping: [] as MappingRow[],
   classLabelDescriptions: {} as Record<string, string>,
   validationResult: null as ValidateDataResponseData | null,
+  needsFileReupload: false,
+  lastRunId: null as string | null,
 };
 
-export const useWorkflowStore = create<WorkflowState>((set) => ({
-  ...INITIAL_STATE,
+/** persist 저장소 키. 테스트와 운영이 같은 값을 보도록 export 한다. */
+export const WORKFLOW_STORAGE_KEY = "ml-evaluation-workflow";
 
-  // Navigation
-  setCurrentStep: (step) => set({ currentStep: step }),
+/**
+ * 시연 모드(?showcase=1) 여부.
+ *
+ * showcase 는 `seedShowcaseData` 로 **실제 store 에 가짜 기업정보·사업자등록번호를 주입**하고,
+ * WorkflowShell 이 라우팅마다 그것을 다시 실행한다(ISSUES.md E-05). persist 를 그대로 붙이면
+ * 그 가짜 데이터가 사용자의 실제 작업 위에 영속된다.
+ * 그래서 시연 중에는 저장소를 **읽지도 쓰지도 않는다** — 시연이 실제 작업을 덮지 않고,
+ * 실제 작업이 시연 화면에 새어 나오지도 않는다.
+ */
+function isShowcaseMode(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("showcase") === "1";
+}
 
-  markStepCompleted: (step) =>
-    set((state) => ({
-      completedSteps: [...new Set([...state.completedSteps, step])],
-    })),
+export const useWorkflowStore = create<WorkflowState>()(
+  persist(
+    (set) => ({
+      ...INITIAL_STATE,
 
-  // Step 1
-  setBasicInfo: (value) =>
-    set((state) => ({
-      basicInfo:
-        typeof value === "function" ? value(state.basicInfo) : value,
-    })),
+      // Navigation
+      setCurrentStep: (step) => set({ currentStep: step }),
 
-  setTaskType: (type) =>
-    set({
-      taskType: type,
-      selectedMetricIds: [],
-      metricDetails: {},
-      uploadedFile: null,
-      rawFile: null,
-      metadata: null,
-      trainingExampleFiles: [],
-      trainingUnsuitableExampleFiles: [],
-      columnMapping: [],
-      classLabelDescriptions: {},
-      validationResult: null,
+      markStepCompleted: (step) =>
+        set((state) => ({
+          completedSteps: [...new Set([...state.completedSteps, step])],
+        })),
+
+      // Step 1
+      setBasicInfo: (value) =>
+        set((state) => ({
+          basicInfo:
+            typeof value === "function" ? value(state.basicInfo) : value,
+        })),
+
+      setTaskType: (type) =>
+        set({
+          taskType: type,
+          selectedMetricIds: [],
+          metricDetails: {},
+          uploadedFile: null,
+          rawFile: null,
+          metadata: null,
+          trainingExampleFiles: [],
+          trainingUnsuitableExampleFiles: [],
+          columnMapping: [],
+          classLabelDescriptions: {},
+          validationResult: null,
+          // 작업 유형이 바뀌면 뒤 단계의 근거가 전부 사라진다. 완료 표시와 데이터셋 정보를
+          // 남겨두면 (a) 빈 상태로 뒤 단계에 점프할 수 있고 (b) 이전 평가의 표본 수가 새
+          // 성적서에 인쇄된다(ISSUES.md E-08). persist 도입 전에는 새로고침이 사실상
+          // 초기화 역할을 해서 세션 안에 갇혀 있던 오염이다.
+          completedSteps: [],
+          datasetInfo: DEFAULT_DATASET_INFO,
+          needsFileReupload: false,
+          // basicInfo 는 유지한다 — 작업 유형만 바꿨는데 1단계 입력까지 날아가면 안 된다.
+        }),
+
+      // Step 2
+      setSelectedMetricIds: (ids) => set({ selectedMetricIds: ids }),
+
+      // Step 3
+      setMetricDetails: (value) =>
+        set((state) => ({
+          metricDetails:
+            typeof value === "function" ? value(state.metricDetails) : value,
+        })),
+
+      // Step 4
+      setUploadedFile: (file, rawFile) =>
+        // 원본 파일이 함께 들어오면 '재업로드 필요' 상태가 해소된다.
+        set({ uploadedFile: file, rawFile: rawFile || null, needsFileReupload: false }),
+      setRawFile: (file) => set({ rawFile: file }),
+      setMetadata: (metadata) => set({ metadata: metadata }),
+
+      setTrainingExampleFiles: (value) =>
+        set((state) => ({
+          trainingExampleFiles:
+            typeof value === "function" ? value(state.trainingExampleFiles) : value,
+        })),
+
+      setTrainingUnsuitableExampleFiles: (value) =>
+        set((state) => ({
+          trainingUnsuitableExampleFiles:
+            typeof value === "function" ? value(state.trainingUnsuitableExampleFiles) : value,
+        })),
+
+      setDatasetInfo: (value) =>
+        set((state) => ({
+          datasetInfo:
+            typeof value === "function" ? value(state.datasetInfo) : value,
+        })),
+
+      // Step 5
+      setColumnMapping: (value) =>
+        set((state) => ({
+          columnMapping:
+            typeof value === "function" ? value(state.columnMapping) : value,
+        })),
+
+      setClassLabelDescriptions: (value) =>
+        set((state) => ({
+          classLabelDescriptions:
+            typeof value === "function"
+              ? value(state.classLabelDescriptions)
+              : value,
+        })),
+
+      // Step 6
+      setValidationResult: (result) => set({ validationResult: result }),
+
+      setLastRunId: (runId) => set({ lastRunId: runId }),
+
+      // Reset
+      resetWorkflow: () => set(INITIAL_STATE),
+
+      loadWorkflowSnapshot: (snapshot) =>
+        set({
+          basicInfo: snapshot.basicInfo,
+          taskType: snapshot.taskType,
+          selectedMetricIds: snapshot.selectedMetricIds,
+          metricDetails: snapshot.metricDetails,
+          uploadedFile: snapshot.uploadedFile,
+          rawFile: null,
+          metadata: null,
+          trainingExampleFiles: snapshot.trainingExampleFiles,
+          trainingUnsuitableExampleFiles: snapshot.trainingUnsuitableExampleFiles,
+          datasetInfo: snapshot.datasetInfo,
+          columnMapping: snapshot.columnMapping,
+          classLabelDescriptions: snapshot.classLabelDescriptions,
+          validationResult: null,
+          currentStep: 1,
+          // 원본 파일은 복원할 수 없다(File 객체). 파일이 있어야 성립하는 4~6단계를 '완료'로
+          // 표시하면 거짓말이고, 사용자는 빈 상태로 뒤 단계에 진입해 막다른 길에 갇힌다
+          // (ISSUES.md E-09). 파일 이전 단계까지만 완료로 둔다.
+          completedSteps: [1, 2, 3],
+          needsFileReupload: true,
+        }),
     }),
-
-  // Step 2
-  setSelectedMetricIds: (ids) => set({ selectedMetricIds: ids }),
-
-  // Step 3
-  setMetricDetails: (value) =>
-    set((state) => ({
-      metricDetails:
-        typeof value === "function" ? value(state.metricDetails) : value,
-    })),
-
-  // Step 4
-  setUploadedFile: (file, rawFile) => set({ uploadedFile: file, rawFile: rawFile || null }),
-  setRawFile: (file) => set({ rawFile: file }),
-  setMetadata: (metadata) => set({ metadata: metadata }),
-
-  setTrainingExampleFiles: (value) =>
-    set((state) => ({
-      trainingExampleFiles:
-        typeof value === "function" ? value(state.trainingExampleFiles) : value,
-    })),
-
-  setTrainingUnsuitableExampleFiles: (value) =>
-    set((state) => ({
-      trainingUnsuitableExampleFiles:
-        typeof value === "function" ? value(state.trainingUnsuitableExampleFiles) : value,
-    })),
-
-  setDatasetInfo: (value) =>
-    set((state) => ({
-      datasetInfo:
-        typeof value === "function" ? value(state.datasetInfo) : value,
-    })),
-
-  // Step 5
-  setColumnMapping: (value) =>
-    set((state) => ({
-      columnMapping:
-        typeof value === "function" ? value(state.columnMapping) : value,
-    })),
-
-  setClassLabelDescriptions: (value) =>
-    set((state) => ({
-      classLabelDescriptions:
-        typeof value === "function"
-          ? value(state.classLabelDescriptions)
-          : value,
-    })),
-
-  // Step 6
-  setValidationResult: (result) => set({ validationResult: result }),
-
-  // Reset
-  resetWorkflow: () => set(INITIAL_STATE),
-
-  loadWorkflowSnapshot: (snapshot) =>
-    set({
-      basicInfo: snapshot.basicInfo,
-      taskType: snapshot.taskType,
-      selectedMetricIds: snapshot.selectedMetricIds,
-      metricDetails: snapshot.metricDetails,
-      uploadedFile: snapshot.uploadedFile,
-      rawFile: null,
-      metadata: null,
-      trainingExampleFiles: snapshot.trainingExampleFiles,
-      trainingUnsuitableExampleFiles: snapshot.trainingUnsuitableExampleFiles,
-      datasetInfo: snapshot.datasetInfo,
-      columnMapping: snapshot.columnMapping,
-      classLabelDescriptions: snapshot.classLabelDescriptions,
-      validationResult: null,
-      currentStep: 1,
-      completedSteps: [1, 2, 3, 4, 5, 6],
-    }),
-}));
+    {
+      name: WORKFLOW_STORAGE_KEY,
+      version: 1,
+      // 시연 모드에서는 저장소를 읽지도 쓰지도 않는다(위 isShowcaseMode 주석 참조).
+      storage: createJSONStorage(() => ({
+        getItem: (name) => (isShowcaseMode() ? null : window.localStorage.getItem(name)),
+        setItem: (name, value) => {
+          if (isShowcaseMode()) return;
+          try {
+            window.localStorage.setItem(name, value);
+          } catch {
+            // 용량 초과 등으로 저장에 실패해도 진행 중인 입력을 잃게 하지 않는다.
+            // (저장소가 가득 찬 상황의 안내는 6단계 저장 경로가 담당한다 — ISSUES.md E-11)
+          }
+        },
+        removeItem: (name) => window.localStorage.removeItem(name),
+      })),
+      /**
+       * 저장 대상 선별.
+       * - `rawFile` 제외: File 객체는 JSON 직렬화가 원리적으로 불가능하다. 대신
+       *   `uploadedFile`(메타)은 저장해 "파일이 있었는데 지금은 없다"를 감지한다.
+       * - `validationResult` 제외: 응답 전문이라 용량 기여가 크고 6단계 재진입 시
+       *   다시 받으면 된다(ISSUES.md E-11).
+       * - `metadata` 포함: 5단계의 양성 클래스·감지 클래스·컬럼 고유값이 여기 있어,
+       *   빼면 새로고침 후 매핑 화면이 무너져 persist 의 효용이 절반이 된다.
+       *   백엔드가 컬럼당 고유값을 200개로 상한하므로 용량은 감당 가능하다.
+       */
+      partialize: (state) => {
+        const { rawFile, validationResult, ...persisted } = state;
+        void rawFile;
+        void validationResult;
+        return persisted;
+      },
+      /** 재수화 시점에 파일이 없으면 재업로드가 필요한 상태다. */
+      onRehydrateStorage: () => (state) => {
+        if (state && state.uploadedFile && !state.rawFile) {
+          state.needsFileReupload = true;
+        }
+      },
+    },
+  ),
+);

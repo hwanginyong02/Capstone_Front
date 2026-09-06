@@ -41,6 +41,23 @@ export interface IssuePayload {
   modelVersion?: string;
   note?: string;
   issuer?: string;
+  /**
+   * 발급 시점의 성적서 원본(FinalReportData). 서버가 그대로 보관해 번호로 복원하고
+   * 인쇄물 진위를 대조할 수 있게 한다(ISSUES.md F-01). 상한 1 MiB.
+   */
+  content?: unknown;
+}
+
+export interface ReissueOptions {
+  /**
+   * 발급 시 사용한 run 식별자 — **소지 증명**(ISSUES.md G-02).
+   * report_no 는 RPT-{연도}-{순번} 이라 전수 열거가 가능하지만 run_id 는
+   * crypto.randomUUID 라 추측할 수 없다. 백엔드가 불일치 시 403 을 낸다.
+   */
+  runId: string;
+  /** 정정된 성적서 원본. 이전 차수 스냅샷은 서버가 보존한다. */
+  content?: unknown;
+  issuer?: string;
 }
 
 // ── KST 표시 포맷터 ────────────────────────────────────────────────────────────
@@ -146,6 +163,7 @@ export async function issueReport(payload: IssuePayload): Promise<IssuanceResult
       model_version: payload.modelVersion ?? null,
       note: payload.note ?? null,
       issuer: payload.issuer ?? null,
+      content: payload.content ?? null,
     }),
   });
   if (!resp.ok) throw new Error(await errorDetail(resp, "발급에 실패했습니다."));
@@ -156,13 +174,62 @@ export async function issueReport(payload: IssuePayload): Promise<IssuanceResult
 export async function reissueReport(
   reportNo: string,
   note: string,
-  issuer?: string,
+  options: ReissueOptions,
 ): Promise<IssuanceResult> {
   const resp = await fetch(apiUrl(`/api/reports/${encodeURIComponent(reportNo)}/reissue`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ note, issuer: issuer ?? null }),
+    body: JSON.stringify({
+      run_id: options.runId,
+      note,
+      issuer: options.issuer ?? null,
+      content: options.content ?? null,
+    }),
   });
   if (!resp.ok) throw new Error(await errorDetail(resp, "재발급에 실패했습니다."));
   return mapIssuance(await resp.json());
+}
+
+
+export interface ReportContent {
+  reportNo: string;
+  version: string;
+  /** offset 포함 ISO8601 (백엔드 원본) */
+  issuedAt: string;
+  /** content 의 SHA-256 — 인쇄물 진위 대조용 */
+  contentHash: string;
+  /** 발급 시점의 성적서 원본(FinalReportData 형태) */
+  content: unknown;
+}
+
+/**
+ * 성적서 번호로 발급 시점 원본을 복원한다(ISSUES.md F-01·F-04).
+ *
+ * 브라우저 저장소를 지웠거나 다른 기기에서 접속해도 번호만 알면 문서를 되살릴 수 있다.
+ * 내용 보관 도입(2026-09-05) 이전에 발급된 문서는 서버에 사본이 없어 null 이 된다 —
+ * 소급 백필은 하지 않는다(없던 사실을 만들어 넣지 않는다).
+ *
+ * @param version 미지정 시 최신 차수. 이전 차수를 지정하면 정정 전 문서를 볼 수 있다.
+ */
+export async function getReportContent(
+  reportNo: string,
+  version?: string,
+): Promise<ReportContent | null> {
+  try {
+    const qs = version ? `?version=${encodeURIComponent(version)}` : "";
+    const resp = await fetch(
+      apiUrl(`/api/reports/${encodeURIComponent(reportNo)}/content${qs}`),
+    );
+    if (!resp.ok) return null;
+    const body = await resp.json();
+    return {
+      reportNo: body.report_no ?? reportNo,
+      version: body.version ?? "",
+      issuedAt: body.issued_at ?? "",
+      contentHash: body.content_hash ?? "",
+      content: body.content ?? null,
+    };
+  } catch {
+    return null;
+  }
 }

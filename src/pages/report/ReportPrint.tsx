@@ -53,6 +53,7 @@ export function ReportPrint() {
             dataValidation={data.dataValidation}
             kpiResults={data.kpiResults}
             totalSamples={data.datasetInfo.sampleCount}
+            validationSummary={data.validationSummary}
           />
           <KpiResultSection kpiResults={data.kpiResults} taskType={data.meta.taskType} meta={data.meta} />
         </PageBreak>

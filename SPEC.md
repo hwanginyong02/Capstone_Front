@@ -117,13 +117,13 @@
 | 지표 | 메트릭 | 필수 컬럼 | 선택 컬럼 | UI 입력 | 비고 |
 |----|--------|-----------|-----------|---------|------|
 | M1 | Accuracy (subset) | `y_true`, `y_pred` *또는* `prob_label_*`+threshold | — | threshold_per_label | subset accuracy = exact match |
-| M2 | Precision (sample 평균) | `y_true`, `y_pred` *또는* `prob_label_*`+threshold | — | threshold_per_label | — |
-| M3 | Recall (sample 평균) | `y_true`, `y_pred` *또는* `prob_label_*`+threshold | — | threshold_per_label | — |
-| M4 | F1 Score (sample 평균) | `y_true`, `y_pred` *또는* `prob_label_*`+threshold | — | threshold_per_label | — |
-| M5 | Fβ Score | `y_true`, `y_pred` *또는* `prob_label_*`+threshold | — | threshold_per_label, **beta** | — |
+| M2 | Precision (**Macro 평균**) | `y_true`, `y_pred` *또는* `prob_label_*`+threshold | — | threshold_per_label | — |
+| M3 | Recall (**Macro 평균**) | `y_true`, `y_pred` *또는* `prob_label_*`+threshold | — | threshold_per_label | — |
+| M4 | F1 Score (**Macro 평균**) | `y_true`, `y_pred` *또는* `prob_label_*`+threshold | — | threshold_per_label | — |
+| M5 | Fβ Score (**Macro 평균**) | `y_true`, `y_pred` *또는* `prob_label_*`+threshold | — | threshold_per_label, **beta** | — |
 | M15 | Hamming Loss | `y_true`, `y_pred` *또는* `prob_label_*`+threshold | — | threshold_per_label | 4213 6.5.2 |
 | M16 | Exact Match Ratio | `y_true`, `y_pred` *또는* `prob_label_*`+threshold | — | threshold_per_label | 4213 6.5.3 |
-| M17 | Jaccard Index | `y_true`, `y_pred` *또는* `prob_label_*`+threshold | — | threshold_per_label | 4213 6.5.4 |
+| M17 | Jaccard Index (**샘플 평균**) | `y_true`, `y_pred` *또는* `prob_label_*`+threshold | — | threshold_per_label | 4213 6.5.4 · 빈 레이블 행(0/0)은 일치로 셈 |
 | M18 | Distribution Diff (ML) | `y_true`, `y_pred` | `prob_label_*` | — | 4213 6.5.5 (레이블 빈도 벡터의 코사인 거리) |
 | M21 | Confusion Matrix (label-wise) | `y_true`, `y_pred` *또는* `prob_label_*`+threshold | — | threshold_per_label | 각 레이블별 2x2 |
 | M22 | Class별 Metric | `y_true`, `y_pred` *또는* `prob_label_*`+threshold | — | threshold_per_label | — |
@@ -135,6 +135,16 @@
 2. **`prob_label_*`만 있으면 각 레이블 독립 판정** — `y_pred_label_i = 1 if prob_label_i ≥ threshold else 0`
 3. **threshold는 필수** (y_pred가 이미 있지 않은 한) — 각 레이블 합이 1이 아니므로 argmax 불가
 4. **레이블 배열/파이프 구분 표기 통일**: 입력 파서에서 `"A|B|C"`, `["A","B","C"]` 둘 다 받아 내부는 배열로 정규화
+5. **M2~M5의 평균 방식은 Macro(레이블별 값의 단순평균)다** — 2026-09-05 결정.
+   종전 이 표는 "sample 평균"이라고 적었으나 구현은 macro였다(ISSUES.md A-08).
+   구현이 아니라 이 문서를 정정하는 방향으로 결정한 근거는 **성적서의 자체 검산 가능성**이다.
+   성적서는 M22(클래스별 지표)를 레이블별 표로 인쇄하고 M2~M5를 헤드라인 수치로 인쇄하는데,
+   macro일 때만 **독자가 인쇄된 표를 평균해 헤드라인을 재계산할 수 있다.**
+   sample 평균은 인쇄되는 어떤 값으로도 유도되지 않아, 재계산하면 불일치가 난다.
+   - 대조: **M17(Jaccard)만 샘플 평균**이다. Jaccard는 본래 샘플 단위로 정의되는 지표라
+     레이블 단위 평균이 성립하지 않는다. 두 지표의 기준이 다른 것은 의도된 것이다.
+   - 이 규약은 `Capstone_Back/tests/test_metric_values.py`가 기대값으로 고정한다
+     (macro 4/9 vs samples 0.625를 명시적으로 구분).
 
 ---
 
