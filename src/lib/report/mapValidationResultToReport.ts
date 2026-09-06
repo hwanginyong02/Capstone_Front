@@ -3,7 +3,8 @@
  *
  * 검증 페이지(Step 6)에서 받은 실제 전처리 검증 결과를 성적서 6절(시험 결과)의
  * `dataValidation`(검증 상세) 및 `validationSummary`(수행 요약 수치)로 변환한다.
- * 기존 MOCK_FINAL_REPORT.dataValidation(가짜 8항목)을 대체한다.
+ * 검증을 수행하지 않았으면 빈 배열을 돌려주고 섹션이 "검증 미수행"으로 안내한다 —
+ * 채워 넣을 기본값(MOCK)은 없다(ISSUES.md H-11).
  */
 import type { ValidationResult, ValidationSummary } from "../../types/finalReport.types";
 import type { ValidateDataResponseData } from "../../types/validation.types";

@@ -6,6 +6,7 @@ import { ReportLayout } from "../../components/report/layout/ReportLayout";
 import { ReportLoadingState } from "../../components/report/ReportLoadingState";
 import { ReportErrorState } from "../../components/report/ReportErrorState";
 import { ReportSections } from "../../components/report/ReportSections";
+import { UnevaluatedDraftNotice } from "../../components/report/UnevaluatedDraftNotice";
 
 export function Report() {
   // 기본값을 두지 않는다 — 폐지된 임시 성적서("preview")로 조용히 떨어지지 않게(E-06).
@@ -35,6 +36,8 @@ export function Report() {
       onIssue={issuance.issue}
       onReissue={issuance.reissue}
     >
+      <UnevaluatedDraftNotice isEvaluated={!!(data as any).isEvaluated || narrativePending} />
+
       {narrativePending && (
         <div className="mb-4 flex items-center gap-2 rounded-md border border-teal-200 bg-teal-50 px-4 py-2.5 text-sm text-teal-700">
           <span className="inline-block size-3 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
