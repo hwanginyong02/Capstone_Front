@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { CalendarIcon, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "../../utils/styling/styles";
 import type { BasicInfoFormData } from "../../types/workflow.types";
+import { fromIsoDate, toIsoDate } from "../../utils/domain/isoDate";
 
 interface BasicInfoProps {
   formData: BasicInfoFormData;
@@ -101,11 +102,13 @@ export function BasicInfo({
               </Field>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* 스토어는 ISO 날짜 문자열을 들고, Date 변환은 이 UI 경계에서만 한다
+                    (ISSUES.md E-09 — 상태가 localStorage 를 왕복해도 타입이 붕괴하지 않게). */}
                 <DateField
                   label="Evaluation request date"
                   required
-                  value={formData.contractDate ?? new Date()}
-                  onChange={(value) => update("contractDate", value ?? new Date())}
+                  value={fromIsoDate(formData.contractDate) ?? new Date()}
+                  onChange={(value) => update("contractDate", toIsoDate(value ?? new Date()))}
                 />
               </div>
             </CardContent>

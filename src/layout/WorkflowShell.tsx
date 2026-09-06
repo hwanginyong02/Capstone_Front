@@ -1,9 +1,10 @@
 import { useEffect, type ReactNode } from "react";
-import { useLocation } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { AppHeader } from "./components/AppHeader";
 import { StepTabs } from "./components/StepTabs";
 import { ActionBar } from "./components/ActionBar";
-import { pathToStep, useWorkflowStore } from "../utils/stores/useWorkflowStore";
+import { pathToStep, stepToPath, useWorkflowStore } from "../utils/stores/useWorkflowStore";
+import { canEnterStep, resumeStep } from "../utils/domain/stepAccess";
 import { seedShowcaseData } from "../utils/domain/showcaseSeed";
 
 interface WorkflowShellProps {
@@ -35,17 +36,32 @@ export function WorkflowShell({
   leftAction
 }: WorkflowShellProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const isShowcaseMode = new URLSearchParams(location.search).get("showcase") === "1";
 
   useEffect(() => {
     const step = pathToStep(location.pathname);
     const store = useWorkflowStore.getState();
-    store.setCurrentStep(step);
 
     if (isShowcaseMode) {
+      // 시연은 시드가 완료 표시를 직접 채우므로 가드를 적용하지 않는다.
+      store.setCurrentStep(step);
       seedShowcaseData(store, step);
+      return;
     }
-  }, [location.pathname, location.search, isShowcaseMode]);
+
+    // 선행 단계를 마치지 않은 단계로 직접 들어오는 것을 막는다(ISSUES.md E-12).
+    // 이 가드는 워크플로우 상태가 영속된 뒤에야 성립한다(E-01) — 종전에는 새로고침마다
+    // completedSteps 가 비어서 정상 사용자도 1단계로 튕겼다.
+    if (!canEnterStep(step, store.completedSteps)) {
+      const target = resumeStep(store.completedSteps);
+      store.setCurrentStep(target);
+      navigate(stepToPath(target), { replace: true });
+      return;
+    }
+
+    store.setCurrentStep(step);
+  }, [location.pathname, location.search, isShowcaseMode, navigate]);
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-col relative">

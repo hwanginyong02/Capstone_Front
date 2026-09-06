@@ -4,6 +4,7 @@ import { useWorkflowStore, stepToPath } from "../utils/stores/useWorkflowStore";
 import { WorkflowShell } from "../layout/WorkflowShell";
 import { ColumnMapping as ColumnMappingContent } from "../components/column-mapping/ColumnMapping";
 import { confirmMapping } from "../lib/report/confirmMappingApi";
+import { FileReuploadNotice } from "../components/workflow/FileReuploadNotice";
 
 /**
  * Step 5 ??Column Mapping page
@@ -63,6 +64,7 @@ export function ColumnMapping() {
       nextDisabled={!isValid || isConfirming}
       nextLabel={isConfirming ? "Confirming..." : "Confirm mapping"}
     >
+      <FileReuploadNotice />
       <ColumnMappingContent
         taskType={store.taskType}
         selectedMetricIds={store.selectedMetricIds}

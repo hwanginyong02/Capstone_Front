@@ -16,9 +16,16 @@ export function StepTabs() {
   const navigate = useNavigate();
   const currentStep = useWorkflowStore((s) => s.currentStep);
   const completedSteps = useWorkflowStore((s) => s.completedSteps);
+  const lastRunId = useWorkflowStore((s) => s.lastRunId);
 
   const handleStepClick = (step: number) => {
     useWorkflowStore.getState().setCurrentStep(step);
+    // 7번(최종 성적서)은 방금 만든 run 으로 보낸다. stepToPath(7) 은 항상
+    // "/report/preview" 를 가리켜, 실제 성적서가 아니라 빈 미리보기로 갔다(ISSUES.md E-16).
+    if (step === 7 && lastRunId) {
+      navigate(`/report/${lastRunId}`);
+      return;
+    }
     navigate(stepToPath(step));
   };
 

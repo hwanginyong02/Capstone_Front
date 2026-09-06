@@ -1,4 +1,5 @@
 import type { TaskType } from "../data/evaluationData";
+import { todayIsoDate } from "../utils/domain/isoDate";
 
 export interface BasicInfoFormData {
   companyName: string;
@@ -8,7 +9,9 @@ export interface BasicInfoFormData {
   phone: string;
   fax: string;
   address: string;
-  contractDate?: Date;
+  /** ISO 날짜 문자열("YYYY-MM-DD"). 이 상태는 localStorage 를 왕복하므로
+   *  직렬화 가능한 형태가 참 타입이다(ISSUES.md E-09). UI 경계에서만 Date 로 변환한다. */
+  contractDate?: string;
   reportPurpose: string;
   projectName: string;
   projectAgency: string;
@@ -61,7 +64,7 @@ export const DEFAULT_BASIC_INFO: BasicInfoFormData = {
   phone: "",
   fax: "",
   address: "",
-  contractDate: new Date(),
+  contractDate: todayIsoDate(),
   reportPurpose: "",
   projectName: "",
   projectAgency: "",

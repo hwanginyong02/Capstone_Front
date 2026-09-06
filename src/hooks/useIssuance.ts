@@ -96,6 +96,9 @@ export function useIssuance(
         runId: id,
         modelName: run?.modelName,
         modelVersion: run?.versionName,
+        // 발급 시점의 성적서 원본을 서버에 보관한다 — 이것이 없으면 번호로 문서를
+        // 복원할 수도, 인쇄물의 진위를 대조할 수도 없다(ISSUES.md F-01).
+        content: data,
       });
       persist(applyIssuance(data, result));
     } catch (e: any) {
@@ -109,7 +112,11 @@ export function useIssuance(
     if (!data || busy || !issued) return;
     setBusy(true);
     try {
-      const result = await reissueReport(data.meta.reportId, note);
+      // run 식별자는 소지 증명으로 필수다(G-02). 라우트의 id 가 발급 때 보낸 runId 와 같다.
+      const result = await reissueReport(data.meta.reportId, note, {
+        runId: id,
+        content: data,
+      });
       persist(applyIssuance(data, result));
     } catch (e: any) {
       alert(`재발급 실패: ${e?.message ?? e}`);
