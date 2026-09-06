@@ -81,6 +81,7 @@ export function useDataValidation(): UseDataValidationResult {
           selected_metric_ids: store.selectedMetricIds,
           metadata: metadata,
           beta: beta,
+          decision_threshold: store.decisionThreshold,
         };
 
         const formData = new FormData();

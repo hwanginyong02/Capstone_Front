@@ -1,4 +1,4 @@
-import type { FinalReportMeta, KpiResult } from "../../../types/finalReport.types";
+import type { DerivedPredictionFact, FinalReportMeta, KpiResult } from "../../../types/finalReport.types";
 import { MetricRow } from "../shared/MetricRow";
 import { PassBadge } from "../shared/PassBadge";
 
@@ -16,6 +16,27 @@ const KPI_CORE_IDS_BY_TASK: Record<TaskType, Set<string>> = {
   multilabel: new Set(["M4", "M15", "M17", "M23"]),
 };
 
+/**
+ * 파생 예측의 방법·임계값·출처를 한 문장으로. SPEC §0 이 요구하는 기재 항목이다
+ * (ISSUES.md A-01) — 어떤 컬럼에서 어떤 규칙으로 만들었는지가 성적서에 남아야
+ * 독자가 그 수치를 재현할 수 있다.
+ */
+function describeDerivation(fact: DerivedPredictionFact): string {
+  const source = fact.source_columns.join(", ");
+  if (fact.method === "argmax") {
+    return `확률 컬럼 [${source}] 중 가장 큰 값의 클래스를 예측으로 삼았습니다(argmax, 임계값 없음).`;
+  }
+  if (fact.method === "threshold_per_label") {
+    const t =
+      typeof fact.threshold === "object" && fact.threshold !== null
+        ? Object.entries(fact.threshold).map(([col, v]) => `${col} ≥ ${v}`).join(", ")
+        : `모든 레이블 ≥ ${fact.threshold}`;
+    return `점수 컬럼 [${source}] 에 레이블별 결정 임계값을 적용했습니다(${t}).`;
+  }
+  const positive = fact.positive_class ? ` 양성 클래스는 [${fact.positive_class}] 입니다.` : "";
+  return `점수 컬럼 [${source}] 이 결정 임계값 ${fact.threshold} 이상이면 양성으로 판정했습니다.${positive}`;
+}
+
 export function KpiResultSection({ kpiResults, taskType, meta }: KpiResultSectionProps) {
   const coreIds = KPI_CORE_IDS_BY_TASK[taskType] || KPI_CORE_IDS_BY_TASK.binary;
   const kpiCore   = kpiResults.filter((r) => coreIds.has(r.metricId));
@@ -30,6 +51,12 @@ export function KpiResultSection({ kpiResults, taskType, meta }: KpiResultSectio
           <li>본 성적서의 모든 성능 산출 결과 및 기준 수치는 원본 데이터에서 소수점 셋째 자리로 반올림 표기되었습니다.</li>
           {taskType === "binary" && (
             <li>본 성적서의 이진 분류 평가 지표는 사용자가 매핑 단계에서 지정한 {meta?.positiveClass ? `[ ${meta.positiveClass} ]` : "Target"} 클래스 기준으로 산출되었습니다.</li>
+          )}
+          {meta?.derivedPrediction && (
+            <li>
+              <strong>본 평가의 예측 레이블은 모델이 직접 출력한 값이 아니라 확률·점수에서 파생한 값입니다.</strong>{" "}
+              {describeDerivation(meta.derivedPrediction)}
+            </li>
           )}
           {kpiResults.some(r => r.metricId === "M6") && (
             <li>KL Divergence(M6) 지표는 예측 확률(Probability) 분포가 아닌, 정답 레이블과 모델이 예측한 클래스 레이블 간의 분포 차이(Target Drift)를 기반으로 산출되었습니다.</li>

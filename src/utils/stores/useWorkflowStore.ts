@@ -77,6 +77,16 @@ interface WorkflowState {
   trainingUnsuitableExampleFiles: UploadedFileInfo[];
   datasetInfo: DatasetInfoFormData;
 
+  /**
+   * 결정 임계값 — 하드 예측이 없을 때 확률에서 예측을 파생하는 기준(ISSUES.md A-01).
+   *
+   * **성적서 합격 목표값(`metricDetails[id].targetValue`)과 다른 개념이다.**
+   * 백엔드 계약 필드명도 `decision_threshold` 로 분리돼 있다.
+   * 스칼라면 전 확률 컬럼 공통, 객체면 컬럼명별 값(multilabel 레이블별 임계값).
+   * null 이면 백엔드가 SPEC §6 의 기본값 0.5 를 쓴다.
+   */
+  decisionThreshold: number | Record<string, number> | null;
+
   // Step 5 — Column mapping
   columnMapping: MappingRow[];
   // Step 5 — Class label descriptions (class value -> description)
@@ -116,6 +126,7 @@ interface WorkflowState {
   setUploadedFile: (file: UploadedFileInfo | null, rawFile?: File) => void;
   setRawFile: (file: File | null) => void;
   setMetadata: (metadata: any | null) => void;
+  setDecisionThreshold: (value: number | Record<string, number> | null) => void;
   setTrainingExampleFiles: (
     value: UploadedFileInfo[] | ((prev: UploadedFileInfo[]) => UploadedFileInfo[]),
   ) => void;
@@ -160,6 +171,7 @@ const INITIAL_STATE = {
   trainingExampleFiles: [] as UploadedFileInfo[],
   trainingUnsuitableExampleFiles: [] as UploadedFileInfo[],
   datasetInfo: DEFAULT_DATASET_INFO,
+  decisionThreshold: null as number | Record<string, number> | null,
   columnMapping: [] as MappingRow[],
   classLabelDescriptions: {} as Record<string, string>,
   validationResult: null as ValidateDataResponseData | null,
@@ -214,6 +226,7 @@ export const useWorkflowStore = create<WorkflowState>()(
           metadata: null,
           trainingExampleFiles: [],
           trainingUnsuitableExampleFiles: [],
+          decisionThreshold: null,
           columnMapping: [],
           classLabelDescriptions: {},
           validationResult: null,
@@ -243,6 +256,7 @@ export const useWorkflowStore = create<WorkflowState>()(
         set({ uploadedFile: file, rawFile: rawFile || null, needsFileReupload: false }),
       setRawFile: (file) => set({ rawFile: file }),
       setMetadata: (metadata) => set({ metadata: metadata }),
+      setDecisionThreshold: (value) => set({ decisionThreshold: value }),
 
       setTrainingExampleFiles: (value) =>
         set((state) => ({
@@ -297,6 +311,7 @@ export const useWorkflowStore = create<WorkflowState>()(
           trainingExampleFiles: snapshot.trainingExampleFiles,
           trainingUnsuitableExampleFiles: snapshot.trainingUnsuitableExampleFiles,
           datasetInfo: snapshot.datasetInfo,
+          decisionThreshold: null,
           columnMapping: snapshot.columnMapping,
           classLabelDescriptions: snapshot.classLabelDescriptions,
           validationResult: null,

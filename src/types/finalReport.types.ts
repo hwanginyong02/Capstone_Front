@@ -15,6 +15,25 @@ export interface FinalReportMeta {
   taskTypeLabel: string;
   contractDate?: string;
   positiveClass?: string;
+  /**
+   * 하드 예측 없이 확률·점수에서 예측을 파생한 경우의 사실 기재(ISSUES.md A-01).
+   * SPEC §0 — "argmax·threshold 로 만든 예측은 모델의 실제 출력이 아니라 파생값이므로,
+   * 성적서에 파생 사실과 사용한 임계값을 반드시 기재해야 한다."
+   * 백엔드 `results.success_metrics.derived_prediction` 을 그대로 받는다.
+   */
+  derivedPrediction?: DerivedPredictionFact;
+}
+
+/** 확률에서 예측을 파생한 방법·임계값·출처 컬럼. */
+export interface DerivedPredictionFact {
+  method: "threshold" | "argmax" | "threshold_per_label";
+  threshold: number | Record<string, number> | null;
+  source_columns: string[];
+  target_role: string;
+  positive_class?: string;
+  negative_class?: string;
+  class_order?: string[];
+  label_order?: string[];
 }
 
 export interface ApplicantInfo {

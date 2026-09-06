@@ -109,6 +109,9 @@ export function useReportData(id: string): UseReportDataResult {
           selected_metric_ids: workflowState.selectedMetricIds,
           metadata: metadata,
           beta: beta,
+          // 하드 예측이 없을 때 확률에서 예측을 파생하는 기준(ISSUES.md A-01).
+          // 성적서 합격 목표값(threshold)과는 다른 개념이라 필드명이 분리돼 있다.
+          decision_threshold: workflowState.decisionThreshold,
         };
 
         const formData = new FormData();
@@ -363,8 +366,13 @@ export function useReportData(id: string): UseReportDataResult {
         // ── Stage 1: 서술과 무관한 결정론적 결과(KPI·차트·규칙 verdict)를 즉시 렌더한다.
         //    느리거나 실패하는 LLM 서술이 성적서 전체 표시를 인질로 잡지 않도록 분리(D6b).
         //    interpretation/recommendation* 은 baseReport 의 빈 기본값 유지, narrativeSource 미설정.
+        // 파생 예측 사실(SPEC §0 기재 의무)을 성적서 메타로 나른다. 백엔드는 실제로
+        // 파생이 일어났을 때만 이 키를 내려보낸다(ISSUES.md A-01).
+        const derivedPrediction = success_metrics.derived_prediction ?? undefined;
+
         const stage1Report: FinalReportData = {
           ...baseReport,
+          meta: { ...baseReport.meta, derivedPrediction },
           kpiResults: updatedKpiResults,
           conclusion: ruleConclusion,  // full ConclusionData (verdict/score + 빈 서술)
           datasetDiagnosis,

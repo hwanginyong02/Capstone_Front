@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   METRICS,
   MAPPABLE_ROLES_BY_TASK,
+  PREDICTION_ROLE_ALTERNATIVES,
   getRequiredColumnsForMetric,
   type TaskType,
   type RequiredColumnCode,
@@ -121,10 +122,37 @@ describe("REQUIRED_COLUMNS_BY_METRIC ↔ 백엔드 METRIC_REQUIREMENTS", () => {
    */
   const BACKEND_VALID_ROLES: Record<TaskType, string[]> = {
     binary: ["sample_id", "y_true", "y_pred", "score_positive", "latency"],
-    // multiclass/multilabel 은 확률 역할을 받지 않는다(어떤 지표도 사용하지 않음).
-    multiclass: ["sample_id", "y_true", "y_pred", "latency"],
-    multilabel: ["sample_id", "true_labels", "pred_labels", "latency"],
+    // 확률 역할은 세 task 모두에서 정식 입력이다(2026-09-07 결정 1) — 하드 예측이 없으면
+    // 백엔드가 확률에서 예측을 파생한다. BACKEND_PREDICTION_ROLES 참조.
+    multiclass: ["sample_id", "y_true", "y_pred", "prob_per_class", "latency"],
+    multilabel: ["sample_id", "true_labels", "pred_labels", "score_per_label", "latency"],
   };
+
+  /**
+   * 백엔드 app/core/schemas.py PREDICTION_ROLES_BY_TASK 의 고정 사본.
+   * 이 표가 어긋나면 화면이 허용한 매핑을 백엔드가 거절하거나(또는 그 반대),
+   * 확률만 제출한 사용자가 어느 한쪽에서만 막힌다(ISSUES.md A-01·A-02).
+   */
+  const BACKEND_PREDICTION_ROLES: Record<TaskType, { primary: string; alternatives: string[] }> = {
+    binary: { primary: "y_pred", alternatives: ["score_positive"] },
+    multiclass: { primary: "y_pred", alternatives: ["prob_per_class"] },
+    multilabel: { primary: "pred_labels", alternatives: ["score_per_label"] },
+  };
+
+  for (const taskType of TASK_TYPES) {
+    it(`${taskType}: 예측 역할의 대체 규칙이 백엔드와 일치한다`, () => {
+      const front = PREDICTION_ROLE_ALTERNATIVES[taskType];
+      const translated = {
+        primary: translateRoleToBackend(front.primary, taskType),
+        alternatives: front.alternatives.map((code) => translateRoleToBackend(code, taskType)).sort(),
+      };
+
+      expect(translated).toEqual({
+        primary: BACKEND_PREDICTION_ROLES[taskType].primary,
+        alternatives: [...BACKEND_PREDICTION_ROLES[taskType].alternatives].sort(),
+      });
+    });
+  }
 
   for (const taskType of TASK_TYPES) {
     it(`${taskType}: 매핑 가능 역할이 백엔드 허용 역할과 일치한다`, () => {

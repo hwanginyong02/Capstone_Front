@@ -141,12 +141,52 @@ const REQUIRED_COLUMNS_BY_METRIC: Record<TaskType, Partial<Record<string, Requir
  */
 export const MAPPABLE_ROLES_BY_TASK: Record<TaskType, RequiredColumnCode[]> = {
   binary: ["id", "y_true", "y_pred", "score", "latency"],
-  // multiclass/multilabel 은 확률 컬럼을 받지 않는다. 두 task 의 지표 중 확률을 읽는 것이
-  // 하나도 없어 값을 주지 못하면서, 매핑되면 그 컬럼의 결측이 평가 표본을 깎고
-  // 범위 이탈은 평가를 중단시킨다. 확률 기반 파생·지표가 생기면 그때 다시 넣는다.
-  multiclass: ["id", "y_true", "y_pred", "latency"],
-  multilabel: ["id", "y_true", "y_pred", "latency"],
+  // 확률 컬럼은 세 task 모두에서 정식 입력이다(2026-09-07 결정 1). 하드 예측이 없으면
+  // 백엔드가 확률에서 예측을 파생한다 — binary 는 임계값, multiclass 는 argmax,
+  // multilabel 은 레이블별 임계값. PREDICTION_ROLE_ALTERNATIVES 참조.
+  multiclass: ["id", "y_true", "y_pred", "prob_class_*", "latency"],
+  multilabel: ["id", "y_true", "y_pred", "prob_label_*", "latency"],
 };
+
+/**
+ * 예측 역할을 대신할 수 있는 확률 역할 — 백엔드 `PREDICTION_ROLES_BY_TASK`
+ * (Capstone_Back/app/core/schemas.py)의 거울이다. 두 표가 어긋나면 화면이 허용한
+ * 매핑을 백엔드가 거절하거나 그 반대가 된다(metricColumnContract.test.ts 가 고정).
+ *
+ * **왜 별도 표인가.** `REQUIRED_COLUMNS_BY_METRIC` 의 값은 배열(AND 의미)이라
+ * SPEC §1~§3 이 규정한 "y_pred **또는** 확률"이라는 택일을 담을 수 없다. 택일을
+ * 이 표 하나로 분리해 요구표는 그대로 두고, 누락 판정만 이 규칙을 통과시킨다.
+ */
+export const PREDICTION_ROLE_ALTERNATIVES: Record<
+  TaskType,
+  { primary: RequiredColumnCode; alternatives: RequiredColumnCode[] }
+> = {
+  binary: { primary: "y_pred", alternatives: ["score"] },
+  multiclass: { primary: "y_pred", alternatives: ["prob_class_*"] },
+  multilabel: { primary: "y_pred", alternatives: ["prob_label_*"] },
+};
+
+/**
+ * 요구 역할 중 실제로 배정되지 않은 것.
+ *
+ * 예측 역할은 확률 역할이 배정돼 있으면 충족된 것으로 본다 — 백엔드가 확률에서
+ * 예측을 파생하기 때문이다(ISSUES.md A-01·A-02). 종전에는 단순히 개수 0 만 봐서,
+ * 확률만 가진 사용자가 '다음' 버튼이 눌리지 않아 백엔드까지 가보지도 못했다.
+ */
+export function resolveMissingRoleCodes(
+  taskType: TaskType,
+  requiredCodes: readonly RequiredColumnCode[] | readonly string[],
+  roleCounts: Record<string, number>,
+): string[] {
+  const { primary, alternatives } = PREDICTION_ROLE_ALTERNATIVES[taskType];
+  const has = (code: string) => (roleCounts[code] ?? 0) > 0;
+
+  return requiredCodes.filter((code) => {
+    if (has(code)) return false;
+    if (code === primary && alternatives.some(has)) return false;
+    return true;
+  }) as string[];
+}
 
 const COLUMN_ORDER: RequiredColumnCode[] = [
   "id",

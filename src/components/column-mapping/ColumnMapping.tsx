@@ -6,6 +6,8 @@ import {
   TASK_TYPE_LABELS,
   METRICS,
   MAPPABLE_ROLES_BY_TASK,
+  PREDICTION_ROLE_ALTERNATIVES,
+  resolveMissingRoleCodes,
   type TaskType,
   getRequiredColumnsForSelection,
 } from "../../data/evaluationData";
@@ -17,6 +19,7 @@ import {
 
 import { RequiredColumnsCard } from "./RequiredColumnsCard";
 import { BinaryClassificationCard } from "./BinaryClassificationCard";
+import { DecisionThresholdCard } from "./DecisionThresholdCard";
 import { ClassLabelDescriptionCard } from "./ClassLabelDescriptionCard";
 import { DetectedMappingTable } from "./DetectedMappingTable";
 import { MappingStatusPanel } from "./MappingStatusPanel";
@@ -43,6 +46,9 @@ interface ColumnMappingProps {
   onSelectedMetricIdsChange?: (ids: string[]) => void;
   /** 데이터 업로드 단계로 복귀. 페이지의 handlePrevious 주입. */
   onGoBackToUpload?: () => void;
+  /** 결정 임계값(확률→예측 파생 기준). 성적서 합격 목표값과 다른 개념이다(A-01). */
+  decisionThreshold?: number | Record<string, number> | null;
+  onDecisionThresholdChange?: (value: number | Record<string, number> | null) => void;
 }
 
 /**
@@ -80,6 +86,8 @@ export function ColumnMapping({
   columnUniqueValues = {},
   onSelectedMetricIdsChange = () => {},
   onGoBackToUpload = () => {},
+  decisionThreshold = null,
+  onDecisionThresholdChange = () => {},
 }: ColumnMappingProps) {
   const resolvedTaskType: TaskType = taskType || "multiclass";
   const selectedMetrics = useMemo(
@@ -133,6 +141,12 @@ export function ColumnMapping({
     return counts;
   }, [rows]);
 
+  /** 여러 컬럼에 배정돼도 중복이 아닌 역할 — 확률 역할은 클래스·레이블마다 하나씩이다. */
+  const multiColumnRoles = useMemo(
+    () => new Set<string>(PREDICTION_ROLE_ALTERNATIVES[resolvedTaskType].alternatives),
+    [resolvedTaskType],
+  );
+
   const visibleRows = useMemo(() => {
     if (filterMode === "edited") {
       return rows.filter((row) => row.modified);
@@ -142,15 +156,14 @@ export function ColumnMapping({
         const duplicate =
           row.confirmedRole &&
           row.confirmedRole !== "ignore" &&
-          row.confirmedRole !== "prob_class_*" &&
-          row.confirmedRole !== "prob_label_*" &&
+          !multiColumnRoles.has(row.confirmedRole) &&
           (roleCounts[row.confirmedRole] ?? 0) > 1;
         const unassigned = row.confirmedRole === null;
         return duplicate || unassigned || row.warnings.length > 0;
       });
     }
     return rows;
-  }, [filterMode, roleCounts, rows]);
+  }, [filterMode, multiColumnRoles, roleCounts, rows]);
 
   const mappingSummary = useMemo(() => {
     const editedCount = rows.filter((row) => row.modified).length;
@@ -158,13 +171,16 @@ export function ColumnMapping({
       if (!count || count < 2) {
         return false;
       }
-      return role !== "prob_class_*" && role !== "prob_label_*";
+      return !multiColumnRoles.has(role);
     }).length;
 
-    const missingRoles = requiredRoles.filter((role) => {
-      const count = roleCounts[role.code] ?? 0;
-      return count === 0;
-    });
+    // 예측 역할은 확률 역할이 배정돼 있으면 충족된 것으로 본다 — 백엔드가 확률에서
+    // 예측을 파생하기 때문이다(ISSUES.md A-01·A-02). 규칙은 evaluationData 의
+    // PREDICTION_ROLE_ALTERNATIVES 한 곳에만 있다.
+    const missingCodes = new Set(
+      resolveMissingRoleCodes(resolvedTaskType, requiredRoles.map((r) => r.code), roleCounts),
+    );
+    const missingRoles = requiredRoles.filter((role) => missingCodes.has(role.code));
 
     // 판정은 순수 함수에 위임한다(ISSUES.md E-13). 특히 taskType 은 **둔갑 전 원본**을 넘긴다 —
     // resolvedTaskType 을 쓰면 빈 taskType 이 "multiclass" 로 둔갑해 binary 검사를 건너뛴다.
@@ -189,7 +205,7 @@ export function ColumnMapping({
       validityMessage: describeMappingValidity(validityReason, missingRoleCodes),
       isValid: validityReason === "ok",
     };
-  }, [requiredRoles, roleCounts, rows, taskType, selectedMetricIds, positiveClass]);
+  }, [requiredRoles, roleCounts, rows, taskType, resolvedTaskType, multiColumnRoles, selectedMetricIds, positiveClass]);
 
   useEffect(() => {
     onValidationChange?.(mappingSummary.isValid);
@@ -254,6 +270,13 @@ export function ColumnMapping({
           yTrueRow={yTrueRow}
           yTrueValues={yTrueValues}
           positiveClassAmbiguous={positiveClassAmbiguous}
+        />
+
+        <DecisionThresholdCard
+          resolvedTaskType={resolvedTaskType}
+          rows={rows}
+          decisionThreshold={decisionThreshold}
+          onDecisionThresholdChange={onDecisionThresholdChange}
         />
 
         {onClassLabelDescriptionsChange && (
