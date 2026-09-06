@@ -14,7 +14,7 @@
  */
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import type { TaskType } from "../../data/evaluationData";
+import { getAvailableMetrics, type TaskType } from "../../data/evaluationData";
 import type { MappingRow } from "../../types/mapping.types";
 import type { ValidateDataResponseData } from "../../types/validation.types";
 import type { MapWorkflowToReportInput } from "../../lib/report/mapWorkflowToFinalReport";
@@ -52,6 +52,27 @@ export function pathToStep(path: string): number {
   const segment = path.replace("/app/", "");
   const index = STEP_PATHS.indexOf(segment as StepPath);
   return index >= 0 ? index + 1 : 1;
+}
+
+/** persist 스키마 버전. 저장된 상태의 의미가 바뀔 때만 올린다. */
+export const WORKFLOW_PERSIST_VERSION = 2;
+
+/**
+ * 저장된 워크플로우 상태를 현재 규칙으로 옮긴다(순수 함수 — 테스트가 직접 호출한다).
+ *
+ * 지금 하는 일은 하나다: 저장된 `selectedMetricIds` 에서 **현재 task_type 이 노출하지
+ * 않는 지표**를 걸러낸다. 지표 ID 를 하드코딩하지 않고 METRICS 에서 유도하므로,
+ * 앞으로 노출 목록이 또 바뀌어도 이 함수는 그대로 둔다.
+ */
+export function migrateWorkflowState(persisted: any, version: number): any {
+  if (!persisted || version >= WORKFLOW_PERSIST_VERSION) return persisted;
+
+  const taskType = persisted.taskType;
+  const selected = persisted.selectedMetricIds;
+  if (!taskType || !Array.isArray(selected)) return persisted;
+
+  const exposed = new Set(getAvailableMetrics(taskType).map((m) => m.id));
+  return { ...persisted, selectedMetricIds: selected.filter((id: string) => exposed.has(id)) };
 }
 
 interface WorkflowState {
@@ -325,7 +346,17 @@ export const useWorkflowStore = create<WorkflowState>()(
     }),
     {
       name: WORKFLOW_STORAGE_KEY,
-      version: 1,
+      version: WORKFLOW_PERSIST_VERSION,
+      /**
+       * 저장된 상태를 현재 규칙으로 옮긴다.
+       *
+       * v1 → v2: multilabel 에서 M1·M11·M12·M13 이 제거됐다(ISSUES.md A-04, 결정 2).
+       * 걸러내지 않으면 기존 브라우저에 남은 선택 목록이 그대로 평가로 전송되고,
+       * 백엔드가 `failed_metrics` 로 돌려준 것을 성적서 6절이 '측정 불가'로 인쇄한다.
+       * (결정 4 '앞으로 것만 정정'은 **발급된 성적서**에 대한 결정이지 브라우저에
+       *  남은 작성 중 상태에 대한 결정이 아니다 — 여기서는 정리하는 쪽이 옳다.)
+       */
+      migrate: (persisted, version) => migrateWorkflowState(persisted as any, version),
       // 시연 모드에서는 저장소를 읽지도 쓰지도 않는다(위 isShowcaseMode 주석 참조).
       storage: createJSONStorage(() => ({
         getItem: (name) => (isShowcaseMode() ? null : window.localStorage.getItem(name)),

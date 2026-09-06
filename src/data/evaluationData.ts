@@ -51,9 +51,9 @@ export const METRICS: MetricDefinition[] = [
   { id: "M8", higherIsBetter: false, name: "FPR", subtitle: "False positive rate", description: "Measures how often negatives are incorrectly marked positive.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], formula: "FP / (FP + TN)" },
   { id: "M9", name: "AUROC", subtitle: "ROC area", description: "Measures ranking quality across classification thresholds.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], probabilityRequiredFor: ["binary"], formula: "Area under ROC Curve" },
   { id: "M10", name: "AUPRC", subtitle: "PR area", description: "Measures precision-recall tradeoff across thresholds.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], probabilityRequiredFor: ["binary"], formula: "Area under PR Curve" },
-  { id: "M11", name: "Macro Average", subtitle: "Unweighted class average", description: "Averages class metrics equally across classes.", supportedTaskTypes: ["multiclass", "multilabel"], formula: "(Class1_Metric + ... + ClassN_Metric) / N" },
-  { id: "M12", name: "Micro Average", subtitle: "Global average", description: "Computes metrics over the full set of samples.", supportedTaskTypes: ["multiclass", "multilabel"], formula: "∑ TP / ∑ (TP+FP+FN)" },
-  { id: "M13", name: "Weighted Average", subtitle: "Support-weighted average", description: "Averages class metrics using class support as weights.", supportedTaskTypes: ["multiclass", "multilabel"], formula: "∑ (Class_Metric * Support) / Total Support" },
+  { id: "M11", name: "Macro Average", subtitle: "Unweighted class average", description: "Averages class metrics equally across classes.", supportedTaskTypes: ["multiclass"], formula: "(Class1_Metric + ... + ClassN_Metric) / N" },
+  { id: "M12", name: "Micro Average", subtitle: "Global average", description: "Computes metrics over the full set of samples.", supportedTaskTypes: ["multiclass"], formula: "∑ TP / ∑ (TP+FP+FN)" },
+  { id: "M13", name: "Weighted Average", subtitle: "Support-weighted average", description: "Averages class metrics using class support as weights.", supportedTaskTypes: ["multiclass"], formula: "∑ (Class_Metric * Support) / Total Support" },
   { id: "M14", higherIsBetter: false, name: "Distribution Diff (MC)", subtitle: "Class distribution gap", description: "Compares actual and predicted class distributions.", supportedTaskTypes: ["multiclass"], formula: "0.5 * ∑ |P(x) - Q(x)|" },
   { id: "M15", higherIsBetter: false, name: "Hamming Loss", subtitle: "Label mismatch ratio", description: "Measures label-wise disagreement in multi-label classification.", supportedTaskTypes: ["multilabel"], formula: "∑ (y_true ≠ y_pred) / (Samples * Labels)" },
   { id: "M16", name: "Exact Match Ratio", subtitle: "Strict set match", description: "Counts samples where all labels exactly match.", supportedTaskTypes: ["multilabel"], formula: "∑ (All_labels_match) / Samples" },
@@ -69,7 +69,9 @@ export const METRICS: MetricDefinition[] = [
 const RECOMMENDED_METRICS: Record<TaskType, string[]> = {
   binary: ["M1", "M2", "M3", "M4", "M9", "M21", "M22", "M23"],
   multiclass: ["M1", "M2", "M3", "M4", "M11", "M21", "M22", "M23"],
-  multilabel: ["M1", "M2", "M3", "M4", "M15", "M21", "M22", "M23"],
+  // M1 은 multilabel 에서 M16 과 값이 같아 제거됐다(결정 2). 같은 측정을 정확한
+  // 이름으로 추천한다 — 그냥 빼면 추천 세트에서 '전 라벨 일치' 계열이 사라진다.
+  multilabel: ["M16", "M2", "M3", "M4", "M15", "M21", "M22", "M23"],
 };
 
 /**
@@ -114,14 +116,10 @@ const REQUIRED_COLUMNS_BY_METRIC: Record<TaskType, Partial<Record<string, Requir
     M23: ["y_true"],
   },
   multilabel: {
-    M1: ["y_true", "y_pred"],
     M2: ["y_true", "y_pred"],
     M3: ["y_true", "y_pred"],
     M4: ["y_true", "y_pred"],
     M5: ["y_true", "y_pred"],
-    M11: ["y_true", "y_pred"],
-    M12: ["y_true", "y_pred"],
-    M13: ["y_true", "y_pred"],
     M15: ["y_true", "y_pred"],
     M16: ["y_true", "y_pred"],
     M17: ["y_true", "y_pred"],

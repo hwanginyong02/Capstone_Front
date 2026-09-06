@@ -126,11 +126,10 @@
 
 ## 3. Multilabel Classification metrics
 
-허용 지표: M1~M5, M15~M18, M21~M23
+허용 지표: M2~M5, M15~M18, M21~M23
 
 | 지표 | 메트릭 | 필수 컬럼 | 선택 컬럼 | UI 입력 | 비고 |
 |----|--------|-----------|-----------|---------|------|
-| M1 | Accuracy (subset) | `y_true`, `y_pred` *또는* `prob_label_*`+decision_threshold | — | decision_threshold(레이블별) | subset accuracy = exact match |
 | M2 | Precision (**Macro 평균**) | `y_true`, `y_pred` *또는* `prob_label_*`+decision_threshold | — | decision_threshold(레이블별) | — |
 | M3 | Recall (**Macro 평균**) | `y_true`, `y_pred` *또는* `prob_label_*`+decision_threshold | — | decision_threshold(레이블별) | — |
 | M4 | F1 Score (**Macro 평균**) | `y_true`, `y_pred` *또는* `prob_label_*`+decision_threshold | — | decision_threshold(레이블별) | — |
@@ -161,6 +160,15 @@
      레이블 단위 평균이 성립하지 않는다. 두 지표의 기준이 다른 것은 의도된 것이다.
    - 이 규약은 `Capstone_Back/tests/test_metric_values.py`가 기대값으로 고정한다
      (macro 4/9 vs samples 0.625를 명시적으로 구분).
+6. **M1·M11·M12·M13 은 multilabel 에서 노출하지 않는다** — 2026-09-07 결정.
+   값이 다른 지표와 **완전히 같기** 때문이며, 근거는 셋이 서로 다르다.
+   - **M1**(subset accuracy) ≡ **M16**(Exact Match Ratio) — 정의상 같다.
+   - **M11**(macro average) ≡ (**M2**, **M3**, **M4**) — 규칙 5 때문에 M2~M4 가 이미
+     macro 평균이다. 저장소 픽스처로 16자리까지 일치를 확인했다.
+   - **M12**(micro) · **M13**(weighted) ≡ **M22**(클래스별 지표)의 `micro avg` ·
+     `weighted avg` 행 — 역시 16자리 일치. M22 는 추천 지표라 기본 경로에서 늘 켜진다.
+   같은 수를 두 이름으로 인쇄하면 독자는 서로 다른 측정이라고 읽는다. **multiclass 에서는
+   넷 다 유지한다** — 거기서는 M2~M4 가 macro 가 아니라 값이 실제로 다르다.
 
 ---
 

@@ -54,14 +54,11 @@ const BACKEND_METRIC_REQUIREMENTS: Record<TaskType, Record<string, string[]>> = 
   },
   multilabel: {
     // M6 는 multilabel 미지원(백엔드 계산 함수가 1-D 라벨만 처리) — 표에서 제외되어 있다.
-    M1: ["true_labels", "pred_labels"],
+    // M1·M11·M12·M13 은 값이 M16·M2~M4·M22 와 완전히 겹쳐 제거됐다(2026-09-07 결정 2).
     M2: ["true_labels", "pred_labels"],
     M3: ["true_labels", "pred_labels"],
     M4: ["true_labels", "pred_labels"],
     M5: ["true_labels", "pred_labels"],
-    M11: ["true_labels", "pred_labels"],
-    M12: ["true_labels", "pred_labels"],
-    M13: ["true_labels", "pred_labels"],
     M15: ["true_labels", "pred_labels"],
     M16: ["true_labels", "pred_labels"],
     M17: ["true_labels", "pred_labels"],
@@ -90,16 +87,14 @@ function frontendRolesFor(taskType: TaskType, metricId: string): string[] {
   return [...new Set(roles)].sort();
 }
 
-function isExposedByFrontend(taskType: TaskType, metricId: string): boolean {
-  return METRICS.find((m) => m.id === metricId)?.supportedTaskTypes.includes(taskType) ?? false;
-}
-
 describe("REQUIRED_COLUMNS_BY_METRIC ↔ 백엔드 METRIC_REQUIREMENTS", () => {
   for (const taskType of TASK_TYPES) {
     it(`${taskType}: 프론트가 요구하는 컬럼이 백엔드 요구 역할과 일치한다`, () => {
+      // **노출 필터가 없다.** 종전에는 프론트가 노출하지 않는 조합을 비교에서 뺐는데,
+      // 그러면 "백엔드는 계산하는데 프론트는 요구 컬럼을 모르는" 상태가 그대로 숨는다.
+      // 이제 양쪽 표가 같은 지표 집합을 갖고 있으므로 필터 없이 전수 대조한다.
       const backendTable = BACKEND_METRIC_REQUIREMENTS[taskType];
       const mismatches = Object.keys(backendTable)
-        .filter((metricId) => isExposedByFrontend(taskType, metricId))
         .map((metricId) => ({
           metricId,
           frontend: frontendRolesFor(taskType, metricId),

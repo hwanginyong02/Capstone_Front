@@ -151,9 +151,15 @@ export function useReportData(id: string): UseReportDataResult {
         const failed_metrics = result.results.failed_metrics || {};
 
         // 1. KPI 지표 계산값 치환
+        const taskTypeForMetrics = workflowState.taskType || "multiclass";
         const updatedKpiResults = workflowState.selectedMetricIds
           .map((metricId) => {
-            const metric = METRICS.find((m) => m.id === metricId);
+            // **task 필터를 함께 본다.** 4절(metricList)·5절(metricFormulas)은
+            // supportedTaskTypes 로 거르는데 여기만 걸러내지 않아, 그 task 가 노출하지
+            // 않는 지표가 6절 KPI 표에만 숫자로 찍혔다(ISSUES.md A-04 의 인쇄 결과).
+            const metric = METRICS.find(
+              (m) => m.id === metricId && m.supportedTaskTypes.includes(taskTypeForMetrics),
+            );
             if (!metric) return null;
 
             // 방향성(높을수록/낮을수록 좋음) — 판정·기준 표기의 단일 출처(evaluationData.ts)
