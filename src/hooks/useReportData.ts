@@ -386,6 +386,9 @@ export function useReportData(id: string): UseReportDataResult {
           // 평가를 실제로 수행한 환경(라이브러리 버전·수행 시각). 종전에는 프론트
           // 상수를 인쇄해 실제와 무관한 값이 성적서에 남았다(ISSUES.md F-09).
           evalEnv: { ...baseReport.evalEnv, environment: result.environment ?? undefined },
+          // 전처리 경고를 버리지 않는다(ISSUES.md D-16). 결측 제외·확률합 이상·파생 예측
+          // 같은 사실이 여기에만 실려 온다.
+          evaluationWarnings: Array.isArray(result.warnings) ? result.warnings : [],
           kpiResults: updatedKpiResults,
           conclusion: ruleConclusion,  // full ConclusionData (verdict/score + 빈 서술)
           datasetDiagnosis,

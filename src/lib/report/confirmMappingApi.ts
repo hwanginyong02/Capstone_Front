@@ -7,6 +7,7 @@
 import { apiUrl } from "@/lib/apiBase";
 import { translateRoleToBackend } from "../mapping/translateRoleToBackend";
 import type { MappingRow } from "../../types/mapping.types";
+import type { MappingWarning } from "./backendNotices";
 
 export interface ConfirmMappingInput {
   columnMapping: MappingRow[];
@@ -17,6 +18,13 @@ export interface ConfirmMappingInput {
 export interface ConfirmMappingResult {
   is_valid: boolean;
   errors: { message: string }[];
+  /**
+   * 백엔드가 사용자 안내용으로 내려보내는 값들. 종전에는 인터페이스가 **선언조차
+   * 하지 않아** 그대로 버려졌다(ISSUES.md B-04·A-12).
+   */
+  warnings?: MappingWarning[];
+  available_metric_ids?: string[];
+  unavailable_metric_ids?: string[];
 }
 
 export async function confirmMapping(

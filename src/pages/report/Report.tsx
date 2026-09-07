@@ -7,6 +7,7 @@ import { ReportLoadingState } from "../../components/report/ReportLoadingState";
 import { ReportErrorState } from "../../components/report/ReportErrorState";
 import { ReportSections } from "../../components/report/ReportSections";
 import { UnevaluatedDraftNotice } from "../../components/report/UnevaluatedDraftNotice";
+import { BackendNoticePanel } from "../../components/workflow/BackendNoticePanel";
 
 export function Report() {
   // 기본값을 두지 않는다 — 폐지된 임시 성적서("preview")로 조용히 떨어지지 않게(E-06).
@@ -37,6 +38,10 @@ export function Report() {
       onReissue={issuance.reissue}
     >
       <UnevaluatedDraftNotice isEvaluated={!!(data as any).isEvaluated || narrativePending} />
+
+      {/* 평가 전처리 경고(ISSUES.md D-16). 이 값은 evaluate 응답에만 실려 오므로
+          6단계가 아니라 여기서 도착한다 — 도착하는 자리에서 보여준다. */}
+      <BackendNoticePanel evaluationWarnings={data.evaluationWarnings} />
 
       {narrativePending && (
         <div className="mb-4 flex items-center gap-2 rounded-md border border-teal-200 bg-teal-50 px-4 py-2.5 text-sm text-teal-700">

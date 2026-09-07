@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { useWorkflowStore, stepToPath } from "../utils/stores/useWorkflowStore";
+import { BackendNoticePanel } from "../components/workflow/BackendNoticePanel";
 import { ensureActiveWorkspace } from "../utils/domain/ensureActiveWorkspace";
 import { useWorkspaceStore } from "../utils/stores/useWorkspaceStore";
 import { WorkflowShell } from "../layout/WorkflowShell";
@@ -114,6 +115,15 @@ export function DataValidation() {
         </Alert>
       )}
       <FileReuploadNotice />
+
+      {/* 백엔드가 4·5단계에서 내려보낸 안내를 여기 합쳐 보여준다(ISSUES.md B-03·B-04·A-12).
+          그 화면들에서 띄우면 사용자는 이미 다음 단계로 넘어간 뒤라 읽지 못한다. */}
+      <BackendNoticePanel
+        columnNotes={store.columnNotes}
+        mappingWarnings={store.mappingWarnings}
+        selectedMetricIds={store.selectedMetricIds}
+        availableMetricIds={store.availableMetricIds}
+      />
       <DataValidationContent
         validationData={validationData}
         isLoading={isLoading}

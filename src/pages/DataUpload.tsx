@@ -40,13 +40,15 @@ export function DataUpload() {
 
     setAnalysisError(null);
     try {
-      const { rows, metadata } = await analyzeColumns(
+      const { rows, metadata, columnNotes } = await analyzeColumns(
         store.rawFile,
         store.taskType || "multiclass",
       );
 
       store.setColumnMapping(rows);
       store.setMetadata(metadata);
+      // 백엔드가 만든 컬럼 대조 안내를 6단계까지 나른다(ISSUES.md B-03).
+      store.setColumnNotes(columnNotes);
 
       store.markStepCompleted(4);
       store.setCurrentStep(5);

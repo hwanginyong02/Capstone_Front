@@ -14,10 +14,13 @@ import { useRef, useState } from "react";
 import { apiUrl } from "@/lib/apiBase";
 import { translateRoleToFrontend } from "../lib/mapping/translateRoleToFrontend";
 import type { MappingRow } from "../types/mapping.types";
+import type { ColumnNote } from "../lib/report/backendNotices";
 
 interface ColumnAnalysisResult {
   rows: MappingRow[];
   metadata: any;
+  /** 백엔드가 만든 컬럼명 대조 안내(보정·미매칭·미매핑). 종전에는 버려졌다(ISSUES.md B-03). */
+  columnNotes: ColumnNote[];
 }
 
 /**
@@ -82,7 +85,8 @@ export function useColumnAnalysis() {
         };
       });
 
-      return { rows, metadata: result.metadata };
+      // 백엔드가 만든 컬럼 대조 안내를 버리지 않는다(ISSUES.md B-03).
+      return { rows, metadata: result.metadata, columnNotes: result.column_notes ?? [] };
     } catch (err) {
       // abort 는 '왜 끊겼는지'를 구분해 전달한다 — 타임아웃과 사용자 취소는 다른 사건이다.
       if (err instanceof Error && err.name === "AbortError") {

@@ -12,6 +12,7 @@ import {
   getRequiredColumnsForSelection,
 } from "../../data/evaluationData";
 import type { MappingRole, MappingRow, FilterMode } from "../../types/mapping.types";
+import { applyRoleChange } from "../../utils/domain/applyRoleChange";
 import {
   describeMappingValidity,
   getMappingValidityReason,
@@ -211,18 +212,9 @@ export function ColumnMapping({
     onValidationChange?.(mappingSummary.isValid);
   }, [mappingSummary.isValid, onValidationChange]);
 
-  const handleRoleChange = (index: number, newRole: string) => {
-    onRowsChange((prev) =>
-      prev.map((row, rowIndex) =>
-        rowIndex === index
-          ? {
-              ...row,
-              confirmedRole: newRole === "unassigned" ? null : (newRole as MappingRole),
-              modified: row.inferredRole !== (newRole === "unassigned" ? null : newRole),
-            }
-          : row,
-      ),
-    );
+  /** 역할 변경은 컬럼명 기준으로 적용한다(필터가 걸려도 안전). applyRoleChange 가 정본. */
+  const handleRoleChange = (columnName: string, newRole: string) => {
+    onRowsChange((prev) => applyRoleChange(prev, columnName, newRole));
   };
 
   return (

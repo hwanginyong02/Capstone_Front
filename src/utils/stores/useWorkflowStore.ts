@@ -15,6 +15,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { getAvailableMetrics, type TaskType } from "../../data/evaluationData";
+import type { ColumnNote, MappingWarning } from "../../lib/report/backendNotices";
 import type { MappingRow } from "../../types/mapping.types";
 import type { ValidateDataResponseData } from "../../types/validation.types";
 import type { MapWorkflowToReportInput } from "../../lib/report/mapWorkflowToFinalReport";
@@ -111,6 +112,16 @@ interface WorkflowState {
    */
   decisionThreshold: number | Record<string, number> | null;
 
+  /**
+   * 백엔드가 '사용자 안내용'으로 내려보낸 값들(ISSUES.md B-03·B-04·D-16·A-12).
+   * 각각 4단계·5단계에서 도착하지만 **6단계 상단에 합쳐서** 보여준다 —
+   * 5단계는 안내가 도착하는 순간 이미 다음 화면으로 넘어가 있다.
+   */
+  columnNotes: ColumnNote[];
+  mappingWarnings: MappingWarning[];
+  /** confirm-mapping 이 계산 가능하다고 답한 지표 ID(‘N/M’ 표시용, A-12). */
+  availableMetricIds: string[] | null;
+
   // Step 5 — Column mapping
   columnMapping: MappingRow[];
   // Step 5 — Class label descriptions (class value -> description)
@@ -151,6 +162,8 @@ interface WorkflowState {
   setRawFile: (file: File | null) => void;
   setMetadata: (metadata: any | null) => void;
   setDecisionThreshold: (value: number | Record<string, number> | null) => void;
+  setColumnNotes: (notes: ColumnNote[]) => void;
+  setMappingFeedback: (input: { warnings: MappingWarning[]; availableMetricIds: string[] | null }) => void;
   setTrainingExampleFiles: (
     value: UploadedFileInfo[] | ((prev: UploadedFileInfo[]) => UploadedFileInfo[]),
   ) => void;
@@ -195,6 +208,9 @@ const INITIAL_STATE = {
   trainingExampleFiles: [] as UploadedFileInfo[],
   trainingUnsuitableExampleFiles: [] as UploadedFileInfo[],
   datasetInfo: DEFAULT_DATASET_INFO,
+  columnNotes: [] as ColumnNote[],
+  mappingWarnings: [] as MappingWarning[],
+  availableMetricIds: null as string[] | null,
   decisionThreshold: null as number | Record<string, number> | null,
   columnMapping: [] as MappingRow[],
   classLabelDescriptions: {} as Record<string, string>,
@@ -251,6 +267,9 @@ export const useWorkflowStore = create<WorkflowState>()(
           trainingExampleFiles: [],
           trainingUnsuitableExampleFiles: [],
           decisionThreshold: null,
+          columnNotes: [],
+          mappingWarnings: [],
+          availableMetricIds: null,
           columnMapping: [],
           classLabelDescriptions: {},
           validationResult: null,
@@ -281,6 +300,9 @@ export const useWorkflowStore = create<WorkflowState>()(
       setRawFile: (file) => set({ rawFile: file }),
       setMetadata: (metadata) => set({ metadata: metadata }),
       setDecisionThreshold: (value) => set({ decisionThreshold: value }),
+      setColumnNotes: (notes) => set({ columnNotes: notes }),
+      setMappingFeedback: ({ warnings, availableMetricIds }) =>
+        set({ mappingWarnings: warnings, availableMetricIds }),
 
       setTrainingExampleFiles: (value) =>
         set((state) => ({
@@ -336,6 +358,9 @@ export const useWorkflowStore = create<WorkflowState>()(
           trainingUnsuitableExampleFiles: snapshot.trainingUnsuitableExampleFiles,
           datasetInfo: snapshot.datasetInfo,
           decisionThreshold: null,
+          columnNotes: [],
+          mappingWarnings: [],
+          availableMetricIds: null,
           columnMapping: snapshot.columnMapping,
           classLabelDescriptions: snapshot.classLabelDescriptions,
           validationResult: null,

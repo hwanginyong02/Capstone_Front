@@ -246,5 +246,11 @@ export interface FinalReportData {
   recommendations: ReportRecommendation[];
   /** 7·8·9절 서술의 출처(추적성 배지). 미평가/미생성 시 undefined. */
   narrativeSource?: NarrativeSource;
+  /**
+   * 평가 전처리가 만든 경고(백엔드 `EvaluateResponse.warnings`).
+   * 종전에는 프론트에 소비처가 없어 그대로 버려졌다(ISSUES.md D-16).
+   * **6단계가 아니라 성적서 화면에서 도착한다** — evaluate 를 호출하는 곳이 여기다.
+   */
+  evaluationWarnings?: string[];
   signature: SignatureData;
 }
