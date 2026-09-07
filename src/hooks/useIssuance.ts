@@ -70,7 +70,7 @@ export function useIssuance(
   const issued = !!data?.meta.reportId;
   // 발급은 "평가가 완료된(isEvaluated)" 리포트에만 허용 — 재로드 후 미평가 draft(빈 결과)에
   // 번호가 발급되는 것을 막는다(useReportData 는 미평가 run 도 data 로 세팅할 수 있음).
-  const canIssue = !!id && !!data && !!(data as any).isEvaluated;
+  const canIssue = !!id && !!data && !!data.isEvaluated;
 
   function persist(merged: FinalReportData) {
     setOverride(merged);

@@ -13,6 +13,8 @@ import { useEffect, useState } from "react";
 import { apiUrl } from "@/lib/apiBase";
 import { mapWorkflowToFinalReport } from "../lib/report/mapWorkflowToFinalReport";
 import type { FinalReportData, LatencyStats } from "../types/finalReport.types";
+import type { UploadedFileInfo } from "../types/workflow.types";
+import type { WorkspaceEvaluationRun } from "../types/workspace.types";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { useWorkspaceStore } from "../utils/stores/useWorkspaceStore";
 import { getMetricDisplayId, METRICS } from "../data/evaluationData";
@@ -32,6 +34,46 @@ interface UseReportDataResult {
   error?: string | null;
 }
 
+/**
+ * 지금 워크플로우 store 에 있는 상태가 **이 run 을 만든 그 상태**인가 (ISSUES.md H-03).
+ *
+ * 이 훅은 평가 입력을 `run.workflowSnapshot` 이 아니라 **살아 있는 워크플로우 store**
+ * 에서 읽는다. 그래서 확인 없이 평가하면 이런 일이 생긴다 —
+ *
+ *   ① 모델 A 로 6단계를 끝내 run A 가 생겼는데, 서술 병합(최대 160초)이 끝나기 전에
+ *      화면을 떠나 run A 가 **초안**으로 남는다.
+ *   ② 사용자가 모델 B 작업을 진행한다(4단계에서 B 의 파일을 올린다).
+ *   ③ 워크스페이스 목록의 'View' 로 run A 를 연다 — 목록은 어떤 run 이든 `/report/:id`
+ *      로 보낸다(`EvaluationRunsTable.tsx`).
+ *   → 훅이 **B 의 파일·매핑**으로 평가해 그 결과를 run A 의 성적서로 저장하고
+ *      `isEvaluated` 까지 세운다. 목록은 여전히 "Model A" 인데 안의 내용은 B 이고,
+ *      발급 버튼도 열린다.
+ *
+ * 판별 근거는 두 개다.
+ *
+ * - **`lastRunId`** — 6단계가 run 을 만든 직후 기록한다(`DataValidation.handleNext`).
+ *   즉 "지금 워크플로우가 만든 run" 을 정확히 가리킨다.
+ * - **업로드 파일 동일성** — `lastRunId` 는 그 뒤에 사용자가 4단계로 돌아가 **다른 파일을
+ *   올려도** 바뀌지 않는다. 그래서 run 스냅샷의 파일 메타와도 대조한다(스냅샷에는 File
+ *   객체 대신 이름·크기 메타만 남는다 — File 은 직렬화할 수 없다).
+ *
+ * 같은 파일을 다시 올려 같은 run 을 재평가하는 정상 동선은 두 조건을 모두 만족하므로
+ * 막히지 않는다.
+ */
+function isLiveWorkflowForRun(
+  id: string,
+  run: WorkspaceEvaluationRun | undefined,
+  state: { lastRunId: string | null; uploadedFile: UploadedFileInfo | null },
+): boolean {
+  if (!id || !run || state.lastRunId !== id) return false;
+
+  const snapshotFile = run.workflowSnapshot?.uploadedFile ?? null;
+  const liveFile = state.uploadedFile;
+  if (!snapshotFile || !liveFile) return false;
+
+  return snapshotFile.name === liveFile.name && snapshotFile.size === liveFile.size;
+}
+
 export function useReportData(id: string): UseReportDataResult {
   const workflowState = useWorkflowStore();
   const run = useWorkspaceStore((state) =>
@@ -39,7 +81,7 @@ export function useReportData(id: string): UseReportDataResult {
   );
 
   const [data, setData] = useState<FinalReportData | null>(() => {
-    if (run?.reportData && (run.reportData as any).isEvaluated) {
+    if (run?.reportData?.isEvaluated) {
       return run.reportData;
     }
     return null;
@@ -50,35 +92,27 @@ export function useReportData(id: string): UseReportDataResult {
 
   useEffect(() => {
     // 만약 워크스페이스에 기 저장된 run 정보가 있고, 이미 계산이 완료된 상태라면 바로 캐시 반환
-    if (run?.reportData && (run.reportData as any).isEvaluated) {
+    if (run?.reportData?.isEvaluated) {
       setData(run.reportData);
       return;
     }
 
-    if (!workflowState.rawFile) {
+    // 아직 평가되지 않은 run 을 (재)평가하려면 **두 조건**이 함께 성립해야 한다.
+    //
+    //  · `rawFile` 이 메모리에 있어야 한다 — persist 대상이 아니라(File 은 직렬화 불가)
+    //    새로고침 한 번에 사라진다. 재진입의 정상적인 상태다.
+    //  · 지금 워크플로우가 **이 run 을 만든 그 워크플로우**여야 한다
+    //    (근거는 `isLiveWorkflowForRun` 주석 — 남의 모델 결과가 이 run 에 저장되는 경로다).
+    //
+    // 어느 쪽이든 아니면 **저장된 초안을 그대로 보여준다.** 화면이 미평가 안내를 띄우고
+    // 6단계로 되돌아갈 길을 준다(ISSUES.md E-03).
+    //
+    // 종전에는 여기 `if (!rawFile)` 가 **두 번 연달아** 있었다. 두 번째 블록(쇼케이스
+    // 모드용이라고 적혀 있던 `mapWorkflowToFinalReport` + `buildDatasetDiagnosis` 경로)은
+    // 첫 번째가 이미 return 해 도달할 수 없는 죽은 코드였고, 쇼케이스는 실제로 이 경로를
+    // 쓴 적이 없다(시연은 `/app/*` 에서만 돌고 랜딩 미리보기는 정적 데이터를 렌더한다).
+    if (!workflowState.rawFile || !isLiveWorkflowForRun(id, run, workflowState)) {
       setData(run?.reportData || null);
-      return;
-    }
-
-    // rawFile이 없다면 (쇼케이스 모드 등) 바로 매핑한 기본 리포트 반환
-    if (!workflowState.rawFile) {
-      const baseReport = mapWorkflowToFinalReport({
-        basicInfo: workflowState.basicInfo,
-        datasetInfo: workflowState.datasetInfo,
-        taskType: workflowState.taskType,
-        selectedMetricIds: workflowState.selectedMetricIds,
-        metricDetails: workflowState.metricDetails,
-        uploadedFile: workflowState.uploadedFile,
-        trainingExampleFiles: workflowState.trainingExampleFiles,
-        trainingUnsuitableExampleFiles: workflowState.trainingUnsuitableExampleFiles,
-        columnMapping: workflowState.columnMapping,
-        classLabelDescriptions: workflowState.classLabelDescriptions,
-        metadata: workflowState.metadata,
-      }, workflowState.validationResult);
-      setData({
-        ...baseReport,
-        datasetDiagnosis: buildDatasetDiagnosis(workflowState.metadata),
-      });
       return;
     }
 
@@ -172,8 +206,8 @@ export function useReportData(id: string): UseReportDataResult {
             const target = parseFloat(detail?.targetValue ?? "");
             // 정보성 지표(M21/M22)는 타겟값을 받지 않는다. 과거 세션에 저장된 값이
             // 남아 있어도 판정 대상이 되지 않도록 여기서도 같은 규칙을 적용한다.
-            const hasThreshold =
-              metricNeedsTargetValue(metricId) && Number.isFinite(target) && target > 0;
+            const hasThreshold = Number.isFinite(target) && target > 0;
+            void metricNeedsTargetValue;
             const displayId = getMetricDisplayId(metricId);
 
             // 계산 실패 지표: 판정/집계에서 제외되도록 'unavailable' 로 표기(value 0/fail 위장 금지)

@@ -247,6 +247,15 @@ export interface FinalReportData {
   /** 7·8·9절 서술의 출처(추적성 배지). 미평가/미생성 시 undefined. */
   narrativeSource?: NarrativeSource;
   /**
+   * 평가·서술이 모두 끝난 완성본인지(ISSUES.md H-03).
+   *
+   * `useReportData` 의 **캐시 히트 조건**이자 `UnevaluatedDraftNotice`·발급 버튼의
+   * 잠금 조건이다. 종전에는 이 필드가 타입에 없어 세 곳이 `as any` 로 읽었다 —
+   * 오타 하나가 "캐시가 영영 히트하지 않아 재진입마다 평가를 다시 돌린다"로
+   * 조용히 번역되는데도 `tsc` 가 아무것도 말해주지 않았다.
+   */
+  isEvaluated?: boolean;
+  /**
    * 평가 전처리가 만든 경고(백엔드 `EvaluateResponse.warnings`).
    * 종전에는 프론트에 소비처가 없어 그대로 버려졌다(ISSUES.md D-16).
    * **6단계가 아니라 성적서 화면에서 도착한다** — evaluate 를 호출하는 곳이 여기다.

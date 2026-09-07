@@ -2,6 +2,7 @@ import { useParams } from "react-router";
 import { useReportData } from "../../hooks/useReportData";
 import { usePrintOnReady } from "../../hooks/usePrintOnReady";
 import { PrintLayout } from "../../components/report/layout/PrintLayout";
+import { DraftNotPrintableNotice } from "../../components/report/DraftNotPrintableNotice";
 import { PageBreak } from "../../components/report/layout/PageBreak";
 import { ReportCoverSection } from "../../components/report/sections/ReportCoverSection";
 import { CompanyInfoSection } from "../../components/report/sections/CompanyInfoSection";
@@ -21,9 +22,31 @@ import { SignatureSection } from "../../components/report/sections/SignatureSect
 export function ReportPrint() {
   const { id = "" } = useParams();
   const { data, narrativePending } = useReportData(id);
+
+  /**
+   * 미평가 초안은 인쇄 대상이 아니다 (ISSUES.md H-03 파생 · F-05 와 같은 뿌리).
+   *
+   * 서버는 PDF 를 만들지도 보관하지도 않으므로(★결정 8) **이 인쇄물이 최종 산출물**이다.
+   * 그런데 인쇄 탭은 새 문서라 워크플로우 store 의 `rawFile`(File — persist 불가)이 없고,
+   * 그래서 저장된 `run.reportData` 를 렌더한다. 서술 병합이 끝나기 전이면 그것은 초안이고,
+   * 초안의 판정은 `buildConclusion([])` 의 기본값 "조건부 적합 · 0.0%" 다.
+   * 종전에는 그 초안을 **자동으로** 인쇄 다이얼로그까지 띄웠다 — 평가마다 서술 병합
+   * 구간(최대 160초) 내내 열려 있던 창이다.
+   *
+   * 인쇄 훅에도 같은 판정을 넘겨, 자동 인쇄와 `data-pdf-ready`(Puppeteer 대기 표식)가
+   * **함께** 잠기게 한다.
+   */
+  const printable = !!data?.isEvaluated;
   const containerRef = usePrintOnReady(data, narrativePending);
 
   if (!data) return null;
+  if (!printable) {
+    return (
+      <PrintLayout>
+        <DraftNotPrintableNotice />
+      </PrintLayout>
+    );
+  }
 
   return (
     <PrintLayout>
