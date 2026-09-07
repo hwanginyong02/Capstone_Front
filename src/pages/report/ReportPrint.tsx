@@ -19,7 +19,7 @@ import { RecommendSection } from "../../components/report/sections/RecommendSect
 import { SignatureSection } from "../../components/report/sections/SignatureSection";
 
 export function ReportPrint() {
-  const { id = "preview" } = useParams();
+  const { id = "" } = useParams();
   const { data, narrativePending } = useReportData(id);
   const containerRef = usePrintOnReady(data, narrativePending);
 

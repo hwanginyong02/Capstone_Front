@@ -70,11 +70,11 @@ export function useIssuance(
   const issued = !!data?.meta.reportId;
   // 발급은 "평가가 완료된(isEvaluated)" 리포트에만 허용 — 재로드 후 미평가 draft(빈 결과)에
   // 번호가 발급되는 것을 막는다(useReportData 는 미평가 run 도 data 로 세팅할 수 있음).
-  const canIssue = id !== "preview" && !!data && !!(data as any).isEvaluated;
+  const canIssue = !!id && !!data && !!(data as any).isEvaluated;
 
   function persist(merged: FinalReportData) {
     setOverride(merged);
-    if (id === "preview") return;
+    if (!id) return;
     // useReportData 의 영속 패턴과 동일하게 run.reportData / run.reportId 갱신.
     useWorkspaceStore.setState((state) => ({
       evaluationRuns: state.evaluationRuns.map((r) =>
@@ -86,7 +86,7 @@ export function useIssuance(
   }
 
   async function issue() {
-    if (!data || busy || id === "preview") return;
+    if (!data || busy || !id) return;
     const run = useWorkspaceStore
       .getState()
       .evaluationRuns.find((r) => r.id === id);

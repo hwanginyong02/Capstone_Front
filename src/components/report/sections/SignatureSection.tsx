@@ -29,7 +29,8 @@ export function SignatureSection({ signature, meta, evalScope, performer }: Sign
   const issuanceFields: { label: string; value: string }[] = [
     { label: "발급 기관",      value: signature.issuer },
     { label: "발급 일시",      value: meta.issuedAt },
-    { label: "평가 엔진 버전", value: evalScope.version },
+    // 사용자가 입력한 대상 모델의 버전이다(ISSUES.md F-08 — 라벨 정정).
+    { label: "대상 모델 버전", value: evalScope.version },
     { label: "문서 번호",      value: meta.reportId },
     { label: "평가자",         value: performer.evaluator },
     { label: "서명일",         value: signature.signedAt },

@@ -69,10 +69,27 @@ export function ConclusionSection({ conclusion, source }: ConclusionSectionProps
         <div className="flex-1">
           <p className={cn("text-lg font-bold", config.text)}>{config.label}</p>
         </div>
-        <span className="font-mono text-2xl font-bold text-slate-700">
-          {conclusion.score.toFixed(1)}%
-        </span>
+        <div className="shrink-0 text-right">
+          <span className="font-mono text-2xl font-bold text-slate-700">
+            {conclusion.score.toFixed(1)}%
+          </span>
+          <p className="text-xs font-medium text-slate-500">종합 점수</p>
+        </div>
       </div>
+
+      {/*
+        종합 점수의 정의를 성적서에 명시한다(ISSUES.md C-09·C-06, 2026-09-07 결정 5).
+        종전에는 큰 숫자만 인쇄되고 **라벨조차 없어서**, 독자가 그것을 모델의 정확도나
+        신뢰도로 읽을 수 있었다. 실제 정의는 "사용자가 설정한 합격 기준의 달성률"이고
+        데이터셋 특성 지표(M23 등)도 목표값을 설정했다면 분모에 들어간다.
+      */}
+      <p className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
+        <strong className="text-slate-700">종합 점수의 정의</strong> — 사용자가 합격 목표값을
+        설정한 시험항목 가운데 그 기준을 충족한 항목의 비율입니다. 목표값을 설정하지 않은
+        항목과 측정 불가 항목은 분모에서 제외됩니다. 데이터셋 특성 지표(예: 불균형 비율)에
+        목표값을 설정했다면 그 항목도 함께 집계되므로, 이 수치는 모델 성능만의 지표가
+        아닙니다. 항목별 값과 기준은 6절 표에서 확인할 수 있습니다.
+      </p>
 
       {/* 8.1 도메인 성능 벤치마크 */}
       <NarrativeBlock title="도메인 성능 벤치마크" text={conclusion.benchmark} />

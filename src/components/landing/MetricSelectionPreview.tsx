@@ -9,14 +9,14 @@ import { cn } from "../../utils/styling/styles";
  * (MetricSelectionPreview.test.ts — 과거 M6 가 옛 정보를 계속 보여준 적 있음).
  */
 export const PREVIEW_METRICS = [
-  ["M1", "Accuracy", "Overall correctness", ["id", "y_true", "y_pred"]],
-  ["M2", "Precision", "Positive predictive value", ["id", "y_true", "y_pred"]],
-  ["M3", "Recall", "Sensitivity", ["id", "y_true", "y_pred"]],
-  ["M4", "F1 Score", "Harmonic mean", ["id", "y_true", "y_pred"]],
-  ["M5", "F-beta Score", "Weighted F score", ["id", "y_true", "y_pred", "beta"]],
-  ["M6", "KL Divergence", "Distribution divergence", ["id", "y_true", "y_pred"]],
-  ["M7", "Specificity", "True negative rate", ["id", "y_true", "y_pred"]],
-  ["M8", "FPR", "False positive rate", ["id", "y_true", "y_pred"]],
+  ["M1", "Accuracy", "Overall correctness", ["y_true", "y_pred"]],
+  ["M2", "Precision", "Positive predictive value", ["y_true", "y_pred"]],
+  ["M3", "Recall", "Sensitivity", ["y_true", "y_pred"]],
+  ["M4", "F1 Score", "Harmonic mean", ["y_true", "y_pred"]],
+  ["M5", "F-beta Score", "Weighted F score", ["y_true", "y_pred", "beta"]],
+  ["M6", "KL Divergence", "Distribution divergence", ["y_true", "y_pred"]],
+  ["M7", "Specificity", "True negative rate", ["y_true", "y_pred"]],
+  ["M8", "FPR", "False positive rate", ["y_true", "y_pred"]],
 ] as const;
 
 /**

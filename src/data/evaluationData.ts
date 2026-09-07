@@ -19,13 +19,6 @@ export interface MetricDefinition {
   higherIsBetter?: boolean;
 }
 
-export interface UploadColumnGuide {
-  alwaysRequired: string[];
-  conditionallyRequired: string[];
-  optional: string[];
-  notes: string[];
-}
-
 export type RequiredColumnCode =
   | "id"
   | "y_true"
@@ -49,23 +42,23 @@ export const TASK_TYPE_LABELS: Record<TaskType, string> = {
 
 export const METRICS: MetricDefinition[] = [
   { id: "M1", name: "Accuracy", subtitle: "Overall correctness", description: "Measures how often the classifier predicts the correct result.", supportedTaskTypes: ["binary", "multiclass"], formula: "(TP + TN) / Total", isCommon: true },
-  { id: "M2", name: "Precision", subtitle: "Positive predictive value", description: "Among predicted positives, measures how many are actually positive.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "TP / (TP + FP)", isCommon: true },
-  { id: "M3", name: "Recall", subtitle: "Sensitivity", description: "Measures how many true positives are successfully detected.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "TP / (TP + FN)", isCommon: true },
-  { id: "M4", name: "F1 Score", subtitle: "Harmonic mean", description: "Balances precision and recall in a single metric.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "2 * (Precision * Recall) / (Precision + Recall)", isCommon: true },
-  { id: "M5", name: "F-beta Score", subtitle: "Weighted F score", description: "Adjusts the balance between precision and recall using beta.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["beta", "positiveClass"], formula: "(1 + β²) * (P * R) / (β² * P + R)", isCommon: true },
+  { id: "M2", name: "Precision", subtitle: "Positive predictive value", description: "Among predicted positives, measures how many are actually positive.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "binary: TP/(TP+FP) · 그 외: 클래스별 TP/(TP+FP) 의 macro 평균", isCommon: true },
+  { id: "M3", name: "Recall", subtitle: "Sensitivity", description: "Measures how many true positives are successfully detected.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "binary: TP/(TP+FN) · 그 외: 클래스별 TP/(TP+FN) 의 macro 평균", isCommon: true },
+  { id: "M4", name: "F1 Score", subtitle: "Harmonic mean", description: "Balances precision and recall in a single metric.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "binary: 2PR/(P+R) · 그 외: 클래스별 F1 의 macro 평균(macro-P·macro-R 의 조화평균이 아님)", isCommon: true },
+  { id: "M5", name: "F-beta Score", subtitle: "Weighted F score", description: "Adjusts the balance between precision and recall using beta.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["beta", "positiveClass"], formula: "binary: (1+β²)PR/(β²P+R) · 그 외: 클래스별 Fβ 의 macro 평균", isCommon: true },
   { id: "M6", higherIsBetter: false, name: "KL Divergence", subtitle: "Distribution divergence", description: "정답 레이블의 분포와 모델이 예측한 클래스 레이블의 분포 간의 차이(Target Drift)를 계산합니다.", supportedTaskTypes: ["binary", "multiclass"], formula: "∑ P(x) * log(P(x) / Q(x))", isCommon: true },
   { id: "M7", name: "Specificity", subtitle: "True negative rate", description: "Measures how many true negatives are correctly predicted.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], formula: "TN / (TN + FP)" },
   { id: "M8", higherIsBetter: false, name: "FPR", subtitle: "False positive rate", description: "Measures how often negatives are incorrectly marked positive.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], formula: "FP / (FP + TN)" },
   { id: "M9", name: "AUROC", subtitle: "ROC area", description: "Measures ranking quality across classification thresholds.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], probabilityRequiredFor: ["binary"], formula: "Area under ROC Curve" },
   { id: "M10", name: "AUPRC", subtitle: "PR area", description: "Measures precision-recall tradeoff across thresholds.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], probabilityRequiredFor: ["binary"], formula: "Area under PR Curve" },
-  { id: "M11", name: "Macro Average", subtitle: "Unweighted class average", description: "Averages class metrics equally across classes.", supportedTaskTypes: ["multiclass", "multilabel"], formula: "(Class1_Metric + ... + ClassN_Metric) / N" },
-  { id: "M12", name: "Micro Average", subtitle: "Global average", description: "Computes metrics over the full set of samples.", supportedTaskTypes: ["multiclass", "multilabel"], formula: "∑ TP / ∑ (TP+FP+FN)" },
-  { id: "M13", name: "Weighted Average", subtitle: "Support-weighted average", description: "Averages class metrics using class support as weights.", supportedTaskTypes: ["multiclass", "multilabel"], formula: "∑ (Class_Metric * Support) / Total Support" },
+  { id: "M11", name: "Macro Average", subtitle: "Unweighted class average", description: "Averages class metrics equally across classes.", supportedTaskTypes: ["multiclass"], formula: "클래스별 P·R·F1 의 macro 평균 — (Class1 + … + ClassN) / N" },
+  { id: "M12", name: "Micro Average", subtitle: "Global average", description: "Computes metrics over the full set of samples.", supportedTaskTypes: ["multiclass"], formula: "micro 평균 — 전 클래스의 TP·FP·FN 을 합산해 P·R·F1 을 계산" },
+  { id: "M13", name: "Weighted Average", subtitle: "Support-weighted average", description: "Averages class metrics using class support as weights.", supportedTaskTypes: ["multiclass"], formula: "weighted 평균 — 클래스별 지표를 support 로 가중 평균" },
   { id: "M14", higherIsBetter: false, name: "Distribution Diff (MC)", subtitle: "Class distribution gap", description: "Compares actual and predicted class distributions.", supportedTaskTypes: ["multiclass"], formula: "0.5 * ∑ |P(x) - Q(x)|" },
   { id: "M15", higherIsBetter: false, name: "Hamming Loss", subtitle: "Label mismatch ratio", description: "Measures label-wise disagreement in multi-label classification.", supportedTaskTypes: ["multilabel"], formula: "∑ (y_true ≠ y_pred) / (Samples * Labels)" },
   { id: "M16", name: "Exact Match Ratio", subtitle: "Strict set match", description: "Counts samples where all labels exactly match.", supportedTaskTypes: ["multilabel"], formula: "∑ (All_labels_match) / Samples" },
   { id: "M17", name: "Jaccard Index", subtitle: "Set overlap score", description: "Measures intersection over union of predicted and actual labels.", supportedTaskTypes: ["multilabel"], formula: "|y_true ∩ y_pred| / |y_true ∪ y_pred|" },
-  { id: "M18", higherIsBetter: false, name: "Distribution Diff (ML)", subtitle: "Label distribution gap", description: "Compares actual and predicted label distributions.", supportedTaskTypes: ["multilabel"], formula: "0.5 * ∑ |P(l) - Q(l)|" },
+  { id: "M18", higherIsBetter: false, name: "Distribution Diff (ML)", subtitle: "Label distribution gap", description: "Compares actual and predicted label distributions.", supportedTaskTypes: ["multilabel"], formula: "1 - cos(freq(y_true), freq(y_pred))" },
   { id: "M19", higherIsBetter: false, name: "Log Loss", subtitle: "Probabilistic error", description: "Penalizes confident but wrong probabilistic predictions.", supportedTaskTypes: ["binary"], probabilityRequiredFor: ["binary"], formula: "- (y * log(p) + (1-y) * log(1-p))" },
   { id: "M20", name: "MCC", subtitle: "Balanced correlation", description: "A robust binary metric that considers all confusion matrix cells.", supportedTaskTypes: ["binary"], formula: "(TP*TN - FP*FN) / √((TP+FP)(TP+FN)(TN+FP)(TN+FN))" },
   { id: "M21", name: "Confusion Matrix", subtitle: "Prediction matrix", description: "Shows actual versus predicted counts by class or label.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], formula: "실제/예측 클래스의 교차 분포를 행렬로 산출", isCommon: true },
@@ -76,58 +69,64 @@ export const METRICS: MetricDefinition[] = [
 const RECOMMENDED_METRICS: Record<TaskType, string[]> = {
   binary: ["M1", "M2", "M3", "M4", "M9", "M21", "M22", "M23"],
   multiclass: ["M1", "M2", "M3", "M4", "M11", "M21", "M22", "M23"],
-  multilabel: ["M1", "M2", "M3", "M4", "M15", "M21", "M22", "M23"],
+  // M1 은 multilabel 에서 M16 과 값이 같아 제거됐다(결정 2). 같은 측정을 정확한
+  // 이름으로 추천한다 — 그냥 빼면 추천 세트에서 '전 라벨 일치' 계열이 사라진다.
+  multilabel: ["M16", "M2", "M3", "M4", "M15", "M21", "M22", "M23"],
 };
 
+/**
+ * 지표별 요구 컬럼 — 백엔드 `METRIC_REQUIREMENTS`(app/core/schemas.py)와 대응한다.
+ *
+ * **`id`(sample_id)는 여기 들어가지 않는다.** SPEC §0 이 '선택(권장)'으로 규정하고
+ * 백엔드 요구표에도 sample_id 가 한 번도 없는데, 종전에는 43개 항목이 전부 "id" 로
+ * 시작해 매핑 화면이 '다음'을 하드 차단했다 — id 컬럼이 없는 데이터셋은 백엔드까지
+ * 가보지도 못했다(ISSUES.md A-13). id 는 여전히 매핑 **가능**하고 중복 검사에 쓰인다.
+ */
 const REQUIRED_COLUMNS_BY_METRIC: Record<TaskType, Partial<Record<string, RequiredColumnCode[]>>> = {
   binary: {
-    M1: ["id", "y_true", "y_pred"],
-    M2: ["id", "y_true", "y_pred"],
-    M3: ["id", "y_true", "y_pred"],
-    M4: ["id", "y_true", "y_pred"],
-    M5: ["id", "y_true", "y_pred"],
-    M6: ["id", "y_true", "y_pred"],
-    M7: ["id", "y_true", "y_pred"],
-    M8: ["id", "y_true", "y_pred"],
-    M9: ["id", "y_true", "score"],
-    M10: ["id", "y_true", "score"],
-    M19: ["id", "y_true", "score"],
-    M20: ["id", "y_true", "y_pred"],
-    M21: ["id", "y_true", "y_pred"],
-    M22: ["id", "y_true", "y_pred"],
-    M23: ["id", "y_true"],
+    M1: ["y_true", "y_pred"],
+    M2: ["y_true", "y_pred"],
+    M3: ["y_true", "y_pred"],
+    M4: ["y_true", "y_pred"],
+    M5: ["y_true", "y_pred"],
+    M6: ["y_true", "y_pred"],
+    M7: ["y_true", "y_pred"],
+    M8: ["y_true", "y_pred"],
+    M9: ["y_true", "score"],
+    M10: ["y_true", "score"],
+    M19: ["y_true", "score"],
+    M20: ["y_true", "y_pred"],
+    M21: ["y_true", "y_pred"],
+    M22: ["y_true", "y_pred"],
+    M23: ["y_true"],
   },
   multiclass: {
-    M1: ["id", "y_true", "y_pred"],
-    M2: ["id", "y_true", "y_pred"],
-    M3: ["id", "y_true", "y_pred"],
-    M4: ["id", "y_true", "y_pred"],
-    M5: ["id", "y_true", "y_pred"],
-    M6: ["id", "y_true", "y_pred"],
-    M11: ["id", "y_true", "y_pred"],
-    M12: ["id", "y_true", "y_pred"],
-    M13: ["id", "y_true", "y_pred"],
-    M14: ["id", "y_true", "y_pred"],
-    M21: ["id", "y_true", "y_pred"],
-    M22: ["id", "y_true", "y_pred"],
-    M23: ["id", "y_true"],
+    M1: ["y_true", "y_pred"],
+    M2: ["y_true", "y_pred"],
+    M3: ["y_true", "y_pred"],
+    M4: ["y_true", "y_pred"],
+    M5: ["y_true", "y_pred"],
+    M6: ["y_true", "y_pred"],
+    M11: ["y_true", "y_pred"],
+    M12: ["y_true", "y_pred"],
+    M13: ["y_true", "y_pred"],
+    M14: ["y_true", "y_pred"],
+    M21: ["y_true", "y_pred"],
+    M22: ["y_true", "y_pred"],
+    M23: ["y_true"],
   },
   multilabel: {
-    M1: ["id", "y_true", "y_pred"],
-    M2: ["id", "y_true", "y_pred"],
-    M3: ["id", "y_true", "y_pred"],
-    M4: ["id", "y_true", "y_pred"],
-    M5: ["id", "y_true", "y_pred"],
-    M11: ["id", "y_true", "y_pred"],
-    M12: ["id", "y_true", "y_pred"],
-    M13: ["id", "y_true", "y_pred"],
-    M15: ["id", "y_true", "y_pred"],
-    M16: ["id", "y_true", "y_pred"],
-    M17: ["id", "y_true", "y_pred"],
-    M18: ["id", "y_true", "y_pred"],
-    M21: ["id", "y_true", "y_pred"],
-    M22: ["id", "y_true", "y_pred"],
-    M23: ["id", "y_true"],
+    M2: ["y_true", "y_pred"],
+    M3: ["y_true", "y_pred"],
+    M4: ["y_true", "y_pred"],
+    M5: ["y_true", "y_pred"],
+    M15: ["y_true", "y_pred"],
+    M16: ["y_true", "y_pred"],
+    M17: ["y_true", "y_pred"],
+    M18: ["y_true", "y_pred"],
+    M21: ["y_true", "y_pred"],
+    M22: ["y_true", "y_pred"],
+    M23: ["y_true"],
   },
 };
 
@@ -141,12 +140,52 @@ const REQUIRED_COLUMNS_BY_METRIC: Record<TaskType, Partial<Record<string, Requir
  */
 export const MAPPABLE_ROLES_BY_TASK: Record<TaskType, RequiredColumnCode[]> = {
   binary: ["id", "y_true", "y_pred", "score", "latency"],
-  // multiclass/multilabel 은 확률 컬럼을 받지 않는다. 두 task 의 지표 중 확률을 읽는 것이
-  // 하나도 없어 값을 주지 못하면서, 매핑되면 그 컬럼의 결측이 평가 표본을 깎고
-  // 범위 이탈은 평가를 중단시킨다. 확률 기반 파생·지표가 생기면 그때 다시 넣는다.
-  multiclass: ["id", "y_true", "y_pred", "latency"],
-  multilabel: ["id", "y_true", "y_pred", "latency"],
+  // 확률 컬럼은 세 task 모두에서 정식 입력이다(2026-09-07 결정 1). 하드 예측이 없으면
+  // 백엔드가 확률에서 예측을 파생한다 — binary 는 임계값, multiclass 는 argmax,
+  // multilabel 은 레이블별 임계값. PREDICTION_ROLE_ALTERNATIVES 참조.
+  multiclass: ["id", "y_true", "y_pred", "prob_class_*", "latency"],
+  multilabel: ["id", "y_true", "y_pred", "prob_label_*", "latency"],
 };
+
+/**
+ * 예측 역할을 대신할 수 있는 확률 역할 — 백엔드 `PREDICTION_ROLES_BY_TASK`
+ * (Capstone_Back/app/core/schemas.py)의 거울이다. 두 표가 어긋나면 화면이 허용한
+ * 매핑을 백엔드가 거절하거나 그 반대가 된다(metricColumnContract.test.ts 가 고정).
+ *
+ * **왜 별도 표인가.** `REQUIRED_COLUMNS_BY_METRIC` 의 값은 배열(AND 의미)이라
+ * SPEC §1~§3 이 규정한 "y_pred **또는** 확률"이라는 택일을 담을 수 없다. 택일을
+ * 이 표 하나로 분리해 요구표는 그대로 두고, 누락 판정만 이 규칙을 통과시킨다.
+ */
+export const PREDICTION_ROLE_ALTERNATIVES: Record<
+  TaskType,
+  { primary: RequiredColumnCode; alternatives: RequiredColumnCode[] }
+> = {
+  binary: { primary: "y_pred", alternatives: ["score"] },
+  multiclass: { primary: "y_pred", alternatives: ["prob_class_*"] },
+  multilabel: { primary: "y_pred", alternatives: ["prob_label_*"] },
+};
+
+/**
+ * 요구 역할 중 실제로 배정되지 않은 것.
+ *
+ * 예측 역할은 확률 역할이 배정돼 있으면 충족된 것으로 본다 — 백엔드가 확률에서
+ * 예측을 파생하기 때문이다(ISSUES.md A-01·A-02). 종전에는 단순히 개수 0 만 봐서,
+ * 확률만 가진 사용자가 '다음' 버튼이 눌리지 않아 백엔드까지 가보지도 못했다.
+ */
+export function resolveMissingRoleCodes(
+  taskType: TaskType,
+  requiredCodes: readonly RequiredColumnCode[] | readonly string[],
+  roleCounts: Record<string, number>,
+): string[] {
+  const { primary, alternatives } = PREDICTION_ROLE_ALTERNATIVES[taskType];
+  const has = (code: string) => (roleCounts[code] ?? 0) > 0;
+
+  return requiredCodes.filter((code) => {
+    if (has(code)) return false;
+    if (code === primary && alternatives.some(has)) return false;
+    return true;
+  }) as string[];
+}
 
 const COLUMN_ORDER: RequiredColumnCode[] = [
   "id",
@@ -232,44 +271,6 @@ export function selectionNeedsField(taskType: TaskType, selectedIds: string[], f
     }
     return field !== "positiveClass" || taskType === "binary";
   });
-}
-
-export function getUploadColumnGuide(taskType: TaskType, selectedIds: string[]): UploadColumnGuide {
-  const onlyM23 = selectedIds.length > 0 && selectedIds.every((id) => id === "M23");
-  const requiresProbability = selectionRequiresProbability(taskType, selectedIds);
-
-  const probabilityColumn =
-    taskType === "binary" ? "score" : taskType === "multiclass" ? "prob_class_*" : "prob_label_*";
-
-  const alwaysRequired = ["id", "y_true"];
-  const conditionallyRequired = onlyM23 ? [] : ["y_pred"];
-  const optional = requiresProbability ? [] : [probabilityColumn];
-  const notes = ["id values must be unique.", "Probability values must be between 0 and 1."];
-
-  if (requiresProbability) {
-    conditionallyRequired.push(probabilityColumn);
-  }
-  if (taskType === "multiclass") {
-    notes.push("For multiclass probabilities, the per-row probability sum should be close to 1.");
-  }
-  if (taskType === "multilabel") {
-    notes.push("Use a consistent label separator or one-hot label columns for multi-label data.");
-  }
-  if (onlyM23) {
-    notes.push("M23 can be computed with dataset distribution only, so prediction columns are optional.");
-  }
-
-  return { alwaysRequired, conditionallyRequired, optional, notes };
-}
-
-export function getProbabilityColumnLabel(taskType: TaskType): string {
-  if (taskType === "binary") {
-    return "positive class score column";
-  }
-  if (taskType === "multiclass") {
-    return "per-class probability columns (prob_class_*)";
-  }
-  return "per-label probability columns (prob_label_*)";
 }
 
 export function getRequiredColumnsForSelection(taskType: TaskType, selectedIds: string[]): RequiredColumnDisplay[] {

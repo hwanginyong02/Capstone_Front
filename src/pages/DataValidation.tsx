@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { useWorkflowStore, stepToPath } from "../utils/stores/useWorkflowStore";
+import { BackendNoticePanel } from "../components/workflow/BackendNoticePanel";
+import { ensureActiveWorkspace } from "../utils/domain/ensureActiveWorkspace";
 import { useWorkspaceStore } from "../utils/stores/useWorkspaceStore";
 import { WorkflowShell } from "../layout/WorkflowShell";
 import { Alert, AlertDescription } from "../components/ui/alert";
@@ -58,29 +60,27 @@ export function DataValidation() {
     try {
       const { workflowSnapshot, reportData } = buildEvaluationResult();
 
-      if (activeWorkspaceId) {
-        const run = addEvaluationRun({
-          workspaceId: activeWorkspaceId,
-          modelName: store.basicInfo.modelName || "Untitled model",
-          versionName: store.basicInfo.versionName || "v1.0.0",
-          reportId: reportData.meta.reportId,
-          workflowSnapshot,
-          reportData,
-        });
+      // 워크스페이스가 없으면 만든다(ISSUES.md E-02). 종전에는 없을 때 계산해 둔
+      // reportData 를 **버리고** /report/preview 로 갔고, 그 성적서는 어디에도
+      // 저장되지 않아 발급·재조회가 전부 불가능했다.
+      const workspaceId = ensureActiveWorkspace(store.basicInfo.modelName ?? "");
 
-        // 저장에 성공한 뒤에만 단계를 넘긴다(실패 시 6단계에 머물러 재시도 가능).
-        // run id 를 남겨야 성적서를 벗어난 뒤 7번 탭으로 돌아올 수 있다(ISSUES.md E-16).
-        store.setLastRunId(run.id);
-        store.markStepCompleted(6);
-        store.markStepCompleted(7);
-        store.setCurrentStep(7);
-        navigate(`/report/${run.id}`);
-        return;
-      }
+      const run = addEvaluationRun({
+        workspaceId,
+        modelName: store.basicInfo.modelName || "Untitled model",
+        versionName: store.basicInfo.versionName || "v1.0.0",
+        reportId: reportData.meta.reportId,
+        workflowSnapshot,
+        reportData,
+      });
 
+      // 저장에 성공한 뒤에만 단계를 넘긴다(실패 시 6단계에 머물러 재시도 가능).
+      // run id 를 남겨야 성적서를 벗어난 뒤 7번 탭으로 돌아올 수 있다(ISSUES.md E-16).
+      store.setLastRunId(run.id);
       store.markStepCompleted(6);
+      store.markStepCompleted(7);
       store.setCurrentStep(7);
-      navigate(stepToPath(7));
+      navigate(`/report/${run.id}`);
     } catch (err) {
       console.error("평가 실행(성적서 생성) 실패:", err);
       setSubmitError(describeSubmitError(err));
@@ -115,6 +115,15 @@ export function DataValidation() {
         </Alert>
       )}
       <FileReuploadNotice />
+
+      {/* 백엔드가 4·5단계에서 내려보낸 안내를 여기 합쳐 보여준다(ISSUES.md B-03·B-04·A-12).
+          그 화면들에서 띄우면 사용자는 이미 다음 단계로 넘어간 뒤라 읽지 못한다. */}
+      <BackendNoticePanel
+        columnNotes={store.columnNotes}
+        mappingWarnings={store.mappingWarnings}
+        selectedMetricIds={store.selectedMetricIds}
+        availableMetricIds={store.availableMetricIds}
+      />
       <DataValidationContent
         validationData={validationData}
         isLoading={isLoading}

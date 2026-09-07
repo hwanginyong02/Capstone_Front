@@ -25,6 +25,14 @@ export function ColumnMapping() {
         selectedMetricIds: store.selectedMetricIds,
       });
 
+      // 경고와 가용 지표는 진행을 막지 않지만 **버려서도 안 된다**(ISSUES.md B-04·A-12).
+      // 6단계 상단에 합쳐 보여준다 — 여기서 띄우면 안내가 도착하는 순간 이미 다음
+      // 화면으로 넘어가 있다.
+      store.setMappingFeedback({
+        warnings: result.warnings ?? [],
+        availableMetricIds: result.available_metric_ids ?? null,
+      });
+
       if (!result.is_valid) {
         const errorMsgs = result.errors.map((e) => `• ${e.message}`).join("\n");
         alert(`매핑 유효성 검사 실패:\n${errorMsgs}`);
@@ -78,6 +86,8 @@ export function ColumnMapping() {
         positiveClass={store.metadata?.positive_class || ""}
         onPositiveClassChange={handlePositiveClassChange}
         positiveClassAmbiguous={store.metadata?.positive_class_ambiguous}
+        decisionThreshold={store.decisionThreshold}
+        onDecisionThresholdChange={store.setDecisionThreshold}
         detectedClasses={
           store.metadata?.detected_classes?.length
             ? store.metadata.detected_classes
