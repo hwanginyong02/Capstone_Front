@@ -122,4 +122,4 @@ pnpm build            # 프로덕션 빌드
 
 ## 라이선스
 
-© 2026 서울과학기술대학교
+© 2026 Kim Minseo, Hwang Inyong (서울과학기술대학교 졸업과제)
