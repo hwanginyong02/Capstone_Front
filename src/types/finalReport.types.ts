@@ -78,6 +78,12 @@ export interface EvalEnvironment {
     memory: string;
     software: string;
   };
+  /**
+   * 평가를 실제로 수행한 환경(백엔드 `EvaluateResponse.environment`).
+   * **옵셔널이다** — 이 필드가 생기기 전에 발급된 성적서 스냅샷에는 없어서,
+   * 없으면 종전 상수로 폴백한다(ISSUES.md F-09, 결정 4).
+   */
+  environment?: { libraries: Record<string, string>; evaluated_at: string };
 }
 
 export interface ClassLabelInfo {

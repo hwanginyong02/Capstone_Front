@@ -383,6 +383,9 @@ export function useReportData(id: string): UseReportDataResult {
         const stage1Report: FinalReportData = {
           ...baseReport,
           meta: { ...baseReport.meta, derivedPrediction },
+          // 평가를 실제로 수행한 환경(라이브러리 버전·수행 시각). 종전에는 프론트
+          // 상수를 인쇄해 실제와 무관한 값이 성적서에 남았다(ISSUES.md F-09).
+          evalEnv: { ...baseReport.evalEnv, environment: result.environment ?? undefined },
           kpiResults: updatedKpiResults,
           conclusion: ruleConclusion,  // full ConclusionData (verdict/score + 빈 서술)
           datasetDiagnosis,
