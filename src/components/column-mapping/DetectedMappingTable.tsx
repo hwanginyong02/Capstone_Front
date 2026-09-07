@@ -11,7 +11,7 @@ interface DetectedMappingTableProps {
   setFilterMode: (mode: FilterMode) => void;
   visibleRows: MappingRow[];
   roleCounts: Partial<Record<MappingRole, number>>;
-  handleRoleChange: (index: number, newRole: string) => void;
+  handleRoleChange: (columnName: string, newRole: string) => void;
   roleOptions: Array<{ value: MappingRole; label: string }>;
 }
 
@@ -69,7 +69,7 @@ export function DetectedMappingTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {visibleRows.map((row, index) => {
+              {visibleRows.map((row) => {
                 const duplicate = Boolean(
                   row.confirmedRole &&
                   row.confirmedRole !== "ignore" &&
@@ -94,7 +94,7 @@ export function DetectedMappingTable({
                       <div className="flex flex-col gap-2">
                         <Select
                           value={row.confirmedRole ?? "unassigned"}
-                          onValueChange={(value) => handleRoleChange(index, value)}
+                          onValueChange={(value) => handleRoleChange(row.originalName, value)}
                         >
                           <SelectTrigger className={cn("w-[210px]", duplicate && "border-destructive")}>
                             <SelectValue />

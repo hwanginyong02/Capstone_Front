@@ -48,12 +48,12 @@
   overflow: hidden;
 }
 
-.landing-report-preview-iframe {
-  pointer-events: none;
-  height: 150%;
-  width: 150%;
-  transform: scale(0.667);
-  transform-origin: top left;
+/* 성적서 미리보기는 iframe 이 아니라 고정 예시의 정적 렌더다(ISSUES.md E-06).
+   종전 iframe 은 transform: scale 로 축소했는데, transform 은 레이아웃 박스를 바꾸지
+   않아 스크롤 컨테이너에 빈 영역이 남는다. zoom 은 레이아웃까지 함께 줄여 스크롤
+   길이가 실제 내용과 맞는다. */
+.landing-report-preview-scroll {
+  zoom: 0.667;
 }
 
 .landing-screen-highlight {

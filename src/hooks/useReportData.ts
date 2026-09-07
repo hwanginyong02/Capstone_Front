@@ -1,8 +1,12 @@
 /**
  * 최종 성적서 데이터 페칭 훅.
  *
- * - id === "preview": 워크플로우 store에서 입력값을 읽어 백엔드 /api/evaluate를 호출하여 데이터 계산 및 병합
- * - 그 외 id: 향후 백엔드 API 호출로 교체 (현재는 MOCK_FINAL_REPORT fallback)
+ * 워크스페이스에 저장된 run(`/report/:id`)의 성적서를 만든다. 캐시된 완성본이 있으면
+ * 그대로 쓰고, 없으면 워크플로우 store 의 입력으로 `/api/evaluate` → `/api/generate-narrative`
+ * 를 호출해 조립한다.
+ *
+ * 종전에는 `id === "preview"` 라는 임시 경로가 있어 워크스페이스 없이도 성적서가
+ * 렌더됐다 — 그 성적서는 어디에도 저장되지 않아 발급·재조회가 불가능했다(ISSUES.md E-02·E-06).
  */
 import { useEffect, useState } from "react";
 
@@ -51,7 +55,7 @@ export function useReportData(id: string): UseReportDataResult {
       return;
     }
 
-    if (id !== "preview" && !workflowState.rawFile) {
+    if (!workflowState.rawFile) {
       setData(run?.reportData || null);
       return;
     }
@@ -109,6 +113,9 @@ export function useReportData(id: string): UseReportDataResult {
           selected_metric_ids: workflowState.selectedMetricIds,
           metadata: metadata,
           beta: beta,
+          // 하드 예측이 없을 때 확률에서 예측을 파생하는 기준(ISSUES.md A-01).
+          // 성적서 합격 목표값(threshold)과는 다른 개념이라 필드명이 분리돼 있다.
+          decision_threshold: workflowState.decisionThreshold,
         };
 
         const formData = new FormData();
@@ -148,9 +155,15 @@ export function useReportData(id: string): UseReportDataResult {
         const failed_metrics = result.results.failed_metrics || {};
 
         // 1. KPI 지표 계산값 치환
+        const taskTypeForMetrics = workflowState.taskType || "multiclass";
         const updatedKpiResults = workflowState.selectedMetricIds
           .map((metricId) => {
-            const metric = METRICS.find((m) => m.id === metricId);
+            // **task 필터를 함께 본다.** 4절(metricList)·5절(metricFormulas)은
+            // supportedTaskTypes 로 거르는데 여기만 걸러내지 않아, 그 task 가 노출하지
+            // 않는 지표가 6절 KPI 표에만 숫자로 찍혔다(ISSUES.md A-04 의 인쇄 결과).
+            const metric = METRICS.find(
+              (m) => m.id === metricId && m.supportedTaskTypes.includes(taskTypeForMetrics),
+            );
             if (!metric) return null;
 
             // 방향성(높을수록/낮을수록 좋음) — 판정·기준 표기의 단일 출처(evaluationData.ts)
@@ -310,7 +323,13 @@ export function useReportData(id: string): UseReportDataResult {
 
         const taskTypeResolved = workflowState.taskType || "binary";
         // 혼동행렬의 totalSamples가 가장 정확한 평가 데이터의 row 수 (멀티레이블의 경우 200)
-        const datasetSize = confusionMatrix?.totalSamples || Number(workflowState.datasetInfo?.validationSampleCount) || undefined;
+        // 서버가 확정한 표본 수를 최우선으로 쓴다. validationSampleCount 는 4단계에서
+        // 사용자가 손으로 적은 값이라 실제 평가 행 수와 무관할 수 있다(ISSUES.md B-02·E-17).
+        const datasetSize =
+          result.n_samples ||
+          confusionMatrix?.totalSamples ||
+          Number(workflowState.datasetInfo?.validationSampleCount) ||
+          undefined;
 
         const datasetDiagnosis = buildDatasetDiagnosis(
           { class_distribution: resolvedClassDistribution },
@@ -341,6 +360,9 @@ export function useReportData(id: string): UseReportDataResult {
           kpiResults: updatedKpiResults,
           confusionMatrix,
           classDistribution: resolvedClassDistribution,
+          // 표본 수는 서버가 확정한 값을 그대로 쓴다. 분포 합계로 추측하면 멀티레이블에서
+          // 200행이 408 이 된다(ISSUES.md B-02).
+          nSamples: result.n_samples ?? confusionMatrix?.totalSamples ?? 0,
           imbalanceRatio,
           droppedRows: result.dropped_rows,
           verdict: ruleConclusion.verdict,
@@ -354,15 +376,26 @@ export function useReportData(id: string): UseReportDataResult {
         // ── Stage 1: 서술과 무관한 결정론적 결과(KPI·차트·규칙 verdict)를 즉시 렌더한다.
         //    느리거나 실패하는 LLM 서술이 성적서 전체 표시를 인질로 잡지 않도록 분리(D6b).
         //    interpretation/recommendation* 은 baseReport 의 빈 기본값 유지, narrativeSource 미설정.
+        // 파생 예측 사실(SPEC §0 기재 의무)을 성적서 메타로 나른다. 백엔드는 실제로
+        // 파생이 일어났을 때만 이 키를 내려보낸다(ISSUES.md A-01).
+        const derivedPrediction = success_metrics.derived_prediction ?? undefined;
+
         const stage1Report: FinalReportData = {
           ...baseReport,
+          meta: { ...baseReport.meta, derivedPrediction },
+          // 평가를 실제로 수행한 환경(라이브러리 버전·수행 시각). 종전에는 프론트
+          // 상수를 인쇄해 실제와 무관한 값이 성적서에 남았다(ISSUES.md F-09).
+          evalEnv: { ...baseReport.evalEnv, environment: result.environment ?? undefined },
+          // 전처리 경고를 버리지 않는다(ISSUES.md D-16). 결측 제외·확률합 이상·파생 예측
+          // 같은 사실이 여기에만 실려 온다.
+          evaluationWarnings: Array.isArray(result.warnings) ? result.warnings : [],
           kpiResults: updatedKpiResults,
           conclusion: ruleConclusion,  // full ConclusionData (verdict/score + 빈 서술)
           datasetDiagnosis,
           charts: { confusionMatrix, rocCurve, prCurve },
           latency: latencyStats,
         };
-        // id!=='preview' 라도 stage1(서술 없음)은 스토어에 저장하지 않는다(캐시 오염 방지) — 로컬 렌더만.
+        // stage1(서술 없음)은 스토어에 저장하지 않는다(캐시 오염 방지) — 로컬 렌더만.
         setData(stage1Report);
         setIsLoading(false);
         setNarrativePending(true);
@@ -389,7 +422,7 @@ export function useReportData(id: string): UseReportDataResult {
         };
 
         // 완성본(서술 포함)만 isEvaluated=true 로 스토어에 저장한다(캐시 히트 시 완성본 서빙).
-        if (id !== "preview") {
+        if (id) {
           const evaluatedReport = { ...mergedReport, isEvaluated: true };
           useWorkspaceStore.setState((state) => ({
             evaluationRuns: state.evaluationRuns.map((r) =>

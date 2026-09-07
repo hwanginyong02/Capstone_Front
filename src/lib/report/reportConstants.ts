@@ -8,6 +8,19 @@ import type {
   ReportPurposeKey,
 } from "../../types/finalReport.types";
 
+/**
+ * **미발급 초안에만 쓰이는 자리표시자.** 정본은 서버의 `organization` 테이블이다
+ * (백엔드 `app/issuance/bootstrap.py` 의 시드 → `GET /api/organization`).
+ *
+ * ISSUES.md F-10 — 종전에는 이 상수와 DB 시드가 **같은 값을 각각 하드코딩**하고 있어,
+ * 기관명을 바꾸면 두 곳을 함께 고쳐야 한다는 사실이 어디에도 적혀 있지 않았다.
+ * 값을 프론트에서 지울 수는 없다 — 발급 전 성적서에도 수행기관 칸이 인쇄되기 때문이다.
+ * 대신 **여기가 정본이 아니라는 것**을 명시하고, 발급 후에는 서버 값으로 교체된다는
+ * 사실을 함께 적는다(`useIssuance` 가 `IssuanceOut.organization` 으로 덮어쓴다).
+ *
+ * 기관 정보를 바꿔야 하면 **서버 시드를 고치는 것이 먼저다.** 이 상수는 그 값을 아직
+ * 받아오지 못한 초안 화면의 자리표시자일 뿐이다.
+ */
 export const DEFAULT_PERFORMER: PerformerInfo = {
   orgName: "한국 AI 인증원",
   evaluator: "자동 평가 엔진",

@@ -57,9 +57,19 @@ export interface NarrativeRequestPayload {
 export interface BuildFactSheetInput {
   kpiResults: KpiResult[];
   confusionMatrix: ConfusionMatrixData | null;
+  /**
+   * 클래스별 등장 횟수. multilabel 은 **레이블 등장 횟수**라 합계가 표본 수를 넘는다
+   * — 표본 수로 쓰면 안 된다(ISSUES.md B-02). 표본 수는 nSamples 를 쓸 것.
+   */
   classDistribution: Record<string, number>;
   imbalanceRatio?: number;
   droppedRows: number;
+  /**
+   * 서버가 확정한 평가 표본 수(EvaluateResponse.n_samples — 결측 제거 후 실제로 지표를
+   * 계산한 행 수). 종전에는 이 값을 혼동행렬 합계나 분포 합계로 **추측**했고, M21
+   * 미선택 멀티레이블에서 200행이 408 이 됐다. 추측하는 자리를 없애기 위해 필수다.
+   */
+  nSamples: number;
   verdict: string;
   score: number;
   /** success_metrics.M22 (classification report) — 클래스별 precision/recall/f1/support */
@@ -98,11 +108,53 @@ function buildPerClass(
   return result;
 }
 
+/**
+ * fact_sheet 의 혼동행렬 — 멀티레이블은 **전 레이블 합계**로 보낸다 (ISSUES.md C-08).
+ *
+ * 멀티레이블 혼동행렬은 레이블마다 2x2 가 하나씩 나온다. 종전에는 그중 **첫 번째
+ * 레이블의 2x2 만** 실렸고 라벨명도 `Negative (sports)` 처럼 그 레이블 이름을 달고
+ * 있었다. LLM 은 그것을 **전체 혼동행렬로 읽고** 서술한다 — 레이블이 넷이면 나머지
+ * 셋의 오분류가 서술 근거에서 통째로 빠진다.
+ *
+ * 레이블별 세부는 이미 `per_class`(M22)로 실려 가므로, 여기서는 '일부를 전체로 보이게
+ * 하는' 상태만 없앤다. binary/multiclass 는 원래 행렬이 하나뿐이라 종전 그대로다.
+ */
+function buildConfusionFact(
+  confusionMatrix: ConfusionMatrixData | null,
+  positiveClass: string | null,
+) {
+  if (!confusionMatrix) return null;
+
+  const perLabel = (confusionMatrix as { multilabelMatrices?: Array<{ matrix: number[][] }> })
+    .multilabelMatrices;
+
+  if (!perLabel || perLabel.length <= 1) {
+    return {
+      labels: confusionMatrix.labels,
+      matrix: confusionMatrix.matrix,
+      positive_class: positiveClass,
+    };
+  }
+
+  const summed = perLabel.reduce<number[][]>(
+    (acc, { matrix }) =>
+      acc.map((row, i) => row.map((cell, j) => cell + (matrix[i]?.[j] ?? 0))),
+    [[0, 0], [0, 0]],
+  );
+
+  return {
+    labels: ["Negative (전체 레이블 합계)", "Positive (전체 레이블 합계)"],
+    matrix: summed,
+    positive_class: positiveClass,
+  };
+}
+
 export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
   const {
     kpiResults,
     confusionMatrix,
     classDistribution,
+    nSamples,
     imbalanceRatio,
     droppedRows,
     verdict,
@@ -128,10 +180,6 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
     };
   });
 
-  // 평가 샘플 수: 혼동행렬 합계 > 분포 합계 순으로 도출
-  const distTotal = Object.values(classDistribution).reduce((a, b) => a + b, 0);
-  const nSamples = confusionMatrix?.totalSamples ?? distTotal ?? 0;
-
   const hasDistribution = Object.keys(classDistribution).length > 0;
 
   return {
@@ -139,13 +187,7 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
     dropped_rows: droppedRows,
     metrics,
     per_class: buildPerClass(classReport, classLabels),
-    confusion: confusionMatrix
-      ? {
-          labels: confusionMatrix.labels,
-          matrix: confusionMatrix.matrix,
-          positive_class: positiveClass ?? null,
-        }
-      : null,
+    confusion: buildConfusionFact(confusionMatrix, positiveClass ?? null),
     distribution: hasDistribution
       ? {
           class_distribution: classDistribution,

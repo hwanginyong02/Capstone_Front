@@ -15,6 +15,25 @@ export interface FinalReportMeta {
   taskTypeLabel: string;
   contractDate?: string;
   positiveClass?: string;
+  /**
+   * 하드 예측 없이 확률·점수에서 예측을 파생한 경우의 사실 기재(ISSUES.md A-01).
+   * SPEC §0 — "argmax·threshold 로 만든 예측은 모델의 실제 출력이 아니라 파생값이므로,
+   * 성적서에 파생 사실과 사용한 임계값을 반드시 기재해야 한다."
+   * 백엔드 `results.success_metrics.derived_prediction` 을 그대로 받는다.
+   */
+  derivedPrediction?: DerivedPredictionFact;
+}
+
+/** 확률에서 예측을 파생한 방법·임계값·출처 컬럼. */
+export interface DerivedPredictionFact {
+  method: "threshold" | "argmax" | "threshold_per_label";
+  threshold: number | Record<string, number> | null;
+  source_columns: string[];
+  target_role: string;
+  positive_class?: string;
+  negative_class?: string;
+  class_order?: string[];
+  label_order?: string[];
 }
 
 export interface ApplicantInfo {
@@ -59,6 +78,12 @@ export interface EvalEnvironment {
     memory: string;
     software: string;
   };
+  /**
+   * 평가를 실제로 수행한 환경(백엔드 `EvaluateResponse.environment`).
+   * **옵셔널이다** — 이 필드가 생기기 전에 발급된 성적서 스냅샷에는 없어서,
+   * 없으면 종전 상수로 폴백한다(ISSUES.md F-09, 결정 4).
+   */
+  environment?: { libraries: Record<string, string>; evaluated_at: string };
 }
 
 export interface ClassLabelInfo {
@@ -221,5 +246,11 @@ export interface FinalReportData {
   recommendations: ReportRecommendation[];
   /** 7·8·9절 서술의 출처(추적성 배지). 미평가/미생성 시 undefined. */
   narrativeSource?: NarrativeSource;
+  /**
+   * 평가 전처리가 만든 경고(백엔드 `EvaluateResponse.warnings`).
+   * 종전에는 프론트에 소비처가 없어 그대로 버려졌다(ISSUES.md D-16).
+   * **6단계가 아니라 성적서 화면에서 도착한다** — evaluate 를 호출하는 곳이 여기다.
+   */
+  evaluationWarnings?: string[];
   signature: SignatureData;
 }

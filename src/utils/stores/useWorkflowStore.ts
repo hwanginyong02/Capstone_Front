@@ -14,7 +14,8 @@
  */
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import type { TaskType } from "../../data/evaluationData";
+import { getAvailableMetrics, type TaskType } from "../../data/evaluationData";
+import type { ColumnNote, MappingWarning } from "../../lib/report/backendNotices";
 import type { MappingRow } from "../../types/mapping.types";
 import type { ValidateDataResponseData } from "../../types/validation.types";
 import type { MapWorkflowToReportInput } from "../../lib/report/mapWorkflowToFinalReport";
@@ -42,7 +43,10 @@ export type StepPath = (typeof STEP_PATHS)[number];
 
 /** Convert a 1-based step number to a route path */
 export function stepToPath(step: number): string {
-  if (step === 7) return "/report/preview";
+  // 7단계(성적서)는 실제 run id 로만 열 수 있다. 여기서는 목적지가 정해지지 않으므로
+  // 항상 유효한 워크스페이스 목록으로 보낸다 — 종전의 "/report/preview" 는 저장되지
+  // 않는 임시 성적서를 만들어 발급·재조회를 불가능하게 했다(ISSUES.md E-02·E-06).
+  if (step === 7) return "/workspaces";
   return `/app/${STEP_PATHS[step - 1] ?? STEP_PATHS[0]}`;
 }
 
@@ -52,6 +56,27 @@ export function pathToStep(path: string): number {
   const segment = path.replace("/app/", "");
   const index = STEP_PATHS.indexOf(segment as StepPath);
   return index >= 0 ? index + 1 : 1;
+}
+
+/** persist 스키마 버전. 저장된 상태의 의미가 바뀔 때만 올린다. */
+export const WORKFLOW_PERSIST_VERSION = 2;
+
+/**
+ * 저장된 워크플로우 상태를 현재 규칙으로 옮긴다(순수 함수 — 테스트가 직접 호출한다).
+ *
+ * 지금 하는 일은 하나다: 저장된 `selectedMetricIds` 에서 **현재 task_type 이 노출하지
+ * 않는 지표**를 걸러낸다. 지표 ID 를 하드코딩하지 않고 METRICS 에서 유도하므로,
+ * 앞으로 노출 목록이 또 바뀌어도 이 함수는 그대로 둔다.
+ */
+export function migrateWorkflowState(persisted: any, version: number): any {
+  if (!persisted || version >= WORKFLOW_PERSIST_VERSION) return persisted;
+
+  const taskType = persisted.taskType;
+  const selected = persisted.selectedMetricIds;
+  if (!taskType || !Array.isArray(selected)) return persisted;
+
+  const exposed = new Set(getAvailableMetrics(taskType).map((m) => m.id));
+  return { ...persisted, selectedMetricIds: selected.filter((id: string) => exposed.has(id)) };
 }
 
 interface WorkflowState {
@@ -76,6 +101,26 @@ interface WorkflowState {
   trainingExampleFiles: UploadedFileInfo[];
   trainingUnsuitableExampleFiles: UploadedFileInfo[];
   datasetInfo: DatasetInfoFormData;
+
+  /**
+   * 결정 임계값 — 하드 예측이 없을 때 확률에서 예측을 파생하는 기준(ISSUES.md A-01).
+   *
+   * **성적서 합격 목표값(`metricDetails[id].targetValue`)과 다른 개념이다.**
+   * 백엔드 계약 필드명도 `decision_threshold` 로 분리돼 있다.
+   * 스칼라면 전 확률 컬럼 공통, 객체면 컬럼명별 값(multilabel 레이블별 임계값).
+   * null 이면 백엔드가 SPEC §6 의 기본값 0.5 를 쓴다.
+   */
+  decisionThreshold: number | Record<string, number> | null;
+
+  /**
+   * 백엔드가 '사용자 안내용'으로 내려보낸 값들(ISSUES.md B-03·B-04·D-16·A-12).
+   * 각각 4단계·5단계에서 도착하지만 **6단계 상단에 합쳐서** 보여준다 —
+   * 5단계는 안내가 도착하는 순간 이미 다음 화면으로 넘어가 있다.
+   */
+  columnNotes: ColumnNote[];
+  mappingWarnings: MappingWarning[];
+  /** confirm-mapping 이 계산 가능하다고 답한 지표 ID(‘N/M’ 표시용, A-12). */
+  availableMetricIds: string[] | null;
 
   // Step 5 — Column mapping
   columnMapping: MappingRow[];
@@ -116,6 +161,9 @@ interface WorkflowState {
   setUploadedFile: (file: UploadedFileInfo | null, rawFile?: File) => void;
   setRawFile: (file: File | null) => void;
   setMetadata: (metadata: any | null) => void;
+  setDecisionThreshold: (value: number | Record<string, number> | null) => void;
+  setColumnNotes: (notes: ColumnNote[]) => void;
+  setMappingFeedback: (input: { warnings: MappingWarning[]; availableMetricIds: string[] | null }) => void;
   setTrainingExampleFiles: (
     value: UploadedFileInfo[] | ((prev: UploadedFileInfo[]) => UploadedFileInfo[]),
   ) => void;
@@ -160,6 +208,10 @@ const INITIAL_STATE = {
   trainingExampleFiles: [] as UploadedFileInfo[],
   trainingUnsuitableExampleFiles: [] as UploadedFileInfo[],
   datasetInfo: DEFAULT_DATASET_INFO,
+  columnNotes: [] as ColumnNote[],
+  mappingWarnings: [] as MappingWarning[],
+  availableMetricIds: null as string[] | null,
+  decisionThreshold: null as number | Record<string, number> | null,
   columnMapping: [] as MappingRow[],
   classLabelDescriptions: {} as Record<string, string>,
   validationResult: null as ValidateDataResponseData | null,
@@ -214,6 +266,10 @@ export const useWorkflowStore = create<WorkflowState>()(
           metadata: null,
           trainingExampleFiles: [],
           trainingUnsuitableExampleFiles: [],
+          decisionThreshold: null,
+          columnNotes: [],
+          mappingWarnings: [],
+          availableMetricIds: null,
           columnMapping: [],
           classLabelDescriptions: {},
           validationResult: null,
@@ -243,6 +299,10 @@ export const useWorkflowStore = create<WorkflowState>()(
         set({ uploadedFile: file, rawFile: rawFile || null, needsFileReupload: false }),
       setRawFile: (file) => set({ rawFile: file }),
       setMetadata: (metadata) => set({ metadata: metadata }),
+      setDecisionThreshold: (value) => set({ decisionThreshold: value }),
+      setColumnNotes: (notes) => set({ columnNotes: notes }),
+      setMappingFeedback: ({ warnings, availableMetricIds }) =>
+        set({ mappingWarnings: warnings, availableMetricIds }),
 
       setTrainingExampleFiles: (value) =>
         set((state) => ({
@@ -297,6 +357,10 @@ export const useWorkflowStore = create<WorkflowState>()(
           trainingExampleFiles: snapshot.trainingExampleFiles,
           trainingUnsuitableExampleFiles: snapshot.trainingUnsuitableExampleFiles,
           datasetInfo: snapshot.datasetInfo,
+          decisionThreshold: null,
+          columnNotes: [],
+          mappingWarnings: [],
+          availableMetricIds: null,
           columnMapping: snapshot.columnMapping,
           classLabelDescriptions: snapshot.classLabelDescriptions,
           validationResult: null,
@@ -310,7 +374,17 @@ export const useWorkflowStore = create<WorkflowState>()(
     }),
     {
       name: WORKFLOW_STORAGE_KEY,
-      version: 1,
+      version: WORKFLOW_PERSIST_VERSION,
+      /**
+       * 저장된 상태를 현재 규칙으로 옮긴다.
+       *
+       * v1 → v2: multilabel 에서 M1·M11·M12·M13 이 제거됐다(ISSUES.md A-04, 결정 2).
+       * 걸러내지 않으면 기존 브라우저에 남은 선택 목록이 그대로 평가로 전송되고,
+       * 백엔드가 `failed_metrics` 로 돌려준 것을 성적서 6절이 '측정 불가'로 인쇄한다.
+       * (결정 4 '앞으로 것만 정정'은 **발급된 성적서**에 대한 결정이지 브라우저에
+       *  남은 작성 중 상태에 대한 결정이 아니다 — 여기서는 정리하는 쪽이 옳다.)
+       */
+      migrate: (persisted, version) => migrateWorkflowState(persisted as any, version),
       // 시연 모드에서는 저장소를 읽지도 쓰지도 않는다(위 isShowcaseMode 주석 참조).
       storage: createJSONStorage(() => ({
         getItem: (name) => (isShowcaseMode() ? null : window.localStorage.getItem(name)),

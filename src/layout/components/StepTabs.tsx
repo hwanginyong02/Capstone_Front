@@ -21,7 +21,8 @@ export function StepTabs() {
   const handleStepClick = (step: number) => {
     useWorkflowStore.getState().setCurrentStep(step);
     // 7번(최종 성적서)은 방금 만든 run 으로 보낸다. stepToPath(7) 은 항상
-    // "/report/preview" 를 가리켜, 실제 성적서가 아니라 빈 미리보기로 갔다(ISSUES.md E-16).
+    // 임시 성적서 경로를 가리켜, 실제 성적서가 아니라 저장되지 않는 빈 문서로 갔다
+    // (ISSUES.md E-16·E-06). 그 경로는 폐지됐고 이제 워크스페이스 목록으로 간다.
     if (step === 7 && lastRunId) {
       navigate(`/report/${lastRunId}`);
       return;
