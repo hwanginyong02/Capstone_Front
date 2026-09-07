@@ -108,6 +108,47 @@ function buildPerClass(
   return result;
 }
 
+/**
+ * fact_sheet 의 혼동행렬 — 멀티레이블은 **전 레이블 합계**로 보낸다 (ISSUES.md C-08).
+ *
+ * 멀티레이블 혼동행렬은 레이블마다 2x2 가 하나씩 나온다. 종전에는 그중 **첫 번째
+ * 레이블의 2x2 만** 실렸고 라벨명도 `Negative (sports)` 처럼 그 레이블 이름을 달고
+ * 있었다. LLM 은 그것을 **전체 혼동행렬로 읽고** 서술한다 — 레이블이 넷이면 나머지
+ * 셋의 오분류가 서술 근거에서 통째로 빠진다.
+ *
+ * 레이블별 세부는 이미 `per_class`(M22)로 실려 가므로, 여기서는 '일부를 전체로 보이게
+ * 하는' 상태만 없앤다. binary/multiclass 는 원래 행렬이 하나뿐이라 종전 그대로다.
+ */
+function buildConfusionFact(
+  confusionMatrix: ConfusionMatrixData | null,
+  positiveClass: string | null,
+) {
+  if (!confusionMatrix) return null;
+
+  const perLabel = (confusionMatrix as { multilabelMatrices?: Array<{ matrix: number[][] }> })
+    .multilabelMatrices;
+
+  if (!perLabel || perLabel.length <= 1) {
+    return {
+      labels: confusionMatrix.labels,
+      matrix: confusionMatrix.matrix,
+      positive_class: positiveClass,
+    };
+  }
+
+  const summed = perLabel.reduce<number[][]>(
+    (acc, { matrix }) =>
+      acc.map((row, i) => row.map((cell, j) => cell + (matrix[i]?.[j] ?? 0))),
+    [[0, 0], [0, 0]],
+  );
+
+  return {
+    labels: ["Negative (전체 레이블 합계)", "Positive (전체 레이블 합계)"],
+    matrix: summed,
+    positive_class: positiveClass,
+  };
+}
+
 export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
   const {
     kpiResults,
@@ -146,13 +187,7 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
     dropped_rows: droppedRows,
     metrics,
     per_class: buildPerClass(classReport, classLabels),
-    confusion: confusionMatrix
-      ? {
-          labels: confusionMatrix.labels,
-          matrix: confusionMatrix.matrix,
-          positive_class: positiveClass ?? null,
-        }
-      : null,
+    confusion: buildConfusionFact(confusionMatrix, positiveClass ?? null),
     distribution: hasDistribution
       ? {
           class_distribution: classDistribution,

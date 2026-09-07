@@ -73,3 +73,64 @@ describe("buildFactSheet 의 표본 수", () => {
     expect(fs.n_samples).toBe(197);
   });
 });
+
+
+describe("멀티레이블 혼동행렬 — 첫 레이블만 보내던 문제 (ISSUES.md C-08)", () => {
+  /**
+   * 멀티레이블 혼동행렬은 레이블마다 2x2 가 하나씩 나온다. 종전에는 그중 **첫 번째
+   * 레이블의 2x2 만** fact_sheet 에 실렸고, 라벨명은 `Negative (sports)` 처럼 그
+   * 레이블 이름을 달고 있었다. LLM 은 그것을 **전체 혼동행렬로 읽고** 서술한다 —
+   * 레이블이 넷이면 나머지 셋의 오분류는 서술 근거에서 통째로 빠진다.
+   *
+   * 레이블별 세부는 이미 `per_class`(M22)로 실려 가므로, 혼동행렬은 **전 레이블 합계**로
+   * 보내 '일부를 전체로 보이게 하는' 상태만 없앤다.
+   */
+  const multilabelMatrix = {
+    labels: ["Negative (sports)", "Positive (sports)"],
+    matrix: [[10, 2], [3, 5]],
+    totalSamples: 20,
+    multilabelMatrices: [
+      { label: "sports", matrix: [[10, 2], [3, 5]], totalSamples: 20 },
+      { label: "news", matrix: [[1, 1], [1, 17]], totalSamples: 20 },
+    ],
+  };
+
+  it("전 레이블을 합산한 2x2 를 싣는다", () => {
+    const sheet = buildFactSheet(input({
+      confusionMatrix: multilabelMatrix as any,
+    }));
+
+    expect(sheet.confusion?.matrix).toEqual([[11, 3], [4, 22]]);
+  });
+
+  it("라벨명이 특정 레이블을 가리키지 않는다", () => {
+    const sheet = buildFactSheet(input({
+      confusionMatrix: multilabelMatrix as any,
+    }));
+
+    expect(sheet.confusion?.labels.join()).not.toContain("sports");
+    expect(sheet.confusion?.labels.join()).toMatch(/전체|all/i);
+  });
+
+  it("단일 레이블뿐이면 그 값을 그대로 쓴다", () => {
+    const sheet = buildFactSheet(input({
+      confusionMatrix: {
+        labels: ["Negative (sports)", "Positive (sports)"],
+        matrix: [[10, 2], [3, 5]],
+        totalSamples: 20,
+        multilabelMatrices: [{ label: "sports", matrix: [[10, 2], [3, 5]], totalSamples: 20 }],
+      } as any,
+    }));
+
+    expect(sheet.confusion?.matrix).toEqual([[10, 2], [3, 5]]);
+  });
+
+  it("binary/multiclass 는 종전 그대로다(과잉 변경 방지)", () => {
+    const sheet = buildFactSheet(input({
+      confusionMatrix: { labels: ["0", "1"], matrix: [[5, 1], [2, 4]], totalSamples: 12 } as any,
+    }));
+
+    expect(sheet.confusion?.matrix).toEqual([[5, 1], [2, 4]]);
+    expect(sheet.confusion?.labels).toEqual(["0", "1"]);
+  });
+});
