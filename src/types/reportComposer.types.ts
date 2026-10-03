@@ -58,6 +58,14 @@ export interface ComposerField {
   kind: FieldKind;
   /** `kind: "conditional"` 전용 — 상세 영역에 배지 없이 글자로 그린다("Fβ 선택 시"). */
   conditionLabel?: string;
+  /**
+   * 조건부 필드가 **실제로 필수가 되는 조건**. `conditionLabel` 이 사람에게 보여주는 문구라면
+   * 이쪽은 입력 점검이 읽는 값이다 — 같은 카드의 다른 필드가 이 값일 때 필수가 된다.
+   *
+   * 조건이 카드 밖에 있는 필드(② 의 β 는 지표 선택에 달려 있다)에는 두지 않는다. 그런 필드는
+   * 그 조건을 아는 화면이 따로 검사한다.
+   */
+  requiredWhen?: { field: string; equals: string };
   /** 이 필드를 보여줄 분류 유형. 없으면 전 유형. */
   taskTypes?: TaskType[];
   input: FieldInput;

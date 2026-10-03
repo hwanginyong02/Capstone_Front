@@ -3,6 +3,9 @@ import { Navigate } from "react-router";
 import { Home } from "./pages/Home";
 import { TaskTypeSelect } from "./pages/TaskTypeSelect";
 import { ReportComposer } from "./pages/ReportComposer";
+import { Perspective } from "./pages/Perspective";
+import { DataInfo } from "./pages/report/DataInfo";
+import { ModelEnv } from "./pages/report/ModelEnv";
 import { EvaluationSummary } from "./pages/report/EvaluationSummary";
 import { ReportInfo } from "./pages/report/ReportInfo";
 import { TestItems } from "./pages/TestItems";
@@ -35,13 +38,20 @@ export const routes = [
   // 한 모델의 버전별 평가 비교. 모델은 run 의 modelName 으로만 존재하므로 경로도
   // 이름을 그대로 싣는다(링크 생성 시 encodeURIComponent 필요).
   { path: "/workspaces/:workspaceId/models/:modelName", Component: ModelComparison },
-  // 평가 구간 — 배열 순서 = STEP_PATHS 순서 = 단계 번호.
+  // 평가 구간. **이 배열의 순서는 단계 순서가 아니다** — 걸을 순서는 고른 카드에서
+  // 계산되고, 정본 순서는 `data/workflowSteps.ts` 의 STEP_CATALOG 에 있다.
+  // (종전 주석은 "배열 순서 = 단계 번호"라고 적었는데 그때도 사실이 아니었다.)
   { path: "/app/data-upload", Component: DataUpload },
+  // 평가 관점 — ⑤ 는 필수 카드라 항상 나타난다(업로드 다음, 지표 선택 앞).
+  { path: "/app/perspective", Component: Perspective },
   { path: "/app/column-mapping", Component: ColumnMapping },
   { path: "/app/metrics", Component: TestItems },
   { path: "/app/data-validation", Component: DataValidation },
-  // 평가 결과(5단계) — run 하나에 매인 화면이라 `/app/*` 이 아니라 run id 경로에 둔다.
+  // 평가 결과 — run 하나에 매인 화면이라 `/app/*` 이 아니라 run id 경로에 둔다.
   { path: "/report/:id/summary", Component: EvaluationSummary },
+  // 발급 구간의 새 입력 단계. 켠 카드에 따라 나타나고 사라진다.
+  { path: "/report/:id/data-info", Component: DataInfo },
+  { path: "/report/:id/model-env", Component: ModelEnv },
   // 성적서 구간 — 평가 결과 화면에서 이어진다. 평가만 하려는 사용자는 여기 오지 않는다.
   { path: "/report/:id/issue-info", Component: ReportInfo },
   // 지표 상세(구 3단계)는 폐지됐다 — β 는 지표 선택으로, 목표값은 성적서 구간으로 갔다.
