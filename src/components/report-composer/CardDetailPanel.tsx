@@ -70,7 +70,11 @@ export function CardDetailPanel({
           <p className="mt-2 text-body-small text-muted-foreground">{card.description}</p>
         </div>
         {card.locked ? (
-          <Badge variant="secondary" className="rounded-sm text-body-xs font-medium">
+          /* 필드 표의 "필수" 배지와 같은 모양이다 — 한 화면에서 같은 말이 다른 색이면 안 된다. */
+          <Badge
+            variant="outline"
+            className="rounded-sm border-primary bg-primary-subtle text-body-xs font-medium text-primary"
+          >
             필수
           </Badge>
         ) : (

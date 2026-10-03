@@ -1,17 +1,20 @@
 /**
  * 카드 한 장.
  *
- * **필수 카드와 선택 카드를 색으로 가른다.** 필수는 파랑(`--color-primary`), 선택은 회색
- * (`--color-border-strong` + `--color-muted`)이다. 종전에는 둘 다 파랑이고 자물쇠/체크박스
- * 아이콘으로만 갈렸는데, 체크박스를 상세 영역의 버튼으로 옮기면서 그 구분이 사라졌다.
- * (`docs/COMPOSER_DESIGN.md` 는 둘을 같은 모양으로 두라고 적지만, 아이콘이 없어진 이상
- *  색이 유일한 단서다.)
+ * **파란색 하나로 통일하고, 두 가지를 다른 축으로 나눈다.**
+ *
+ * | 무엇 | 어떻게 |
+ * |---|---|
+ * | 성적서에 들어가는가 | 연한 파랑 **채움**(`--color-primary-subtle`) |
+ * | 지금 아래에서 보고 있는가 | 파란 테두리를 **더 굵게**(2px → 3px) |
+ *
+ * 종전에는 "보고 있음"을 검은 테두리로 표시했는데, 파랑과 검정이 한 줄에 섞여 어느 쪽이
+ * 무슨 뜻인지 읽히지 않았다. 색을 하나로 합치면 남는 단서는 두께뿐이라 그쪽을 쓴다.
  *
  * 카드를 **누르는 것은 보는 것뿐**이다. 성적서에 넣고 빼는 것은 상세 영역의 버튼이 한다 —
  * 내용을 보려고 눌렀다가 카드가 꺼지는 일을 막는 분리는 그대로다.
  *
- * 테두리가 1px 에서 2px 로 바뀔 때 카드가 흔들리지 않도록, 2px 일 때 안쪽 여백을 15px 로
- * 줄인다(16px − 1px).
+ * 테두리 두께가 바뀔 때 카드 크기가 흔들리지 않도록 안쪽 여백으로 상쇄한다(16 − 테두리).
  */
 import { Lock } from "lucide-react";
 import { cn } from "../../utils/styling/styles";
@@ -28,20 +31,19 @@ interface ComposerCardProps {
 
 export function ComposerCard({ card, included, viewing, onView }: ComposerCardProps) {
   const fullName = card.number + " " + card.name;
-  const thickBorder = card.locked || included || viewing;
+  // 보고 있으면 3px, 들어가 있으면 2px, 그 외 1px. 여백이 그만큼 줄어 크기는 그대로다.
+  const padding = viewing ? "p-[13px]" : included ? "p-[15px]" : "p-4";
 
   return (
     <div
       className={cn(
         "relative min-h-24 rounded-lg",
-        // 필수 — 파랑. 뺄 수 없으므로 늘 이 모양이다.
-        card.locked && "border-2 border-primary bg-primary-subtle",
-        // 선택 · 켜짐 — 회색. "들어가지만 뺄 수 있다".
-        !card.locked && included && "border-2 border-border-strong bg-muted",
-        // 선택 · 꺼짐
-        !card.locked && !included && "border bg-card hover:border-border-strong",
-        // "보고 있음" 은 위 상태와 겹쳐 테두리만 진하게 바꾼다.
-        viewing && "border-2 border-foreground",
+        // 성적서에 들어가는가 — 연한 파랑 채움.
+        included ? "border-2 border-primary bg-primary-subtle" : "border bg-card",
+        // 지금 보고 있는가 — 같은 파랑을 더 굵게.
+        viewing && "border-[3px] border-primary",
+        // 들어가지도 보고 있지도 않을 때만 hover 에 반응한다.
+        !included && !viewing && "hover:border-border-strong",
       )}
     >
       <button
@@ -52,12 +54,7 @@ export function ComposerCard({ card, included, viewing, onView }: ComposerCardPr
         className="absolute inset-0 h-full w-full rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       />
 
-      <div
-        className={cn(
-          "pointer-events-none relative flex gap-2",
-          thickBorder ? "p-[15px]" : "p-4",
-        )}
-      >
+      <div className={cn("pointer-events-none relative flex gap-2", padding)}>
         <span className="flex h-4 w-4 shrink-0 items-center justify-center">
           {card.locked && <Lock aria-label="항상 포함" className="h-4 w-4 text-primary" />}
         </span>
