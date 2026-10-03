@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { Navigate } from "react-router";
 import { Home } from "./pages/Home";
 import { TaskTypeSelect } from "./pages/TaskTypeSelect";
+import { ReportComposer } from "./pages/ReportComposer";
 import { EvaluationSummary } from "./pages/report/EvaluationSummary";
 import { ReportInfo } from "./pages/report/ReportInfo";
 import { TestItems } from "./pages/TestItems";
@@ -26,6 +27,9 @@ export const routes = [
   // 워크플로우 진입점 = 분류 유형 선택(docs/UI_DESIGN.md §3).
   // 종전에는 /app/basic-info 로 바로 리다이렉트해, 유형 선택이 1단계 폼 안에 묻혀 있었다.
   { path: "/app", Component: TaskTypeSelect },
+  // 성적서 구성 — 분류 유형 선택 다음, 입력 단계 시작 전. 단계 번호가 없는 화면이라
+  // STEP_CATALOG 에 넣지 않는다(docs/COMPOSER_DESIGN.md: 이 화면에는 Step Tabs 가 없다).
+  { path: "/app/composer", Component: ReportComposer },
   { path: "/workspaces", Component: WorkspaceList },
   { path: "/workspaces/:workspaceId", Component: WorkspaceDetail },
   // 한 모델의 버전별 평가 비교. 모델은 run 의 modelName 으로만 존재하므로 경로도

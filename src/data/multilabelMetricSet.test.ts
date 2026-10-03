@@ -104,3 +104,62 @@ describe("persist 마이그레이션 — 기존 브라우저에 남은 지표 �
     expect(migrateWorkflowState(state, WORKFLOW_PERSIST_VERSION).selectedMetricIds).toEqual(["M4"]);
   });
 });
+
+/**
+ * v3 → v4 — 성적서 구성 상태가 생겼다.
+ *
+ * 위 블록의 "현재 버전으로 저장된 상태는 그대로 둔다" 테스트는 `WORKFLOW_PERSIST_VERSION` 을
+ * 그대로 쓰므로 버전을 올려도 계속 통과하지만, **그래서 새 분기를 타지 않는다.** 옛 버전을
+ * 명시한 케이스가 따로 있어야 마이그레이션이 실제로 검사된다.
+ */
+describe("persist 마이그레이션 v3 → v4 — 성적서 구성 상태", () => {
+  it("v3 저장분에 카드 선택과 입력 그룹을 채운다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const migrated = migrateWorkflowState(
+      { taskType: "binary", selectedMetricIds: ["M1"], completedSteps: [1, 2], currentStep: 3 },
+      3,
+    );
+
+    // 선택 카드 4개가 모두 켜진 상태(프리셋 "전체")로 시작한다.
+    expect(migrated.composerCards).toEqual({
+      trainingData: true,
+      testData: true,
+      groundTruth: true,
+      modelEnv: true,
+    });
+    expect(migrated.composerPerspective).toEqual({});
+    expect(migrated.composerTrainingData).toEqual({});
+    expect(migrated.composerTestData).toEqual({});
+    expect(migrated.composerGroundTruth).toEqual({});
+    expect(migrated.composerModelEnv).toEqual({});
+  });
+
+  it("v3 의 기존 입력과 진행 표시는 그대로 둔다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const migrated = migrateWorkflowState(
+      { taskType: "binary", selectedMetricIds: ["M1", "M9"], completedSteps: [1, 2], currentStep: 3 },
+      3,
+    );
+
+    // v2 → v3 과 달리 버릴 것이 없다 — 기존 키의 뜻이 하나도 바뀌지 않았다.
+    expect(migrated.selectedMetricIds).toEqual(["M1", "M9"]);
+    expect(migrated.completedSteps).toEqual([1, 2]);
+    expect(migrated.currentStep).toBe(3);
+  });
+
+  it("v1 저장분도 v4 까지 한 번에 올라간다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const migrated = migrateWorkflowState(
+      { taskType: "multilabel", selectedMetricIds: ["M1", "M4"], completedSteps: [1, 2, 3] },
+      1,
+    );
+
+    // v1 → v2 의 지표 정리, v2 → v3 의 진행 초기화, v3 → v4 의 신규 키가 모두 적용된다.
+    expect(migrated.selectedMetricIds).toEqual(["M4"]);
+    expect(migrated.completedSteps).toEqual([]);
+    expect(migrated.composerCards.modelEnv).toBe(true);
+  });
+});

@@ -16,7 +16,23 @@ interface WorkflowShellProps {
   onNext?: () => void;
   nextDisabled?: boolean;
   nextLabel?: string;
+  previousLabel?: string;
   leftAction?: ReactNode;
+  rightAction?: ReactNode;
+  buttonSize?: "default" | "lg";
+  /**
+   * 단계 탭을 띄울지. 성적서 구성 화면은 **입력 단계에 들어가기 전**이고, 단계 수가 바로 그
+   * 화면의 선택으로 정해지므로 탭을 두지 않는다(docs/COMPOSER_DESIGN.md).
+   */
+  showStepTabs?: boolean;
+  /**
+   * 이 화면이 워크플로우의 단계인지.
+   *
+   * 거짓이면 URL→단계 유도와 진입 가드를 건너뛴다. 구성 화면은 번호가 없는 화면이라
+   * `pathToStep` 이 폴백으로 1단계를 돌려주는데, 그 값으로 `setCurrentStep` 을 하면 단계
+   * 표시가 업로드로 잘못 옮겨간다.
+   */
+  isStepPage?: boolean;
 }
 
 /**
@@ -33,13 +49,21 @@ export function WorkflowShell({
   onNext,
   nextDisabled,
   nextLabel,
-  leftAction
+  previousLabel,
+  leftAction,
+  rightAction,
+  buttonSize,
+  showStepTabs = true,
+  isStepPage = true
 }: WorkflowShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const isShowcaseMode = new URLSearchParams(location.search).get("showcase") === "1";
 
   useEffect(() => {
+    // 단계가 아닌 화면(성적서 구성)은 단계 표시를 건드리지 않는다.
+    if (!isStepPage) return;
+
     const step = pathToStep(location.pathname);
     const store = useWorkflowStore.getState();
 
@@ -61,25 +85,28 @@ export function WorkflowShell({
     }
 
     store.setCurrentStep(step);
-  }, [location.pathname, location.search, isShowcaseMode, navigate]);
+  }, [location.pathname, location.search, isShowcaseMode, isStepPage, navigate]);
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-col relative">
       {/* 워크플로우 안에서는 현재 분류 유형을 계속 보여준다(docs/UI_DESIGN.md §4). */}
       <AppHeader showTaskType />
-      <StepTabs />
+      {showStepTabs && <StepTabs />}
       <div className="flex-1 pb-8">
         {children}
       </div>
       {showActionBar && !isShowcaseMode && (
-        <ActionBar 
+        <ActionBar
           showPrevious={showPrevious}
           showNext={showNext}
           onPrevious={onPrevious}
           onNext={onNext}
           nextDisabled={nextDisabled}
           nextLabel={nextLabel}
+          previousLabel={previousLabel}
           leftAction={leftAction}
+          rightAction={rightAction}
+          buttonSize={buttonSize}
         />
       )}
     </div>
