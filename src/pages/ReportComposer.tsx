@@ -1,7 +1,6 @@
 import { Navigate, useNavigate } from "react-router";
 import { WorkflowShell } from "../layout/WorkflowShell";
 import { ReportComposer as ReportComposerContent } from "../components/report-composer/ReportComposer";
-import { ComposerSummary } from "../components/report-composer/ComposerSummary";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { buildStepList } from "../utils/domain/workflowSteps";
 import { getStepDefinition } from "../data/workflowSteps";
@@ -48,7 +47,6 @@ export function ReportComposer() {
       buttonSize="lg"
       onPrevious={() => navigate("/app")}
       onNext={handleNext}
-      rightAction={<ComposerSummary taskType={taskType} selection={composerCards} />}
     >
       <ReportComposerContent
         taskType={taskType}

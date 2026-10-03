@@ -64,7 +64,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       {
         id: "selectedMetrics",
         label: "지표",
-        inputExample: "선택한 분류 유형에서 고를 수 있는 지표 중 선택 (최소 1개)",
+        inputExample: "하단 지표 참조",
         kind: "required",
         input: "metricSelect",
         reportSection: "3절",
@@ -73,7 +73,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       {
         id: "passCriteria",
         label: "합격 기준",
-        inputExample: "Accuracy ≥ 0.85 (혼동행렬은 면제)",
+        inputExample: "Accuracy ≥ 0.85",
         kind: "required",
         input: "entries",
         entryKeysFrom: "metrics",
@@ -116,7 +116,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       {
         id: "companyInfo",
         label: "회사 정보",
-        inputExample: "(주)테스트기업 · 홍길동 · 123-45-67890 · 02-1234-5678 · 서울시 …",
+        inputExample:
+          "회사명: (주)테스트기업 · 대표자: 홍길동 · 사업자 번호: 123-45-67890 · " +
+          "전화번호: 02-1234-5678 · 주소: 서울시 …",
         kind: "required",
         input: "text",
         reportSection: "1절",
@@ -182,7 +184,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       {
         id: "modelNameVersion",
         label: "모델 이름·버전",
-        inputExample: "ChurnPredictor · v1.0.0 (버전 기본 v1.0.0)",
+        inputExample: "모델명: ChurnPredictor · 버전: v1.0.0 (버전 기본 v1.0.0)",
         kind: "required",
         input: "text",
         mono: true,
@@ -274,6 +276,21 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         id: "trainingDatasetName",
         label: "데이터 이름",
         inputExample: "고객 로그 2024",
+        kind: "required",
+        input: "text",
+        allowsUnknown: true,
+        reportSection: "7절",
+        sentToAi: true,
+      },
+      {
+        /**
+         * ⑦ 의 데이터 출처와 **다른 데이터셋**이다 — 이쪽은 모델을 훈련할 때 쓴 데이터,
+         * 저쪽은 성능을 잰 테스트 데이터다. 둘이 같은지는 ⑦ 의 "학습 데이터와 출처 관계"가
+         * 따로 묻는다(같으면 점수가 실제보다 좋게 나올 수 있다).
+         */
+        id: "trainingDataSource",
+        label: "데이터 출처",
+        inputExample: "사내 CRM 로그 (직접 입력)",
         kind: "required",
         input: "text",
         allowsUnknown: true,

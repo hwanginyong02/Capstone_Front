@@ -27,7 +27,11 @@ import {
   type TaskType,
 } from "../../data/evaluationData";
 import type { UploadedFileInfo } from "../../types/workflow.types";
-import { getCsvExample, getJsonExample } from "../../data/templateExamples";
+import {
+  getComposerColumnNote,
+  getComposerCsvExample,
+  getComposerJsonExample,
+} from "../../data/templateExamples";
 import { MAX_UPLOAD_LABEL, checkUploadSize } from "../../lib/upload/uploadLimits";
 import {
   Field,
@@ -96,9 +100,9 @@ export function DataUpload({
     () => getRequiredColumnsForTaskType(resolvedTaskType),
     [resolvedTaskType],
   );
-  // 지표가 아직 정해지지 않았으므로 '확률 포함' 예시를 보여준다(위 파일 주석 참조).
-  const csvExample = getCsvExample(resolvedTaskType, true);
-  const jsonExample = getJsonExample(resolvedTaskType, true);
+  // 성적서 구성 화면의 "예시 파일 보기" 와 같은 예시다.
+  const csvExample = getComposerCsvExample(resolvedTaskType);
+  const jsonExample = getComposerJsonExample(resolvedTaskType);
 
   const openFilePicker = () => inputRef.current?.click();
 
@@ -222,7 +226,6 @@ export function DataUpload({
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <Badge variant="secondary">{TASK_TYPE_LABELS[resolvedTaskType]}</Badge>
-            <Badge variant="outline">inference_time_ms optional</Badge>
           </div>
           <Tabs defaultValue="csv" className="w-full">
             <TabsList className="mb-4">
@@ -240,6 +243,8 @@ export function DataUpload({
               </div>
             </TabsContent>
           </Tabs>
+          {/* 성적서 구성 화면의 "예시 파일 보기" 와 같은 안내다 — 두 화면이 같은 말을 해야 한다. */}
+          <p className="text-sm text-muted-foreground">{getComposerColumnNote(resolvedTaskType)}</p>
         </CardContent>
       </Card>
 

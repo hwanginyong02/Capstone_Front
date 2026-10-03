@@ -53,8 +53,8 @@ describe("단계 목록", () => {
     ]);
   });
 
-  it("기본 선택(프리셋 전체)이면 10단계다", () => {
-    expect(buildStepList(DEFAULT_COMPOSER_SELECTION)).toHaveLength(10);
+  it("기본 선택(필수 카드만)이면 8단계다", () => {
+    expect(buildStepList(DEFAULT_COMPOSER_SELECTION)).toHaveLength(8);
   });
 
   it("가능한 단계 수는 8 · 9 · 10 뿐이다", () => {

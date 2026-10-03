@@ -130,14 +130,17 @@ export type ComposerSelection = Record<OptionalCardId, boolean>;
 export type ComposerPreset = "minimal" | "full";
 
 /**
- * 처음에는 프리셋 "전체"가 적용된다(docs/COMPOSER_DESIGN.md "카드 > 동작").
- * 끄는 쪽이 정보를 **빼는** 동작이라, 기본은 다 켜 두고 사용자가 덜어내게 한다.
+ * 처음에는 **필수 카드만** 들어간다(프리셋 "최소 구성").
+ *
+ * 기본을 "전체"로 두면 사용자가 보지도 않은 선택 카드 4개의 필수 입력을 떠안은 채 시작한다 —
+ * 덜어내려면 먼저 그런 카드가 있다는 것을 알아야 하는데, 그 사실이 막힌 뒤에야 드러난다.
+ * 비어 있는 데서 더하는 쪽이 고르는 행위와 맞다.
  */
 export const DEFAULT_COMPOSER_SELECTION: ComposerSelection = {
-  trainingData: true,
-  testData: true,
-  groundTruth: true,
-  modelEnv: true,
+  trainingData: false,
+  testData: false,
+  groundTruth: false,
+  modelEnv: false,
 };
 
 /**

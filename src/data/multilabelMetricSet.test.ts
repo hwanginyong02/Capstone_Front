@@ -121,12 +121,12 @@ describe("persist 마이그레이션 v3 → v4 — 성적서 구성 상태", () 
       3,
     );
 
-    // 선택 카드 4개가 모두 켜진 상태(프리셋 "전체")로 시작한다.
+    // 필수 카드만 들어간 상태(프리셋 "최소 구성")로 시작한다.
     expect(migrated.composerCards).toEqual({
-      trainingData: true,
-      testData: true,
-      groundTruth: true,
-      modelEnv: true,
+      trainingData: false,
+      testData: false,
+      groundTruth: false,
+      modelEnv: false,
     });
     expect(migrated.composerPerspective).toEqual({});
     expect(migrated.composerTrainingData).toEqual({});
@@ -162,7 +162,7 @@ describe("persist 마이그레이션 v3 → v4 — 성적서 구성 상태", () 
     expect(migrated.selectedMetricIds).toEqual(["M4"]);
     expect(migrated.completedStepIds).toEqual([]);
     expect(migrated.currentStepId).toBe("upload");
-    expect(migrated.composerCards.modelEnv).toBe(true);
+    expect(migrated.composerCards.modelEnv).toBe(false);
   });
 });
 
@@ -243,6 +243,6 @@ describe("persist 마이그레이션 v4 → v5 — 단계 번호를 이름으로
     // v2 → v3 이 진행을 버리고, v3 → v4 가 구성 상태를 채우고, v4 → v5 가 이름으로 옮긴다.
     expect(migrated.completedStepIds).toEqual([]);
     expect(migrated.currentStepId).toBe("upload");
-    expect(migrated.composerCards.trainingData).toBe(true);
+    expect(migrated.composerCards.trainingData).toBe(false);
   });
 });

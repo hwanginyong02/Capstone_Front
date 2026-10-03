@@ -79,39 +79,39 @@ describe("평가 결과 탭", () => {
 });
 
 describe("칸 수는 고른 카드에서 나온다", () => {
-  it("기본(프리셋 전체)이면 10칸이다", () => {
-    renderTabs();
-
-    expect(screen.getAllByRole("button")).toHaveLength(10);
-  });
-
-  it("최소 구성이면 8칸이고 발급 입력 단계가 빠진다", () => {
-    useWorkflowStore.getState().applyComposerPreset("minimal");
-
+  it("기본(필수 카드만)이면 8칸이다", () => {
     renderTabs();
 
     expect(screen.getAllByRole("button")).toHaveLength(8);
-    expect(screen.queryByRole("button", { name: /데이터 정보/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /모델과 환경/ })).not.toBeInTheDocument();
   });
 
-  it("⑥ 하나만 켜면 데이터 정보가 돌아온다", () => {
-    useWorkflowStore.getState().applyComposerPreset("minimal");
+  it("전체를 넣으면 10칸이 된다", () => {
+    useWorkflowStore.getState().applyComposerPreset("full");
+
+    renderTabs();
+
+    expect(screen.getAllByRole("button")).toHaveLength(10);
+    expect(screen.getByRole("button", { name: /Data info/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Model . environment/ })).toBeInTheDocument();
+  });
+
+  it("⑥ 하나만 넣으면 데이터 정보가 생긴다", () => {
     useWorkflowStore.getState().setComposerCard("trainingData", true);
 
     renderTabs();
 
     expect(screen.getAllByRole("button")).toHaveLength(9);
-    expect(screen.getByRole("button", { name: /데이터 정보/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Data info/ })).toBeInTheDocument();
   });
 
   it("발급 단계도 처음부터 보이되 비활성이다", () => {
+    useWorkflowStore.getState().applyComposerPreset("full");
     useWorkflowStore.getState().setCurrentStepId("upload");
 
     renderTabs();
 
     // 평가만 하려는 사용자에게도 앞으로 무엇이 있는지는 보여준다.
-    expect(screen.getByRole("button", { name: /데이터 정보/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Data info/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: /Report details/ })).toBeDisabled();
   });
 });

@@ -273,9 +273,10 @@ describe("필수 (표준 보고) 유도", () => {
 });
 
 describe("프리셋과 요약", () => {
-  it("기본값은 프리셋 \"전체\" 다", () => {
-    expect(matchPreset(DEFAULT_COMPOSER_SELECTION)).toBe("full");
-    expect(countOptionalOn(DEFAULT_COMPOSER_SELECTION)).toBe(4);
+  it("기본값은 프리셋 \"최소 구성\" 이다", () => {
+    // 보지도 않은 카드의 필수 입력을 떠안은 채 시작하지 않는다.
+    expect(matchPreset(DEFAULT_COMPOSER_SELECTION)).toBe("minimal");
+    expect(countOptionalOn(DEFAULT_COMPOSER_SELECTION)).toBe(0);
   });
 
   it("최소 구성은 선택 카드를 모두 끈다", () => {

@@ -59,7 +59,7 @@ export interface StepDefinition {
 export const STEP_CATALOG: StepDefinition[] = [
   // ─── 평가 구간 ──────────────────────────────────────────────────────────
   { id: "upload", label: "Data upload", Icon: Upload, path: "/app/data-upload" },
-  { id: "perspective", label: "평가 관점", Icon: Compass, path: "/app/perspective" },
+  { id: "perspective", label: "Perspective", Icon: Compass, path: "/app/perspective" },
   { id: "metrics", label: "Metrics", Icon: ListChecks, path: "/app/metrics" },
   { id: "mapping", label: "Column mapping", Icon: Columns3, path: "/app/column-mapping" },
   { id: "validation", label: "Validation", Icon: ShieldCheck, path: "/app/data-validation" },
@@ -74,7 +74,7 @@ export const STEP_CATALOG: StepDefinition[] = [
   // ─── 발급 구간 — 평가와 무관한 정보가 평가를 막지 않도록 뒤에 둔다 ──────────
   {
     id: "dataInfo",
-    label: "데이터 정보",
+    label: "Data info",
     Icon: Database,
     runScoped: true,
     runSegment: "data-info",
@@ -82,7 +82,7 @@ export const STEP_CATALOG: StepDefinition[] = [
   },
   {
     id: "modelEnv",
-    label: "모델과 환경",
+    label: "Model & environment",
     Icon: Server,
     runScoped: true,
     runSegment: "model-env",

@@ -53,10 +53,10 @@ export function ReportComposer({
   const isIncluded = (id: ComposerCardId) =>
     REQUIRED_CARD_IDS.includes(id) ? true : Boolean(selection[id as OptionalCardId]);
 
-  /** 체크박스를 누르면 켜짐/꺼짐이 바뀌고, 그 카드가 "보고 있음"이 된다. */
-  const handleToggle = (id: OptionalCardId, on: boolean) => {
-    onToggleCard(id, on);
-    setViewingId(id);
+  // 넣고 빼기는 상세 영역의 버튼이 한다 — 카드는 누르면 보여주기만 한다.
+  const handleToggleViewing = () => {
+    if (REQUIRED_CARD_IDS.includes(viewingId)) return;
+    onToggleCard(viewingId as OptionalCardId, !isIncluded(viewingId));
   };
 
   return (
@@ -80,8 +80,6 @@ export function ReportComposer({
               included
               viewing={viewingId === card.id}
               onView={() => setViewingId(card.id)}
-              // 필수 카드는 끌 수 없다 — 체크박스 자체가 없어 호출되지 않는다.
-              onToggle={() => undefined}
             />
           ))}
         </ComposerCardRow>
@@ -91,7 +89,7 @@ export function ReportComposer({
         <ComposerCardRow
           label="선택"
           count={OPTIONAL_CARD_IDS.length}
-          note="켜면 안의 필수 항목은 모두 입력합니다"
+          note="성적서에 넣으면 안의 필수 항목은 모두 입력합니다"
           columns="optional"
         >
           {optionalCards.map((card) => (
@@ -101,7 +99,6 @@ export function ReportComposer({
               included={isIncluded(card.id)}
               viewing={viewingId === card.id}
               onView={() => setViewingId(card.id)}
-              onToggle={(on) => handleToggle(card.id as OptionalCardId, on)}
             />
           ))}
         </ComposerCardRow>
@@ -111,6 +108,7 @@ export function ReportComposer({
         card={viewingCard}
         taskType={taskType}
         included={isIncluded(viewingId)}
+        onToggle={handleToggleViewing}
       />
     </main>
   );

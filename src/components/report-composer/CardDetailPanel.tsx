@@ -8,7 +8,7 @@
  * 것은 스크린리더에게 보이지 않는 변화다.
  */
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, Info } from "lucide-react";
+import { ChevronDown, ChevronUp, Info, Minus, Plus } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader } from "../ui/card";
@@ -22,16 +22,29 @@ import type { ComposerCard } from "../../types/reportComposer.types";
 interface CardDetailPanelProps {
   card: ComposerCard;
   taskType: TaskType;
-  /** 성적서에 들어가는지 — 상태 배지에 쓴다. */
+  /** 성적서에 들어가는지. */
   included: boolean;
+  /**
+   * 넣고 빼기. 필수 카드에는 없다.
+   *
+   * 종전에는 카드 왼쪽 위 체크박스가 하던 일이다. 카드에서 상세 영역으로 옮긴 이유는
+   * **무엇을 넣고 빼는지 읽고 나서 정하게** 하려는 것이다 — 카드에는 설명 한 줄뿐이라,
+   * 거기서 끄면 그 카드에 무엇이 들었는지 모른 채 빼게 된다.
+   */
+  onToggle?: () => void;
 }
 
 const VIEWER_LABEL = {
   csvExample: "예시 파일 보기",
-  metricList: "고를 수 있는 지표 보기",
+  metricList: "지표 보기",
 } as const;
 
-export function CardDetailPanel({ card, taskType, included }: CardDetailPanelProps) {
+export function CardDetailPanel({
+  card,
+  taskType,
+  included,
+  onToggle,
+}: CardDetailPanelProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showViewer, setShowViewer] = useState(false);
 
@@ -56,12 +69,35 @@ export function CardDetailPanel({ card, taskType, included }: CardDetailPanelPro
           </h3>
           <p className="mt-2 text-body-small text-muted-foreground">{card.description}</p>
         </div>
-        <Badge
-          variant={included ? "secondary" : "outline"}
-          className="rounded-sm text-body-xs font-medium"
-        >
-          {card.locked ? "필수" : included ? "선택 · 켜짐" : "선택 · 꺼짐"}
-        </Badge>
+        {card.locked ? (
+          <Badge variant="secondary" className="rounded-sm text-body-xs font-medium">
+            필수
+          </Badge>
+        ) : (
+          /**
+           * 버튼 문구는 **누르면 일어날 일**을 적는다. 상태는 위 카드의 색이 말한다 —
+           * "포함됨" 같은 상태 문구를 버튼에 쓰면 그것을 누르면 무엇이 되는지 알 수 없다.
+           */
+          <Button
+            variant={included ? "outline" : "default"}
+            size="sm"
+            aria-pressed={included}
+            onClick={onToggle}
+            className="text-body-medium font-medium"
+          >
+            {included ? (
+              <>
+                <Minus className="h-4 w-4" />
+                성적서에서 빼기
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4" />
+                성적서에 넣기
+              </>
+            )}
+          </Button>
+        )}
       </CardHeader>
 
       <CardContent className="p-6 pt-0">
