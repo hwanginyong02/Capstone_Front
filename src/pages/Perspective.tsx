@@ -32,9 +32,8 @@ export function Perspective() {
       onPrevious={() => flow.goPrevious()}
       onNext={() => flow.goNext()}
       nextDisabled={issues.length > 0}
-      previousLabel="이전"
-      nextLabel="다음 단계"
-      rightAction={<RemainingNotice issues={issues} />}
+      nextLabel="Next step"
+      rightAction={<RemainingNotice issues={issues} lang="en" />}
     >
       <PerspectiveContent
         taskType={taskType}

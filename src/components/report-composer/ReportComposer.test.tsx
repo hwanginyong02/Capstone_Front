@@ -291,19 +291,19 @@ describe("유형에 따라 달라지는 필드", () => {
   it("이진은 ⑤ 에서 중요 오류 유형을 묻는다", async () => {
     renderComposer({ taskType: "binary" });
 
-    await userEvent.click(screen.getByRole("button", { name: "⑤ 평가 관점 자세히 보기" }));
+    await userEvent.click(screen.getByRole("button", { name: "⑤ Evaluation perspective 자세히 보기" }));
 
-    expect(screen.getByText("중요 오류 유형")).toBeInTheDocument();
-    expect(screen.queryByText("클래스 중요도")).not.toBeInTheDocument();
+    expect(screen.getByText("Critical error type")).toBeInTheDocument();
+    expect(screen.queryByText("Class priority")).not.toBeInTheDocument();
   });
 
   it("다중 클래스는 ⑤ 에서 클래스 중요도를 묻는다", async () => {
     renderComposer({ taskType: "multiclass" });
 
-    await userEvent.click(screen.getByRole("button", { name: "⑤ 평가 관점 자세히 보기" }));
+    await userEvent.click(screen.getByRole("button", { name: "⑤ Evaluation perspective 자세히 보기" }));
 
-    expect(screen.getByText("클래스 중요도")).toBeInTheDocument();
-    expect(screen.queryByText("중요 오류 유형")).not.toBeInTheDocument();
+    expect(screen.getByText("Class priority")).toBeInTheDocument();
+    expect(screen.queryByText("Critical error type")).not.toBeInTheDocument();
   });
 
   it("지표 선택 이유는 멀티레이블에서만 보인다", async () => {

@@ -1,5 +1,5 @@
 /**
- * ⑤ 평가 관점 — 이 모델에서 무엇을 중요하게 볼지.
+ * ⑤ Evaluation perspective — 이 모델에서 무엇을 중요하게 볼지.
  *
  * 지표 선택 **바로 앞**에 온다. 평가 관점이 지표 점검의 기준이라, 먼저 받아야 "놓침이 더
  * 위험하니 Recall 을 권한다"처럼 지표를 골라 줄 수 있다(docs/COMPOSER_COMPONENTS.md).
@@ -26,9 +26,9 @@ export function Perspective({ taskType, values, onChange, issues }: PerspectiveP
   return (
     <main className="mx-auto max-w-[1344px] space-y-6 px-8 pt-12 pb-24">
       <div>
-        <h1 className="text-heading-large font-bold text-foreground">평가 관점</h1>
+        <h1 className="text-heading-large font-bold text-foreground">Evaluation perspective</h1>
         <p className="mt-1 text-body-medium text-muted-foreground">
-          이 모델에서 무엇을 중요하게 볼지 알려주세요. 다음 단계의 지표 선택에 쓰입니다.
+          Tell us what matters most for this model. Your answers guide the metrics you pick next.
         </p>
       </div>
 

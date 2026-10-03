@@ -42,24 +42,24 @@ describe("⑤ 평가 관점 — 유형별 질문", () => {
   it("이진은 중요 오류 유형을 묻는다", () => {
     renderForm("perspective", { taskType: "binary" });
 
-    expect(screen.getByText("중요 오류 유형")).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "놓침(FN)" })).toBeInTheDocument();
-    expect(screen.queryByText("클래스 중요도")).not.toBeInTheDocument();
+    expect(screen.getByText("Critical error type")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Missed (FN)" })).toBeInTheDocument();
+    expect(screen.queryByText("Class priority")).not.toBeInTheDocument();
   });
 
   it("다중 클래스는 클래스 중요도를 묻는다", () => {
     renderForm("perspective", { taskType: "multiclass" });
 
-    expect(screen.getByText("클래스 중요도")).toBeInTheDocument();
-    expect(screen.queryByText("중요 오류 유형")).not.toBeInTheDocument();
+    expect(screen.getByText("Class priority")).toBeInTheDocument();
+    expect(screen.queryByText("Critical error type")).not.toBeInTheDocument();
   });
 
   it("고른 답을 보고한다", async () => {
     const { onChange } = renderForm("perspective", { taskType: "binary" });
 
-    await userEvent.click(screen.getByRole("radio", { name: "일괄 처리" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Batch" }));
 
-    expect(onChange).toHaveBeenCalledWith("usageMode", { text: "일괄 처리", unknown: false });
+    expect(onChange).toHaveBeenCalledWith("usageMode", { text: "Batch", unknown: false });
   });
 });
 
@@ -184,12 +184,39 @@ describe("남은 항목 안내", () => {
     const card = getCard("perspective");
     render(<RemainingNotice issues={getCardIssues(card, "binary", {}, true)} />);
 
-    expect(screen.getByText(/중요 오류 유형 외/)).toBeInTheDocument();
+    expect(screen.getByText(/Critical error type 외/)).toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument();
   });
 
   it("다 채우면 아무것도 적지 않는다", () => {
     const { container } = render(<RemainingNotice issues={[]} />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("남은 항목 안내 — 영어 화면", () => {
+  it("평가 구간 화면에서는 영어로 적는다", () => {
+    const card = getCard("perspective");
+    render(<RemainingNotice issues={getCardIssues(card, "binary", {}, true)} lang="en" />);
+
+    expect(screen.getByText(/Critical error type and/)).toBeInTheDocument();
+    expect(screen.getByText(/more are empty/)).toBeInTheDocument();
+    // ⑤ 에는 "모름" 이 없으므로 그 길을 알려주지 않는다.
+    expect(screen.queryByText(/Choose Unknown/)).not.toBeInTheDocument();
+  });
+
+  it("하나만 남으면 단수로 적는다", () => {
+    const card = getCard("perspective");
+    const issues = getCardIssues(card, "binary", { usageMode: { text: "Batch" } }, true);
+    render(<RemainingNotice issues={issues} lang="en" />);
+
+    expect(screen.getByText(/is empty/)).toBeInTheDocument();
+  });
+
+  it('"모름"이 있는 카드에서는 영어로도 그 길을 알려준다', () => {
+    const card = getCard("modelEnv");
+    render(<RemainingNotice issues={getCardIssues(card, "binary", {}, true)} lang="en" />);
+
+    expect(screen.getByText(/Choose Unknown if you do not know/)).toBeInTheDocument();
   });
 });

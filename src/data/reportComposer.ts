@@ -205,53 +205,60 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     ],
   },
   {
+    /**
+     * **이 카드만 영어다.** 입력 화면이 평가 구간(업로드·지표·매핑·검증)에 끼어 있고 그
+     * 구간은 전부 영어라, 이 화면만 한국어면 혼자 튄다.
+     *
+     * 그 대가로 구성 화면의 카드 줄에서는 ⑤ 하나만 영어로 보인다 — 레지스트리가 두 화면의
+     * 단일 출처라 한쪽만 바꿀 수 없다. 문구 전면 정리 때 함께 풀 문제다.
+     */
     id: "perspective",
     number: "⑤",
-    name: "평가 관점",
-    description: "이 모델에서 무엇을 중요하게 볼지.",
+    name: "Evaluation perspective",
+    description: "What matters most for this model.",
     locked: true,
     steps: ["perspective"],
     help:
-      "답에 따라 알맞은 지표를 추천하고, 고른 지표가 맞지 않으면 지표 선택 단계에서 알린다" +
-      "(진행은 막지 않는다).",
+      "Your answers suggest suitable metrics, and the metric step warns you if the metrics you " +
+      "picked do not match. It never blocks you from moving on.",
     // 유형에 따라 필드가 갈리지만 사용자는 **항상 두 개**를 받는다.
     fields: [
       {
         id: "criticalErrorType",
-        label: "중요 오류 유형",
-        inputExample: "놓침(FN) / 잘못 잡음(FP) / 비슷함",
+        label: "Critical error type",
+        inputExample: "Missed (FN) / False alarm (FP) / Similar",
         kind: "required",
         taskTypes: ["binary"],
         input: "single",
-        choices: ["놓침(FN)", "잘못 잡음(FP)", "비슷함"],
+        choices: ["Missed (FN)", "False alarm (FP)", "Similar"],
         help:
-          "놓침을 고르면 Recall 또는 β가 1보다 큰 Fβ 를, 잘못 잡음을 고르면 Precision 또는 " +
-          "β가 1보다 작은 Fβ 를 권한다.",
+          "Picking Missed suggests Recall or Fβ with β greater than 1; picking False alarm " +
+          "suggests Precision or Fβ with β less than 1.",
         standardClause: "6.2.6",
         reportSection: "5절",
         sentToAi: true,
       },
       {
         id: "classPriority",
-        label: "클래스 중요도",
-        inputExample: "모두 동등 / 큰 클래스 우선 / 개별 샘플 우선",
+        label: "Class priority",
+        inputExample: "All equal / Larger classes first / Individual samples first",
         kind: "required",
         taskTypes: ["multiclass", "multilabel"],
         input: "single",
-        choices: ["모두 동등", "큰 클래스 우선", "개별 샘플 우선"],
-        help: "차례대로 매크로·가중·마이크로 평균 지표를 권한다.",
+        choices: ["All equal", "Larger classes first", "Individual samples first"],
+        help: "These map to macro, weighted, and micro averaged metrics in that order.",
         standardClause: "6.4.3",
         reportSection: "5절",
         sentToAi: true,
       },
       {
         id: "usageMode",
-        label: "사용 방식",
-        inputExample: "실시간 응답 / 일괄 처리",
+        label: "Usage mode",
+        inputExample: "Real-time / Batch",
         kind: "required",
         input: "single",
-        choices: ["실시간 응답", "일괄 처리"],
-        help: "실시간 응답을 고르면 응답시간(latency) 컬럼이 있는지 확인한다.",
+        choices: ["Real-time", "Batch"],
+        help: "Picking Real-time checks whether your file has a latency column.",
         standardClause: "6.6.2",
         reportSection: "5절",
         sentToAi: true,
