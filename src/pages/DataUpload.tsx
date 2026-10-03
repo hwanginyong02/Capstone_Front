@@ -2,19 +2,20 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription } from "../components/ui/alert";
-import { useWorkflowStore, stepToPath, STEP } from "../utils/stores/useWorkflowStore";
+import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
+import { useStepFlow } from "../hooks/useStepFlow";
 import { WorkflowShell } from "../layout/WorkflowShell";
 import {
   DataUpload as DataUploadContent,
   isEvaluationDataUploadValid,
 } from "../components/data-upload/DataUpload";
 /**
- * Step 1 — 평가 데이터 업로드.
+ * 데이터 업로드 — 평가 구간의 첫 단계.
  *
  * **컬럼 자동 분석(`/api/analyze-columns`)은 여기서 돌리지 않는다.** 그 호출은 최대 150초가
- * 걸리는데(`ANALYSIS_TIMEOUT_MS`), 결과를 쓰는 화면은 3단계(컬럼 매핑)다. 여기서 돌리면
- * 결과가 필요 없는 2단계(지표 선택)로 가려고 그 시간을 기다리게 된다. 분석은 매핑 직전인
- * 2단계 '다음'에서 실행한다.
+ * 걸리는데(`ANALYSIS_TIMEOUT_MS`), 결과를 쓰는 화면은 컬럼 매핑이다. 여기서 돌리면
+ * 결과가 필요 없는 지표 선택으로 가려고 그 시간을 기다리게 된다. 분석은 매핑 직전인
+ * 지표 선택의 '다음'에서 실행한다.
  *
  * 학습 데이터셋 정보도 이 화면에서 빠졌다 — 평가에 쓰이지 않고 성적서 3절을 채우는 값이라
  * 성적서 구간(`/report/:id/issue-info`)으로 옮겼다. 다만 모델명·버전은 여기 남는다:
@@ -23,6 +24,7 @@ import {
 export function DataUpload() {
   const navigate = useNavigate();
   const store = useWorkflowStore();
+  const flow = useStepFlow("upload");
   const [fileError, setFileError] = useState<string | null>(null);
 
   // 분류 유형은 진입 화면에서 고른다. 유형 없이 들어오면 안내할 컬럼도 분석 기준도
@@ -40,9 +42,7 @@ export function DataUpload() {
     }
 
     setFileError(null);
-    store.markStepCompleted(STEP.UPLOAD);
-    store.setCurrentStep(STEP.METRICS);
-    navigate(stepToPath(STEP.METRICS));
+    flow.goNext();
   };
 
   return (

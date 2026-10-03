@@ -6,8 +6,8 @@
  * 미리보기가 떴다. 게다가 방금 만든 run 의 id 는 어디에도 보관되지 않아, '탭을 활성화한다'가
  * 아니라 **run id 를 상태에 남기는 것**이 선행이었다.
  *
- * 단계 번호는 `STEP`·`STEP_PATHS` 에서 가져온다 — 2026-09-19 재배치처럼 순서가 또 바뀌어도
- * 이 테스트가 번호를 직접 들고 있지 않도록.
+ * 단계는 번호가 아니라 이름으로 가리킨다. 칸 수도 고정이 아니다 — 고른 카드에 따라 8~10칸이
+ * 되므로, 그것까지 여기서 고정한다.
  */
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -15,7 +15,9 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { StepTabs } from "./StepTabs";
-import { STEP, STEP_PATHS, useWorkflowStore } from "../../utils/stores/useWorkflowStore";
+import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
+import { buildStepList } from "../../utils/domain/workflowSteps";
+import { presetSelection } from "../../data/reportComposer";
 
 /** 평가 결과 탭의 접근성 이름. StepTabs 의 라벨과 같아야 한다. */
 const RESULT_TAB = /Result/;
@@ -33,10 +35,10 @@ function renderTabs() {
   );
 }
 
-/** 평가 구간 전 단계를 완료로 표시한다(번호를 직접 쓰지 않는다). */
+/** 걸을 전 단계를 완료로 표시한다(이름을 직접 쓰지 않는다). */
 function completeAllSteps() {
-  const s = useWorkflowStore.getState();
-  STEP_PATHS.forEach((_, index) => s.markStepCompleted(index + 1));
+  const store = useWorkflowStore.getState();
+  buildStepList(store.composerCards).forEach((id) => store.markStepIdCompleted(id));
 }
 
 beforeEach(() => {
@@ -49,7 +51,7 @@ describe("평가 결과 탭", () => {
     completeAllSteps();
     const s = useWorkflowStore.getState();
     s.setLastRunId("run-abc");
-    s.setCurrentStep(STEP.RESULT);
+    s.setCurrentStepId("report");
 
     renderTabs();
     await userEvent.click(screen.getByRole("button", { name: RESULT_TAB }));
@@ -59,7 +61,7 @@ describe("평가 결과 탭", () => {
 
   it("[E-16·E-06] run 이 없으면 워크스페이스 목록으로 간다(임시 성적서 폐지)", async () => {
     completeAllSteps();
-    useWorkflowStore.getState().setCurrentStep(STEP.RESULT);
+    useWorkflowStore.getState().setCurrentStepId("report");
 
     renderTabs();
     await userEvent.click(screen.getByRole("button", { name: RESULT_TAB }));
@@ -68,10 +70,81 @@ describe("평가 결과 탭", () => {
   });
 
   it("[E-16] 평가를 마치기 전에는 결과 탭이 비활성이다", () => {
-    useWorkflowStore.getState().setCurrentStep(STEP.UPLOAD);
+    useWorkflowStore.getState().setCurrentStepId("upload");
 
     renderTabs();
 
     expect(screen.getByRole("button", { name: RESULT_TAB })).toBeDisabled();
+  });
+});
+
+describe("칸 수는 고른 카드에서 나온다", () => {
+  it("기본(프리셋 전체)이면 10칸이다", () => {
+    renderTabs();
+
+    expect(screen.getAllByRole("button")).toHaveLength(10);
+  });
+
+  it("최소 구성이면 8칸이고 발급 입력 단계가 빠진다", () => {
+    useWorkflowStore.getState().applyComposerPreset("minimal");
+
+    renderTabs();
+
+    expect(screen.getAllByRole("button")).toHaveLength(8);
+    expect(screen.queryByRole("button", { name: /데이터 정보/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /모델과 환경/ })).not.toBeInTheDocument();
+  });
+
+  it("⑥ 하나만 켜면 데이터 정보가 돌아온다", () => {
+    useWorkflowStore.getState().applyComposerPreset("minimal");
+    useWorkflowStore.getState().setComposerCard("trainingData", true);
+
+    renderTabs();
+
+    expect(screen.getAllByRole("button")).toHaveLength(9);
+    expect(screen.getByRole("button", { name: /데이터 정보/ })).toBeInTheDocument();
+  });
+
+  it("발급 단계도 처음부터 보이되 비활성이다", () => {
+    useWorkflowStore.getState().setCurrentStepId("upload");
+
+    renderTabs();
+
+    // 평가만 하려는 사용자에게도 앞으로 무엇이 있는지는 보여준다.
+    expect(screen.getByRole("button", { name: /데이터 정보/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Report details/ })).toBeDisabled();
+  });
+});
+
+describe("현재·완료·미래 구분", () => {
+  it("마친 단계는 누를 수 있다", async () => {
+    const store = useWorkflowStore.getState();
+    store.markStepIdCompleted("upload");
+    store.setCurrentStepId("perspective");
+
+    renderTabs();
+
+    expect(screen.getByRole("button", { name: /Data upload/ })).not.toBeDisabled();
+  });
+
+  it("아직 안 간 단계는 누를 수 없다", () => {
+    const store = useWorkflowStore.getState();
+    store.markStepIdCompleted("upload");
+    store.setCurrentStepId("perspective");
+
+    renderTabs();
+
+    expect(screen.getByRole("button", { name: /Metrics/ })).toBeDisabled();
+  });
+
+  it("카드 선택이 바뀌면 같은 단계의 위치가 당겨진다", () => {
+    const store = useWorkflowStore.getState();
+    store.applyComposerPreset("minimal");
+
+    renderTabs();
+
+    // 최소 구성에서는 의뢰자 정보가 7번째 칸이다(전체에서는 9번째).
+    const labels = screen.getAllByRole("button").map((button) => button.textContent);
+    expect(labels.findIndex((label) => label?.includes("Report details"))).toBe(6);
   });
 });

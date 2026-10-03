@@ -61,13 +61,13 @@ export function AppHeader({ showTaskType = false }: { showTaskType?: boolean }) 
 function TaskTypeBadge() {
   const navigate = useNavigate();
   const taskType = useWorkflowStore((s) => s.taskType);
-  const completedSteps = useWorkflowStore((s) => s.completedSteps);
+  const completedStepIds = useWorkflowStore((s) => s.completedStepIds);
 
   if (!taskType) return null;
 
   const handleClick = () => {
     // 아직 아무 단계도 마치지 않았다면 잃을 것이 없다 — 확인 없이 보낸다.
-    const hasWorkToLose = completedSteps.length > 0;
+    const hasWorkToLose = completedStepIds.length > 0;
     if (hasWorkToLose) {
       const ok = window.confirm(
         "Changing the classifier type clears the metrics, uploaded data, and column mapping you have entered. Continue?",

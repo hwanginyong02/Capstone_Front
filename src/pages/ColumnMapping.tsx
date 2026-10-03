@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
-import { useWorkflowStore, stepToPath, STEP } from "../utils/stores/useWorkflowStore";
+import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
+import { useStepFlow } from "../hooks/useStepFlow";
 import { WorkflowShell } from "../layout/WorkflowShell";
 import { ColumnMapping as ColumnMappingContent } from "../components/column-mapping/ColumnMapping";
 import { confirmMapping } from "../lib/report/confirmMappingApi";
 import { FileReuploadNotice } from "../components/workflow/FileReuploadNotice";
 
 /**
- * Step 3 — 컬럼 매핑.
+ * 컬럼 매핑.
  *
  * 지표 선택 **뒤**에 온다. 그래야 "선택한 지표가 요구하는 역할"을 계산해 누락을 짚어줄 수
  * 있다(`getRequiredColumnsForSelection`).
@@ -17,8 +17,8 @@ import { FileReuploadNotice } from "../components/workflow/FileReuploadNotice";
  * 지표 선택은 검증보다 반드시 앞서야 한다.
  */
 export function ColumnMapping() {
-  const navigate = useNavigate();
   const store = useWorkflowStore();
+  const flow = useStepFlow("mapping");
   const [isValid, setIsValid] = useState(false);
 
   const [isConfirming, setIsConfirming] = useState(false);
@@ -46,9 +46,7 @@ export function ColumnMapping() {
         return;
       }
 
-      store.markStepCompleted(STEP.MAPPING);
-      store.setCurrentStep(STEP.VALIDATION);
-      navigate(stepToPath(STEP.VALIDATION));
+      flow.goNext();
     } catch (err: any) {
       console.error("Mapping confirmation failed:", err);
       alert(`매핑 확인 실패: ${err.message || err}`);
@@ -57,10 +55,7 @@ export function ColumnMapping() {
     }
   };
 
-  const handlePrevious = () => {
-    store.setCurrentStep(STEP.METRICS);
-    navigate(stepToPath(STEP.METRICS));
-  };
+  const handlePrevious = () => flow.goPrevious();
 
   const handlePositiveClassChange = (val: string) => {
     store.setMetadata({

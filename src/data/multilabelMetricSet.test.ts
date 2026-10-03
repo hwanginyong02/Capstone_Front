@@ -135,7 +135,7 @@ describe("persist 마이그레이션 v3 → v4 — 성적서 구성 상태", () 
     expect(migrated.composerModelEnv).toEqual({});
   });
 
-  it("v3 의 기존 입력과 진행 표시는 그대로 둔다", async () => {
+  it("v3 의 기존 입력은 그대로 두고 진행은 이어서 v5 로 옮긴다", async () => {
     const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
 
     const migrated = migrateWorkflowState(
@@ -143,13 +143,14 @@ describe("persist 마이그레이션 v3 → v4 — 성적서 구성 상태", () 
       3,
     );
 
-    // v2 → v3 과 달리 버릴 것이 없다 — 기존 키의 뜻이 하나도 바뀌지 않았다.
+    // v2 → v3 과 달리 v3 → v4 는 버릴 것이 없다 — 기존 키의 뜻이 하나도 바뀌지 않았다.
     expect(migrated.selectedMetricIds).toEqual(["M1", "M9"]);
-    expect(migrated.completedSteps).toEqual([1, 2]);
-    expect(migrated.currentStep).toBe(3);
+    // 다만 체인이 v5 까지 이어지므로 진행 표시는 이름으로 옮겨져 있다.
+    expect(migrated.completedStepIds).toEqual(["upload", "metrics"]);
+    expect(migrated.currentStepId).toBe("mapping");
   });
 
-  it("v1 저장분도 v4 까지 한 번에 올라간다", async () => {
+  it("v1 저장분도 v5 까지 한 번에 올라간다", async () => {
     const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
 
     const migrated = migrateWorkflowState(
@@ -157,9 +158,91 @@ describe("persist 마이그레이션 v3 → v4 — 성적서 구성 상태", () 
       1,
     );
 
-    // v1 → v2 의 지표 정리, v2 → v3 의 진행 초기화, v3 → v4 의 신규 키가 모두 적용된다.
+    // v1→v2 지표 정리, v2→v3 진행 초기화, v3→v4 신규 키, v4→v5 이름 전환이 모두 적용된다.
     expect(migrated.selectedMetricIds).toEqual(["M4"]);
-    expect(migrated.completedSteps).toEqual([]);
+    expect(migrated.completedStepIds).toEqual([]);
+    expect(migrated.currentStepId).toBe("upload");
     expect(migrated.composerCards.modelEnv).toBe(true);
+  });
+});
+
+/**
+ * v4 → v5 — 진행 표시를 번호에서 이름으로.
+ *
+ * v2 → v3 은 번호 체계가 뒤집혀 진행을 **버렸다**. 여기는 다르다 — 구 1~6 이 가리켰던 단계가
+ * 새 체계에 그대로 있고 순서도 같으므로 **옮긴다**. 다 걸어온 사용자를 1단계로 돌려보낼
+ * 이유가 없다.
+ */
+describe("persist 마이그레이션 v4 → v5 — 단계 번호를 이름으로", () => {
+  it("완료 번호를 단계 이름으로 옮긴다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const migrated = migrateWorkflowState(
+      { taskType: "binary", completedSteps: [1, 2, 3, 4], currentStep: 5 },
+      4,
+    );
+
+    expect(migrated.completedStepIds).toEqual(["upload", "metrics", "mapping", "validation"]);
+    expect(migrated.currentStepId).toBe("summary");
+  });
+
+  it("옛 번호 키는 남기지 않는다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const migrated = migrateWorkflowState({ completedSteps: [1], currentStep: 2 }, 4);
+
+    expect(migrated.completedSteps).toBeUndefined();
+    expect(migrated.currentStep).toBeUndefined();
+  });
+
+  it("새로 생긴 단계는 미완료로 남는다 — 그 입력을 아직 받지 않았다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const migrated = migrateWorkflowState({ completedSteps: [1, 2, 3, 4, 5, 6] }, 4);
+
+    // 평가 관점·데이터 정보·모델과 환경·의뢰자 정보는 들어 있지 않다.
+    expect(migrated.completedStepIds).toEqual([
+      "upload",
+      "metrics",
+      "mapping",
+      "validation",
+      "summary",
+      "report",
+    ]);
+    expect(migrated.completedStepIds).not.toContain("perspective");
+    expect(migrated.completedStepIds).not.toContain("clientInfo");
+  });
+
+  it("범위를 벗어난 번호나 빈 값은 버린다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const migrated = migrateWorkflowState({ completedSteps: [0, 7, 99, null], currentStep: 42 }, 4);
+
+    expect(migrated.completedStepIds).toEqual([]);
+    // 알 수 없는 현재 단계는 첫 단계로 둔다.
+    expect(migrated.currentStepId).toBe("upload");
+  });
+
+  it("진행 표시가 아예 없던 저장분도 깨지지 않는다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const migrated = migrateWorkflowState({ taskType: "binary" }, 4);
+
+    expect(migrated.completedStepIds).toEqual([]);
+    expect(migrated.currentStepId).toBe("upload");
+  });
+
+  it("v2 저장분은 v5 까지 한 번에 올라간다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const migrated = migrateWorkflowState(
+      { taskType: "binary", selectedMetricIds: ["M1"], completedSteps: [1, 2, 3], currentStep: 4 },
+      2,
+    );
+
+    // v2 → v3 이 진행을 버리고, v3 → v4 가 구성 상태를 채우고, v4 → v5 가 이름으로 옮긴다.
+    expect(migrated.completedStepIds).toEqual([]);
+    expect(migrated.currentStepId).toBe("upload");
+    expect(migrated.composerCards.trainingData).toBe(true);
   });
 });

@@ -260,7 +260,7 @@ export function TestItems({
         {!taskType ? (
           <Card>
             <CardContent className="py-10 text-sm text-muted-foreground">
-              Choose a classifier type in Step 1 before selecting metrics.
+              Choose a classifier type before selecting metrics.
             </CardContent>
           </Card>
         ) : (

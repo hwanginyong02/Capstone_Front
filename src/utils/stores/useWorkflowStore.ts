@@ -25,6 +25,7 @@ import {
   type BasicInfoFormData,
   type DatasetInfoFormData,
   type MetricDetailStateMap,
+  type StepId,
   type UploadedFileInfo,
 } from "../../types/workflow.types";
 import {
@@ -37,69 +38,32 @@ import {
 import { presetSelection } from "../../data/reportComposer";
 
 /**
- * 평가 구간의 단계 경로. **배열 순서가 곧 단계 번호다**(1-based).
+ * 단계 번호·경로 상수는 이 파일을 떠났다.
  *
- * 성적서 발급에만 필요한 입력(기관 정보·학습 데이터셋 정보·목표값)은 이 구간에 없다.
- * 평가는 그것들 없이 성립한다 — `/api/evaluate` 페이로드에 하나도 들어가지 않는다.
- * 성적서 구간은 평가 결과 화면에서 이어진다(docs/WORKFLOW_REDESIGN.md).
- */
-export const STEP_PATHS = [
-  "data-upload",
-  "metrics",
-  "column-mapping",
-  "data-validation",
-  "evaluation-summary",
-  "report",
-] as const;
-
-export type StepPath = (typeof STEP_PATHS)[number];
-
-/**
- * 단계 번호에 이름을 붙인다.
+ * 단계 목록이 성적서 구성 화면의 카드 선택에서 **계산되므로**, 고정 번호(`STEP`)와 고정
+ * 경로 배열(`STEP_PATHS`)이 성립하지 않는다. 카탈로그는 `data/workflowSteps.ts`, 목록 계산과
+ * 이동은 `utils/domain/workflowSteps.ts` 에 있다.
  *
- * 종전에는 `markStepCompleted(3)` 같은 **생짜 숫자**가 8개 파일에 흩어져 있었다. 타입이
- * 전부 `number` 라 순서를 바꿔도 컴파일러가 잡아주지 않아, 재배치 때 조용히 어긋난다.
- * 앞으로 순서가 또 바뀌면 이 표 하나만 고친다.
+ * 이 스토어가 드는 것은 **지금 어디에 있고 무엇을 마쳤는지**(`currentStepId`
+ * ·`completedStepIds`)뿐이다.
  */
-export const STEP = {
-  UPLOAD: 1,
-  METRICS: 2,
-  MAPPING: 3,
-  VALIDATION: 4,
-  /** 평가 결과 — 고른 지표의 값만 본다. 합불 판정은 여기 없다(목표값은 성적서 구간 입력). */
-  SUMMARY: 5,
-  /** 성적서. */
-  RESULT: 6,
-} as const;
-
-/** 평가 구간의 마지막 단계. */
-export const LAST_STEP = STEP.RESULT;
-
-/**
- * run id 가 있어야만 열 수 있는 단계. 평가를 실행해야 생기는 화면들이다.
- * 경로가 `/report/<runId>/...` 라 단계 번호만으로는 목적지를 만들 수 없다.
- */
-export const RUN_SCOPED_STEPS: number[] = [STEP.SUMMARY, STEP.RESULT];
-
-/** Convert a 1-based step number to a route path */
-export function stepToPath(step: number): string {
-  // run 이 필요한 단계는 목적지가 정해지지 않으므로 항상 유효한 워크스페이스 목록으로
-  // 보낸다 — 종전의 "/report/preview" 는 저장되지 않는 임시 성적서를 만들어 발급·재조회를
-  // 불가능하게 했다(ISSUES.md E-02·E-06). 실제 이동은 StepTabs 가 lastRunId 로 처리한다.
-  if (RUN_SCOPED_STEPS.includes(step)) return "/workspaces";
-  return `/app/${STEP_PATHS[step - 1] ?? STEP_PATHS[0]}`;
-}
-
-/** Convert a route path segment to a 1-based step number */
-export function pathToStep(path: string): number {
-  // 워크플로우 페이지는 항상 정식 /app/* 경로로 렌더된다(레거시 /step/* 는 routes.ts 에서 리다이렉트).
-  const segment = path.replace("/app/", "");
-  const index = STEP_PATHS.indexOf(segment as StepPath);
-  return index >= 0 ? index + 1 : 1;
-}
 
 /** persist 스키마 버전. 저장된 상태의 의미가 바뀔 때만 올린다. */
-export const WORKFLOW_PERSIST_VERSION = 4;
+export const WORKFLOW_PERSIST_VERSION = 5;
+
+/**
+ * 구 번호 체계(v4 까지)의 1~6 이 가리켰던 단계.
+ *
+ * v4→v5 마이그레이션 **전용**이다. 새 코드에서 번호로 단계를 가리키는 곳은 없다.
+ */
+const LEGACY_STEP_IDS: StepId[] = [
+  "upload", // 1
+  "metrics", // 2
+  "mapping", // 3
+  "validation", // 4
+  "summary", // 5
+  "report", // 6
+];
 
 /** v3 → v4 에서 생긴 성적서 구성 상태의 기본값. 마이그레이션과 초기 상태가 함께 쓴다. */
 const INITIAL_COMPOSER_STATE = {
@@ -144,6 +108,11 @@ const EMPTY_COMPOSER_INPUTS = {
  * 켜짐/꺼짐(`composerCards`)과 새 입력 그룹 다섯 개가 상태에 추가됐다. 여기서는 **버릴 것이
  * 없다** — 기존 키의 뜻이 하나도 바뀌지 않았고 새 키만 생겼으므로, 기본값으로 채우기만 한다.
  * 채우지 않으면 얕은 merge 때문에 `undefined` 로 남는다(아래 주석 참고).
+ *
+ * **v4 → v5**: 단계 목록이 카드 선택에서 계산되기 시작했다. 진행 표시를 번호
+ * (`completedSteps`·`currentStep`)에서 이름(`completedStepIds`·`currentStepId`)으로 옮긴다.
+ * v2 → v3 과 달리 **1:1 대응이 성립해 진행을 버리지 않는다** — 구 1~6 이 가리켰던 단계가
+ * 새 체계에 그대로 있고 순서도 같다(`LEGACY_STEP_IDS`).
  */
 export function migrateWorkflowState(persisted: any, version: number): any {
   if (!persisted || version >= WORKFLOW_PERSIST_VERSION) return persisted;
@@ -161,8 +130,9 @@ export function migrateWorkflowState(persisted: any, version: number): any {
   }
 
   // v2 → v3 — 단계 번호 체계 교체. 진행 표시만 버리고 입력은 남긴다.
+  // 숫자 1 은 **구 번호 체계의 업로드**다. 아래 v4 → v5 가 이것을 id 로 옮긴다.
   if (version < 3) {
-    next = { ...next, completedSteps: [], currentStep: STEP.UPLOAD };
+    next = { ...next, completedSteps: [], currentStep: 1 };
   }
 
   // v3 → v4 — 성적서 구성 화면이 생겼다. 카드 선택과 새 입력 그룹 여섯 키를 채운다.
@@ -175,13 +145,43 @@ export function migrateWorkflowState(persisted: any, version: number): any {
     next = { ...next, ...INITIAL_COMPOSER_STATE };
   }
 
+  // v4 → v5 — 진행 표시를 번호에서 이름으로 옮긴다.
+  //
+  // v2 → v3 과 달리 **1:1 대응이 성립한다.** 구 1~6 이 가리켰던 단계가 새 체계에도 그대로
+  // 있고 순서도 같다(사이에 평가 관점이 끼어들었을 뿐이다). 그래서 진행을 버리지 않고
+  // 옮긴다 — 다 걸어온 사용자를 다시 1단계로 돌려보낼 이유가 없다.
+  //
+  // 새로 생긴 단계(평가 관점·데이터 정보·모델과 환경·의뢰자 정보)는 미완료로 남는다.
+  // 가드가 사용자를 처음 미완료 단계로 보내는데, 그 입력을 실제로 받아야 하므로 **옳은
+  // 동작**이다.
+  if (version < 5) {
+    const legacyCompleted: unknown = next.completedSteps;
+    const completedStepIds = (Array.isArray(legacyCompleted) ? legacyCompleted : [])
+      .map((step: unknown) => LEGACY_STEP_IDS[Number(step) - 1])
+      .filter((id): id is StepId => Boolean(id));
+
+    const currentStepId = LEGACY_STEP_IDS[Number(next.currentStep) - 1] ?? "upload";
+
+    const { completedSteps, currentStep, ...rest } = next;
+    void completedSteps;
+    void currentStep;
+    next = { ...rest, completedStepIds, currentStepId };
+  }
+
   return next;
 }
 
 interface WorkflowState {
-  // Navigation
-  currentStep: number;
-  completedSteps: number[];
+  /**
+   * 지금 있는 단계와 마친 단계. **번호가 아니라 이름이다.**
+   *
+   * 걸을 단계 목록은 `composerCards` 에서 계산되므로 번호의 뜻이 선택에 따라 달라진다.
+   * 저장소를 왕복하는 값이 그런 번호면 카드를 토글할 때마다 진행 표시가 조용히 어긋난다
+   * (docs/WORKFLOW_REDESIGN.md §3.3 이 경고한 상황). 화면에 보일 번호는 목록 위치에서
+   * 그때그때 만든다(`stepNumberOf`).
+   */
+  currentStepId: StepId;
+  completedStepIds: StepId[];
 
   // Step 1 — Basic info
   basicInfo: BasicInfoFormData;
@@ -260,8 +260,8 @@ interface WorkflowState {
   composerModelEnv: ComposerValueMap;
 
   // Actions — Navigation
-  setCurrentStep: (step: number) => void;
-  markStepCompleted: (step: number) => void;
+  setCurrentStepId: (id: StepId) => void;
+  markStepIdCompleted: (id: StepId) => void;
 
   // Actions — Step 1
   setBasicInfo: (
@@ -335,8 +335,8 @@ interface WorkflowState {
 }
 
 const INITIAL_STATE = {
-  currentStep: 1,
-  completedSteps: [] as number[],
+  currentStepId: "upload" as StepId,
+  completedStepIds: [] as StepId[],
   basicInfo: DEFAULT_BASIC_INFO,
   taskType: "" as TaskType | "",
   selectedMetricIds: [] as string[],
@@ -382,11 +382,11 @@ export const useWorkflowStore = create<WorkflowState>()(
       ...INITIAL_STATE,
 
       // Navigation
-      setCurrentStep: (step) => set({ currentStep: step }),
+      setCurrentStepId: (id) => set({ currentStepId: id }),
 
-      markStepCompleted: (step) =>
+      markStepIdCompleted: (id) =>
         set((state) => ({
-          completedSteps: [...new Set([...state.completedSteps, step])],
+          completedStepIds: [...new Set([...state.completedStepIds, id])],
         })),
 
       // Step 1
@@ -417,7 +417,7 @@ export const useWorkflowStore = create<WorkflowState>()(
           // 남겨두면 (a) 빈 상태로 뒤 단계에 점프할 수 있고 (b) 이전 평가의 표본 수가 새
           // 성적서에 인쇄된다(ISSUES.md E-08). persist 도입 전에는 새로고침이 사실상
           // 초기화 역할을 해서 세션 안에 갇혀 있던 오염이다.
-          completedSteps: [],
+          completedStepIds: [],
           datasetInfo: DEFAULT_DATASET_INFO,
           needsFileReupload: false,
           // basicInfo 는 유지한다 — 작업 유형만 바꿨는데 1단계 입력까지 날아가면 안 된다.
@@ -552,7 +552,7 @@ export const useWorkflowStore = create<WorkflowState>()(
           columnMapping: snapshot.columnMapping,
           classLabelDescriptions: snapshot.classLabelDescriptions,
           validationResult: null,
-          currentStep: STEP.UPLOAD,
+          currentStepId: "upload",
           /**
            * 원본 파일은 복원할 수 없다(File 객체).
            *
@@ -565,7 +565,7 @@ export const useWorkflowStore = create<WorkflowState>()(
            * 지표 선택·매핑 **입력 자체는 위에서 복원**했으므로, 파일만 다시 올리면
            * 그대로 이어서 진행할 수 있다.
            */
-          completedSteps: [],
+          completedStepIds: [],
           needsFileReupload: true,
           /**
            * 성적서 구성 입력값도 비운다. 스냅샷(`MapWorkflowToReportInput`)은 아직 이 값들을

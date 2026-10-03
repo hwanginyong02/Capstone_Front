@@ -36,13 +36,18 @@ export interface StepDefinition {
    */
   label: string;
   Icon: LucideIcon;
-  /** `/app/*` 고정 경로. run 에 매인 단계는 없다. */
+  /** `/app/*` 고정 경로. run 에 매인 단계에는 없다. */
   path?: string;
   /**
    * run id 가 있어야 열 수 있는 단계 — 경로가 `/report/<runId>/...` 다.
    * 평가를 실행해야 생기는 화면이라 단계 이름만으로는 목적지를 만들 수 없다.
    */
   runScoped?: boolean;
+  /**
+   * run 경로의 마지막 조각. `runScoped` 이면서 이 값이 없으면 `/report/<runId>` 자체다.
+   * 경로↔단계를 양방향으로 옮기는 근거이기도 하다(`stepIdToPath`·`pathToStepId`).
+   */
+  runSegment?: string;
   /**
    * 이 선택 카드 중 **하나라도** 켜져 있을 때만 나타난다. 없으면 항상 나타난다.
    * 평가만 하는 사용자는 6단계에서 끝나고 7~10단계는 성적서를 발급할 때 걷는다.
@@ -58,7 +63,13 @@ export const STEP_CATALOG: StepDefinition[] = [
   { id: "metrics", label: "Metrics", Icon: ListChecks, path: "/app/metrics" },
   { id: "mapping", label: "Column mapping", Icon: Columns3, path: "/app/column-mapping" },
   { id: "validation", label: "Validation", Icon: ShieldCheck, path: "/app/data-validation" },
-  { id: "summary", label: "Evaluation", Icon: BarChart3, runScoped: true },
+  {
+    id: "summary",
+    label: "Evaluation",
+    Icon: BarChart3,
+    runScoped: true,
+    runSegment: "summary",
+  },
 
   // ─── 발급 구간 — 평가와 무관한 정보가 평가를 막지 않도록 뒤에 둔다 ──────────
   {
@@ -66,6 +77,7 @@ export const STEP_CATALOG: StepDefinition[] = [
     label: "데이터 정보",
     Icon: Database,
     runScoped: true,
+    runSegment: "data-info",
     requiresCards: ["trainingData", "testData", "groundTruth"],
   },
   {
@@ -73,9 +85,17 @@ export const STEP_CATALOG: StepDefinition[] = [
     label: "모델과 환경",
     Icon: Server,
     runScoped: true,
+    runSegment: "model-env",
     requiresCards: ["modelEnv"],
   },
-  { id: "clientInfo", label: "Report details", Icon: Building2, runScoped: true },
+  {
+    id: "clientInfo",
+    label: "Report details",
+    Icon: Building2,
+    runScoped: true,
+    runSegment: "issue-info",
+  },
+  // 성적서는 `/report/<runId>` 자체다 — 뒤에 붙는 조각이 없다.
   { id: "report", label: "Result", Icon: FileBarChart, runScoped: true },
 ];
 

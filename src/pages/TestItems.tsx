@@ -1,15 +1,15 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
-import { useWorkflowStore, stepToPath, STEP } from "../utils/stores/useWorkflowStore";
+import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
+import { useStepFlow } from "../hooks/useStepFlow";
 import { WorkflowShell } from "../layout/WorkflowShell";
 import { TestItems as TestItemsContent } from "../components/test-items/TestItems";
 import { useColumnAnalysis } from "../hooks/useColumnAnalysis";
 
 /**
- * Step 2 — 평가 지표 선택.
+ * 평가 지표 선택.
  *
  * 컬럼 매핑·검증보다 **앞선다**. `/api/validate-data` 가 `selected_metric_ids` 를 필수로
  * 받기 때문이다(`EvaluateRequest` 의 `min_length=1` — 빈 목록이면 결측 제거 범위를 좁힐 수
@@ -21,8 +21,8 @@ import { useColumnAnalysis } from "../hooks/useColumnAnalysis";
  * β(M5)만 여기 남는다. 목표값과 달리 `/api/evaluate` 페이로드에 실리는 **평가 입력**이다.
  */
 export function TestItems() {
-  const navigate = useNavigate();
   const store = useWorkflowStore();
+  const flow = useStepFlow("metrics");
   const { analyzeColumns, isAnalyzing, cancel } = useColumnAnalysis();
   // 종전에는 raw alert() 로만 드러났다. 화면 안에 남겨야 사용자가 읽고 조치할 수 있다(E-18).
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -72,19 +72,14 @@ export function TestItems() {
       // 백엔드가 만든 컬럼 대조 안내를 검증 단계까지 나른다(ISSUES.md B-03).
       store.setColumnNotes(columnNotes);
 
-      store.markStepCompleted(STEP.METRICS);
-      store.setCurrentStep(STEP.MAPPING);
-      navigate(stepToPath(STEP.MAPPING));
+      flow.goNext();
     } catch (err: any) {
       console.error("Column analysis failed:", err);
       setAnalysisError(err?.message || String(err));
     }
   };
 
-  const handlePrevious = () => {
-    store.setCurrentStep(STEP.UPLOAD);
-    navigate(stepToPath(STEP.UPLOAD));
-  };
+  const handlePrevious = () => flow.goPrevious();
 
   return (
     <WorkflowShell
