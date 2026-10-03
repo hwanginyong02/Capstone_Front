@@ -1,15 +1,18 @@
 /**
  * 카드 한 장.
  *
- * **파란색 하나로 통일하고, 두 가지를 다른 축으로 나눈다.**
+ * **테두리와 채움을 다른 축으로 쓴다.**
  *
  * | 무엇 | 어떻게 |
  * |---|---|
- * | 성적서에 들어가는가 | 연한 파랑 **채움**(`--color-primary-subtle`) |
- * | 지금 아래에서 보고 있는가 | 파란 테두리를 **더 굵게**(2px → 3px) |
+ * | 성적서에 들어가는가 | 2px 파란 **테두리**(`--color-primary`) |
+ * | 지금 아래에서 보고 있는가 | 진한 회색 **채움**(`--color-border-strong`) |
  *
- * 종전에는 "보고 있음"을 검은 테두리로 표시했는데, 파랑과 검정이 한 줄에 섞여 어느 쪽이
- * 무슨 뜻인지 읽히지 않았다. 색을 하나로 합치면 남는 단서는 두께뿐이라 그쪽을 쓴다.
+ * 두 가지가 한 카드에 겹치므로 서로 다른 성질에 실어야 읽힌다. 종전에는 둘 다 테두리에
+ * 실어서(색 → 두께) 차이가 거의 보이지 않았다.
+ *
+ * 채움에 쓴 `--color-border-strong` 은 이름이 테두리용이지만, 중립 토큰 중 "진한 회색"에
+ * 해당하는 값이 이것뿐이다. 새 색을 만들지 않기로 한 범위를 지키려고 그대로 쓴다.
  *
  * 카드를 **누르는 것은 보는 것뿐**이다. 성적서에 넣고 빼는 것은 상세 영역의 버튼이 한다 —
  * 내용을 보려고 눌렀다가 카드가 꺼지는 일을 막는 분리는 그대로다.
@@ -31,18 +34,15 @@ interface ComposerCardProps {
 
 export function ComposerCard({ card, included, viewing, onView }: ComposerCardProps) {
   const fullName = card.number + " " + card.name;
-  // 보고 있으면 3px, 들어가 있으면 2px, 그 외 1px. 여백이 그만큼 줄어 크기는 그대로다.
-  const padding = viewing ? "p-[13px]" : included ? "p-[15px]" : "p-4";
 
   return (
     <div
       className={cn(
         "relative min-h-24 rounded-lg",
-        // 성적서에 들어가는가 — 연한 파랑 채움.
-        included ? "border-2 border-primary bg-primary-subtle" : "border bg-card",
-        // 지금 보고 있는가 — 같은 파랑을 더 굵게.
-        viewing && "border-[3px] border-primary",
-        // 들어가지도 보고 있지도 않을 때만 hover 에 반응한다.
+        // 테두리 = 성적서에 들어가는가. 2px 일 때 여백을 15px 로 줄여 크기를 맞춘다.
+        included ? "border-2 border-primary p-[15px]" : "border p-4",
+        // 채움 = 지금 보고 있는가. 보고 있지 않으면 들어간 카드만 연한 파랑을 깐다.
+        viewing ? "bg-border-strong" : included ? "bg-primary-subtle" : "bg-card",
         !included && !viewing && "hover:border-border-strong",
       )}
     >
@@ -54,7 +54,7 @@ export function ComposerCard({ card, included, viewing, onView }: ComposerCardPr
         className="absolute inset-0 h-full w-full rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       />
 
-      <div className={cn("pointer-events-none relative flex gap-2", padding)}>
+      <div className="pointer-events-none relative flex gap-2">
         <span className="flex h-4 w-4 shrink-0 items-center justify-center">
           {card.locked && <Lock aria-label="항상 포함" className="h-4 w-4 text-primary" />}
         </span>
