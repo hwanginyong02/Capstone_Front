@@ -153,8 +153,8 @@ export function ComposerFieldInput({
                 ) : (
                   <Input
                     id={controlId + "-" + key}
-                    className="font-mono tabular-nums"
-                    inputMode="numeric"
+                    className={cn(field.mono && "font-mono", field.numeric && "tabular-nums")}
+                    inputMode={field.numeric ? "numeric" : undefined}
                     value={entryValue(key)}
                     onChange={(event) => setEntry(key, event.target.value)}
                   />
@@ -182,8 +182,8 @@ export function ComposerFieldInput({
                   </Label>
                   <Input
                     id={controlId + "-" + name}
-                    className="font-mono tabular-nums"
-                    inputMode="numeric"
+                    className={cn(field.mono && "font-mono", field.numeric && "tabular-nums")}
+                    inputMode={field.numeric ? "numeric" : undefined}
                     value={entryValue(name)}
                     onChange={(event) => setEntry(name, event.target.value)}
                   />

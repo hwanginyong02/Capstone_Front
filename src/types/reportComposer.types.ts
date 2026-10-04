@@ -90,6 +90,13 @@ export interface ComposerField {
   advanced?: boolean;
   /** 예시를 고정폭 글꼴 + `tabular-nums` 로 그린다(파일명·숫자). */
   mono?: boolean;
+  /**
+   * 숫자만 받는 칸. 입력 화면이 숫자 키패드를 띄우고 자릿수를 고정폭으로 맞춘다.
+   *
+   * `entries` 라고 다 숫자인 것은 아니다 — ⑥ 데이터 양은 건수지만 ⑨ 실행 환경은 OS 이름 같은
+   * 글이다. 둘을 같은 칸으로 그리면 글자를 숫자 키패드로 치게 된다.
+   */
+  numeric?: boolean;
   /** "모름"을 고를 수 있다. 고르면 필수 점검을 통과하고 성적서에는 "제공되지 않음"이 된다. */
   allowsUnknown?: boolean;
   /** 입력 화면에 붙이는 한 줄 도움말. */
@@ -100,7 +107,24 @@ export interface ComposerField {
   sentToAi?: boolean;
   /** 근거 조항(KS X ISO/IEC TS 4213). ⑤ 평가 관점의 지표 점검이 쓸 값. */
   standardClause?: string;
+  /**
+   * 같은 내용을 받던 **기존 저장소 필드**. 카드에 입력하면 여기에도 함께 쓴다.
+   *
+   * 카드가 생기기 전부터 `basicInfo`·`datasetInfo` 의 몇몇 필드가 같은 것을 받고 있었고,
+   * 성적서를 그리는 코드는 그쪽을 읽는다. 둘을 한 화면에 나란히 두면 사용자가 같은 값을 두 번
+   * 적게 되므로 **입력란은 카드 하나로 합치되, 값은 기존 저장소에도 흘려보내** 성적서 출력을
+   * 그대로 둔다.
+   *
+   * `field` — 값 하나를 그 필드에 쓴다.
+   * `byKey` — `entries` 의 칸마다 다른 필드에 쓴다(⑨ 실행 환경의 OS·CPU·… 처럼).
+   */
+  legacy?:
+    | { target: LegacyTarget; field: string }
+    | { target: LegacyTarget; byKey: Record<string, string> };
 }
+
+/** 카드 값을 함께 흘려보낼 기존 저장소. */
+export type LegacyTarget = "basicInfo" | "datasetInfo";
 
 export interface ComposerCard {
   id: ComposerCardId;

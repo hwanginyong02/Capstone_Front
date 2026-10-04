@@ -288,6 +288,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         allowsUnknown: true,
         reportSection: "7절",
         sentToAi: true,
+        legacy: { target: "datasetInfo", field: "trainingDatasetName" },
       },
       {
         /**
@@ -312,9 +313,14 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         input: "entries",
         entryKeys: ["학습", "검증"],
         mono: true,
+        numeric: true,
         allowsUnknown: true,
         reportSection: "7절",
         sentToAi: true,
+        legacy: {
+          target: "datasetInfo",
+          byKey: { 학습: "trainingSampleCount", 검증: "validationSampleCount" },
+        },
       },
       {
         id: "trainingClassVolume",
@@ -324,9 +330,12 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         input: "entries",
         entryKeysFrom: "classes",
         mono: true,
+        numeric: true,
         allowsUnknown: true,
         reportSection: "7절",
         sentToAi: true,
+        // 칸이 클래스마다 생기므로 byKey 로 짝지을 수 없다. 한 줄로 합쳐 넘긴다.
+        legacy: { target: "datasetInfo", field: "trainingClassDistribution" },
       },
       {
         id: "channelEffects",
@@ -511,15 +520,32 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         sentToAi: true,
       },
       {
+        /**
+         * 문서의 예시는 한 줄("Ubuntu 22.04 · A100 · 64GB · Python 3.11")이지만 칸을 다섯으로
+         * 나눈다. 성적서가 OS·CPU·GPU·메모리·소프트웨어를 **따로 인쇄**하기 때문이다
+         * (`evalEnv.systemSpec`). 한 줄로 받으면 그걸 다시 다섯으로 쪼개야 하는데, 쪼개는
+         * 규칙을 만들면 틀릴 수 있다.
+         */
         id: "runtimeEnv",
         label: "실행 환경",
         inputExample: "Ubuntu 22.04 · A100 · 64GB · Python 3.11",
         kind: "required",
-        input: "text",
+        input: "entries",
+        entryKeys: ["OS", "CPU", "GPU", "메모리", "소프트웨어"],
         mono: true,
         allowsUnknown: true,
         reportSection: "8절",
         sentToAi: true,
+        legacy: {
+          target: "basicInfo",
+          byKey: {
+            OS: "envOS",
+            CPU: "envCPU",
+            GPU: "envGPU",
+            메모리: "envMemory",
+            소프트웨어: "envSoftware",
+          },
+        },
       },
       {
         id: "gpuUsage",
