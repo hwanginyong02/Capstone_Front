@@ -23,6 +23,18 @@ import type {
   ComposerValueMap,
 } from "../../types/reportComposer.types";
 
+/**
+ * 선택지 한 줄의 모양. 구성 화면의 카드와 같은 규칙이다
+ * (`report-composer/ComposerCard.tsx`): 고른 것은 굵은 파란 테두리 + 연한 파랑 바탕.
+ *
+ * 줄 전체가 `<label>` 이라 글자를 눌러도 골라진다 — 16px 짜리 표식 하나만 누를 수 있으면
+ * 과녁이 너무 작다. 고른 줄은 테두리가 1px 두꺼워지므로 여백을 1px 줄여 줄 높이를 지킨다.
+ */
+const TILE_BASE =
+  "flex cursor-pointer items-center gap-3 rounded-md transition-colors has-disabled:cursor-not-allowed";
+const TILE_ON = "border-2 border-primary bg-primary-subtle p-[11px]";
+const TILE_OFF = "border border-border bg-card p-3 hover:border-border-strong";
+
 interface ComposerFieldInputProps {
   field: ComposerField;
   value: ComposerFieldValue | undefined;
@@ -84,7 +96,15 @@ export function ComposerFieldInput({
         </Label>
 
         {field.allowsUnknown && (
-          <label className="flex items-center gap-2 text-body-small text-muted-foreground">
+          /* 켜면 다른 선택지와 같은 파란 테두리가 뜬다 — 이것도 하나의 답이다. */
+          <label
+            className={cn(
+              "flex shrink-0 cursor-pointer items-center gap-2 rounded-md text-body-small transition-colors",
+              unknown
+                ? "border-2 border-primary bg-primary-subtle px-[9px] py-[5px] text-primary"
+                : "border border-border px-2.5 py-1.5 text-muted-foreground hover:border-border-strong",
+            )}
+          >
             <Checkbox
               checked={unknown}
               onCheckedChange={(next) => onChange({ ...value, unknown: next === true })}
@@ -105,15 +125,13 @@ export function ComposerFieldInput({
             className="gap-2"
           >
             {(field.choices ?? []).map((choice) => (
-              <div key={choice} className="flex items-center gap-2">
-                <RadioGroupItem value={choice} id={controlId + "-" + choice} />
-                <Label
-                  htmlFor={controlId + "-" + choice}
-                  className="text-body-medium font-normal text-foreground"
-                >
-                  {choice}
-                </Label>
-              </div>
+              <label
+                key={choice}
+                className={cn(TILE_BASE, value?.text === choice ? TILE_ON : TILE_OFF)}
+              >
+                <RadioGroupItem shape="square" value={choice} />
+                <span className="text-body-medium text-foreground">{choice}</span>
+              </label>
             ))}
           </RadioGroup>
         )}
@@ -121,7 +139,10 @@ export function ComposerFieldInput({
         {field.input === "multi" && (
           <div className="space-y-2" role="group" aria-label={field.label}>
             {(field.choices ?? []).map((choice) => (
-              <label key={choice} className="flex items-center gap-2">
+              <label
+                key={choice}
+                className={cn(TILE_BASE, chosen.includes(choice) ? TILE_ON : TILE_OFF)}
+              >
                 <Checkbox
                   checked={chosen.includes(choice)}
                   onCheckedChange={() => toggleChoice(choice)}
@@ -148,18 +169,20 @@ export function ComposerFieldInput({
                     value={entryValue(key)}
                     onValueChange={(next) => setEntry(key, next)}
                     aria-label={field.label + " " + key}
-                    className="flex gap-4"
+                    className="flex gap-2"
                   >
                     {field.choices.map((choice) => (
-                      <div key={choice} className="flex items-center gap-2">
-                        <RadioGroupItem value={choice} id={controlId + "-" + key + "-" + choice} />
-                        <Label
-                          htmlFor={controlId + "-" + key + "-" + choice}
-                          className="text-body-medium font-normal text-foreground"
-                        >
-                          {choice}
-                        </Label>
-                      </div>
+                      <label
+                        key={choice}
+                        className={cn(
+                          TILE_BASE,
+                          "flex-1",
+                          entryValue(key) === choice ? TILE_ON : TILE_OFF,
+                        )}
+                      >
+                        <RadioGroupItem shape="square" value={choice} />
+                        <span className="text-body-medium text-foreground">{choice}</span>
+                      </label>
                     ))}
                   </RadioGroup>
                 ) : (

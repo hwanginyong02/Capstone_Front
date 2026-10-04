@@ -285,3 +285,51 @@ describe("차단 표시", () => {
     expect(screen.getAllByText(/^Required\.$/)).toHaveLength(1);
   });
 });
+
+/**
+ * 선택지 타일.
+ *
+ * 과녁이 16px 짜리 표식 하나뿐이면 누르기 어렵다. 줄 전체가 label 이라 글자를 눌러도
+ * 골라지고, 고른 줄은 구성 화면의 카드와 같은 파란 테두리를 단다.
+ */
+describe("선택지 타일", () => {
+  it("글자를 눌러도 골라진다", async () => {
+    const { onChange } = renderForm("groundTruth");
+
+    await userEvent.click(screen.getByText("Domain experts"));
+
+    expect(onChange).toHaveBeenCalledWith("labelAuthor", {
+      text: "Domain experts",
+      unknown: false,
+    });
+  });
+
+  it("여럿 고르는 질문도 글자를 눌러 켜고 끈다 — 두 번 뒤집히지 않는다", async () => {
+    const { onChange } = renderForm("trainingData");
+
+    await userEvent.click(screen.getByText("Different equipment"));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith("channelEffects", {
+      choices: ["Different equipment"],
+      unknown: false,
+    });
+  });
+
+  it("고른 줄에 파란 테두리를 단다", () => {
+    renderForm("groundTruth", { values: { labelAuthor: { text: "Domain experts" } } });
+
+    const chosen = screen.getByRole("radio", { name: "Domain experts" }).closest("label");
+    const other = screen.getByRole("radio", { name: "Outside workers" }).closest("label");
+
+    expect(chosen?.className).toContain("border-primary");
+    expect(other?.className).not.toContain("border-primary");
+  });
+
+  it("하나만 고를 수 있다는 사실은 그대로 알린다", () => {
+    renderForm("groundTruth");
+
+    // 모양은 체크박스를 닮았지만 역할은 radio 다.
+    expect(screen.getByRole("radio", { name: "Domain experts" })).toBeInTheDocument();
+  });
+});
