@@ -51,9 +51,7 @@ export function ComposerCardForm({
   return (
     <Card className="gap-0 rounded-lg border-border bg-card">
       <CardHeader className="p-6">
-        <h2 className="text-heading-medium font-semibold text-foreground">
-          {card.number} {card.name}
-        </h2>
+        <h2 className="text-heading-medium font-semibold text-foreground">{card.name}</h2>
         <p className="mt-2 text-body-small text-muted-foreground">{card.description}</p>
       </CardHeader>
 
@@ -81,7 +79,7 @@ export function ComposerCardForm({
               />
               {issue?.reason === "exclusive" && (
                 <p className="mt-1 text-body-small text-destructive">
-                  {field.exclusiveChoice}은(는) 다른 항목과 함께 고를 수 없습니다.
+                  {field.exclusiveChoice} cannot be combined with the others.
                 </p>
               )}
             </div>
@@ -95,7 +93,7 @@ export function ComposerCardForm({
             onClick={() => setShowAdvanced((prev) => !prev)}
             className="text-body-medium font-medium"
           >
-            {showAdvanced ? "선택 항목 접기" : "선택 항목 " + advancedCount + "개 더 보기"}
+            {showAdvanced ? "Hide optional fields" : "Show " + advancedCount + " optional fields"}
             {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
         )}

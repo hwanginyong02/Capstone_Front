@@ -38,14 +38,15 @@ export function MetricListViewer({ taskType }: { taskType: TaskType }) {
             </span>
             <span className="text-body-xs font-medium text-foreground">{metric.name}</span>
             {needsProbability(taskType, metric.id) && (
-              <span className="text-body-xs text-muted-foreground">확률 필요</span>
+              <span className="text-body-xs text-muted-foreground">needs probability</span>
             )}
           </Badge>
         ))}
       </div>
 
       <p className="mt-3 text-body-small text-muted-foreground">
-        지표 {metrics.length}개 중에서 고릅니다. 실제 선택은 지표 선택 단계에서 합니다.
+        <span className="font-mono tabular-nums">{metrics.length}</span> metrics to choose from.
+        You pick them in the metric step.
       </p>
     </div>
   );

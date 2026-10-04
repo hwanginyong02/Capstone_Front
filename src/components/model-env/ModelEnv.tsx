@@ -24,9 +24,10 @@ export function ModelEnv({ taskType, values, onChange, issues }: ModelEnvProps) 
   return (
     <main className="mx-auto max-w-[1344px] space-y-6 px-8 pt-12 pb-24">
       <div>
-        <h1 className="text-heading-large font-bold text-foreground">모델과 환경</h1>
+        <h1 className="text-heading-large font-bold text-foreground">Model info</h1>
         <p className="mt-1 text-body-medium text-muted-foreground">
-          모델 설정값과 실행한 컴퓨터를 적습니다. 모르는 항목은 모름을 고르세요.
+          How the model was configured and what it ran on. Choose Unknown for anything you do
+          not know.
         </p>
       </div>
 

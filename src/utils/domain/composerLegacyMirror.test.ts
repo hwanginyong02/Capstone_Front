@@ -36,7 +36,9 @@ describe("한 칸 → 한 필드", () => {
 
 describe("칸마다 다른 필드 (byKey)", () => {
   it("⑥ 데이터 양이 학습·검증 건수로 갈린다", () => {
-    const value = { entries: [{ key: "학습", value: "12000" }, { key: "검증", value: "3000" }] };
+    const value = {
+      entries: [{ key: "Training", value: "12000" }, { key: "Validation", value: "3000" }],
+    };
 
     expect(buildLegacyPatch(fieldOf("trainingData", "trainingVolume"), value)).toEqual({
       datasetInfo: { trainingSampleCount: "12000", validationSampleCount: "3000" },
@@ -46,9 +48,9 @@ describe("칸마다 다른 필드 (byKey)", () => {
   it("⑨ 실행 환경이 OS·CPU·GPU·메모리·소프트웨어로 갈린다", () => {
     const value = {
       entries: [
-        { key: "운영체제", value: "Ubuntu 22.04" },
+        { key: "Operating system", value: "Ubuntu 22.04" },
         { key: "GPU", value: "A100" },
-        { key: "메모리", value: "64GB" },
+        { key: "Memory", value: "64GB" },
       ],
     };
 

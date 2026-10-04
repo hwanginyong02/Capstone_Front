@@ -109,7 +109,7 @@ export function TestItems() {
         perspectiveIssues.length > 0
       }
       nextLabel={isAnalyzing ? "Analyzing columns..." : "Next step"}
-      rightAction={<RemainingNotice issues={perspectiveIssues} lang="en" />}
+      rightAction={<RemainingNotice issues={perspectiveIssues} />}
       leftAction={
         isAnalyzing ? (
           <Button variant="outline" onClick={cancel}>

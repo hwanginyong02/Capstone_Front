@@ -5,7 +5,7 @@
  * 더하거나 선택지를 고치는 일이 `data/reportComposer.ts` 한 곳에서 끝나야, 문서와 화면이
  * 어긋나지 않는다.
  *
- * "모름"을 고르면 컨트롤을 잠근다 — 값과 "모름"이 동시에 남아 어느 쪽이 참인지 모르게 되는
+ * "Unknown" 을 고르면 컨트롤을 잠근다 — 값과 모름이 동시에 남아 어느 쪽이 참인지 모르게 되는
  * 상태를 만들지 않는다. 성적서에는 "제공되지 않음"으로 찍힌다(이번 범위에서는 저장까지만).
  */
 import { Plus, X } from "lucide-react";
@@ -68,7 +68,7 @@ export function ComposerFieldInput({
         <Label htmlFor={controlId} className="text-body-medium font-medium text-foreground">
           {field.label}
           {field.kind === "optional" && (
-            <span className="ml-2 text-body-xs font-normal text-muted-foreground">선택</span>
+            <span className="ml-2 text-body-xs font-normal text-muted-foreground">optional</span>
           )}
         </Label>
 
@@ -77,9 +77,9 @@ export function ComposerFieldInput({
             <Checkbox
               checked={unknown}
               onCheckedChange={(next) => onChange({ ...value, unknown: next === true })}
-              aria-label={field.label + " 모름"}
+              aria-label={field.label + " unknown"}
             />
-            모름
+            Unknown
           </label>
         )}
       </div>
@@ -168,7 +168,7 @@ export function ComposerFieldInput({
           field.entryKeysFrom === "classes" &&
           (classNames.length === 0 ? (
             <p className="text-body-small text-muted-foreground">
-              업로드한 파일에서 클래스를 찾지 못했습니다. 모르면 모름을 고르세요.
+              No classes were found in the uploaded file. Choose Unknown if you do not know them.
             </p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
@@ -198,8 +198,8 @@ export function ComposerFieldInput({
               <div key={index} className="flex items-center gap-2">
                 <Input
                   className="font-mono"
-                  placeholder="이름"
-                  aria-label={field.label + " " + (index + 1) + "번째 이름"}
+                  placeholder="Name"
+                  aria-label={field.label + " name " + (index + 1)}
                   value={entry.key}
                   onChange={(event) => {
                     const next = [...entries];
@@ -209,8 +209,8 @@ export function ComposerFieldInput({
                 />
                 <Input
                   className="font-mono tabular-nums"
-                  placeholder="값"
-                  aria-label={field.label + " " + (index + 1) + "번째 값"}
+                  placeholder="Value"
+                  aria-label={field.label + " value " + (index + 1)}
                   value={entry.value}
                   onChange={(event) => {
                     const next = [...entries];
@@ -221,7 +221,7 @@ export function ComposerFieldInput({
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label={index + 1 + "번째 줄 지우기"}
+                  aria-label={"Remove row " + (index + 1)}
                   onClick={() =>
                     onChange({ ...value, entries: entries.filter((_, i) => i !== index) })
                   }
@@ -242,7 +242,7 @@ export function ComposerFieldInput({
               }
             >
               <Plus className="h-4 w-4" />
-              줄 추가
+              Add a row
             </Button>
           </div>
         )}

@@ -102,18 +102,18 @@ describe('"알려진 것 없음"은 "모름"과 다르다', () => {
   const base = fill("trainingData");
 
   it("단독으로 고르면 제공된 것으로 센다", () => {
-    const values = { ...base, channelEffects: { choices: ["알려진 것 없음"] } };
+    const values = { ...base, channelEffects: { choices: ["None known"] } };
     expect(isCardComplete(학습데이터, "binary", values, true)).toBe(true);
   });
 
   it("다른 선택지와 함께 고를 수 없다", () => {
-    const values = { ...base, channelEffects: { choices: ["알려진 것 없음", "장비 차이"] } };
+    const values = { ...base, channelEffects: { choices: ["None known", "Different equipment"] } };
     const issues = getCardIssues(학습데이터, "binary", values, true);
     expect(issues).toEqual([
       {
         cardId: "trainingData",
         fieldId: "channelEffects",
-        label: "수집 환경 차이",
+        label: "Collection differences",
         reason: "exclusive",
         // 이 필드의 탈출구는 "모름" 이 아니라 "알려진 것 없음" 이다.
         allowsUnknown: false,
@@ -139,13 +139,13 @@ describe("조건부 필드", () => {
     const 일치율 = 정답라벨.fields.find((f) => f.id === "labelAgreement")!;
 
     expect(isFieldRequired(일치율, { labelReview: { text: "1인 검수" } })).toBe(false);
-    expect(isFieldRequired(일치율, { labelReview: { text: "복수 교차 검수" } })).toBe(true);
+    expect(isFieldRequired(일치율, { labelReview: { text: "Several reviewers" } })).toBe(true);
   });
 
   it("복수 교차 검수를 고르면 인원·일치율을 요구한다", () => {
     const values: ComposerValueMap = {
-      labelAuthor: { text: "전문가" },
-      labelReview: { text: "복수 교차 검수" },
+      labelAuthor: { text: "Domain experts" },
+      labelReview: { text: "Several reviewers" },
     };
     expect(getCardIssues(정답라벨, "binary", values, true).map((i) => i.fieldId)).toEqual([
       "labelAgreement",
@@ -166,18 +166,18 @@ describe("칸이 정해진 입력", () => {
   it("⑨ GPU 사용 여부는 학습·추론을 모두 골라야 한다", () => {
     const gpu = 모델환경.fields.find((f) => f.id === "gpuUsage")!;
 
-    expect(hasValue(gpu, { entries: [{ key: "학습", value: "예" }] })).toBe(false);
+    expect(hasValue(gpu, { entries: [{ key: "Training", value: "Yes" }] })).toBe(false);
     expect(
-      hasValue(gpu, { entries: [{ key: "학습", value: "예" }, { key: "추론", value: "아니오" }] }),
+      hasValue(gpu, { entries: [{ key: "Training", value: "Yes" }, { key: "Inference", value: "No" }] }),
     ).toBe(true);
   });
 
   it("⑥ 데이터 양은 학습·검증을 모두 채워야 한다", () => {
     const volume = 학습데이터.fields.find((f) => f.id === "trainingVolume")!;
 
-    expect(hasValue(volume, { entries: [{ key: "학습", value: "12000" }] })).toBe(false);
+    expect(hasValue(volume, { entries: [{ key: "Training", value: "12000" }] })).toBe(false);
     expect(
-      hasValue(volume, { entries: [{ key: "학습", value: "12000" }, { key: "검증", value: "3000" }] }),
+      hasValue(volume, { entries: [{ key: "Training", value: "12000" }, { key: "Validation", value: "3000" }] }),
     ).toBe(true);
   });
 
@@ -228,7 +228,7 @@ describe("조건부 필드는 조건이 성립할 때만 나타난다", () => {
   });
 
   it("조건이 성립하면 그린다", () => {
-    expect(isFieldVisible(일치율, { labelReview: { text: "복수 교차 검수" } })).toBe(true);
+    expect(isFieldVisible(일치율, { labelReview: { text: "Several reviewers" } })).toBe(true);
   });
 
   it("필수·선택 필드는 늘 그린다", () => {

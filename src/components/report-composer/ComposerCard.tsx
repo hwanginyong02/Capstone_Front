@@ -33,7 +33,11 @@ interface ComposerCardProps {
 }
 
 export function ComposerCard({ card, included, viewing, onView }: ComposerCardProps) {
-  const fullName = card.number + " " + card.name;
+  /**
+   * 번호(① ~ ⑨)는 화면에 내지 않는다. 사용자에게는 뜻이 없는 기호이고, 카드 이름이
+   * 이미 무엇인지 말한다. 레지스트리의 `number` 는 설계 문서와 코드를 잇는 고리로 남는다.
+   */
+  const fullName = card.name;
 
   return (
     <div
@@ -50,13 +54,13 @@ export function ComposerCard({ card, included, viewing, onView }: ComposerCardPr
         type="button"
         aria-pressed={viewing}
         onClick={onView}
-        aria-label={fullName + " 자세히 보기"}
+        aria-label={fullName + " details"}
         className="absolute inset-0 h-full w-full rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       />
 
       <div className="pointer-events-none relative flex gap-2">
         <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-          {card.locked && <Lock aria-label="항상 포함" className="h-4 w-4 text-primary" />}
+          {card.locked && <Lock aria-label="Always included" className="h-4 w-4 text-primary" />}
         </span>
 
         <div className="min-w-0">

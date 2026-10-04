@@ -12,8 +12,8 @@ import { cn } from "../../utils/styling/styles";
 import type { ComposerPreset } from "../../types/reportComposer.types";
 
 const PRESETS: Array<{ id: ComposerPreset; label: string }> = [
-  { id: "minimal", label: "최소 구성" },
-  { id: "full", label: "전체" },
+  { id: "minimal", label: "Minimal" },
+  { id: "full", label: "Everything" },
 ];
 
 interface PresetToggleProps {
@@ -26,7 +26,7 @@ export function PresetToggle({ active, onApply }: PresetToggleProps) {
   return (
     <div
       role="group"
-      aria-label="프리셋"
+      aria-label="Presets"
       className="inline-flex h-8 items-center gap-1 rounded-md bg-muted p-1"
     >
       {PRESETS.map((preset) => {

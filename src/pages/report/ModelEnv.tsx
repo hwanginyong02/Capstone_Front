@@ -31,8 +31,8 @@ export function ModelEnv() {
       onPrevious={() => flow.goPrevious({ runId: id })}
       onNext={() => flow.goNext({ runId: id })}
       nextDisabled={issues.length > 0}
-      previousLabel="이전"
-      nextLabel="다음 단계"
+      previousLabel="Back"
+      nextLabel="Next step"
       rightAction={<RemainingNotice issues={issues} />}
     >
       <ModelEnvContent

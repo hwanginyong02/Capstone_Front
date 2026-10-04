@@ -45,9 +45,9 @@ export function FieldTable({
         </colgroup>
         <TableHeader>
           <TableRow className="border-border hover:bg-transparent">
-            <TableHead className={HEAD_CLASS}>필드</TableHead>
-            <TableHead className={HEAD_CLASS}>입력 예시</TableHead>
-            <TableHead className={HEAD_CLASS}>구분</TableHead>
+            <TableHead className={HEAD_CLASS}>Field</TableHead>
+            <TableHead className={HEAD_CLASS}>Example</TableHead>
+            <TableHead className={HEAD_CLASS}>Type</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -80,7 +80,7 @@ export function FieldTable({
           onClick={onToggleExpanded}
           className="mt-2 text-body-medium font-medium"
         >
-          {expanded ? "선택 항목 접기" : "선택 항목 " + advancedCount + "개 더 보기"}
+          {expanded ? "Hide optional fields" : "Show " + advancedCount + " optional fields"}
           {expanded ? (
             <ChevronUp className="h-4 w-4" />
           ) : (

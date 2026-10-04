@@ -35,8 +35,8 @@ interface CardDetailPanelProps {
 }
 
 const VIEWER_LABEL = {
-  csvExample: "예시 파일 보기",
-  metricList: "지표 보기",
+  csvExample: "View an example file",
+  metricList: "View the metrics",
 } as const;
 
 export function CardDetailPanel({
@@ -64,9 +64,7 @@ export function CardDetailPanel({
     >
       <CardHeader className="grid-cols-[1fr_auto] gap-0 p-6">
         <div>
-          <h3 className="text-heading-medium font-semibold text-foreground">
-            {card.number} {card.name}
-          </h3>
+          <h3 className="text-heading-medium font-semibold text-foreground">{card.name}</h3>
           <p className="mt-2 text-body-small text-muted-foreground">{card.description}</p>
         </div>
         {card.locked ? (
@@ -75,7 +73,7 @@ export function CardDetailPanel({
             variant="outline"
             className="rounded-sm border-primary bg-primary-subtle text-body-xs font-medium text-primary"
           >
-            필수
+            Required
           </Badge>
         ) : (
           /**
@@ -92,12 +90,12 @@ export function CardDetailPanel({
             {included ? (
               <>
                 <Minus className="h-4 w-4" />
-                성적서에서 빼기
+                Remove from report
               </>
             ) : (
               <>
                 <Plus className="h-4 w-4" />
-                성적서에 넣기
+                Add to report
               </>
             )}
           </Button>

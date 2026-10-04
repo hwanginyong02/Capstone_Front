@@ -177,7 +177,7 @@ describe("② 지표와 합격 기준", () => {
   it("β 는 Fβ 를 고를 때만 받는 조건부 필드다", () => {
     const beta = getCard("metrics").fields.find((field) => field.id === "beta");
     expect(beta?.kind).toBe("conditional");
-    expect(beta?.conditionLabel).toBe("Fβ 선택 시");
+    expect(beta?.conditionLabel).toBe("When Fβ is chosen");
   });
 
   it("고를 수 있는 지표 수가 SPEC 과 같다 (이진 15 · 다중 클래스 13 · 멀티레이블 11)", () => {
@@ -212,9 +212,9 @@ describe("⑥ 학습 데이터", () => {
   it("수집 환경 차이는 복수 선택이고 \"알려진 것 없음\"이 배타 선택지다", () => {
     const field = getCard("trainingData").fields.find((item) => item.id === "channelEffects");
     expect(field?.input).toBe("multi");
-    expect(field?.exclusiveChoice).toBe("알려진 것 없음");
-    expect(field?.choices).toContain("알려진 것 없음");
-    expect(field?.choices).toContain("기타(직접 입력)");
+    expect(field?.exclusiveChoice).toBe("None known");
+    expect(field?.choices).toContain("None known");
+    expect(field?.choices).toContain("Other (free text)");
   });
 
   it("클래스별 데이터 양은 업로드한 클래스 목록으로 칸을 만든다", () => {
@@ -266,7 +266,7 @@ describe("필수 (표준 보고) 유도", () => {
     const channelEffects = getCard("trainingData").fields.find(
       (field) => field.id === "channelEffects",
     );
-    expect(channelEffects?.exclusiveChoice).toBe("알려진 것 없음");
+    expect(channelEffects?.exclusiveChoice).toBe("None known");
     expect(channelEffects?.allowsUnknown).toBeUndefined();
     expect(channelEffects?.choices).not.toContain("모름");
   });

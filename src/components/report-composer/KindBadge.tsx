@@ -1,5 +1,5 @@
 /**
- * 필드 구분 표시 — 필수 / 선택 / 조건부.
+ * 필드 구분 표시 — Required / Optional / 조건 문구.
  *
  * 조건부는 **배지를 쓰지 않는다**(docs/COMPOSER_DESIGN.md "구분 배지"). 조건 문구 자체가
  * 설명이라("Fβ 선택 시") 배지 안에 넣으면 읽히지 않는다.
@@ -22,7 +22,7 @@ export function KindBadge({ field }: { field: ComposerField }) {
         variant="outline"
         className="rounded-sm border-border text-body-xs font-medium text-muted-foreground"
       >
-        선택
+        Optional
       </Badge>
     );
   }
@@ -36,7 +36,7 @@ export function KindBadge({ field }: { field: ComposerField }) {
       variant="outline"
       className="rounded-sm border-primary bg-primary-subtle text-body-xs font-medium text-primary"
     >
-      필수
+      Required
     </Badge>
   );
 }

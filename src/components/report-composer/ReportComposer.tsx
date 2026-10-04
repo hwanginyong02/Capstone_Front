@@ -63,16 +63,16 @@ export function ReportComposer({
     <main className="mx-auto max-w-[1344px] px-8 pt-12 pb-24">
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-heading-large font-bold text-foreground">성적서 구성</h1>
+          <h1 className="text-heading-large font-bold text-foreground">Report composer</h1>
           <p className="mt-1 text-body-medium text-muted-foreground">
-            넣을 정보를 고르세요. 카드를 누르면 아래에 자세히 보입니다.
+            Choose what goes into the report. Select a card to see what it asks for.
           </p>
         </div>
         <PresetToggle active={matchPreset(selection)} onApply={onApplyPreset} />
       </header>
 
       <div className="mb-6">
-        <ComposerCardRow label="필수" count={requiredCards.length} columns="required">
+        <ComposerCardRow label="Required" count={requiredCards.length} columns="required">
           {requiredCards.map((card) => (
             <ComposerCard
               key={card.id}
@@ -87,9 +87,9 @@ export function ReportComposer({
 
       <div className="mb-10">
         <ComposerCardRow
-          label="선택"
+          label="Optional"
           count={OPTIONAL_CARD_IDS.length}
-          note="성적서에 넣으면 안의 필수 항목은 모두 입력합니다"
+          note="Add one to the report and you fill in every required field inside it"
           columns="optional"
         >
           {optionalCards.map((card) => (
