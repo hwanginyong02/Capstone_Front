@@ -49,14 +49,7 @@ export function BasicInfo({
 
   return (
     <>
-      <main className="px-8 pt-12 pb-32 max-w-[1280px] mx-auto">
-        <div className="mb-10">
-          <h1 className="text-2xl font-bold text-foreground mb-2">Basic information</h1>
-          <p className="text-sm text-muted-foreground">
-            Fill in the organization, model, and evaluation request details used throughout the workflow.
-          </p>
-        </div>
-
+      <div>
         <div className="space-y-10">
           <Card>
             <CardHeader>
@@ -185,7 +178,7 @@ export function BasicInfo({
             </CardContent>
           </Card>
         </div>
-      </main>
+      </div>
     </>
   );
 }

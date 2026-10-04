@@ -1,12 +1,12 @@
-import { useNavigate, useParams } from "react-router";
-import { AppShell } from "../../layout/AppShell";
-import { Button } from "../../components/ui/button";
+import { useParams } from "react-router";
+import { WorkflowShell } from "../../layout/WorkflowShell";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { BasicInfo as BasicInfoContent, isBasicInfoValid } from "../../components/basic-info/BasicInfo";
 import { TrainingDatasetSection } from "../../components/report-info/TrainingDatasetSection";
 import { Field, TEXTAREA_CLASS } from "../../components/data-upload/shared";
 import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
+import { useStepFlow } from "../../hooks/useStepFlow";
 import { getSelectedMetrics } from "../../data/evaluationData";
 import { getTargetValueRule, metricNeedsTargetValue, parseNumericValue } from "../../utils/domain/validation";
 
@@ -20,11 +20,15 @@ import { getTargetValueRule, metricNeedsTargetValue, parseNumericValue } from ".
  *
  * 세 기능을 한 화면의 세 카드로 묶었다. 각각을 별도 단계로 두면 성적서까지 가는 길이
  * 네 화면 더 길어지는데, 셋 다 단순 입력 폼이라 나눌 이유가 없다.
+ *
+ * 종전에는 이 화면만 `AppShell` 을 써서 **단계 화면 중 혼자 달랐다** — 여기서만 상단 탭이
+ * 사라지고, 하단 고정 바 대신 본문 안에 버튼이 있고, 다음 목적지를 경로로 직접 적었다.
+ * 나머지 여섯 화면과 같은 `WorkflowShell` + `useStepFlow` 로 맞췄다.
  */
 export function ReportInfo() {
-  const navigate = useNavigate();
   const { id = "" } = useParams();
   const store = useWorkflowStore();
+  const flow = useStepFlow("clientInfo");
 
   const selectedMetrics = getSelectedMetrics(
     store.taskType || "multiclass",
@@ -58,8 +62,16 @@ export function ReportInfo() {
   const canContinue = isBasicInfoValid(store.basicInfo) && targetsValid;
 
   return (
-    <AppShell>
-      <div className="space-y-6">
+    <WorkflowShell
+      showActionBar
+      showPrevious
+      showNext
+      onPrevious={() => flow.goPrevious({ runId: id })}
+      onNext={() => flow.goNext({ runId: id })}
+      nextDisabled={!canContinue}
+      nextLabel="Save and view report"
+    >
+      <main className="mx-auto max-w-[1344px] space-y-6 px-8 pt-12 pb-24">
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Report details</h1>
           <p className="text-sm text-muted-foreground">
@@ -151,16 +163,7 @@ export function ReportInfo() {
             </Field>
           </CardContent>
         </Card>
-
-        <div className="flex items-center justify-between gap-4 border-t border-border pt-6">
-          <Button variant="outline" onClick={() => navigate(`/report/${id}/summary`)}>
-            Back to results
-          </Button>
-          <Button disabled={!canContinue} onClick={() => navigate(`/report/${id}`)}>
-            Save and view report
-          </Button>
-        </div>
-      </div>
-    </AppShell>
+      </main>
+    </WorkflowShell>
   );
 }
