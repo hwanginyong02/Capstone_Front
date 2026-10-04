@@ -29,9 +29,9 @@ import {
 import type { UploadedFileInfo } from "../../types/workflow.types";
 import {
   getComposerColumnNote,
-  getComposerCsvExample,
   getComposerJsonExample,
 } from "../../data/templateExamples";
+import { CsvExampleViewer } from "./CsvExampleViewer";
 import { MAX_UPLOAD_LABEL, checkUploadSize } from "../../lib/upload/uploadLimits";
 import {
   Field,
@@ -100,8 +100,7 @@ export function DataUpload({
     () => getRequiredColumnsForTaskType(resolvedTaskType),
     [resolvedTaskType],
   );
-  // 성적서 구성 화면의 "예시 파일 보기" 와 같은 예시다.
-  const csvExample = getComposerCsvExample(resolvedTaskType);
+  // JSON 예시만 문자열로 쓴다. CSV 는 CsvExampleViewer 가 표로 그린다.
   const jsonExample = getComposerJsonExample(resolvedTaskType);
 
   const openFilePicker = () => inputRef.current?.click();
@@ -233,9 +232,10 @@ export function DataUpload({
               <TabsTrigger value="json">JSON</TabsTrigger>
             </TabsList>
             <TabsContent value="csv">
-              <div className="bg-muted rounded-md p-4">
-                <pre className="text-xs font-mono overflow-x-auto whitespace-pre">{csvExample}</pre>
-              </div>
+              {/* 성적서 구성 화면 ① 의 "예시 파일 보기"와 **같은 표**다. 같은 파일을 설명하는
+                  자리라 모양도 같아야 한다 — 줄글 덩어리로 두면 쉼표를 세어야 어느 칸이
+                  비었는지 알 수 있다. 안내는 아래에 한 번만 쓰므로 여기서는 끈다. */}
+              <CsvExampleViewer taskType={resolvedTaskType} showNote={false} />
             </TabsContent>
             <TabsContent value="json">
               <div className="bg-muted rounded-md p-4">

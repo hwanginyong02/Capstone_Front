@@ -13,7 +13,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { FieldTable } from "./FieldTable";
-import { CsvExampleViewer } from "./CsvExampleViewer";
+import { CsvExampleViewer } from "../data-upload/CsvExampleViewer";
 import { MetricListViewer } from "./MetricListViewer";
 import { countAdvancedFields, getCardFields } from "../../data/reportComposer";
 import type { TaskType } from "../../data/evaluationData";
