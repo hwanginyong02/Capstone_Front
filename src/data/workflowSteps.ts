@@ -13,7 +13,6 @@ import {
   BarChart3,
   Building2,
   Columns3,
-  Compass,
   Database,
   FileBarChart,
   ListChecks,
@@ -55,11 +54,11 @@ export interface StepDefinition {
   requiresCards?: OptionalCardId[];
 }
 
-/** 정본 순서. 최소 구성이면 8개, 전체면 10개가 된다. */
+/** 정본 순서. 최소 구성이면 7개, 전체면 9개가 된다. */
 export const STEP_CATALOG: StepDefinition[] = [
   // ─── 평가 구간 ──────────────────────────────────────────────────────────
-  { id: "upload", label: "Data upload", Icon: Upload, path: "/app/data-upload" },
-  { id: "perspective", label: "Perspective", Icon: Compass, path: "/app/perspective" },
+  { id: "upload", label: "Evaluation File", Icon: Upload, path: "/app/data-upload" },
+  // ⑤ 평가 관점은 지표를 고르는 근거라 Metrics 화면 맨 위에 있다 — 단계를 따로 두지 않는다.
   { id: "metrics", label: "Metrics", Icon: ListChecks, path: "/app/metrics" },
   { id: "mapping", label: "Column mapping", Icon: Columns3, path: "/app/column-mapping" },
   { id: "validation", label: "Validation", Icon: ShieldCheck, path: "/app/data-validation" },
@@ -82,7 +81,7 @@ export const STEP_CATALOG: StepDefinition[] = [
   },
   {
     id: "modelEnv",
-    label: "Model & environment",
+    label: "Model info",
     Icon: Server,
     runScoped: true,
     runSegment: "model-env",
@@ -90,7 +89,7 @@ export const STEP_CATALOG: StepDefinition[] = [
   },
   {
     id: "clientInfo",
-    label: "Report details",
+    label: "Details",
     Icon: Building2,
     runScoped: true,
     runSegment: "issue-info",

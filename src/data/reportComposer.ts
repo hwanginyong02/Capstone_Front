@@ -217,7 +217,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     name: "Evaluation perspective",
     description: "What matters most for this model.",
     locked: true,
-    steps: ["perspective"],
+    // 단계가 따로 없다 — 지표 선택 화면 맨 위에서 받는다(docs/WORKFLOW_REDESIGN.md §10).
+    steps: ["metrics"],
     help:
       "Your answers suggest suitable metrics, and the metric step warns you if the metrics you " +
       "picked do not match. It never blocks you from moving on.",

@@ -5,7 +5,11 @@ import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Checkbox } from "../ui/checkbox";
 import { Input } from "../ui/input";
+import { ComposerCardForm } from "../composer-input/ComposerCardForm";
+import { getCard } from "../../data/reportComposer";
 import { cn } from "../../utils/styling/styles";
+import type { ComposerFieldValue, ComposerValueMap } from "../../types/reportComposer.types";
+import type { FieldIssue } from "../../utils/domain/composerFieldGate";
 import {
   getAvailableMetrics,
   getMetricDisplayId,
@@ -27,6 +31,15 @@ interface TestItemsProps {
    */
   beta?: string;
   onBetaChange?: (value: string) => void;
+  /**
+   * ⑤ 평가 관점. 종전에는 자기 단계(`/app/perspective`)였는데, 질문 둘이 **지표를 고르는
+   * 근거**라 고르는 화면과 떨어뜨릴 이유가 없었다. 단계 하나를 지우고 여기 맨 위로 옮겼다.
+   *
+   * 셋 다 넘겨야 그려진다 — 폼만 그리고 값이 안 흐르는 상태를 만들지 않는다.
+   */
+  perspectiveValues?: ComposerValueMap;
+  onPerspectiveChange?: (fieldId: string, next: ComposerFieldValue) => void;
+  perspectiveIssues?: FieldIssue[];
 }
 
 export function TestItems({
@@ -34,6 +47,9 @@ export function TestItems({
   onSelectedMetricsChange,
   beta = "1.0",
   onBetaChange,
+  perspectiveValues,
+  onPerspectiveChange,
+  perspectiveIssues = [],
 }: TestItemsProps) {
   const availableMetrics = useMemo(() => getAvailableMetrics(taskType), [taskType]);
   const resolvedTaskType = taskType || "";
@@ -126,9 +142,19 @@ export function TestItems({
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Metric selection</h1>
           <p className="text-sm text-muted-foreground">
-            Choose the evaluation metrics that should be included in the report.
+            Tell us what matters for this model, then choose the metrics for the report.
           </p>
         </div>
+
+        {onPerspectiveChange && (
+          <ComposerCardForm
+            card={getCard("perspective")}
+            taskType={resolvedTaskType}
+            values={perspectiveValues ?? {}}
+            onChange={onPerspectiveChange}
+            issues={perspectiveIssues}
+          />
+        )}
 
         <div className="flex items-center justify-between">
           <div className="text-sm">

@@ -12,16 +12,15 @@ import { todayIsoDate } from "../utils/domain/isoDate";
  * 아래 순서가 정본 순서다. 실제 목록은 `data/workflowSteps.ts` 가 들고 있다.
  */
 export type StepId =
-  | "upload" // 1. 데이터 업로드 — ① 결과 파일, ④ 모델명·버전
-  | "perspective" // 2. 평가 관점 — ⑤
-  | "metrics" // 3. 지표 선택 — ②
-  | "mapping" // 4. 컬럼 매핑 — ① 컬럼 매핑·양성 클래스·결정 임계값
-  | "validation" // 5. 검증·평가 실행
-  | "summary" // 6. 평가 결과
-  | "dataInfo" // 7. 데이터 정보 — ⑥ ⑦ ⑧ 중 켠 카드 (조건부)
-  | "modelEnv" // 8. 모델과 환경 — ⑨ (조건부)
-  | "clientInfo" // 9. 의뢰자 정보 — ③, ④ 모델 용도
-  | "report"; // 10. 성적서
+  | "upload" // 1. Evaluation File — ① 결과 파일, ④ 모델명·버전
+  | "metrics" // 2. Metrics — ⑤ 평가 관점 + ② 지표
+  | "mapping" // 3. Column mapping — ① 컬럼 매핑·양성 클래스·결정 임계값
+  | "validation" // 4. Validation — 검증·평가 실행
+  | "summary" // 5. Evaluation — 평가 결과
+  | "dataInfo" // 6. Data info — ⑥ ⑦ ⑧ 중 켠 카드 (조건부)
+  | "modelEnv" // 7. Model info — ⑨ (조건부)
+  | "clientInfo" // 8. Details — ③, ④ 모델 용도
+  | "report"; // 9. Result — 성적서
 
 export interface BasicInfoFormData {
   companyName: string;

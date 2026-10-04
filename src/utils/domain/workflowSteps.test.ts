@@ -1,9 +1,8 @@
 /**
  * 단계 목록이 카드 선택을 따라가는지 고정한다.
  *
- * 문서가 숫자로 못박은 것은 둘이다: 최소 구성이면 8단계(1~6, 9, 10), 전체면 10단계
- * (docs/COMPOSER_COMPONENTS.md "카드별 입력 단계"). 그 사이의 9단계는 어느 카드를 켰는지로
- * 갈린다.
+ * 최소 구성이면 7단계, 전체면 9단계다. 그 사이의 8단계는 어느 카드를 켰는지로 갈린다.
+ * (⑤ 평가 관점은 단계가 아니라 지표 선택 화면 안에 있다 — docs/WORKFLOW_REDESIGN.md §10.)
  */
 import { describe, expect, it } from "vitest";
 
@@ -25,10 +24,9 @@ const MINIMAL = presetSelection("minimal");
 const FULL = presetSelection("full");
 
 describe("단계 목록", () => {
-  it("최소 구성은 8단계다 — 7·8단계가 빠진다", () => {
+  it("최소 구성은 7단계다 — 데이터 정보·모델 정보가 빠진다", () => {
     expect(buildStepList(MINIMAL)).toEqual([
       "upload",
-      "perspective",
       "metrics",
       "mapping",
       "validation",
@@ -38,10 +36,9 @@ describe("단계 목록", () => {
     ]);
   });
 
-  it("전체는 10단계다", () => {
+  it("전체는 9단계다", () => {
     expect(buildStepList(FULL)).toEqual([
       "upload",
-      "perspective",
       "metrics",
       "mapping",
       "validation",
@@ -53,11 +50,11 @@ describe("단계 목록", () => {
     ]);
   });
 
-  it("기본 선택(필수 카드만)이면 8단계다", () => {
-    expect(buildStepList(DEFAULT_COMPOSER_SELECTION)).toHaveLength(8);
+  it("기본 선택(필수 카드만)이면 7단계다", () => {
+    expect(buildStepList(DEFAULT_COMPOSER_SELECTION)).toHaveLength(7);
   });
 
-  it("가능한 단계 수는 8 · 9 · 10 뿐이다", () => {
+  it("가능한 단계 수는 7 · 8 · 9 뿐이다", () => {
     const counts = new Set<number>();
     const ids: Array<keyof ComposerSelection> = [
       "trainingData",
@@ -73,18 +70,18 @@ describe("단계 목록", () => {
       );
       counts.add(buildStepList(selection).length);
     }
-    expect([...counts].sort((a, b) => a - b)).toEqual([8, 9, 10]);
+    expect([...counts].sort((a, b) => a - b)).toEqual([7, 8, 9]);
   });
 });
 
-describe("7단계 데이터 정보 — ⑥ ⑦ ⑧ 중 하나라도 켜면 나타난다", () => {
+describe("데이터 정보 — ⑥ ⑦ ⑧ 중 하나라도 켜면 나타난다", () => {
   it.each(["trainingData", "testData", "groundTruth"] as const)(
     "%s 만 켜도 나타난다",
     (cardId) => {
       const steps = buildStepList({ ...MINIMAL, [cardId]: true });
       expect(steps).toContain("dataInfo");
       expect(steps).not.toContain("modelEnv");
-      expect(steps).toHaveLength(9);
+      expect(steps).toHaveLength(8);
     },
   );
 
@@ -94,25 +91,24 @@ describe("7단계 데이터 정보 — ⑥ ⑦ ⑧ 중 하나라도 켜면 나�
   });
 });
 
-describe("8단계 모델과 환경 — ⑨ 에만 달려 있다", () => {
-  it("⑨ 만 켜면 나타나고 7단계는 빠진다", () => {
+describe("모델 정보 — ⑨ 에만 달려 있다", () => {
+  it("⑨ 만 켜면 나타나고 데이터 정보는 빠진다", () => {
     const steps = buildStepList({ ...MINIMAL, modelEnv: true });
     expect(steps).toContain("modelEnv");
     expect(steps).not.toContain("dataInfo");
-    expect(steps).toHaveLength(9);
+    expect(steps).toHaveLength(8);
   });
 
-  it("⑨ 만 끄면 9단계가 된다", () => {
-    expect(buildStepList({ ...FULL, modelEnv: false })).toHaveLength(9);
+  it("⑨ 만 끄면 8단계가 된다", () => {
+    expect(buildStepList({ ...FULL, modelEnv: false })).toHaveLength(8);
   });
 });
 
 describe("단계 순서와 번호", () => {
-  it("평가 관점은 업로드 다음, 지표 바로 앞이다", () => {
-    // 평가 관점이 지표 점검의 기준이라 지표보다 먼저 받아야 한다.
-    const steps = buildStepList(FULL);
-    expect(steps.indexOf("perspective")).toBe(steps.indexOf("upload") + 1);
-    expect(steps.indexOf("metrics")).toBe(steps.indexOf("perspective") + 1);
+  it("평가 관점은 단계가 아니다 — 지표 선택 화면 안으로 들어갔다", () => {
+    // 질문 둘이 곧 지표 추천의 근거라 고르는 화면과 같은 자리에 둔다.
+    expect(buildStepList(FULL)).not.toContain("perspective" as never);
+    expect(buildStepList(FULL).indexOf("metrics")).toBe(buildStepList(FULL).indexOf("upload") + 1);
   });
 
   it("지표가 매핑보다 앞이다 — 백엔드가 지표 없는 평가 요청을 받지 않는다", () => {
@@ -128,8 +124,8 @@ describe("단계 순서와 번호", () => {
   });
 
   it("번호는 목록 위치에서 만든다 — 카드를 끄면 뒤 단계의 번호가 당겨진다", () => {
-    expect(stepNumberOf("clientInfo", buildStepList(FULL))).toBe(9);
-    expect(stepNumberOf("clientInfo", buildStepList(MINIMAL))).toBe(7);
+    expect(stepNumberOf("clientInfo", buildStepList(FULL))).toBe(8);
+    expect(stepNumberOf("clientInfo", buildStepList(MINIMAL))).toBe(6);
     expect(stepNumberOf("dataInfo", buildStepList(MINIMAL))).toBe(0);
   });
 });
@@ -139,7 +135,7 @@ describe("이웃 단계", () => {
     expect(nextStepId("summary", buildStepList(FULL))).toBe("dataInfo");
   });
 
-  it("최소 구성에서 평가 결과의 다음은 의뢰자 정보다 — 7·8단계를 건너뛴다", () => {
+  it("최소 구성에서 평가 결과의 다음은 의뢰자 정보다 — 두 단계를 건너뛴다", () => {
     // 하드코딩된 다음 목적지가 성립하지 않는 이유가 바로 이것이다.
     expect(nextStepId("summary", buildStepList(MINIMAL))).toBe("clientInfo");
   });
@@ -180,16 +176,16 @@ describe("진입 가드", () => {
 
   it("아무것도 안 마쳤으면 뒤 단계로 뛸 수 없다", () => {
     expect(canEnterStepId("metrics", [], steps)).toBe(false);
-    expect(canEnterStepId("report", ["upload", "perspective"], steps)).toBe(false);
+    expect(canEnterStepId("report", ["upload", "metrics"], steps)).toBe(false);
   });
 
   it("직전 단계를 마쳤으면 들어갈 수 있다", () => {
-    expect(canEnterStepId("perspective", ["upload"], steps)).toBe(true);
-    expect(canEnterStepId("metrics", ["upload", "perspective"], steps)).toBe(true);
+    expect(canEnterStepId("metrics", ["upload"], steps)).toBe(true);
+    expect(canEnterStepId("mapping", ["upload", "metrics"], steps)).toBe(true);
   });
 
   it("이미 마친 단계는 언제든 다시 볼 수 있다", () => {
-    const done: typeof steps = ["upload", "perspective", "metrics"];
+    const done: typeof steps = ["upload", "metrics", "mapping"];
     expect(canEnterStepId("upload", done, steps)).toBe(true);
     expect(canEnterStepId("metrics", done, steps)).toBe(true);
   });
@@ -223,17 +219,17 @@ describe("이어서 할 단계", () => {
   });
 
   it("앞에서부터 훑어 처음 미완료를 돌려준다", () => {
-    expect(resumeStepId(["upload"], steps)).toBe("perspective");
-    expect(resumeStepId(["upload", "perspective", "metrics"], steps)).toBe("mapping");
+    expect(resumeStepId(["upload"], steps)).toBe("metrics");
+    expect(resumeStepId(["upload", "metrics", "mapping"], steps)).toBe("validation");
   });
 
   it("순서가 뒤섞여 저장돼 있어도 목록 순서로 판단한다", () => {
-    expect(resumeStepId(["metrics", "upload", "perspective"], steps)).toBe("mapping");
+    expect(resumeStepId(["mapping", "upload", "metrics"], steps)).toBe("validation");
   });
 
   it("중간에 구멍이 있으면 그 구멍으로 보낸다 — Math.max 식의 실패 지점", () => {
     // 옛 식이라면 mapping 다음(validation)으로 보내 빈 화면에 앉혔다.
-    expect(resumeStepId(["upload", "metrics", "mapping"], steps)).toBe("perspective");
+    expect(resumeStepId(["upload", "mapping", "validation"], steps)).toBe("metrics");
   });
 
   it("전부 마쳤으면 마지막 단계다", () => {
@@ -244,7 +240,6 @@ describe("이어서 할 단계", () => {
 describe("단계 ↔ 경로", () => {
   it("고정 경로를 가진 단계는 그 경로로 간다", () => {
     expect(stepIdToPath("upload")).toBe("/app/data-upload");
-    expect(stepIdToPath("perspective")).toBe("/app/perspective");
     expect(stepIdToPath("metrics")).toBe("/app/metrics");
   });
 

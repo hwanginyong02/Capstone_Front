@@ -3,7 +3,6 @@ import { Navigate } from "react-router";
 import { Home } from "./pages/Home";
 import { TaskTypeSelect } from "./pages/TaskTypeSelect";
 import { ReportComposer } from "./pages/ReportComposer";
-import { Perspective } from "./pages/Perspective";
 import { DataInfo } from "./pages/report/DataInfo";
 import { ModelEnv } from "./pages/report/ModelEnv";
 import { EvaluationSummary } from "./pages/report/EvaluationSummary";
@@ -42,8 +41,6 @@ export const routes = [
   // 계산되고, 정본 순서는 `data/workflowSteps.ts` 의 STEP_CATALOG 에 있다.
   // (종전 주석은 "배열 순서 = 단계 번호"라고 적었는데 그때도 사실이 아니었다.)
   { path: "/app/data-upload", Component: DataUpload },
-  // 평가 관점 — ⑤ 는 필수 카드라 항상 나타난다(업로드 다음, 지표 선택 앞).
-  { path: "/app/perspective", Component: Perspective },
   { path: "/app/column-mapping", Component: ColumnMapping },
   { path: "/app/metrics", Component: TestItems },
   { path: "/app/data-validation", Component: DataValidation },
@@ -54,6 +51,9 @@ export const routes = [
   { path: "/report/:id/model-env", Component: ModelEnv },
   // 성적서 구간 — 평가 결과 화면에서 이어진다. 평가만 하려는 사용자는 여기 오지 않는다.
   { path: "/report/:id/issue-info", Component: ReportInfo },
+  // 평가 관점은 단계에서 빠지고 지표 선택 화면 맨 위로 들어갔다. 저장된 링크·북마크가
+  // 죽지 않도록 그쪽으로 보낸다.
+  { path: "/app/perspective", Component: redirectTo("/app/metrics") },
   // 지표 상세(구 3단계)는 폐지됐다 — β 는 지표 선택으로, 목표값은 성적서 구간으로 갔다.
   { path: "/app/metric-detail", Component: redirectTo("/app/metrics") },
   // 기본 정보는 더 이상 평가 구간의 단계가 아니다(ISSUES.md 없음 — 2026-09-19 재배치).

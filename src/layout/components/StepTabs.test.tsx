@@ -79,20 +79,28 @@ describe("평가 결과 탭", () => {
 });
 
 describe("칸 수는 고른 카드에서 나온다", () => {
-  it("기본(필수 카드만)이면 8칸이다", () => {
+  it("기본(필수 카드만)이면 7칸이다", () => {
     renderTabs();
 
-    expect(screen.getAllByRole("button")).toHaveLength(8);
+    expect(screen.getAllByRole("button")).toHaveLength(7);
   });
 
-  it("전체를 넣으면 10칸이 된다", () => {
+  it("전체를 넣으면 9칸이 된다", () => {
     useWorkflowStore.getState().applyComposerPreset("full");
 
     renderTabs();
 
-    expect(screen.getAllByRole("button")).toHaveLength(10);
+    expect(screen.getAllByRole("button")).toHaveLength(9);
     expect(screen.getByRole("button", { name: /Data info/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Model . environment/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Model info/ })).toBeInTheDocument();
+  });
+
+  it("평가 관점은 칸을 차지하지 않는다 — 지표 선택 화면 안에 있다", () => {
+    useWorkflowStore.getState().applyComposerPreset("full");
+
+    renderTabs();
+
+    expect(screen.queryByRole("button", { name: /Perspective/ })).not.toBeInTheDocument();
   });
 
   it("⑥ 하나만 넣으면 데이터 정보가 생긴다", () => {
@@ -100,7 +108,7 @@ describe("칸 수는 고른 카드에서 나온다", () => {
 
     renderTabs();
 
-    expect(screen.getAllByRole("button")).toHaveLength(9);
+    expect(screen.getAllByRole("button")).toHaveLength(8);
     expect(screen.getByRole("button", { name: /Data info/ })).toBeInTheDocument();
   });
 
@@ -112,7 +120,7 @@ describe("칸 수는 고른 카드에서 나온다", () => {
 
     // 평가만 하려는 사용자에게도 앞으로 무엇이 있는지는 보여준다.
     expect(screen.getByRole("button", { name: /Data info/ })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /Report details/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Details/ })).toBeDisabled();
   });
 });
 
@@ -120,21 +128,21 @@ describe("현재·완료·미래 구분", () => {
   it("마친 단계는 누를 수 있다", async () => {
     const store = useWorkflowStore.getState();
     store.markStepIdCompleted("upload");
-    store.setCurrentStepId("perspective");
+    store.setCurrentStepId("metrics");
 
     renderTabs();
 
-    expect(screen.getByRole("button", { name: /Data upload/ })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: /Evaluation File/ })).not.toBeDisabled();
   });
 
   it("아직 안 간 단계는 누를 수 없다", () => {
     const store = useWorkflowStore.getState();
     store.markStepIdCompleted("upload");
-    store.setCurrentStepId("perspective");
+    store.setCurrentStepId("metrics");
 
     renderTabs();
 
-    expect(screen.getByRole("button", { name: /Metrics/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Column mapping/ })).toBeDisabled();
   });
 
   it("카드 선택이 바뀌면 같은 단계의 위치가 당겨진다", () => {
@@ -143,8 +151,8 @@ describe("현재·완료·미래 구분", () => {
 
     renderTabs();
 
-    // 최소 구성에서는 의뢰자 정보가 7번째 칸이다(전체에서는 9번째).
+    // 최소 구성에서는 의뢰자 정보가 6번째 칸이다(전체에서는 8번째).
     const labels = screen.getAllByRole("button").map((button) => button.textContent);
-    expect(labels.findIndex((label) => label?.includes("Report details"))).toBe(6);
+    expect(labels.findIndex((label) => label?.includes("Details"))).toBe(5);
   });
 });

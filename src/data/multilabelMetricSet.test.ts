@@ -246,3 +246,58 @@ describe("persist 마이그레이션 v4 → v5 — 단계 번호를 이름으로
     expect(migrated.composerCards.trainingData).toBe(false);
   });
 });
+
+/**
+ * v5 → v6 — 평가 관점이 단계에서 빠졌다.
+ *
+ * 입력은 그대로 살아 있고 받는 화면만 지표 선택으로 옮겨졌다. 그래서 버리는 것은 **진행
+ * 표시에 남은 단계 id** 뿐이다 — 목록에 없는 id 가 남으면 진입 가드가 갈 곳 없는 상태를
+ * 만난다.
+ */
+describe("persist 마이그레이션 v5 → v6 — 평가 관점이 단계에서 빠졌다", () => {
+  it("완료 목록에서 평가 관점을 지운다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const migrated = migrateWorkflowState(
+      { completedStepIds: ["upload", "perspective", "metrics"], currentStepId: "mapping" },
+      5,
+    );
+
+    expect(migrated.completedStepIds).toEqual(["upload", "metrics"]);
+    expect(migrated.currentStepId).toBe("mapping");
+  });
+
+  it("평가 관점에 서 있던 사용자는 지표 선택으로 옮긴다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const migrated = migrateWorkflowState(
+      { completedStepIds: ["upload"], currentStepId: "perspective" },
+      5,
+    );
+
+    expect(migrated.currentStepId).toBe("metrics");
+    expect(migrated.completedStepIds).toEqual(["upload"]);
+  });
+
+  it("이미 적어둔 평가 관점 답은 그대로 둔다 — 같은 질문을 다시 묻지 않는다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const answers = { usageMode: { text: "Batch" } };
+    const migrated = migrateWorkflowState(
+      { completedStepIds: [], currentStepId: "perspective", composerPerspective: answers },
+      5,
+    );
+
+    expect(migrated.composerPerspective).toEqual(answers);
+  });
+
+  it("v4 저장분도 v6 까지 한 번에 올라간다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    // 구 번호 2 는 지표 선택이다 — 평가 관점은 번호 체계에 없었으므로 끼어들 여지가 없다.
+    const migrated = migrateWorkflowState({ completedSteps: [1, 2], currentStep: 3 }, 4);
+
+    expect(migrated.completedStepIds).toEqual(["upload", "metrics"]);
+    expect(migrated.currentStepId).toBe("mapping");
+  });
+});

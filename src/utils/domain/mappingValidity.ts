@@ -75,7 +75,7 @@ export function describeMappingValidity(
     case "no_metrics":
       return "No metrics are selected. Pick them in the Metrics step.";
     case "no_mapped_rows":
-      return "No column has a role assigned. Upload the data file again in the Data upload step.";
+      return "No column has a role assigned. Upload the data file again in the Evaluation file step.";
     case "duplicate_roles":
       return "The same role is assigned to more than one column. Resolve the duplicates.";
     case "missing_roles":

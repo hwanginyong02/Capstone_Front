@@ -7,6 +7,9 @@ import { useStepFlow } from "../hooks/useStepFlow";
 import { WorkflowShell } from "../layout/WorkflowShell";
 import { TestItems as TestItemsContent } from "../components/test-items/TestItems";
 import { useColumnAnalysis } from "../hooks/useColumnAnalysis";
+import { RemainingNotice } from "../components/composer-input/RemainingNotice";
+import { getCard } from "../data/reportComposer";
+import { getCardIssues } from "../utils/domain/composerFieldGate";
 
 /**
  * 평가 지표 선택.
@@ -19,6 +22,9 @@ import { useColumnAnalysis } from "../hooks/useColumnAnalysis";
  * 몇 %인가"만 답하면 된다 — 목표값은 성적서 구간으로 갔다.
  *
  * β(M5)만 여기 남는다. 목표값과 달리 `/api/evaluate` 페이로드에 실리는 **평가 입력**이다.
+ *
+ * ⑤ 평가 관점은 이 화면 맨 위에 있다. 종전에는 바로 앞의 독립 단계였는데, 질문 둘이 곧
+ * 어떤 지표를 권할지 정하는 근거라 고르는 화면과 한 자리에 두는 편이 읽힌다.
  */
 export function TestItems() {
   const store = useWorkflowStore();
@@ -26,6 +32,14 @@ export function TestItems() {
   const { analyzeColumns, isAnalyzing, cancel } = useColumnAnalysis();
   // 종전에는 raw alert() 로만 드러났다. 화면 안에 남겨야 사용자가 읽고 조치할 수 있다(E-18).
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+  // ⑤ 는 잠긴 필수 카드라 included 는 항상 참이다.
+  const perspectiveIssues = getCardIssues(
+    getCard("perspective"),
+    store.taskType,
+    store.composerPerspective,
+    true,
+  );
 
   const beta = store.metricDetails["M5"]?.beta ?? "1.0";
   const betaInvalid =
@@ -56,7 +70,7 @@ export function TestItems() {
    */
   const handleNext = async () => {
     if (!store.rawFile) {
-      setAnalysisError("Evaluation file is missing. Please re-upload it in the data upload step.");
+      setAnalysisError("Evaluation file is missing. Please re-upload it in the evaluation file step.");
       return;
     }
 
@@ -88,8 +102,14 @@ export function TestItems() {
       showNext
       onPrevious={handlePrevious}
       onNext={handleNext}
-      nextDisabled={store.selectedMetricIds.length === 0 || betaInvalid || isAnalyzing}
+      nextDisabled={
+        store.selectedMetricIds.length === 0 ||
+        betaInvalid ||
+        isAnalyzing ||
+        perspectiveIssues.length > 0
+      }
       nextLabel={isAnalyzing ? "Analyzing columns..." : "Next step"}
+      rightAction={<RemainingNotice issues={perspectiveIssues} lang="en" />}
       leftAction={
         isAnalyzing ? (
           <Button variant="outline" onClick={cancel}>
@@ -109,6 +129,11 @@ export function TestItems() {
         onSelectedMetricsChange={store.setSelectedMetricIds}
         beta={beta}
         onBetaChange={handleBetaChange}
+        perspectiveValues={store.composerPerspective}
+        onPerspectiveChange={(fieldId, next) =>
+          store.setComposerPerspective((prev) => ({ ...prev, [fieldId]: next }))
+        }
+        perspectiveIssues={perspectiveIssues}
       />
     </WorkflowShell>
   );

@@ -113,7 +113,7 @@ describe("입력 영속", () => {
 describe("[E-08] 작업 유형 변경", () => {
   it("완료 표시를 비운다 — 빈 상태로 뒤 단계에 점프하지 못하게", () => {
     const s = useWorkflowStore.getState();
-    (["upload", "perspective", "metrics", "mapping"] as const).forEach((id) =>
+    (["upload", "metrics", "mapping", "validation"] as const).forEach((id) =>
       s.markStepIdCompleted(id),
     );
     expect(useWorkflowStore.getState().completedStepIds).toHaveLength(4);

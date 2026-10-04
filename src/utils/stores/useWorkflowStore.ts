@@ -49,7 +49,7 @@ import { presetSelection } from "../../data/reportComposer";
  */
 
 /** persist 스키마 버전. 저장된 상태의 의미가 바뀔 때만 올린다. */
-export const WORKFLOW_PERSIST_VERSION = 5;
+export const WORKFLOW_PERSIST_VERSION = 6;
 
 /**
  * 구 번호 체계(v4 까지)의 1~6 이 가리켰던 단계.
@@ -113,6 +113,12 @@ const EMPTY_COMPOSER_INPUTS = {
  * (`completedSteps`·`currentStep`)에서 이름(`completedStepIds`·`currentStepId`)으로 옮긴다.
  * v2 → v3 과 달리 **1:1 대응이 성립해 진행을 버리지 않는다** — 구 1~6 이 가리켰던 단계가
  * 새 체계에 그대로 있고 순서도 같다(`LEGACY_STEP_IDS`).
+ *
+ * **v5 → v6**: 평가 관점이 단계에서 빠져 지표 선택 화면 안으로 들어갔다. 저장된 진행
+ * 표시에 남은 `"perspective"` 는 이제 아무 단계도 가리키지 않는다 — 그대로 두면 진입
+ * 가드가 목록에 없는 id 를 만나고, 현재 위치라면 갈 곳이 없다. 완료 목록에서는 지우고,
+ * 현재 위치면 흡수한 단계(`metrics`)로 옮긴다. 입력값(`composerPerspective`)은 그대로
+ * 살아 있다 — 받는 질문이 같고 화면만 바뀌었기 때문이다.
  */
 export function migrateWorkflowState(persisted: any, version: number): any {
   if (!persisted || version >= WORKFLOW_PERSIST_VERSION) return persisted;
@@ -168,6 +174,18 @@ export function migrateWorkflowState(persisted: any, version: number): any {
     next = { ...rest, completedStepIds, currentStepId };
   }
 
+  // v5 → v6 — 평가 관점이 단계에서 빠지고 지표 선택 화면 안으로 들어갔다.
+  if (version < 6) {
+    const completed: unknown = next.completedStepIds;
+    next = {
+      ...next,
+      completedStepIds: (Array.isArray(completed) ? completed : []).filter(
+        (id: unknown) => id !== "perspective",
+      ),
+      currentStepId: next.currentStepId === "perspective" ? "metrics" : next.currentStepId,
+    };
+  }
+
   return next;
 }
 
@@ -193,7 +211,7 @@ interface WorkflowState {
   // Step 3 — Metric details
   metricDetails: MetricDetailStateMap;
 
-  // Step 4 — Data upload
+  // Step 4 — Evaluation file
   uploadedFile: UploadedFileInfo | null;
   rawFile: File | null;
   metadata: any | null;

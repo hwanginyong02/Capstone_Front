@@ -73,7 +73,7 @@ export function ReportInfo() {
     >
       <main className="mx-auto max-w-[1344px] space-y-6 px-8 pt-12 pb-24">
         <div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Report details</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Details</h1>
           <p className="text-sm text-muted-foreground">
             Your evaluation is already complete. These details are only used to render the official
             test report.

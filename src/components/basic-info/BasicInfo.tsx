@@ -208,7 +208,7 @@ function ReadOnlyModelIdentity({
         </div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Set in the data upload step. Start a new version from the workspace to change it.
+        Set in the evaluation file step. Start a new version from the workspace to change it.
       </p>
     </div>
   );
