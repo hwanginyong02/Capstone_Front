@@ -80,7 +80,7 @@ export function FieldTable({
           onClick={onToggleExpanded}
           className="mt-2 text-body-medium font-medium"
         >
-          {expanded ? "Hide optional fields" : "Show " + advancedCount + " optional fields"}
+          {expanded ? "Hide optional fields" : "Show " + advancedCount + (advancedCount === 1 ? " optional field" : " optional fields")}
           {expanded ? (
             <ChevronUp className="h-4 w-4" />
           ) : (

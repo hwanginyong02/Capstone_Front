@@ -104,7 +104,7 @@ export function ComposerCardForm({
             onClick={() => setShowAdvanced((prev) => !prev)}
             className="text-body-medium font-medium"
           >
-            {showAdvanced ? "Hide optional fields" : "Show " + advancedCount + " optional fields"}
+            {showAdvanced ? "Hide optional fields" : "Show " + advancedCount + (advancedCount === 1 ? " optional field" : " optional fields")}
             {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
         )}

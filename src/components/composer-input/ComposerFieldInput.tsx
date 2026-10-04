@@ -190,6 +190,7 @@ export function ComposerFieldInput({
                     id={controlId + "-" + key}
                     className={cn(field.mono && "font-mono", field.numeric && "tabular-nums")}
                     inputMode={field.numeric ? "numeric" : undefined}
+                    aria-invalid={(invalid && entryValue(key).trim() === "") || undefined}
                     value={entryValue(key)}
                     onChange={(event) => setEntry(key, event.target.value)}
                   />
@@ -219,6 +220,7 @@ export function ComposerFieldInput({
                     id={controlId + "-" + name}
                     className={cn(field.mono && "font-mono", field.numeric && "tabular-nums")}
                     inputMode={field.numeric ? "numeric" : undefined}
+                    aria-invalid={(invalid && entryValue(name).trim() === "") || undefined}
                     value={entryValue(name)}
                     onChange={(event) => setEntry(name, event.target.value)}
                   />
@@ -286,6 +288,7 @@ export function ComposerFieldInput({
           <textarea
             id={controlId}
             className={TEXTAREA_CLASS}
+            aria-invalid={invalid || undefined}
             rows={3}
             value={value?.text ?? ""}
             onChange={(event) => setText(event.target.value)}
