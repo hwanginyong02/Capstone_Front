@@ -27,7 +27,11 @@ import {
   type TaskType,
 } from "../../data/evaluationData";
 import type { UploadedFileInfo } from "../../types/workflow.types";
-import { getCsvExample, getJsonExample } from "../../data/templateExamples";
+import {
+  getComposerColumnNote,
+  getComposerJsonExample,
+} from "../../data/templateExamples";
+import { CsvExampleViewer } from "./CsvExampleViewer";
 import { MAX_UPLOAD_LABEL, checkUploadSize } from "../../lib/upload/uploadLimits";
 import {
   Field,
@@ -96,9 +100,8 @@ export function DataUpload({
     () => getRequiredColumnsForTaskType(resolvedTaskType),
     [resolvedTaskType],
   );
-  // 지표가 아직 정해지지 않았으므로 '확률 포함' 예시를 보여준다(위 파일 주석 참조).
-  const csvExample = getCsvExample(resolvedTaskType, true);
-  const jsonExample = getJsonExample(resolvedTaskType, true);
+  // JSON 예시만 문자열로 쓴다. CSV 는 CsvExampleViewer 가 표로 그린다.
+  const jsonExample = getComposerJsonExample(resolvedTaskType);
 
   const openFilePicker = () => inputRef.current?.click();
 
@@ -133,7 +136,7 @@ export function DataUpload({
   return (
     <main className="px-8 pt-12 pb-24 max-w-[1344px] mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground mb-2">Data upload</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-2">Evaluation file</h1>
         <p className="text-sm text-muted-foreground">
           Name the model you are evaluating and upload the file that holds its predictions. You will
           map its columns next.
@@ -222,7 +225,6 @@ export function DataUpload({
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <Badge variant="secondary">{TASK_TYPE_LABELS[resolvedTaskType]}</Badge>
-            <Badge variant="outline">inference_time_ms optional</Badge>
           </div>
           <Tabs defaultValue="csv" className="w-full">
             <TabsList className="mb-4">
@@ -230,9 +232,10 @@ export function DataUpload({
               <TabsTrigger value="json">JSON</TabsTrigger>
             </TabsList>
             <TabsContent value="csv">
-              <div className="bg-muted rounded-md p-4">
-                <pre className="text-xs font-mono overflow-x-auto whitespace-pre">{csvExample}</pre>
-              </div>
+              {/* 성적서 구성 화면 ① 의 "예시 파일 보기"와 **같은 표**다. 같은 파일을 설명하는
+                  자리라 모양도 같아야 한다 — 줄글 덩어리로 두면 쉼표를 세어야 어느 칸이
+                  비었는지 알 수 있다. 안내는 아래에 한 번만 쓰므로 여기서는 끈다. */}
+              <CsvExampleViewer taskType={resolvedTaskType} showNote={false} />
             </TabsContent>
             <TabsContent value="json">
               <div className="bg-muted rounded-md p-4">
@@ -240,6 +243,8 @@ export function DataUpload({
               </div>
             </TabsContent>
           </Tabs>
+          {/* 성적서 구성 화면의 "예시 파일 보기" 와 같은 안내다 — 두 화면이 같은 말을 해야 한다. */}
+          <p className="text-sm text-muted-foreground">{getComposerColumnNote(resolvedTaskType)}</p>
         </CardContent>
       </Card>
 

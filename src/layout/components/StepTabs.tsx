@@ -1,61 +1,53 @@
 import { useNavigate } from "react-router";
-import { BarChart3, Columns3, FileBarChart, ListChecks, ShieldCheck, Upload } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { cn } from "../../utils/styling/styles";
-import { useWorkflowStore, stepToPath, STEP } from "../../utils/stores/useWorkflowStore";
+import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
+import { getStepDefinition } from "../../data/workflowSteps";
+import { buildStepList, stepIdToPath } from "../../utils/domain/workflowSteps";
+import type { StepId } from "../../types/workflow.types";
 
 /**
- * 평가 구간의 단계 탭. **`STEP_PATHS` 와 순서가 같아야 한다**(번호 = 배열 위치).
+ * 단계 탭.
  *
- * 성적서 발급 단계는 여기 없다 — 평가만 하고 끝내는 것이 정상 동선이고, 성적서는
- * 평가 결과 화면에서 이어지는 별도 구간이다.
+ * 종전에는 라벨·아이콘을 가진 **지역 배열**이 여기 있었고, 스토어의 `STEP_PATHS` 와 배열
+ * 위치로만 묶여 있었다(그 사실을 주석으로 경고해 두어야 했다). 이제 카탈로그 하나가 라벨·
+ * 아이콘·경로를 함께 들고(`data/workflowSteps.ts`), 걸을 목록은 고른 카드에서 계산한다.
+ *
+ * **칸 수가 고정이 아니다** — 최소 구성이면 8칸, 전체면 10칸이다. 발급 단계도 처음부터
+ * 보이되, 아직 도달하지 않은 칸은 비활성이다(지금 성적서 탭이 그렇게 동작한다).
  */
-const steps: { label: string; Icon: LucideIcon }[] = [
-  { label: "Data upload", Icon: Upload },
-  { label: "Metrics", Icon: ListChecks },
-  { label: "Column mapping", Icon: Columns3 },
-  { label: "Validation", Icon: ShieldCheck },
-  { label: "Evaluation", Icon: BarChart3 },
-  { label: "Result", Icon: FileBarChart },
-];
-
 export function StepTabs() {
   const navigate = useNavigate();
-  const currentStep = useWorkflowStore((s) => s.currentStep);
-  const completedSteps = useWorkflowStore((s) => s.completedSteps);
+  const currentStepId = useWorkflowStore((s) => s.currentStepId);
+  const completedStepIds = useWorkflowStore((s) => s.completedStepIds);
+  const composerCards = useWorkflowStore((s) => s.composerCards);
   const lastRunId = useWorkflowStore((s) => s.lastRunId);
 
-  const handleStepClick = (step: number) => {
-    useWorkflowStore.getState().setCurrentStep(step);
-    // run 이 필요한 단계는 방금 만든 run 으로 보낸다. stepToPath 는 목적지를 모르므로
-    // 워크스페이스 목록을 가리킨다 — 종전에는 저장되지 않는 빈 성적서로 갔다(E-16·E-06).
-    if (lastRunId) {
-      if (step === STEP.SUMMARY) {
-        navigate(`/report/${lastRunId}/summary`);
-        return;
-      }
-      if (step === STEP.RESULT) {
-        navigate(`/report/${lastRunId}`);
-        return;
-      }
-    }
-    navigate(stepToPath(step));
+  const steps = buildStepList(composerCards);
+  const currentIndex = steps.indexOf(currentStepId);
+
+  const handleStepClick = (id: StepId) => {
+    const store = useWorkflowStore.getState();
+    store.setCurrentStepId(id);
+    // run 에 매인 단계는 방금 만든 run 으로 간다. run 이 없으면 `stepIdToPath` 가 워크스페이스
+    // 목록을 돌려준다 — 종전에는 저장되지 않는 빈 성적서로 갔다(ISSUES.md E-16·E-06).
+    navigate(stepIdToPath(id, lastRunId));
   };
 
   return (
     <div className="h-12 border-b border-border bg-card sticky top-14 z-40">
       <div className="h-full px-8 max-w-[1344px] mx-auto">
         <div className="h-full flex items-stretch">
-          {steps.map(({ label, Icon }, index) => {
-            const stepNumber = index + 1;
-            const isActive = stepNumber === currentStep;
-            const isCompleted = completedSteps.includes(stepNumber);
-            const isUpcoming = stepNumber > currentStep && !isCompleted;
+          {steps.map((id, index) => {
+            const { label, Icon } = getStepDefinition(id);
+            const isActive = id === currentStepId;
+            const isCompleted = completedStepIds.includes(id);
+            // 현재 단계를 목록에서 못 찾으면(-1) 뒤 단계를 전부 미래로 둔다.
+            const isUpcoming = index > currentIndex && !isCompleted;
 
             return (
               <button
-                key={stepNumber}
-                onClick={() => !isUpcoming && handleStepClick(stepNumber)}
+                key={id}
+                onClick={() => !isUpcoming && handleStepClick(id)}
                 disabled={isUpcoming}
                 className={cn(
                   "flex-1 flex items-center justify-center gap-2 relative",
@@ -67,9 +59,9 @@ export function StepTabs() {
               >
                 <span
                   className={cn(
-                    "flex items-center justify-center h-5 w-5 rounded-full",
+                    "flex items-center justify-center h-5 w-5 rounded-full shrink-0",
                     isActive && "bg-primary text-primary-foreground",
-                    isCompleted && "bg-blue-50 text-foreground",
+                    isCompleted && "bg-primary-subtle text-foreground",
                     isUpcoming && "border border-border text-muted-foreground",
                   )}
                 >
@@ -78,7 +70,7 @@ export function StepTabs() {
 
                 <span
                   className={cn(
-                    "text-sm hidden md:inline",
+                    "text-sm hidden md:inline truncate",
                     isActive && "text-foreground font-medium",
                     isCompleted && "text-foreground",
                     isUpcoming && "text-muted-foreground",

@@ -15,7 +15,7 @@ export function LiveProcessDemo() {
     "Basic info",
     "Metrics",
     "Metric details",
-    "Data upload",
+    "Evaluation file",
     "Column mapping",
     "Validation",
     "Final report",

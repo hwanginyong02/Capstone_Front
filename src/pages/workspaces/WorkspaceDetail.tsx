@@ -1,3 +1,4 @@
+import { stepIdToPath } from "../../utils/domain/workflowSteps";
 import { Link, Navigate, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Plus } from "lucide-react";
 import { Button } from "../../components/ui/button";
@@ -60,7 +61,7 @@ export function WorkspaceDetail() {
     // 유형 선택은 다시 묻지 않는다 — 스냅샷이 이미 갖고 있고, 여기서 다시 고르게 하면
     // `setTaskType` 이 복원한 입력을 전부 날린다.
     // 파일만은 복원할 수 없으므로 업로드 단계에서 시작한다(ISSUES.md E-09).
-    navigate("/app/data-upload");
+    navigate(stepIdToPath("upload"));
   };
 
   const handleDeleteRun = (runId: string) => {

@@ -49,14 +49,7 @@ export function BasicInfo({
 
   return (
     <>
-      <main className="px-8 pt-12 pb-32 max-w-[1280px] mx-auto">
-        <div className="mb-10">
-          <h1 className="text-2xl font-bold text-foreground mb-2">Basic information</h1>
-          <p className="text-sm text-muted-foreground">
-            Fill in the organization, model, and evaluation request details used throughout the workflow.
-          </p>
-        </div>
-
+      <div>
         <div className="space-y-10">
           <Card>
             <CardHeader>
@@ -185,7 +178,7 @@ export function BasicInfo({
             </CardContent>
           </Card>
         </div>
-      </main>
+      </div>
     </>
   );
 }
@@ -215,7 +208,7 @@ function ReadOnlyModelIdentity({
         </div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Set in the data upload step. Start a new version from the workspace to change it.
+        Set in the evaluation file step. Start a new version from the workspace to change it.
       </p>
     </div>
   );

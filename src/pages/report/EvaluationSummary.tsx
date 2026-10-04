@@ -1,17 +1,16 @@
-import { useEffect } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useParams } from "react-router";
 import { WorkflowShell } from "../../layout/WorkflowShell";
 import { EvaluationSummary as EvaluationSummaryContent } from "../../components/evaluation-summary/EvaluationSummary";
 import { ReportLoadingState } from "../../components/report/ReportLoadingState";
 import { ReportErrorState } from "../../components/report/ReportErrorState";
 import { useReportData } from "../../hooks/useReportData";
-import { useWorkflowStore, STEP } from "../../utils/stores/useWorkflowStore";
+import { useStepFlow } from "../../hooks/useStepFlow";
 import { useWorkspaceStore } from "../../utils/stores/useWorkspaceStore";
 
 /**
- * Step 5 — 평가 결과.
+ * 평가 결과.
  *
- * 검증(4)과 성적서(6) 사이에 있다. 고른 지표의 값만 보여주고 **합불 판정은 하지 않는다** —
+ * 검증과 성적서 사이에 있다. 고른 지표의 값만 보여주고 **합불 판정은 하지 않는다** —
  * 목표값은 성적서 구간에서 받으므로 이 시점엔 기준이 없다.
  *
  * 경로가 `/report/:id/summary` 인 이유: 평가 결과는 run 하나에 매인 데이터다. `/app/*` 아래
@@ -19,21 +18,21 @@ import { useWorkspaceStore } from "../../utils/stores/useWorkspaceStore";
  * `useReportData` 가 저장된 run 을 읽거나 없으면 평가를 실행한다.
  */
 export function EvaluationSummary() {
-  const navigate = useNavigate();
   const { id = "" } = useParams();
   const { data, isLoading, error } = useReportData(id);
   const compareTo = useCompareLink(id);
+  const flow = useStepFlow("summary");
 
-  // 탭 하이라이트를 이 단계로 맞춘다. WorkflowShell 은 `/app/*` 경로에서만 단계를
-  // 유도하는데, 이 화면은 `/report/*` 라 유도가 되지 않는다.
-  useEffect(() => {
-    const store = useWorkflowStore.getState();
-    store.setCurrentStep(STEP.SUMMARY);
-    store.markStepCompleted(STEP.SUMMARY);
-  }, []);
-
-  const handleNext = () => navigate(`/report/${id}/issue-info`);
-  const handlePrevious = () => navigate("/app/data-validation");
+  /**
+   * 종전에는 여기서 `useEffect` 로 자기 단계를 직접 등록했다. `pathToStep` 이 `/app/*` 만
+   * 알아보고 `/report/*` 를 조용히 1단계로 돌려줬기 때문이다. 이제 `pathToStepId` 가 run
+   * 경로까지 알아보므로 그 보정이 필요 없다 — `WorkflowShell` 이 알아서 맞춘다.
+   *
+   * 다음 목적지도 적지 않는다. 켠 카드에 따라 데이터 정보(7)·모델과 환경(8)이 끼어들 수
+   * 있어서, 여기서 `/report/:id/issue-info` 를 직접 가리키면 그 둘을 건너뛴다.
+   */
+  const handleNext = () => flow.goNext({ runId: id });
+  const handlePrevious = () => flow.goPrevious({ runId: id });
 
   if (isLoading) return <ReportLoadingState />;
   if (error) return <ReportErrorState error={error} onBack={handlePrevious} />;

@@ -40,6 +40,22 @@ export const TASK_TYPE_LABELS: Record<TaskType, string> = {
   multilabel: "Multi-label",
 };
 
+/**
+ * 한국어 유형 이름.
+ *
+ * 표기는 `docs/UI_DESIGN.md` §3·§4 를 따른다 — 그 문서가 유형을 **사용자에게 보여주는 방식**을
+ * 정하는 쪽이고, `docs/COMPOSER_DESIGN.md` 의 유형 배지도 거기를 가리킨다.
+ *
+ * 위 `TASK_TYPE_LABELS`(영문)를 지우지 않는다. 기존 화면과 그 테스트가 영문을 쓰고 있고,
+ * 문구 한국어화는 단독 작업으로 미뤄둔 항목이다(docs/WORKFLOW_REDESIGN.md §6.3).
+ * 지금은 성적서 구성 화면과 그 뒤의 새 입력 화면만 이 표를 쓴다.
+ */
+export const TASK_TYPE_LABELS_KO: Record<TaskType, string> = {
+  binary: "이진 분류",
+  multiclass: "다중 클래스",
+  multilabel: "다중 레이블",
+};
+
 export const METRICS: MetricDefinition[] = [
   { id: "M1", name: "Accuracy", subtitle: "Overall correctness", description: "Measures how often the classifier predicts the correct result.", supportedTaskTypes: ["binary", "multiclass"], formula: "(TP + TN) / Total", isCommon: true },
   { id: "M2", name: "Precision", subtitle: "Positive predictive value", description: "Among predicted positives, measures how many are actually positive.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "binary: TP/(TP+FP) · 그 외: 클래스별 TP/(TP+FP) 의 macro 평균", isCommon: true },

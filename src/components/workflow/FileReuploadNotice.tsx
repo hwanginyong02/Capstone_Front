@@ -11,7 +11,8 @@ import { useNavigate } from "react-router";
 
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
-import { STEP, stepToPath, useWorkflowStore } from "../../utils/stores/useWorkflowStore";
+import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
+import { stepIdToPath } from "../../utils/domain/workflowSteps";
 
 export function FileReuploadNotice() {
   const navigate = useNavigate();
@@ -36,7 +37,7 @@ export function FileReuploadNotice() {
           variant="outline"
           size="sm"
           className="shrink-0"
-          onClick={() => navigate(stepToPath(STEP.UPLOAD))}
+          onClick={() => navigate(stepIdToPath("upload"))}
         >
           파일 다시 올리기
         </Button>

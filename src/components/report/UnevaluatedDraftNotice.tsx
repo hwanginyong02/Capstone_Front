@@ -28,7 +28,7 @@ export function UnevaluatedDraftNotice({ isEvaluated }: { isEvaluated: boolean }
           이 상태로는 발급할 수 없습니다.
         </span>
         <Button asChild size="sm" variant="outline" className="shrink-0">
-          <Link to="/app/data-validation">6단계로 돌아가 평가 다시 실행</Link>
+          <Link to="/app/data-validation">검증 단계로 돌아가 평가 다시 실행</Link>
         </Button>
       </AlertDescription>
     </Alert>

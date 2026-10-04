@@ -56,17 +56,17 @@ describe("입력 영속", () => {
       ...DEFAULT_BASIC_INFO,
       companyName: "복원되어야 함",
     });
-    useWorkflowStore.getState().markStepCompleted(1);
+    useWorkflowStore.getState().markStepIdCompleted("upload");
 
     // 새로고침을 흉내낸다 — 저장소 내용은 그대로, 메모리만 초기 상태.
     // (setState 자체가 persist 를 트리거해 저장소를 덮으므로 스냅샷을 되돌려 놓는다.)
     const saved = localStorage.getItem(WORKFLOW_STORAGE_KEY)!;
-    useWorkflowStore.setState({ basicInfo: DEFAULT_BASIC_INFO, completedSteps: [] });
+    useWorkflowStore.setState({ basicInfo: DEFAULT_BASIC_INFO, completedStepIds: [] });
     localStorage.setItem(WORKFLOW_STORAGE_KEY, saved);
     await useWorkflowStore.persist.rehydrate();
 
     expect(useWorkflowStore.getState().basicInfo.companyName).toBe("복원되어야 함");
-    expect(useWorkflowStore.getState().completedSteps).toContain(1);
+    expect(useWorkflowStore.getState().completedStepIds).toContain("upload");
   });
 
   it("[E-01] rawFile 은 저장하지 않는다 — File 객체는 직렬화할 수 없다", () => {
@@ -113,12 +113,14 @@ describe("입력 영속", () => {
 describe("[E-08] 작업 유형 변경", () => {
   it("완료 표시를 비운다 — 빈 상태로 뒤 단계에 점프하지 못하게", () => {
     const s = useWorkflowStore.getState();
-    [1, 2, 3, 4].forEach((n) => s.markStepCompleted(n));
-    expect(useWorkflowStore.getState().completedSteps).toHaveLength(4);
+    (["upload", "metrics", "mapping", "validation"] as const).forEach((id) =>
+      s.markStepIdCompleted(id),
+    );
+    expect(useWorkflowStore.getState().completedStepIds).toHaveLength(4);
 
     useWorkflowStore.getState().setTaskType("multiclass");
 
-    expect(useWorkflowStore.getState().completedSteps).toEqual([]);
+    expect(useWorkflowStore.getState().completedStepIds).toEqual([]);
   });
 
   it("데이터셋 정보를 비운다 — 이전 평가의 표본 수가 새 성적서에 인쇄되지 않게", () => {
@@ -175,10 +177,9 @@ describe("[E-09] 과거 평가 스냅샷 복원", () => {
 
     const s = useWorkflowStore.getState();
     expect(s.rawFile).toBeNull();
-    // 4단계(데이터 업로드) 이후는 파일이 있어야 성립한다 — 완료로 표시하면 거짓말이다.
-    expect(s.completedSteps).not.toContain(4);
-    expect(s.completedSteps).not.toContain(5);
-    expect(s.completedSteps).not.toContain(6);
+    // 업로드부터가 파일이 있어야 성립한다 — 완료로 표시하면 거짓말이다.
+    expect(s.completedStepIds).toEqual([]);
+    expect(s.currentStepId).toBe("upload");
   });
 
   it("파일 재업로드가 필요하다는 사실을 상태로 남긴다", () => {

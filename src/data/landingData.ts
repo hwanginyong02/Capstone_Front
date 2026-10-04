@@ -39,7 +39,7 @@ export const showcaseScreens = [
   },
   {
     step: "03",
-    title: "Data upload",
+    title: "Evaluation file",
     description:
       "Upload evaluation data with fields like id, y_true, y_pred, and score so the system can compare the correct answer with the model prediction.",
     route: "/app/data-upload",
