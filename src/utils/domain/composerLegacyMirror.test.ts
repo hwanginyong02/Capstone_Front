@@ -46,7 +46,7 @@ describe("칸마다 다른 필드 (byKey)", () => {
   it("⑨ 실행 환경이 OS·CPU·GPU·메모리·소프트웨어로 갈린다", () => {
     const value = {
       entries: [
-        { key: "OS", value: "Ubuntu 22.04" },
+        { key: "운영체제", value: "Ubuntu 22.04" },
         { key: "GPU", value: "A100" },
         { key: "메모리", value: "64GB" },
       ],

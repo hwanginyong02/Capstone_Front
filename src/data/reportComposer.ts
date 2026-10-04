@@ -531,7 +531,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "Ubuntu 22.04 · A100 · 64GB · Python 3.11",
         kind: "required",
         input: "entries",
-        entryKeys: ["OS", "CPU", "GPU", "메모리", "소프트웨어"],
+        entryKeys: ["운영체제", "CPU", "GPU", "메모리", "소프트웨어"],
         mono: true,
         allowsUnknown: true,
         reportSection: "8절",
@@ -539,7 +539,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         legacy: {
           target: "basicInfo",
           byKey: {
-            OS: "envOS",
+            운영체제: "envOS",
             CPU: "envCPU",
             GPU: "envGPU",
             메모리: "envMemory",
