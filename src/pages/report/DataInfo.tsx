@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useParams } from "react-router";
 import { RemainingNotice } from "../../components/composer-input/RemainingNotice";
+import { focusFirstIssue } from "../../components/composer-input/focusFirstIssue";
 import { WorkflowShell } from "../../layout/WorkflowShell";
 import { DataInfo as DataInfoContent, DATA_INFO_CARDS } from "../../components/data-info/DataInfo";
 import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
@@ -23,6 +25,11 @@ export function DataInfo() {
   const { id = "" } = useParams();
   const store = useWorkflowStore();
   const flow = useStepFlow("dataInfo");
+  /**
+   * 다음을 **누른 뒤에만** 빈 칸을 빨갛게 칠한다. 버튼을 처음부터 잠가 두면 왜 막혔는지
+   * 알려면 하단 한 줄을 읽어야 하는데, 긴 폼에서는 그 칸을 찾는 일이 또 다른 숙제가 된다.
+   */
+  const [showErrors, setShowErrors] = useState(false);
 
   const VALUES: Record<string, ComposerValueMap> = {
     trainingData: store.composerTrainingData,
@@ -58,8 +65,14 @@ export function DataInfo() {
       showPrevious
       showNext
       onPrevious={() => flow.goPrevious({ runId: id })}
-      onNext={() => flow.goNext({ runId: id })}
-      nextDisabled={issues.length > 0}
+      onNext={() => {
+        if (issues.length > 0) {
+          setShowErrors(true);
+          focusFirstIssue(issues);
+          return;
+        }
+        flow.goNext({ runId: id });
+      }}
       previousLabel="Back"
       nextLabel="Next step"
       rightAction={<RemainingNotice issues={issues} />}
@@ -74,6 +87,7 @@ export function DataInfo() {
         }}
         issues={issues}
         classNames={classNames}
+        showErrors={showErrors}
       />
     </WorkflowShell>
   );

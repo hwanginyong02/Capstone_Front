@@ -18,9 +18,17 @@ interface ModelEnvProps {
   values: ComposerValueMap;
   onChange: (fieldId: string, next: ComposerFieldValue) => void;
   issues: FieldIssue[];
+  /** 빈 필수 칸을 빨갛게 칠할지. 페이지가 다음을 누른 뒤에 켠다. */
+  showErrors?: boolean;
 }
 
-export function ModelEnv({ taskType, values, onChange, issues }: ModelEnvProps) {
+export function ModelEnv({
+  taskType,
+  values,
+  onChange,
+  issues,
+  showErrors = false,
+}: ModelEnvProps) {
   return (
     <main className="mx-auto max-w-[1344px] space-y-6 px-8 pt-12 pb-24">
       <div>
@@ -37,6 +45,7 @@ export function ModelEnv({ taskType, values, onChange, issues }: ModelEnvProps) 
         values={values}
         onChange={onChange}
         issues={issues}
+        showErrors={showErrors}
       />
     </main>
   );

@@ -8,6 +8,7 @@ import { WorkflowShell } from "../layout/WorkflowShell";
 import { TestItems as TestItemsContent } from "../components/test-items/TestItems";
 import { useColumnAnalysis } from "../hooks/useColumnAnalysis";
 import { RemainingNotice } from "../components/composer-input/RemainingNotice";
+import { focusFirstIssue } from "../components/composer-input/focusFirstIssue";
 import { getCard } from "../data/reportComposer";
 import { getCardIssues } from "../utils/domain/composerFieldGate";
 
@@ -32,6 +33,8 @@ export function TestItems() {
   const { analyzeColumns, isAnalyzing, cancel } = useColumnAnalysis();
   // 종전에는 raw alert() 로만 드러났다. 화면 안에 남겨야 사용자가 읽고 조치할 수 있다(E-18).
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  // ⑤ 의 빈 칸은 다음을 누른 뒤에만 빨갛게 칠한다(`pages/report/DataInfo.tsx` 와 같은 규칙).
+  const [showPerspectiveErrors, setShowPerspectiveErrors] = useState(false);
 
   // ⑤ 는 잠긴 필수 카드라 included 는 항상 참이다.
   const perspectiveIssues = getCardIssues(
@@ -69,6 +72,13 @@ export function TestItems() {
    * 결과가 필요 없는 이 화면으로 오려고 그 시간을 기다리게 된다.
    */
   const handleNext = async () => {
+    // 평가 관점을 먼저 본다 — 화면 맨 위의 질문이라 여기서 막히면 긴 분석을 돌릴 이유가 없다.
+    if (perspectiveIssues.length > 0) {
+      setShowPerspectiveErrors(true);
+      focusFirstIssue(perspectiveIssues);
+      return;
+    }
+
     if (!store.rawFile) {
       setAnalysisError("Evaluation file is missing. Please re-upload it in the evaluation file step.");
       return;
@@ -102,12 +112,9 @@ export function TestItems() {
       showNext
       onPrevious={handlePrevious}
       onNext={handleNext}
-      nextDisabled={
-        store.selectedMetricIds.length === 0 ||
-        betaInvalid ||
-        isAnalyzing ||
-        perspectiveIssues.length > 0
-      }
+      // ⑤ 는 잠그지 않는다 — 누르면 어느 칸이 비었는지 말해 준다. 지표는 격자가 눈앞에
+      // 있어 무엇을 해야 할지 보이므로 종전대로 잠근다.
+      nextDisabled={store.selectedMetricIds.length === 0 || betaInvalid || isAnalyzing}
       nextLabel={isAnalyzing ? "Analyzing columns..." : "Next step"}
       rightAction={<RemainingNotice issues={perspectiveIssues} />}
       leftAction={
@@ -134,6 +141,7 @@ export function TestItems() {
           store.setComposerPerspective((prev) => ({ ...prev, [fieldId]: next }))
         }
         perspectiveIssues={perspectiveIssues}
+        perspectiveShowErrors={showPerspectiveErrors}
       />
     </WorkflowShell>
   );

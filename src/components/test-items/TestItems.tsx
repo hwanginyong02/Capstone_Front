@@ -40,6 +40,8 @@ interface TestItemsProps {
   perspectiveValues?: ComposerValueMap;
   onPerspectiveChange?: (fieldId: string, next: ComposerFieldValue) => void;
   perspectiveIssues?: FieldIssue[];
+  /** 빈 필수 칸을 빨갛게 칠할지. 페이지가 다음을 누른 뒤에 켠다. */
+  perspectiveShowErrors?: boolean;
 }
 
 export function TestItems({
@@ -50,6 +52,7 @@ export function TestItems({
   perspectiveValues,
   onPerspectiveChange,
   perspectiveIssues = [],
+  perspectiveShowErrors = false,
 }: TestItemsProps) {
   const availableMetrics = useMemo(() => getAvailableMetrics(taskType), [taskType]);
   const resolvedTaskType = taskType || "";
@@ -153,6 +156,7 @@ export function TestItems({
             values={perspectiveValues ?? {}}
             onChange={onPerspectiveChange}
             issues={perspectiveIssues}
+            showErrors={perspectiveShowErrors}
           />
         )}
 

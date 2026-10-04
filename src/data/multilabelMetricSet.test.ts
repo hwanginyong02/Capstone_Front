@@ -301,3 +301,52 @@ describe("persist 마이그레이션 v5 → v6 — 평가 관점이 단계에서
     expect(migrated.currentStepId).toBe("mapping");
   });
 });
+
+/**
+ * v6 → v7 — 선택지와 칸 이름이 영어가 됐다.
+ *
+ * 이 둘은 화면에 그리는 라벨이면서 **저장되는 값 자체**다. 옛 한국어 값을 그대로 두면
+ * 라디오는 빈 채로 열리는데 필수 점검은 통과하는 모순이 생긴다 — 저장된 값이 "비어 있지
+ * 않다"는 것만 보기 때문이다.
+ */
+describe("persist 마이그레이션 v6 → v7 — 선택지가 영어가 됐다", () => {
+  it("⑥ ⑦ ⑧ ⑨ 의 옛 입력을 비운다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const migrated = migrateWorkflowState(
+      {
+        composerTrainingData: { channelEffects: { choices: ["알려진 것 없음"] } },
+        composerTestData: { testSourceRelation: { text: "같음" } },
+        composerGroundTruth: { labelAuthor: { text: "전문가" } },
+        composerModelEnv: { runtimeEnv: { entries: [{ key: "운영체제", value: "Ubuntu" }] } },
+      },
+      6,
+    );
+
+    expect(migrated.composerTrainingData).toEqual({});
+    expect(migrated.composerTestData).toEqual({});
+    expect(migrated.composerGroundTruth).toEqual({});
+    expect(migrated.composerModelEnv).toEqual({});
+  });
+
+  it("⑤ 평가 관점은 남긴다 — 선택지가 이미 영어였다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const answers = { usageMode: { text: "Batch" }, criticalErrorType: { text: "Missed (FN)" } };
+    const migrated = migrateWorkflowState({ composerPerspective: answers }, 6);
+
+    expect(migrated.composerPerspective).toEqual(answers);
+  });
+
+  it("진행 표시는 건드리지 않는다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const migrated = migrateWorkflowState(
+      { completedStepIds: ["upload", "metrics"], currentStepId: "mapping" },
+      6,
+    );
+
+    expect(migrated.completedStepIds).toEqual(["upload", "metrics"]);
+    expect(migrated.currentStepId).toBe("mapping");
+  });
+});

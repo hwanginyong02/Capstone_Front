@@ -29,6 +29,13 @@ interface ComposerCardFormProps {
   /** 지금 걸려 있는 문제. 해당 필드에 표시만 하고 진행 차단은 페이지가 한다. */
   issues: FieldIssue[];
   classNames?: string[];
+  /**
+   * 빈 필수 칸을 빨갛게 칠할지. 페이지가 **다음을 누른 뒤에** 켠다.
+   *
+   * 화면에 들어오자마자 켜면 아무것도 하지 않은 사용자를 꾸짖는 꼴이 된다. 반대로 끝까지
+   * 켜지 않으면 막힌 이유가 하단 한 줄에만 남아, 긴 폼에서는 어느 칸인지 못 찾는다.
+   */
+  showErrors?: boolean;
 }
 
 export function ComposerCardForm({
@@ -38,6 +45,7 @@ export function ComposerCardForm({
   onChange,
   issues,
   classNames,
+  showErrors = false,
 }: ComposerCardFormProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -66,20 +74,23 @@ export function ComposerCardForm({
                 value={values[field.id]}
                 onChange={(next) => onChange(field.id, next)}
                 classNames={classNames}
+                siblingValues={values}
                 /**
-                 * **비어 있는 것은 잘못이 아니다.** 아직 입력하지 않았을 뿐이라, 화면에
-                 * 들어오자마자 필수 칸을 빨갛게 칠하면 아무 일도 하지 않은 사용자를 꾸짖는
-                 * 꼴이 된다. 게다가 빨간 테두리는 텍스트 입력에만 붙어서, 똑같이 비어 있는
-                 * 라디오 항목과 어긋나 보인다.
-                 *
-                 * 덜 채웠다는 사실은 Action Bar 가 말한다(다음 버튼 잠금 + 남은 개수).
-                 * 여기서 표시하는 것은 **사용자가 실제로 잘못 고른 경우**뿐이다.
+                 * **비어 있는 것은 아직 잘못이 아니다.** 들어오자마자 필수 칸을 빨갛게
+                 * 칠하면 아무 일도 하지 않은 사용자를 꾸짖는 꼴이 된다. 잘못 고른 경우
+                 * (배타 선택)는 지금 당장 틀린 것이라 바로 표시하고, 비어 있는 것은
+                 * 사용자가 넘어가려 한 뒤에야 표시한다.
                  */
-                invalid={issue?.reason === "exclusive"}
+                invalid={issue?.reason === "exclusive" || (showErrors && Boolean(issue))}
               />
               {issue?.reason === "exclusive" && (
                 <p className="mt-1 text-body-small text-destructive">
                   {field.exclusiveChoice} cannot be combined with the others.
+                </p>
+              )}
+              {showErrors && issue?.reason === "missing" && (
+                <p className="mt-1 text-body-small text-destructive">
+                  Required.{issue.allowsUnknown && " Choose Unknown if you do not know."}
                 </p>
               )}
             </div>

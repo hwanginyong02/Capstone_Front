@@ -16,7 +16,12 @@ import { Label } from "../ui/label";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { TEXTAREA_CLASS } from "../data-upload/shared";
 import { cn } from "../../utils/styling/styles";
-import type { ComposerField, ComposerFieldValue } from "../../types/reportComposer.types";
+import { isFieldRequired } from "../../utils/domain/composerFieldGate";
+import type {
+  ComposerField,
+  ComposerFieldValue,
+  ComposerValueMap,
+} from "../../types/reportComposer.types";
 
 interface ComposerFieldInputProps {
   field: ComposerField;
@@ -26,6 +31,11 @@ interface ComposerFieldInputProps {
   classNames?: string[];
   /** 점검에 걸린 필드. 비어 있다는 사실만 표시하고 문구로 꾸짖지 않는다. */
   invalid?: boolean;
+  /**
+   * 카드 전체의 값. 별표를 붙일지 정하는 데만 쓴다 — 조건부 필드는 같은 카드의 다른 답이
+   * 특정 값일 때만 필수가 되므로(`isFieldRequired`), 이 필드 하나만 봐서는 알 수 없다.
+   */
+  siblingValues?: ComposerValueMap;
 }
 
 export function ComposerFieldInput({
@@ -34,6 +44,7 @@ export function ComposerFieldInput({
   onChange,
   classNames = [],
   invalid = false,
+  siblingValues = {},
 }: ComposerFieldInputProps) {
   const unknown = Boolean(value?.unknown);
   const entries = value?.entries ?? [];
@@ -61,15 +72,15 @@ export function ComposerFieldInput({
 
   const controlId = "field-" + field.id;
   const isFreeEntries = field.input === "entries" && !field.entryKeys && !field.entryKeysFrom;
+  const required = isFieldRequired(field, siblingValues);
 
   return (
     <div className={cn("space-y-2", unknown && "opacity-60")}>
       <div className="flex items-center justify-between gap-4">
         <Label htmlFor={controlId} className="text-body-medium font-medium text-foreground">
           {field.label}
-          {field.kind === "optional" && (
-            <span className="ml-2 text-body-xs font-normal text-muted-foreground">optional</span>
-          )}
+          {/* 기존 폼의 필수 표시와 같은 모양이다(`data-upload/shared.tsx` 의 `Field`). */}
+          {required && <span className="ml-1 text-red-600">*</span>}
         </Label>
 
         {field.allowsUnknown && (
@@ -84,7 +95,8 @@ export function ComposerFieldInput({
         )}
       </div>
 
-      <fieldset disabled={unknown} className="space-y-2">
+      {/* 묶음 입력은 래퍼에 id 를 둔다 — 라디오 하나가 아니라 질문 전체로 옮겨가야 한다. */}
+      <fieldset id={controlId + "-group"} disabled={unknown} className="space-y-2">
         {field.input === "single" && (
           <RadioGroup
             value={value?.text ?? ""}

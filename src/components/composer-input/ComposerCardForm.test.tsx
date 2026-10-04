@@ -213,3 +213,75 @@ describe("남은 항목 안내", () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
+/**
+ * 필수 표시와 차단.
+ *
+ * 비어 있는 것은 **아직** 잘못이 아니다. 화면에 들어오자마자 빨갛게 칠하면 아무 일도 하지
+ * 않은 사용자를 꾸짖는 꼴이라, 넘어가려 한 뒤에야 칠한다. 그 전까지는 별표가 어느 칸이
+ * 필수인지 말한다.
+ */
+describe("필수 표시", () => {
+  it("필수 필드에만 별표를 단다", () => {
+    renderForm("trainingData");
+
+    const required = screen.getByText("Dataset name").querySelector("span");
+    expect(required).toHaveTextContent("*");
+  });
+
+  it("조건부 필드는 조건이 성립해야 별표가 붙는다", () => {
+    // 조건이 성립하기 전에는 그려지지도 않는다.
+    renderForm("groundTruth");
+    expect(screen.queryByText("Reviewers and agreement")).not.toBeInTheDocument();
+
+    renderForm("groundTruth", { values: { labelReview: { text: "Several reviewers" } } });
+    expect(
+      screen.getByText("Reviewers and agreement").querySelector("span"),
+    ).toHaveTextContent("*");
+  });
+});
+
+describe("차단 표시", () => {
+  it("들어오자마자는 빈 칸을 꾸짖지 않는다", () => {
+    renderForm("modelEnv");
+
+    expect(screen.queryByText(/^Required\./)).not.toBeInTheDocument();
+  });
+
+  it("showErrors 를 켜면 빈 필수 칸마다 이유를 적는다", () => {
+    const card = getCard("modelEnv");
+    render(
+      <ComposerCardForm
+        card={card}
+        taskType="binary"
+        values={{}}
+        onChange={vi.fn()}
+        issues={getCardIssues(card, "binary", {}, true)}
+        showErrors
+      />,
+    );
+
+    // ⑨ 의 필수 넷이 모두 비어 있다.
+    expect(screen.getAllByText(/^Required\./)).toHaveLength(4);
+    // 모름이 있는 칸에는 그 길도 함께 알려준다.
+    expect(screen.getAllByText(/Choose Unknown if you do not know/).length).toBeGreaterThan(0);
+  });
+
+  it("채운 칸에는 적지 않는다", () => {
+    const card = getCard("perspective");
+    const values = { usageMode: { text: "Batch" } };
+    render(
+      <ComposerCardForm
+        card={card}
+        taskType="binary"
+        values={values}
+        onChange={vi.fn()}
+        issues={getCardIssues(card, "binary", values, true)}
+        showErrors
+      />,
+    );
+
+    // ⑤ 이진은 질문 둘 중 하나만 남았다. 모름이 없는 카드라 그 길은 알려주지 않는다.
+    expect(screen.getAllByText(/^Required\.$/)).toHaveLength(1);
+  });
+});

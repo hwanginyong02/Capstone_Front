@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useParams } from "react-router";
 import { RemainingNotice } from "../../components/composer-input/RemainingNotice";
+import { focusFirstIssue } from "../../components/composer-input/focusFirstIssue";
 import { WorkflowShell } from "../../layout/WorkflowShell";
 import { ModelEnv as ModelEnvContent } from "../../components/model-env/ModelEnv";
 import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
@@ -20,6 +22,8 @@ export function ModelEnv() {
   const setValues = useWorkflowStore((s) => s.setComposerModelEnv);
   const included = useWorkflowStore((s) => s.composerCards.modelEnv);
   const flow = useStepFlow("modelEnv");
+  // 다음을 누른 뒤에만 빈 칸을 빨갛게 칠한다(`pages/report/DataInfo.tsx` 와 같은 규칙).
+  const [showErrors, setShowErrors] = useState(false);
 
   const issues = getCardIssues(getCard("modelEnv"), taskType, values, included);
 
@@ -29,8 +33,14 @@ export function ModelEnv() {
       showPrevious
       showNext
       onPrevious={() => flow.goPrevious({ runId: id })}
-      onNext={() => flow.goNext({ runId: id })}
-      nextDisabled={issues.length > 0}
+      onNext={() => {
+        if (issues.length > 0) {
+          setShowErrors(true);
+          focusFirstIssue(issues);
+          return;
+        }
+        flow.goNext({ runId: id });
+      }}
       previousLabel="Back"
       nextLabel="Next step"
       rightAction={<RemainingNotice issues={issues} />}
@@ -40,6 +50,7 @@ export function ModelEnv() {
         values={values}
         onChange={(fieldId, next) => setValues((prev) => ({ ...prev, [fieldId]: next }))}
         issues={issues}
+        showErrors={showErrors}
       />
     </WorkflowShell>
   );

@@ -30,6 +30,8 @@ interface DataInfoProps {
   issues: FieldIssue[];
   /** 업로드한 파일에서 찾은 클래스. ⑥ 클래스별 데이터 양의 칸이 된다. */
   classNames?: string[];
+  /** 빈 필수 칸을 빨갛게 칠할지. 페이지가 다음을 누른 뒤에 켠다. */
+  showErrors?: boolean;
 }
 
 export function DataInfo({
@@ -39,6 +41,7 @@ export function DataInfo({
   onChange,
   issues,
   classNames,
+  showErrors = false,
 }: DataInfoProps) {
   return (
     <main className="mx-auto max-w-[1344px] space-y-6 px-8 pt-12 pb-24">
@@ -59,6 +62,7 @@ export function DataInfo({
           onChange={(fieldId, next) => onChange(id, fieldId, next)}
           issues={issues.filter((issue) => issue.cardId === id)}
           classNames={classNames}
+          showErrors={showErrors}
         />
       ))}
     </main>

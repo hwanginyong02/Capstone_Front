@@ -49,7 +49,7 @@ import { presetSelection } from "../../data/reportComposer";
  */
 
 /** persist 스키마 버전. 저장된 상태의 의미가 바뀔 때만 올린다. */
-export const WORKFLOW_PERSIST_VERSION = 6;
+export const WORKFLOW_PERSIST_VERSION = 7;
 
 /**
  * 구 번호 체계(v4 까지)의 1~6 이 가리켰던 단계.
@@ -119,6 +119,11 @@ const EMPTY_COMPOSER_INPUTS = {
  * 가드가 목록에 없는 id 를 만나고, 현재 위치라면 갈 곳이 없다. 완료 목록에서는 지우고,
  * 현재 위치면 흡수한 단계(`metrics`)로 옮긴다. 입력값(`composerPerspective`)은 그대로
  * 살아 있다 — 받는 질문이 같고 화면만 바뀌었기 때문이다.
+ *
+ * **v6 → v7**: ⑥ ⑦ ⑧ ⑨ 의 선택지와 칸 이름이 영어가 됐다. 이 둘은 레지스트리가 그릴 때
+ * 쓰는 라벨이면서 **저장되는 값 자체**다("알려진 것 없음" 이 값으로 들어 있다). 그대로 두면
+ * 저장된 값이 어느 선택지와도 맞지 않아 라디오가 전부 빈 채로 열리고, 필수 점검은 통과하는
+ * 모순이 생긴다. 네 입력 그룹을 비운다 — ⑤ 는 선택지가 이미 영어였으므로 남긴다.
  */
 export function migrateWorkflowState(persisted: any, version: number): any {
   if (!persisted || version >= WORKFLOW_PERSIST_VERSION) return persisted;
@@ -183,6 +188,18 @@ export function migrateWorkflowState(persisted: any, version: number): any {
         (id: unknown) => id !== "perspective",
       ),
       currentStepId: next.currentStepId === "perspective" ? "metrics" : next.currentStepId,
+    };
+  }
+
+  // v6 → v7 — ⑥ ⑦ ⑧ ⑨ 의 선택지·칸 이름이 영어로 바뀌었다. 옛 한국어 값은 새 선택지와
+  // 짝지을 수 없으므로(한 글자씩 대응표를 만들면 선택지를 고칠 때마다 또 틀린다) 비운다.
+  if (version < 7) {
+    next = {
+      ...next,
+      composerTrainingData: {},
+      composerTestData: {},
+      composerGroundTruth: {},
+      composerModelEnv: {},
     };
   }
 
