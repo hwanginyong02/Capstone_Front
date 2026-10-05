@@ -15,7 +15,7 @@ import type {
 } from "../../types/reportComposer.types";
 
 /**
- * 데이터 정보 (`/report/:id/data-info`) — 발급 구간.
+ * 데이터 정보 (`/report/:id/data-info`) — 성적서 입력, Details 다음.
  *
  * ⑥ ⑦ ⑧ 중 **하나라도** 켜면 나타나고, 켠 카드의 폼만 그린다. 끈 카드는 검사하지도 않는다 —
  * 끄는 것은 허용된 선택이고, 그때 그 카드의 표준 보고 항목은 성적서에 "제공되지 않음"으로
@@ -74,7 +74,7 @@ export function DataInfo() {
         flow.goNext({ runId: id });
       }}
       previousLabel="Back"
-      nextLabel="Next step"
+      nextLabel={flow.next === "report" ? "View report" : "Next step"}
       rightAction={<RemainingNotice issues={issues} />}
     >
       <DataInfoContent

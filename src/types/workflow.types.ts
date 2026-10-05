@@ -15,12 +15,11 @@ export type StepId =
   | "upload" // 1. Evaluation File — ① 결과 파일, ④ 모델명·버전
   | "metrics" // 2. Metrics — ⑤ 평가 관점 + ② 지표
   | "mapping" // 3. Column mapping — ① 컬럼 매핑·양성 클래스·결정 임계값
-  | "validation" // 4. Validation — 검증·평가 실행
-  | "summary" // 5. Evaluation — 평가 결과
+  | "validation" // 4. Validation — 검증·평가 run 저장
+  | "clientInfo" // 5. Details — ③, ④ 모델 용도, 합격 기준
   | "dataInfo" // 6. Data info — ⑥ ⑦ ⑧ 중 켠 카드 (조건부)
   | "modelEnv" // 7. Model info — ⑨ (조건부)
-  | "clientInfo" // 8. Details — ③, ④ 모델 용도
-  | "report"; // 9. Result — 성적서
+  | "report"; // 8. Result — 성적서
 
 export interface BasicInfoFormData {
   companyName: string;

@@ -79,18 +79,18 @@ describe("평가 결과 탭", () => {
 });
 
 describe("칸 수는 고른 카드에서 나온다", () => {
-  it("기본(필수 카드만)이면 7칸이다", () => {
+  it("기본(필수 카드만)이면 6칸이다", () => {
     renderTabs();
 
-    expect(screen.getAllByRole("button")).toHaveLength(7);
+    expect(screen.getAllByRole("button")).toHaveLength(6);
   });
 
-  it("전체를 넣으면 9칸이 된다", () => {
+  it("전체를 넣으면 8칸이 된다", () => {
     useWorkflowStore.getState().applyComposerPreset("full");
 
     renderTabs();
 
-    expect(screen.getAllByRole("button")).toHaveLength(9);
+    expect(screen.getAllByRole("button")).toHaveLength(8);
     expect(screen.getByRole("button", { name: /Data info/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Model info/ })).toBeInTheDocument();
   });
@@ -108,7 +108,7 @@ describe("칸 수는 고른 카드에서 나온다", () => {
 
     renderTabs();
 
-    expect(screen.getAllByRole("button")).toHaveLength(8);
+    expect(screen.getAllByRole("button")).toHaveLength(7);
     expect(screen.getByRole("button", { name: /Data info/ })).toBeInTheDocument();
   });
 
@@ -151,8 +151,10 @@ describe("현재·완료·미래 구분", () => {
 
     renderTabs();
 
-    // 최소 구성에서는 의뢰자 정보가 6번째 칸이다(전체에서는 8번째).
+    // 최소 구성에서는 성적서가 6번째 칸이다(전체에서는 8번째). 의뢰자 정보는 선택 카드
+    // 단계보다 앞이라 어느 구성에서든 5번째다(docs/WORKFLOW_REDESIGN.md §11).
     const labels = screen.getAllByRole("button").map((button) => button.textContent);
-    expect(labels.findIndex((label) => label?.includes("Details"))).toBe(5);
+    expect(labels.findIndex((label) => label?.includes("Result"))).toBe(5);
+    expect(labels.findIndex((label) => label?.includes("Details"))).toBe(4);
   });
 });

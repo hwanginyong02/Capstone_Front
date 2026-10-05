@@ -74,15 +74,15 @@ export function DataValidation() {
         reportData,
       });
 
-      // 저장에 성공한 뒤에만 단계를 넘긴다(실패 시 6단계에 머물러 재시도 가능).
-      // run id 를 남겨야 성적서를 벗어난 뒤 7번 탭으로 돌아올 수 있다(ISSUES.md E-16).
+      // 저장에 성공한 뒤에만 단계를 넘긴다(실패 시 검증 화면에 머물러 재시도 가능).
+      // run id 를 남겨야 성적서를 벗어난 뒤 성적서 탭으로 돌아올 수 있다(ISSUES.md E-16).
       store.setLastRunId(run.id);
-      // 다음은 성적서가 아니라 **평가 결과**다. 성적서는 기관 정보·목표값을 입력해야
-      // 완성되므로, 평가만 하려는 사용자를 그리로 끌고 가지 않는다 — 단계 목록이 그 순서를
-      // 들고 있으므로 여기서 목적지를 적지 않는다.
+      // 다음은 Details — 성적서 입력이 카드 순서대로 이어진다. 평가 API 는 모든 입력을 마친 뒤
+      // 성적서 화면에서 불리므로, 그 사이에 받은 값까지 성적서와 AI 서술에 들어간다.
+      // 단계 목록이 순서를 들고 있으므로 여기서 목적지를 적지 않는다.
       //
       // run id 를 넘기는 이유: 방금 만든 run 이라 스토어에 아직 반영되지 않았을 수 있는데,
-      // 목적지 경로(`/report/<runId>/summary`)에는 이미 그 id 가 필요하다.
+      // 목적지 경로(`/report/<runId>/issue-info`)에는 이미 그 id 가 필요하다.
       flow.goNext({ runId: run.id });
     } catch (err) {
       console.error("평가 실행(성적서 생성) 실패:", err);
@@ -100,7 +100,7 @@ export function DataValidation() {
       onPrevious={handlePrevious}
       onNext={handleNext}
       nextDisabled={gateReason !== "ok"}
-      nextLabel="Run evaluation"
+      nextLabel="Next step"
     >
       {submitError && (
         <Alert variant="destructive" className="mb-6">

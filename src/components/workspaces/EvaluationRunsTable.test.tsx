@@ -48,6 +48,16 @@ describe("평가 목록", () => {
     const draft = rows.find((row) => within(row).queryByText("v1.1.0"));
 
     expect(within(issued!).getByText("Report issued")).toBeInTheDocument();
-    expect(within(draft!).getByText("Evaluation only")).toBeInTheDocument();
+    expect(within(draft!).getByText("Draft")).toBeInTheDocument();
+  });
+
+  it("초안도 성적서로 간다 — 평가 결과 화면은 폐지됐다", () => {
+    renderTable([
+      makeRun({ id: "a", reportId: "RPT-1", versionName: "v1.0.0" }),
+      makeRun({ id: "b", reportId: "", versionName: "v1.1.0" }),
+    ]);
+
+    const links = screen.getAllByRole("link", { name: /Report/ });
+    expect(links.map((link) => link.getAttribute("href"))).toEqual(["/report/a", "/report/b"]);
   });
 });

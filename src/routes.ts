@@ -5,7 +5,6 @@ import { TaskTypeSelect } from "./pages/TaskTypeSelect";
 import { ReportComposer } from "./pages/ReportComposer";
 import { DataInfo } from "./pages/report/DataInfo";
 import { ModelEnv } from "./pages/report/ModelEnv";
-import { EvaluationSummary } from "./pages/report/EvaluationSummary";
 import { ReportInfo } from "./pages/report/ReportInfo";
 import { TestItems } from "./pages/TestItems";
 import { DataUpload } from "./pages/DataUpload";
@@ -54,13 +53,16 @@ export const routes = [
   { path: "/app/column-mapping", Component: ColumnMapping },
   { path: "/app/metrics", Component: TestItems },
   { path: "/app/data-validation", Component: DataValidation },
-  // 평가 결과 — run 하나에 매인 화면이라 `/app/*` 이 아니라 run id 경로에 둔다.
-  { path: "/report/:id/summary", Component: EvaluationSummary },
-  // 발급 구간의 새 입력 단계. 켠 카드에 따라 나타나고 사라진다.
+  // 성적서 입력 — 검증에서 run 이 생긴 뒤라 run id 경로에 둔다. Details 는 항상,
+  // Data info·Model info 는 켠 카드에 따라 나타난다.
+  { path: "/report/:id/issue-info", Component: ReportInfo },
   { path: "/report/:id/data-info", Component: DataInfo },
   { path: "/report/:id/model-env", Component: ModelEnv },
-  // 성적서 구간 — 평가 결과 화면에서 이어진다. 평가만 하려는 사용자는 여기 오지 않는다.
-  { path: "/report/:id/issue-info", Component: ReportInfo },
+  // 평가 결과 화면은 폐지됐다(docs/WORKFLOW_REDESIGN.md §11) — 같은 run 의 성적서로 보낸다.
+  {
+    path: "/report/:id/summary",
+    Component: redirectWithParams(({ id }) => "/report/" + (id ?? "")),
+  },
   // 평가 관점은 단계에서 빠지고 지표 선택 화면 맨 위로 들어갔다. 저장된 링크·북마크가
   // 죽지 않도록 그쪽으로 보낸다.
   { path: "/app/perspective", Component: redirectTo("/app/metrics") },

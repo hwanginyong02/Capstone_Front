@@ -11,19 +11,23 @@ import { getSelectedMetrics } from "../../data/evaluationData";
 import { getTargetValueRule, metricNeedsTargetValue, parseNumericValue } from "../../utils/domain/validation";
 
 /**
- * 성적서 구간 — 평가가 끝난 뒤에만 온다.
+ * Details — 검증 바로 다음, 성적서 입력의 첫 화면.
  *
- * 여기 모인 셋은 **평가에 전혀 쓰이지 않는다**. `/api/evaluate` 페이로드는
+ * 여기 모인 셋은 **평가 계산에 쓰이지 않는다**. `/api/evaluate` 페이로드는
  * task_type·column_mappings·selected_metric_ids·metadata·beta·decision_threshold 뿐이고,
- * 기관 정보·학습 데이터셋 정보·목표값은 하나도 들어가지 않는다. 성적서 문서를 그릴 때만
- * 쓰인다 — 그래서 "정확도가 몇 %인지"만 보려는 사용자의 앞을 막지 않도록 뒤로 뺐다.
+ * 기관 정보·학습 데이터셋 정보·목표값은 하나도 들어가지 않는다. 성적서 문서와 판정을 그릴 때만
+ * 쓰인다 — 그래서 검증(run 저장) 뒤에 둔다.
+ *
+ * 순서는 구성 화면의 카드 순서를 따른다 — ③ 의뢰자 정보가 ⑥ ~ ⑨ 선택 카드보다 앞이다
+ * (docs/WORKFLOW_REDESIGN.md §11). 평가 API 는 이 뒤의 입력까지 모두 마친 성적서 화면에서
+ * 처음 불리므로 여기 적은 값이 성적서와 AI 서술에 그대로 들어간다.
  *
  * 세 기능을 한 화면의 세 카드로 묶었다. 각각을 별도 단계로 두면 성적서까지 가는 길이
  * 네 화면 더 길어지는데, 셋 다 단순 입력 폼이라 나눌 이유가 없다.
  *
  * 종전에는 이 화면만 `AppShell` 을 써서 **단계 화면 중 혼자 달랐다** — 여기서만 상단 탭이
  * 사라지고, 하단 고정 바 대신 본문 안에 버튼이 있고, 다음 목적지를 경로로 직접 적었다.
- * 나머지 여섯 화면과 같은 `WorkflowShell` + `useStepFlow` 로 맞췄다.
+ * 나머지 화면과 같은 `WorkflowShell` + `useStepFlow` 로 맞췄다.
  */
 export function ReportInfo() {
   const { id = "" } = useParams();
@@ -69,14 +73,14 @@ export function ReportInfo() {
       onPrevious={() => flow.goPrevious({ runId: id })}
       onNext={() => flow.goNext({ runId: id })}
       nextDisabled={!canContinue}
-      nextLabel="Save and view report"
+      nextLabel={flow.next === "report" ? "View report" : "Next step"}
     >
       <main className="mx-auto max-w-[1344px] space-y-6 px-8 pt-12 pb-24">
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Details</h1>
           <p className="text-sm text-muted-foreground">
-            Your evaluation is already complete. These details are only used to render the official
-            test report.
+            Who the report is for, and the target each metric must reach. These details appear on the
+            test report and do not change the measured results.
           </p>
         </div>
 

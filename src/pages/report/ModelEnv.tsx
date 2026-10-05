@@ -10,10 +10,10 @@ import { getCard } from "../../data/reportComposer";
 import { getCardIssues } from "../../utils/domain/composerFieldGate";
 
 /**
- * 모델과 환경 (`/report/:id/model-env`) — 발급 구간.
+ * 모델과 환경 (`/report/:id/model-env`) — 성적서 입력의 마지막(켰을 때).
  *
- * ⑨ 를 켰을 때만 단계 목록에 나타난다. run 에 매인 경로를 쓰는 이유는 평가 결과·성적서와
- * 같다 — 어느 run 의 성적서를 쓰는 중인지 URL 이 말해야 새로고침·공유가 깨지지 않는다.
+ * ⑨ 를 켰을 때만 단계 목록에 나타난다. run 에 매인 경로를 쓰는 이유는 성적서와 같다 —
+ * 어느 run 의 성적서를 쓰는 중인지 URL 이 말해야 새로고침·공유가 깨지지 않는다.
  */
 export function ModelEnv() {
   const { id = "" } = useParams();
@@ -42,7 +42,7 @@ export function ModelEnv() {
         flow.goNext({ runId: id });
       }}
       previousLabel="Back"
-      nextLabel="Next step"
+      nextLabel={flow.next === "report" ? "View report" : "Next step"}
       rightAction={<RemainingNotice issues={issues} />}
     >
       <ModelEnvContent

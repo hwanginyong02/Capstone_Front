@@ -37,7 +37,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     description: "Upload the file your model produced.",
     locked: true,
     viewer: "csvExample",
-    // 파일은 1단계에서 받고, 컬럼 매핑·양성 클래스·결정 임계값은 4단계에서 확인한다.
+    // 파일은 Evaluation File 에서 받고, 컬럼 매핑·양성 클래스·결정 임계값은 Column mapping 에서 확인한다.
     steps: ["upload", "mapping"],
     fields: [
       {
@@ -178,7 +178,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     name: "Model under test",
     description: "What the model is called, and what it is for.",
     locked: true,
-    // 이름·버전은 평가 결과를 식별하는 이름표라 1단계에서, 용도는 성적서 서식용이라 9단계에서.
+    // 이름·버전은 run 을 식별하는 이름표라 Evaluation File 에서, 용도는 성적서 서식용이라 Details 에서.
     steps: ["upload", "clientInfo"],
     fields: [
       {

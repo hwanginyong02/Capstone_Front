@@ -48,14 +48,17 @@ import { presetSelection } from "../../data/reportComposer";
  */
 
 /** persist 스키마 버전. 저장된 상태의 의미가 바뀔 때만 올린다. */
-export const WORKFLOW_PERSIST_VERSION = 7;
+export const WORKFLOW_PERSIST_VERSION = 8;
 
 /**
  * 구 번호 체계(v4 까지)의 1~6 이 가리켰던 단계.
  *
  * v4→v5 마이그레이션 **전용**이다. 새 코드에서 번호로 단계를 가리키는 곳은 없다.
+ *
+ * `StepId` 가 아니라 문자열인 이유: 구 5번(`"summary"`)은 v8 에서 폐지돼 지금의 `StepId` 에
+ * 없다. 여기서는 그 시절 이름을 그대로 만들고, v7 → v8 단계가 정리한다.
  */
-const LEGACY_STEP_IDS: StepId[] = [
+const LEGACY_STEP_IDS: readonly string[] = [
   "upload", // 1
   "metrics", // 2
   "mapping", // 3
@@ -123,6 +126,11 @@ const EMPTY_COMPOSER_INPUTS = {
  * 쓰는 라벨이면서 **저장되는 값 자체**다("알려진 것 없음" 이 값으로 들어 있다). 그대로 두면
  * 저장된 값이 어느 선택지와도 맞지 않아 라디오가 전부 빈 채로 열리고, 필수 점검은 통과하는
  * 모순이 생긴다. 네 입력 그룹을 비운다 — ⑤ 는 선택지가 이미 영어였으므로 남긴다.
+ *
+ * **v7 → v8**: 평가 결과(`"summary"`) 단계가 폐지되고 Details 가 선택 카드 단계 앞으로
+ * 왔다(docs/WORKFLOW_REDESIGN.md §11). 완료 목록에서 `"summary"` 를 지우고, 현재 위치면
+ * 검증 다음 단계인 Details(`clientInfo`)로 옮긴다. 순서가 바뀐 나머지 단계는 이름이 그대로라
+ * 손대지 않는다 — 진입 가드가 처음 미완료 단계로 보낸다.
  */
 export function migrateWorkflowState(persisted: any, version: number): any {
   if (!persisted || version >= WORKFLOW_PERSIST_VERSION) return persisted;
@@ -168,7 +176,7 @@ export function migrateWorkflowState(persisted: any, version: number): any {
     const legacyCompleted: unknown = next.completedSteps;
     const completedStepIds = (Array.isArray(legacyCompleted) ? legacyCompleted : [])
       .map((step: unknown) => LEGACY_STEP_IDS[Number(step) - 1])
-      .filter((id): id is StepId => Boolean(id));
+      .filter((id): id is string => Boolean(id));
 
     const currentStepId = LEGACY_STEP_IDS[Number(next.currentStep) - 1] ?? "upload";
 
@@ -199,6 +207,18 @@ export function migrateWorkflowState(persisted: any, version: number): any {
       composerTestData: {},
       composerGroundTruth: {},
       composerModelEnv: {},
+    };
+  }
+
+  // v7 → v8 — 평가 결과 단계가 폐지됐다.
+  if (version < 8) {
+    const completed: unknown = next.completedStepIds;
+    next = {
+      ...next,
+      completedStepIds: (Array.isArray(completed) ? completed : []).filter(
+        (id: unknown) => id !== "summary",
+      ),
+      currentStepId: next.currentStepId === "summary" ? "clientInfo" : next.currentStepId,
     };
   }
 

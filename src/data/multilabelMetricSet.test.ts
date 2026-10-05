@@ -183,7 +183,8 @@ describe("persist 마이그레이션 v4 → v5 — 단계 번호를 이름으로
     );
 
     expect(migrated.completedStepIds).toEqual(["upload", "metrics", "mapping", "validation"]);
-    expect(migrated.currentStepId).toBe("summary");
+    // 구 5번(평가 결과)은 v8 에서 폐지돼, 이어지는 v7 → v8 이 검증 다음(Details)으로 옮긴다.
+    expect(migrated.currentStepId).toBe("clientInfo");
   });
 
   it("옛 번호 키는 남기지 않는다", async () => {
@@ -200,13 +201,13 @@ describe("persist 마이그레이션 v4 → v5 — 단계 번호를 이름으로
 
     const migrated = migrateWorkflowState({ completedSteps: [1, 2, 3, 4, 5, 6] }, 4);
 
-    // 평가 관점·데이터 정보·모델과 환경·의뢰자 정보는 들어 있지 않다.
+    // 평가 관점·데이터 정보·모델과 환경·의뢰자 정보는 들어 있지 않다. 구 5번(평가 결과)은
+    // v8 에서 폐지돼 함께 빠진다.
     expect(migrated.completedStepIds).toEqual([
       "upload",
       "metrics",
       "mapping",
       "validation",
-      "summary",
       "report",
     ]);
     expect(migrated.completedStepIds).not.toContain("perspective");
@@ -348,5 +349,51 @@ describe("persist 마이그레이션 v6 → v7 — 선택지가 영어가 됐다
 
     expect(migrated.completedStepIds).toEqual(["upload", "metrics"]);
     expect(migrated.currentStepId).toBe("mapping");
+  });
+});
+
+/**
+ * v7 → v8 — 평가 결과 단계가 폐지되고 Details 가 선택 카드 단계 앞으로 왔다
+ * (docs/WORKFLOW_REDESIGN.md §11).
+ *
+ * 남은 단계는 이름이 그대로라 손대지 않는다. 버리는 것은 진행 표시에 남은 `"summary"` 뿐이다.
+ */
+describe("persist 마이그레이션 v7 → v8 — 평가 결과 단계가 폐지됐다", () => {
+  it("완료 목록에서 평가 결과를 지운다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const migrated = migrateWorkflowState(
+      {
+        completedStepIds: ["upload", "metrics", "mapping", "validation", "summary"],
+        currentStepId: "dataInfo",
+      },
+      7,
+    );
+
+    expect(migrated.completedStepIds).toEqual(["upload", "metrics", "mapping", "validation"]);
+    expect(migrated.currentStepId).toBe("dataInfo");
+  });
+
+  it("평가 결과에 서 있던 사용자는 Details 로 옮긴다 — 검증 다음 단계다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const migrated = migrateWorkflowState(
+      { completedStepIds: ["upload", "metrics", "mapping", "validation"], currentStepId: "summary" },
+      7,
+    );
+
+    expect(migrated.currentStepId).toBe("clientInfo");
+  });
+
+  it("입력값은 건드리지 않는다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const values = { algorithm: { text: "XGBoost" } };
+    const migrated = migrateWorkflowState(
+      { composerModelEnv: values, completedStepIds: [], currentStepId: "upload" },
+      7,
+    );
+
+    expect(migrated.composerModelEnv).toEqual(values);
   });
 });
