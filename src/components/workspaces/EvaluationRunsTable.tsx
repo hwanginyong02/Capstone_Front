@@ -20,28 +20,18 @@ import type { WorkspaceEvaluationRun } from "../../types/workspace.types";
  * (평가와 발급이 분리된 뒤 정상 동선이다), 목록에서 둘이 같아 보이면 사용자는 무엇을
  * 마무리해야 하는지 알 수 없다. 판별 기준은 `reportId` 다 — 발급 시 `useIssuance` 가
  * 채운다(useIssuance.ts 의 `persist`). 비어 있으면 초안이다.
- *
- * **행에는 'New version' 이 없다.** 그 동작은 특정 run 이 아니라 **모델**에 거는 것이라
- * (종전 'Edit' 과 달리 과거 평가를 고치지 않고 다음 버전을 쌓는다) 카드 머리에 하나만
- * 둔다(`ModelRunGroups`). 행마다 놓으면 버전이 셋일 때 같은 뜻의 버튼이 셋이 된다.
  */
 interface EvaluationRunsTableProps {
   runs: WorkspaceEvaluationRun[];
   onDelete: (runId: string) => void;
-  /** 모델별로 묶인 카드 안에서는 제목이 이미 모델명이라 열을 숨긴다. */
-  hideModelName?: boolean;
 }
 
-export function EvaluationRunsTable({
-  runs,
-  onDelete,
-  hideModelName = false,
-}: EvaluationRunsTableProps) {
+export function EvaluationRunsTable({ runs, onDelete }: EvaluationRunsTableProps) {
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          {!hideModelName && <TableHead>Model Name</TableHead>}
+          <TableHead>Model Name</TableHead>
           <TableHead>Version</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Report No.</TableHead>
@@ -55,7 +45,7 @@ export function EvaluationRunsTable({
 
           return (
             <TableRow key={run.id}>
-              {!hideModelName && <TableCell className="font-medium">{run.modelName}</TableCell>}
+              <TableCell className="font-medium">{run.modelName}</TableCell>
               <TableCell>{run.versionName}</TableCell>
               <TableCell>
                 {issued ? (

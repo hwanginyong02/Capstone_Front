@@ -10,7 +10,6 @@
  * 세션 안에 갇혀 있던 오염이 영속화된다**:
  *   E-08 `setTaskType` 이 completedSteps·datasetInfo 를 비우지 않는다
  *   E-05 `?showcase=1` 이 실제 store 에 가짜 기업정보를 주입한다
- *   E-09 `loadWorkflowSnapshot` 이 rawFile=null 인데 completedSteps 를 [1..6] 으로 채운다
  */
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -158,38 +157,10 @@ describe("[E-08] 작업 유형 변경", () => {
   });
 });
 
-describe("[E-09] 과거 평가 스냅샷 복원", () => {
-  const snapshot = {
-    basicInfo: { ...DEFAULT_BASIC_INFO, companyName: "과거 평가" },
-    datasetInfo: DEFAULT_DATASET_INFO,
-    taskType: "binary" as const,
-    selectedMetricIds: ["M1"],
-    metricDetails: {},
-    uploadedFile: { name: "old.csv", size: "1 KB", type: "text/csv" },
-    trainingExampleFiles: [],
-    trainingUnsuitableExampleFiles: [],
-    columnMapping: [],
-    classLabelDescriptions: {},
-  };
-
-  it("파일이 없는 단계까지 '완료'로 표시하지 않는다", () => {
-    useWorkflowStore.getState().loadWorkflowSnapshot(snapshot);
-
-    const s = useWorkflowStore.getState();
-    expect(s.rawFile).toBeNull();
-    // 업로드부터가 파일이 있어야 성립한다 — 완료로 표시하면 거짓말이다.
-    expect(s.completedStepIds).toEqual([]);
-    expect(s.currentStepId).toBe("upload");
-  });
-
-  it("파일 재업로드가 필요하다는 사실을 상태로 남긴다", () => {
-    useWorkflowStore.getState().loadWorkflowSnapshot(snapshot);
-
-    expect(useWorkflowStore.getState().needsFileReupload).toBe(true);
-  });
-
+describe("파일 재업로드 표시", () => {
   it("파일을 다시 올리면 재업로드 필요 표시가 사라진다", () => {
-    useWorkflowStore.getState().loadWorkflowSnapshot(snapshot);
+    // 재수화 직후의 상태 — 입력은 남았고 원본 파일만 없다.
+    useWorkflowStore.setState({ needsFileReupload: true, rawFile: null });
     useWorkflowStore
       .getState()
       .setUploadedFile({ name: "new.csv", size: "1 B", type: "text/csv" }, new File(["x"], "new.csv"));

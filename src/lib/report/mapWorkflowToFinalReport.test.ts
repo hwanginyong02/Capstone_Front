@@ -9,9 +9,9 @@
  * JSON 왕복 후에는 문자열이 되므로 `formatDate(d: Date)` 의 `d.getFullYear()` 가
  * `TypeError: d.getFullYear is not a function` 을 던진다.
  *
- * 즉 "과거 평가를 편집해 다시 돌린다"(loadWorkflowSnapshot → Run evaluation)는 동선이
- * rawFile 소실(E-09) 말고도 **타입 붕괴로 한 겹 더** 막혀 있다.
- * E-01(워크플로우 상태 persist)을 도입하면 이 경로가 전면화되므로 선결 조건이다.
+ * 저장된 상태를 다시 읽어 성적서를 그리는 경로(워크스페이스 run·워크플로우 persist)가
+ * **타입 붕괴로** 막힌다. E-01(워크플로우 상태 persist)을 도입하면 이 경로가 전면화되므로
+ * 선결 조건이다.
  */
 import { describe, expect, it } from "vitest";
 

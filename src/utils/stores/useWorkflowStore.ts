@@ -18,7 +18,6 @@ import { getAvailableMetrics, type TaskType } from "../../data/evaluationData";
 import type { ColumnNote, MappingWarning } from "../../lib/report/backendNotices";
 import type { MappingRow } from "../../types/mapping.types";
 import type { ValidateDataResponseData } from "../../types/validation.types";
-import type { MapWorkflowToReportInput } from "../../lib/report/mapWorkflowToFinalReport";
 import {
   DEFAULT_BASIC_INFO,
   DEFAULT_DATASET_INFO,
@@ -265,8 +264,8 @@ interface WorkflowState {
   validationResult: ValidateDataResponseData | null;
 
   /**
-   * 과거 평가 스냅샷을 복원했거나 저장소에서 재수화해, 입력은 있는데 원본 파일이 없는 상태.
-   * 파일은 어떤 경우에도 복원할 수 없으므로 재업로드를 유도해야 한다(ISSUES.md E-01·E-09).
+   * 저장소에서 재수화해, 입력은 있는데 원본 파일이 없는 상태.
+   * 파일은 어떤 경우에도 복원할 수 없으므로 재업로드를 유도해야 한다(ISSUES.md E-01).
    */
   needsFileReupload: boolean;
 
@@ -366,7 +365,6 @@ interface WorkflowState {
 
   // Reset
   resetWorkflow: () => void;
-  loadWorkflowSnapshot: (snapshot: MapWorkflowToReportInput) => void;
 }
 
 const INITIAL_STATE = {
@@ -567,49 +565,6 @@ export const useWorkflowStore = create<WorkflowState>()(
 
       // Reset
       resetWorkflow: () => set(INITIAL_STATE),
-
-      loadWorkflowSnapshot: (snapshot) =>
-        set({
-          basicInfo: snapshot.basicInfo,
-          taskType: snapshot.taskType,
-          selectedMetricIds: snapshot.selectedMetricIds,
-          metricDetails: snapshot.metricDetails,
-          uploadedFile: snapshot.uploadedFile,
-          rawFile: null,
-          metadata: null,
-          trainingExampleFiles: snapshot.trainingExampleFiles,
-          trainingUnsuitableExampleFiles: snapshot.trainingUnsuitableExampleFiles,
-          datasetInfo: snapshot.datasetInfo,
-          decisionThreshold: null,
-          columnNotes: [],
-          mappingWarnings: [],
-          availableMetricIds: null,
-          columnMapping: snapshot.columnMapping,
-          classLabelDescriptions: snapshot.classLabelDescriptions,
-          validationResult: null,
-          currentStepId: "upload",
-          /**
-           * 원본 파일은 복원할 수 없다(File 객체).
-           *
-           * 2026-09-19 재배치로 **업로드가 1단계**가 됐다. 파일이 없으면 1단계부터 성립하지
-           * 않으므로 완료로 표시할 단계가 하나도 없다 — 종전의 `[1, 2, 3]` 은 구 번호 체계
-           * (기본정보·지표·지표상세)를 가리키던 값이라, 그대로 두면 새 체계에서
-           * 업로드·지표·매핑이 '완료'로 둔갑해 사용자가 빈 상태로 뒤 단계에 진입한다
-           * (ISSUES.md E-09 가 막으려던 바로 그 상태).
-           *
-           * 지표 선택·매핑 **입력 자체는 위에서 복원**했으므로, 파일만 다시 올리면
-           * 그대로 이어서 진행할 수 있다.
-           */
-          completedStepIds: [],
-          needsFileReupload: true,
-          /**
-           * 성적서 구성 입력값도 비운다. 스냅샷(`MapWorkflowToReportInput`)은 아직 이 값들을
-           * 싣지 않으므로, 비우지 않으면 **직전 세션에 남아 있던 값**이 새 run 으로 흘러든다 —
-           * 물려받은 것이 아니라 치우지 않은 것이다. 카드 선택은 `setTaskType` 과 같은 이유로
-           * 남긴다.
-           */
-          ...EMPTY_COMPOSER_INPUTS,
-        }),
     }),
     {
       name: WORKFLOW_STORAGE_KEY,

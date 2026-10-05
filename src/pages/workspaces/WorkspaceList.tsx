@@ -43,7 +43,7 @@ export function WorkspaceList() {
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold text-foreground">Evaluation Workspaces</h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Save model evaluation results by workspace and compare them.
+            Keep model evaluations and their test reports together by workspace.
           </p>
         </div>
       </section>

@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { Navigate } from "react-router";
+import { Navigate, useParams, type Params } from "react-router";
 import { Home } from "./pages/Home";
 import { TaskTypeSelect } from "./pages/TaskTypeSelect";
 import { ReportComposer } from "./pages/ReportComposer";
@@ -16,12 +16,19 @@ import { ReportPrint } from "./pages/report/ReportPrint";
 import { ReportByNumber } from "./pages/report/ReportByNumber";
 import { WorkspaceDetail } from "./pages/workspaces/WorkspaceDetail";
 import { WorkspaceList } from "./pages/workspaces/WorkspaceList";
-import { ModelComparison } from "./pages/workspaces/ModelComparison";
 import { NotFound } from "./pages/NotFound";
 
 /** 지정 경로로 replace 리다이렉트하는 라우트 컴포넌트를 만든다. */
 function redirectTo(path: string) {
   return () => createElement(Navigate, { to: path, replace: true });
+}
+
+/** 경로 파라미터로 목적지를 만들어 replace 리다이렉트한다(`/report/:id/...` 처럼 id 를 이어야 할 때). */
+function redirectWithParams(build: (params: Readonly<Params<string>>) => string) {
+  return function RedirectWithParams() {
+    const params = useParams();
+    return createElement(Navigate, { to: build(params), replace: true });
+  };
 }
 
 export const routes = [
@@ -34,9 +41,12 @@ export const routes = [
   { path: "/app/composer", Component: ReportComposer },
   { path: "/workspaces", Component: WorkspaceList },
   { path: "/workspaces/:workspaceId", Component: WorkspaceDetail },
-  // 한 모델의 버전별 평가 비교. 모델은 run 의 modelName 으로만 존재하므로 경로도
-  // 이름을 그대로 싣는다(링크 생성 시 encodeURIComponent 필요).
-  { path: "/workspaces/:workspaceId/models/:modelName", Component: ModelComparison },
+  // 모델 버전 비교는 폐지됐다(docs/WORKFLOW_REDESIGN.md §11). 저장된 링크가 죽지 않도록
+  // 그 워크스페이스로 보낸다.
+  {
+    path: "/workspaces/:workspaceId/models/:modelName",
+    Component: redirectWithParams(({ workspaceId }) => "/workspaces/" + (workspaceId ?? "")),
+  },
   // 평가 구간. **이 배열의 순서는 단계 순서가 아니다** — 걸을 순서는 고른 카드에서
   // 계산되고, 정본 순서는 `data/workflowSteps.ts` 의 STEP_CATALOG 에 있다.
   // (종전 주석은 "배열 순서 = 단계 번호"라고 적었는데 그때도 사실이 아니었다.)
