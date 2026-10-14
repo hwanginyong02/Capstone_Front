@@ -608,6 +608,9 @@ const LEGACY_STEP_IDS = ["upload","metrics","mapping","validation","summary","re
   **그대로 두었다.** 카드를 켠 사용자는 같은 값을 두 번 적게 되고, 안 켠 사용자는 Details
   에서만 적을 수 있다. 셋 중 어느 쪽으로 갈지(폼 삭제 / ⑥⑨ 를 필수 카드로 승격 / 양쪽 유지)
   는 다음 결정이다.
+  - **→ 정함(2026-10-06): 학습 데이터 폼은 ⑥ 으로 합쳤다.** Details 의 학습 데이터셋 폼을 없애고,
+    데이터 형식은 ⑥ 더보기로, 예시 파일은 Data info 의 ⑥ 카드 아래로 옮겼다. 성적서는 ⑥ 값을
+    읽는다(persist v10). 실행 환경(⑨ ↔ Details Test environment)은 아직 둘 다 남아 있다.
   - 겹치는 범위: ⑨ 실행 환경 ↔ `basicInfo.env*` 다섯이 1:1. ⑥ ↔ `datasetInfo` 는 데이터
     이름·학습/검증 건수·클래스 분포가 겹치고 **Training data format 하나만** ⑥ 에 없다.
 - **`composerLegacyMirror` 배선.** 위가 정해지기 전에 카드 값을 기존 저장소로 흘려보내면,
