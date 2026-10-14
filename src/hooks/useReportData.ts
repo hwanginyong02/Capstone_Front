@@ -11,12 +11,13 @@
 import { useEffect, useState } from "react";
 
 import { apiUrl } from "@/lib/apiBase";
-import { mapWorkflowToFinalReport } from "../lib/report/mapWorkflowToFinalReport";
+import { buildReportInput, mapWorkflowToFinalReport } from "../lib/report/mapWorkflowToFinalReport";
 import type { FinalReportData, LatencyStats } from "../types/finalReport.types";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { useWorkspaceStore } from "../utils/stores/useWorkspaceStore";
 import { getMetricDisplayId, METRICS } from "../data/evaluationData";
-import { buildConclusion } from "../lib/report/computeVerdict";
+import { buildConclusion, resolveCoreMetricIds } from "../lib/report/computeVerdict";
+import { buildClientInputs } from "../lib/report/reportMaterials";
 import { buildDatasetDiagnosis } from "../lib/report/buildDatasetDiagnosis";
 import { buildFactSheet } from "../lib/report/buildFactSheet";
 import { evaluateStatus } from "../lib/report/evaluateStatus";
@@ -62,19 +63,10 @@ export function useReportData(id: string): UseReportDataResult {
 
     // rawFile이 없다면 (쇼케이스 모드 등) 바로 매핑한 기본 리포트 반환
     if (!workflowState.rawFile) {
-      const baseReport = mapWorkflowToFinalReport({
-        basicInfo: workflowState.basicInfo,
-        datasetInfo: workflowState.datasetInfo,
-        taskType: workflowState.taskType,
-        selectedMetricIds: workflowState.selectedMetricIds,
-        metricDetails: workflowState.metricDetails,
-        uploadedFile: workflowState.uploadedFile,
-        trainingExampleFiles: workflowState.trainingExampleFiles,
-        trainingUnsuitableExampleFiles: workflowState.trainingUnsuitableExampleFiles,
-        columnMapping: workflowState.columnMapping,
-        classLabelDescriptions: workflowState.classLabelDescriptions,
-        metadata: workflowState.metadata,
-      }, workflowState.validationResult);
+      const baseReport = mapWorkflowToFinalReport(
+        buildReportInput(workflowState),
+        workflowState.validationResult,
+      );
       setData({
         ...baseReport,
         datasetDiagnosis: buildDatasetDiagnosis(workflowState.metadata),
@@ -136,19 +128,10 @@ export function useReportData(id: string): UseReportDataResult {
         const result = await response.json();
         if (!active) return;
 
-        const baseReport = mapWorkflowToFinalReport({
-          basicInfo: workflowState.basicInfo,
-          datasetInfo: workflowState.datasetInfo,
-          taskType: workflowState.taskType,
-          selectedMetricIds: workflowState.selectedMetricIds,
-          metricDetails: workflowState.metricDetails,
-          uploadedFile: workflowState.uploadedFile,
-          trainingExampleFiles: workflowState.trainingExampleFiles,
-          trainingUnsuitableExampleFiles: workflowState.trainingUnsuitableExampleFiles,
-          columnMapping: workflowState.columnMapping,
-          classLabelDescriptions: workflowState.classLabelDescriptions,
-          metadata: workflowState.metadata,
-        }, workflowState.validationResult);
+        const baseReport = mapWorkflowToFinalReport(
+          buildReportInput(workflowState),
+          workflowState.validationResult,
+        );
 
         const success_metrics = result.results.success_metrics || {};
         // 계산 실패 지표({metricId: 에러문자열}). value 0/fail 위장 대신 'unavailable' 처리(D4).
@@ -156,6 +139,15 @@ export function useReportData(id: string): UseReportDataResult {
 
         // 1. KPI 지표 계산값 치환
         const taskTypeForMetrics = workflowState.taskType || "multiclass";
+        // 핵심 지표 — Details 합격 기준 표에서 고른 값, 고르지 않았으면 유형별 기본값이다.
+        // 판정(아래 buildConclusion)과 성적서의 "핵심" 표시가 같은 목록을 본다.
+        const coreDisplayIds = new Set(
+          resolveCoreMetricIds(
+            taskTypeForMetrics,
+            workflowState.selectedMetricIds,
+            workflowState.composerMetrics,
+          ).map(getMetricDisplayId),
+        );
         const updatedKpiResults = workflowState.selectedMetricIds
           .map((metricId) => {
             // **task 필터를 함께 본다.** 4절(metricList)·5절(metricFormulas)은
@@ -189,6 +181,7 @@ export function useReportData(id: string): UseReportDataResult {
                 errorMessage: typeof failReason === "string" ? failReason : String(failReason),
                 perClass: undefined,
                 subMetrics: undefined,
+                isCore: coreDisplayIds.has(displayId),
               };
             }
 
@@ -250,6 +243,7 @@ export function useReportData(id: string): UseReportDataResult {
               higherIsBetter,
               perClass,
               subMetrics,
+              isCore: coreDisplayIds.has(displayId),
             };
           })
           .filter((item): item is any => item !== null);
@@ -323,13 +317,11 @@ export function useReportData(id: string): UseReportDataResult {
 
         const taskTypeResolved = workflowState.taskType || "binary";
         // 혼동행렬의 totalSamples가 가장 정확한 평가 데이터의 row 수 (멀티레이블의 경우 200)
-        // 서버가 확정한 표본 수를 최우선으로 쓴다. validationSampleCount 는 4단계에서
-        // 사용자가 손으로 적은 값이라 실제 평가 행 수와 무관할 수 있다(ISSUES.md B-02·E-17).
-        const datasetSize =
-          result.n_samples ||
-          confusionMatrix?.totalSamples ||
-          Number(workflowState.datasetInfo?.validationSampleCount) ||
-          undefined;
+        // 서버가 확정한 표본 수를 최우선으로 쓴다. 종전에는 마지막 폴백으로 학습 데이터 폼의
+        // 검증 샘플 수를 썼다 — 모델 학습용 검증 세트 크기라 평가 행 수와 무관하다
+        // (ISSUES.md B-02·E-17). 그 폼은 ⑥ 카드로 합쳐지며 없어졌다.
+        const datasetSize: number | undefined =
+          result.n_samples || confusionMatrix?.totalSamples || undefined;
 
         const datasetDiagnosis = buildDatasetDiagnosis(
           { class_distribution: resolvedClassDistribution },
@@ -340,7 +332,9 @@ export function useReportData(id: string): UseReportDataResult {
         );
 
         // 4. verdict/score 규칙 산출 (서술의 권위 값 — 백엔드도 fact_sheet.verdict 로 강제)
-        const ruleConclusion = buildConclusion(updatedKpiResults, taskTypeResolved);
+        const ruleConclusion = buildConclusion(updatedKpiResults, taskTypeResolved, [
+          ...coreDisplayIds,
+        ]);
 
         // 5. LLM 서술 생성 — 평가 결과로 fact_sheet 조립 후 /api/generate-narrative 호출.
         //    실패/무키 시 빈 서술 반환(섹션이 "생성 예정" 안내). KPI·차트는 영향받지 않음.
@@ -382,6 +376,12 @@ export function useReportData(id: string): UseReportDataResult {
 
         const stage1Report: FinalReportData = {
           ...baseReport,
+          // 평가 데이터 표본 수는 평가에 실제로 쓴 행 수로 덮는다. 검증 응답이 없던 경로에서는
+          // baseReport 의 값이 0 이다.
+          datasetInfo: {
+            ...baseReport.datasetInfo,
+            sampleCount: datasetSize ?? baseReport.datasetInfo.sampleCount,
+          },
           meta: { ...baseReport.meta, derivedPrediction },
           // 평가를 실제로 수행한 환경(라이브러리 버전·수행 시각). 종전에는 프론트
           // 상수를 인쇄해 실제와 무관한 값이 성적서에 남았다(ISSUES.md F-09).
@@ -402,10 +402,40 @@ export function useReportData(id: string): UseReportDataResult {
         narrativeStarted = true;
 
         // ── Stage 2: LLM 서술을 받아 7·8·9절만 병합한다(KPI·차트는 이미 화면에 있음).
+        // 고객이 제공한 입력도 함께 넘긴다(서술 설계 D25). 종전에는 성적서 구성 카드의 값이
+        // 저장만 되고 AI 에 가지 않았다. 회사·과제 정보는 넣지 않는다(D34).
+        const reportInput = buildReportInput(workflowState);
+        const clientInputs =
+          reportInput.composer && baseReport.materials
+            ? buildClientInputs({
+                composer: reportInput.composer,
+                materials: baseReport.materials,
+                model: {
+                  name: workflowState.basicInfo.modelName ?? "",
+                  version: workflowState.basicInfo.versionName ?? "",
+                  purpose: workflowState.basicInfo.modelPurpose ?? "",
+                  category: workflowState.basicInfo.modelCategory ?? "",
+                },
+                reportPurposeNote: workflowState.basicInfo.reportPurposeNote ?? "",
+                coreMetrics: updatedKpiResults
+                  .filter((r) => r.isCore)
+                  .map((r) => `${r.name}(${r.metricId})`),
+                classLabelDescriptions: workflowState.classLabelDescriptions,
+                runtime: {
+                  운영체제: workflowState.basicInfo.envOS ?? "",
+                  CPU: workflowState.basicInfo.envCPU ?? "",
+                  GPU: workflowState.basicInfo.envGPU ?? "",
+                  메모리: workflowState.basicInfo.envMemory ?? "",
+                  소프트웨어: workflowState.basicInfo.envSoftware ?? "",
+                },
+              })
+            : undefined;
+
         const narrative = await fetchNarrative({
           task_type: taskTypeResolved,
           report_purpose: baseReport.evalScope.reportPurposeKey,
           fact_sheet: factSheet,
+          ...(clientInputs ? { client_inputs: clientInputs } : {}),
         });
         if (!active) return;
 

@@ -11,6 +11,7 @@ import { CalendarIcon, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "../../utils/styling/styles";
 import type { BasicInfoFormData } from "../../types/workflow.types";
 import { fromIsoDate, toIsoDate } from "../../utils/domain/isoDate";
+import { TEXTAREA_CLASS } from "../data-upload/shared";
 
 interface BasicInfoProps {
   formData: BasicInfoFormData;
@@ -114,6 +115,17 @@ export function BasicInfo({
                   <ChoiceCard id="project" title="Project deliverable" description="Use for funded project evidence" selected={formData.reportPurpose === "project"} />
                 </div>
               </RadioGroup>
+
+              {/* 덧붙이는 글(서술 설계 D26). 성적서 1.3 개요 칸에 "의뢰자 제공"으로 실린다. */}
+              <Field label="Note on the purpose">
+                <textarea
+                  className={TEXTAREA_CLASS}
+                  rows={2}
+                  value={formData.reportPurposeNote ?? ""}
+                  onChange={(e) => update("reportPurposeNote", e.target.value)}
+                  placeholder="Anything the reader should know about why this report is issued (optional)"
+                />
+              </Field>
 
               {formData.reportPurpose === "project" && (
                 <div className="space-y-5">

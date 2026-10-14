@@ -1,4 +1,4 @@
-import { CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, CircleHelp } from "lucide-react";
 import type { ConclusionData, NarrativeSource } from "../../../types/finalReport.types";
 import { SectionTitle } from "../shared/SectionTitle";
 import { NarrativeSourceBadge } from "../shared/NarrativeSourceBadge";
@@ -25,6 +25,15 @@ const VERDICT_CONFIG = {
     bg: "bg-red-50 border-red-200",
     text: "text-red-700",
     iconColor: "text-red-500",
+  },
+  // 핵심 지표가 산출되지 않았거나 판정 대상 지표가 없을 때(서술 설계 D19). 종전에는 조건부
+  // 합격으로 적어 확인하지 못한 것을 합격처럼 보이게 했다.
+  INCONCLUSIVE: {
+    label: "판정 불가",
+    icon: CircleHelp,
+    bg: "bg-slate-50 border-slate-200",
+    text: "text-slate-700",
+    iconColor: "text-slate-500",
   },
 } as const;
 
@@ -71,9 +80,10 @@ export function ConclusionSection({ conclusion, source }: ConclusionSectionProps
         </div>
         <div className="shrink-0 text-right">
           <span className="font-mono text-2xl font-bold text-slate-700">
-            {conclusion.score.toFixed(1)}%
+            {/* 판정 대상이 없으면 통과율을 셀 수 없다 — 0% 로 적으면 전부 미달로 읽힌다. */}
+            {conclusion.judgedCount === 0 ? "—" : `${conclusion.score.toFixed(1)}%`}
           </span>
-          <p className="text-xs font-medium text-slate-500">종합 점수</p>
+          <p className="text-xs font-medium text-slate-500">통과율 (참고)</p>
         </div>
       </div>
 
@@ -84,11 +94,12 @@ export function ConclusionSection({ conclusion, source }: ConclusionSectionProps
         데이터셋 특성 지표(M23 등)도 목표값을 설정했다면 분모에 들어간다.
       */}
       <p className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
-        <strong className="text-slate-700">종합 점수의 정의</strong> — 사용자가 합격 목표값을
+        <strong className="text-slate-700">통과율의 정의</strong> — 사용자가 합격 목표값을
         설정한 시험항목 가운데 그 기준을 충족한 항목의 비율입니다. 목표값을 설정하지 않은
         항목과 측정 불가 항목은 분모에서 제외됩니다. 데이터셋 특성 지표(예: 불균형 비율)에
         목표값을 설정했다면 그 항목도 함께 집계되므로, 이 수치는 모델 성능만의 지표가
-        아닙니다. 항목별 값과 기준은 6절 표에서 확인할 수 있습니다.
+        아닙니다. 통과율은 참고 수치이며 판정의 근거가 아닙니다. 판정 규칙은 6.1에 적었고,
+        항목별 값과 기준은 6절 표에서 확인할 수 있습니다.
       </p>
 
       {/* 8.1 도메인 성능 벤치마크 */}

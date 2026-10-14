@@ -89,7 +89,13 @@ export function CompanyInfoSection({ applicant, performer, evalScope, meta }: Co
         <TwoColTable
           rows={[
             { label: "용도", value: REPORT_PURPOSE_LABEL[evalScope.reportPurposeKey] },
-            { label: "개요", value: evalScope.purpose || REPORT_PURPOSE_OVERVIEW[evalScope.reportPurposeKey] },
+            {
+              label: "개요",
+              value:
+                (evalScope.purpose || REPORT_PURPOSE_OVERVIEW[evalScope.reportPurposeKey]) +
+                // 덧붙인 글은 고치지 않고 싣되 우리 문장과 섞이지 않게 표시한다(재료 선택 점검 5절).
+                (evalScope.purposeNote ? ` — 의뢰자 제공: ${evalScope.purposeNote}` : ""),
+            },
             ...(evalScope.projectInfo
               ? [
                   { label: "프로젝트명", value: evalScope.projectInfo.name },

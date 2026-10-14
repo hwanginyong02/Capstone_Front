@@ -397,3 +397,229 @@ describe("persist 마이그레이션 v7 → v8 — 평가 결과 단계가 폐�
     expect(migrated.composerModelEnv).toEqual(values);
   });
 });
+
+/**
+ * v8 → v9 — 입력 형태를 재료 목록에 맞췄다.
+ *
+ * v6 → v7 은 선택지가 통째로 바뀌어 비웠지만 여기는 **같은 답을 다른 그릇에 담는 것**이라
+ * 옮긴다. 옮길 수 없는 자유 텍스트만 버린다 — 틀리게 옮긴 숫자가 성적서에 찍히는 것보다
+ * 빈 칸으로 다시 묻는 편이 안전하다.
+ */
+describe("persist 마이그레이션 v8 → v9 — 입력 형태 변경", () => {
+  const migrate = async (state: Record<string, unknown>) => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+    return migrateWorkflowState(state, 8);
+  };
+
+  it("② 카드 값 그룹을 채운다", async () => {
+    const migrated = await migrate({});
+    expect(migrated.composerMetrics).toEqual({});
+  });
+
+  it("Report notes 메모를 ⑥ 학습 데이터 설명으로 옮긴다 — 이미 그 이름으로 인쇄되고 있었다", async () => {
+    const migrated = await migrate({
+      datasetInfo: { trainingDatasetName: "Logs", trainingDataDescription: "Evaluated on Q1 data." },
+      composerTrainingData: {},
+    });
+
+    expect(migrated.composerTrainingData.trainingDescription).toEqual({
+      text: "Evaluated on Q1 data.",
+    });
+    // 체인이 v10 까지 이어져 나머지 폼 값도 ⑥ 으로 옮겨지고 폼 저장소는 사라진다.
+    expect(migrated.composerTrainingData.trainingDatasetName).toEqual({ text: "Logs" });
+    expect(migrated.datasetInfo).toBeUndefined();
+  });
+
+  it("⑥ 에 이미 설명이 있으면 덮지 않는다", async () => {
+    const migrated = await migrate({
+      datasetInfo: { trainingDataDescription: "old memo" },
+      composerTrainingData: { trainingDescription: { text: "card text" } },
+    });
+
+    expect(migrated.composerTrainingData.trainingDescription).toEqual({ text: "card text" });
+  });
+
+  it("편향 감소 노력: 하나 고른 답을 여럿 고르기로 옮긴다", async () => {
+    const migrated = await migrate({
+      composerTrainingData: { imbalanceHandling: { text: "Did nothing", unknown: false } },
+    });
+
+    expect(migrated.composerTrainingData.imbalanceHandling).toEqual({
+      choices: ["Did nothing"],
+      unknown: false,
+    });
+  });
+
+  it("라벨러 수·일치도: 한 칸 글을 두 칸 숫자로 옮긴다", async () => {
+    const migrated = await migrate({
+      composerGroundTruth: { labelAgreement: { text: "3명 · 82%" } },
+    });
+
+    // 체인이 v11 까지 이어져 일치도는 "단순 일치율" 종류와 값으로 나뉜다(% 로 받던 칸이다).
+    expect(migrated.composerGroundTruth).toEqual({
+      labelReviewerCount: { text: "3" },
+      labelAgreementKind: { text: "Percent agreement" },
+      labelAgreementValue: { text: "82" },
+    });
+  });
+
+  it("라벨러 수·일치도: 숫자를 찾지 못하면 옛 값을 버린다", async () => {
+    const migrated = await migrate({
+      composerGroundTruth: { labelAgreement: { text: "several, mostly agreed" } },
+    });
+
+    expect(migrated.composerGroundTruth).toEqual({});
+  });
+
+  it("수집 기간: 'YYYY-MM ~ YYYY-MM' 을 시작 월·끝 월로 옮긴다", async () => {
+    const migrated = await migrate({
+      composerTrainingData: { trainingPeriod: { text: "2023-01 ~ 2024-12" } },
+      composerTestData: { testPeriod: { text: "spring 2025" } },
+    });
+
+    expect(migrated.composerTrainingData.trainingPeriod).toEqual({
+      entries: [
+        { key: "From", value: "2023-01" },
+        { key: "To", value: "2024-12" },
+      ],
+    });
+    // 형식이 다른 글은 옮길 수 없어 버린다.
+    expect(migrated.composerTestData.testPeriod).toBeUndefined();
+  });
+
+  it("진행 표시는 건드리지 않는다", async () => {
+    const migrated = await migrate({
+      completedStepIds: ["upload", "metrics"],
+      currentStepId: "mapping",
+    });
+
+    expect(migrated.completedStepIds).toEqual(["upload", "metrics"]);
+    expect(migrated.currentStepId).toBe("mapping");
+  });
+});
+
+/**
+ * v9 → v10 — Details 의 학습 데이터 폼(`datasetInfo`)을 ⑥ 카드로 합쳤다.
+ *
+ * 같은 값을 두 화면에서 받던 것을 하나로 줄였다. 폼에 적은 값은 ⑥ 의 같은 칸으로 옮기고,
+ * 폼 저장소는 지운다.
+ */
+describe("persist 마이그레이션 v9 → v10 — 학습 데이터 폼을 ⑥ 으로", () => {
+  const migrate = async (state: Record<string, unknown>) => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+    return migrateWorkflowState(state, 9);
+  };
+
+  it("이름·건수·형식을 ⑥ 으로 옮기고 폼 저장소를 지운다", async () => {
+    const migrated = await migrate({
+      datasetInfo: {
+        trainingDatasetName: "Customer logs 2024",
+        trainingSampleCount: "12000",
+        validationSampleCount: "3000",
+        trainingDataFormat: "CSV",
+        trainingClassDistribution: "normal 8400 / churn 3600",
+      },
+      composerTrainingData: {},
+    });
+
+    expect(migrated.datasetInfo).toBeUndefined();
+    expect(migrated.composerTrainingData).toEqual({
+      trainingDatasetName: { text: "Customer logs 2024" },
+      trainingVolume: {
+        entries: [
+          { key: "Training", value: "12000" },
+          { key: "Validation", value: "3000" },
+        ],
+      },
+      trainingDataFormat: { text: "CSV" },
+    });
+  });
+
+  it("클래스 분포는 옮기지 않는다 — 한 줄 글을 클래스별 칸으로 쪼개면 틀릴 수 있다", async () => {
+    const migrated = await migrate({
+      datasetInfo: { trainingClassDistribution: "normal 8400 / churn 3600" },
+    });
+
+    expect(migrated.composerTrainingData.trainingClassVolume).toBeUndefined();
+  });
+
+  it("⑥ 에 이미 적은 값은 덮지 않는다", async () => {
+    const migrated = await migrate({
+      datasetInfo: { trainingDatasetName: "form name", trainingSampleCount: "1" },
+      composerTrainingData: {
+        trainingDatasetName: { text: "card name" },
+        trainingVolume: { unknown: true },
+      },
+    });
+
+    expect(migrated.composerTrainingData.trainingDatasetName).toEqual({ text: "card name" });
+    expect(migrated.composerTrainingData.trainingVolume).toEqual({ unknown: true });
+  });
+
+  it("카드 선택은 건드리지 않는다 — 켜는 것은 사용자의 결정이다", async () => {
+    const cards = { trainingData: false, testData: false, groundTruth: false, modelEnv: false };
+    const migrated = await migrate({
+      datasetInfo: { trainingDatasetName: "x" },
+      composerCards: cards,
+    });
+
+    expect(migrated.composerCards).toEqual(cards);
+  });
+});
+
+/**
+ * v10 → v11 — 문서에서 정할 것으로 남았던 항목을 정했다(서술 설계 D41~D44).
+ *
+ * 전처리 세 칸은 ⑦ 한 칸으로, 라벨 일치도는 종류 + 값으로 바뀌었고, 성적서 용도에 덧붙이는
+ * 글이 생겼다. 적어 둔 글은 버리지 않고 옮긴다.
+ */
+describe("persist 마이그레이션 v10 → v11 — 전처리 한 칸, 일치도 종류, 용도 덧붙임", () => {
+  const migrate = async (state: Record<string, unknown>) => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+    return migrateWorkflowState(state, 10);
+  };
+
+  it("전처리 세 칸을 ⑦ 한 칸으로 옮긴다 — 고른 답은 짝을 찾고, 적은 글은 덧붙임으로 남긴다", async () => {
+    const migrated = await migrate({
+      composerTrainingData: { preprocessing: { text: "Normalized" } },
+      composerTestData: {
+        testPreprocessing: { text: "Different from training" },
+        testPreprocessingDetail: { text: "Dropped outliers" },
+      },
+    });
+
+    expect(migrated.composerTestData).toEqual({
+      preprocessingMatch: {
+        text: "Different",
+        note: "Training: Normalized / Test: Dropped outliers",
+      },
+    });
+    expect(migrated.composerTrainingData.preprocessing).toBeUndefined();
+  });
+
+  it('"모름"은 모름으로, "전처리 없음"은 짝이 없어 글로 남긴다', async () => {
+    expect(
+      (await migrate({ composerTestData: { testPreprocessing: { unknown: true } } })).composerTestData,
+    ).toEqual({ preprocessingMatch: { text: "Unknown" } });
+    expect(
+      (await migrate({ composerTestData: { testPreprocessing: { text: "None" } } })).composerTestData,
+    ).toEqual({ preprocessingMatch: { note: "Test: no preprocessing" } });
+  });
+
+  it("옛 일치도(%)는 단순 일치율로 옮긴다", async () => {
+    const migrated = await migrate({
+      composerGroundTruth: { labelAgreementRate: { text: "82" } },
+    });
+
+    expect(migrated.composerGroundTruth).toEqual({
+      labelAgreementKind: { text: "Percent agreement" },
+      labelAgreementValue: { text: "82" },
+    });
+  });
+
+  it("성적서 용도 덧붙임 칸을 채운다 — 얕은 merge 라 옛 basicInfo 에는 없다", async () => {
+    const migrated = await migrate({ basicInfo: { companyName: "Test Corp" } });
+
+    expect(migrated.basicInfo).toEqual({ companyName: "Test Corp", reportPurposeNote: "" });
+  });
+});

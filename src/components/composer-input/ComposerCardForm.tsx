@@ -18,8 +18,16 @@ import type {
   ComposerCard,
   ComposerFieldValue,
   ComposerValueMap,
+  NumberRange,
 } from "../../types/reportComposer.types";
-import { isFieldVisible, type FieldIssue } from "../../utils/domain/composerFieldGate";
+import { isFieldVisible, rangeFor, type FieldIssue } from "../../utils/domain/composerFieldGate";
+
+/** 숫자 칸의 허용 범위를 문장으로. 무엇이 틀렸는지가 아니라 무엇을 넣으면 되는지를 말한다. */
+function describeRange(range: NumberRange): string {
+  const kind = range.integer ? "a whole number" : "a number";
+  if (range.max === undefined) return `Enter ${kind} of at least ${range.min}.`;
+  return `Enter ${kind} from ${range.min} to ${range.max}.`;
+}
 
 interface ComposerCardFormProps {
   card: ComposerCard;
@@ -49,8 +57,15 @@ export function ComposerCardForm({
 }: ComposerCardFormProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // 더보기 안의 칸이 틀렸으면(범위 밖 숫자, 뒤집힌 기간) 접어 두지 않는다 — 접힌 채로 막히면
+  // 무엇 때문인지 찾을 수 없다.
+  const advancedHasIssue = getCardFields(card.id, taskType).some(
+    (field) => field.advanced && issues.some((issue) => issue.fieldId === field.id),
+  );
+  const expanded = showAdvanced || advancedHasIssue;
+
   // 조건이 성립하지 않은 조건부 필드는 그리지 않는다 — "특정 조건에서만 나타난다".
-  const fields = getCardFields(card.id, taskType, { includeAdvanced: showAdvanced }).filter(
+  const fields = getCardFields(card.id, taskType, { includeAdvanced: expanded }).filter(
     (field) => isFieldVisible(field, values),
   );
   const advancedCount = countAdvancedFields(card.id, taskType);
@@ -81,11 +96,24 @@ export function ComposerCardForm({
                  * (배타 선택)는 지금 당장 틀린 것이라 바로 표시하고, 비어 있는 것은
                  * 사용자가 넘어가려 한 뒤에야 표시한다.
                  */
-                invalid={issue?.reason === "exclusive" || (showErrors && Boolean(issue))}
+                invalid={(issue && issue.reason !== "missing") || (showErrors && Boolean(issue))}
               />
               {issue?.reason === "exclusive" && (
                 <p className="mt-1 text-body-small text-destructive">
                   {field.exclusiveChoice} cannot be combined with the others.
+                </p>
+              )}
+              {issue?.reason === "outOfRange" && rangeFor(field, values) && (
+                <p className="mt-1 text-body-small text-destructive">
+                  {describeRange(rangeFor(field, values)!)}
+                </p>
+              )}
+              {issue?.reason === "incompatible" && issue.message && (
+                <p className="mt-1 text-body-small text-destructive">{issue.message}</p>
+              )}
+              {issue?.reason === "invalidPeriod" && (
+                <p className="mt-1 text-body-small text-destructive">
+                  Enter both months, with From no later than To.
                 </p>
               )}
               {showErrors && issue?.reason === "missing" && (
@@ -97,7 +125,7 @@ export function ComposerCardForm({
           );
         })}
 
-        {advancedCount > 0 && (
+        {advancedCount > 0 && !advancedHasIssue && (
           <Button
             variant="ghost"
             size="sm"

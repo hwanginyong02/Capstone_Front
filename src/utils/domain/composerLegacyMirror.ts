@@ -1,10 +1,12 @@
 /**
  * 카드 값을 기존 저장소 필드에도 흘려보낸다.
  *
- * ⑥ 학습 데이터와 ⑨ 모델 설정·실행 환경은 카드가 생기기 전부터 `datasetInfo`·`basicInfo` 가
- * 같은 것을 받고 있었고, **성적서를 그리는 코드는 그쪽을 읽는다**
- * (`lib/report/mapWorkflowToFinalReport.ts`). 두 입력란을 한 화면에 나란히 두면 사용자가 같은
- * 값을 두 번 적게 되므로, 입력란은 카드 하나로 합치고 값만 양쪽에 쓴다.
+ * ⑨ 모델 설정·실행 환경은 카드가 생기기 전부터 `basicInfo` 가 같은 것을 받고 있었고,
+ * **성적서를 그리는 코드는 그쪽을 읽는다**(`lib/report/mapWorkflowToFinalReport.ts`). 두
+ * 입력란을 한 화면에 나란히 두면 사용자가 같은 값을 두 번 적게 되므로, 입력란은 카드 하나로
+ * 합치고 값만 양쪽에 쓴다.
+ *
+ * ⑥ 학습 데이터는 여기를 거치지 않는다 — 기존 저장소를 없애고 성적서가 카드 값을 직접 읽는다.
  *
  * 어느 필드가 어디로 가는지는 레지스트리의 `legacy` 가 들고 있다 — 매핑표를 여기 또 적으면
  * 두 벌이 된다.
@@ -19,7 +21,6 @@ import type {
 
 export interface LegacyPatch {
   basicInfo?: Record<string, string>;
-  datasetInfo?: Record<string, string>;
 }
 
 /** `entries` 를 한 줄로 합친다 — 칸이 동적이라 짝지을 기존 필드가 하나뿐일 때 쓴다. */

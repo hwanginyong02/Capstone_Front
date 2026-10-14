@@ -4,6 +4,7 @@ import { RemainingNotice } from "../../components/composer-input/RemainingNotice
 import { focusFirstIssue } from "../../components/composer-input/focusFirstIssue";
 import { WorkflowShell } from "../../layout/WorkflowShell";
 import { DataInfo as DataInfoContent, DATA_INFO_CARDS } from "../../components/data-info/DataInfo";
+import { TrainingExamplesSection } from "../../components/report-info/TrainingExamplesSection";
 import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
 import { useStepFlow } from "../../hooks/useStepFlow";
 import { getCard } from "../../data/reportComposer";
@@ -88,6 +89,17 @@ export function DataInfo() {
         issues={issues}
         classNames={classNames}
         showErrors={showErrors}
+        afterCard={{
+          // ⑥ 의 예시 파일. 종전에는 Details 의 학습 데이터셋 폼 아래에 있었다.
+          trainingData: (
+            <TrainingExamplesSection
+              trainingExampleFiles={store.trainingExampleFiles}
+              onTrainingExampleFilesChange={store.setTrainingExampleFiles}
+              trainingUnsuitableExampleFiles={store.trainingUnsuitableExampleFiles}
+              onTrainingUnsuitableExampleFilesChange={store.setTrainingUnsuitableExampleFiles}
+            />
+          ),
+        }}
       />
     </WorkflowShell>
   );

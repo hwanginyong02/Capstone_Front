@@ -8,7 +8,7 @@
  *
  * 함께 다뤄야 하는 것들 — persist 를 붙이는 순간 **지금은 새로고침이 초기화 역할을 해서
  * 세션 안에 갇혀 있던 오염이 영속화된다**:
- *   E-08 `setTaskType` 이 completedSteps·datasetInfo 를 비우지 않는다
+ *   E-08 `setTaskType` 이 completedSteps·학습 데이터 정보를 비우지 않는다
  *   E-05 `?showcase=1` 이 실제 store 에 가짜 기업정보를 주입한다
  */
 import { beforeEach, describe, expect, it } from "vitest";
@@ -17,7 +17,7 @@ import {
   WORKFLOW_STORAGE_KEY,
   useWorkflowStore,
 } from "./useWorkflowStore";
-import { DEFAULT_BASIC_INFO, DEFAULT_DATASET_INFO } from "../../types/workflow.types";
+import { DEFAULT_BASIC_INFO } from "../../types/workflow.types";
 
 /** persist 가 실제로 기록한 내용을 읽는다. */
 function persistedState(): Record<string, unknown> | null {
@@ -122,17 +122,15 @@ describe("[E-08] 작업 유형 변경", () => {
     expect(useWorkflowStore.getState().completedStepIds).toEqual([]);
   });
 
-  it("데이터셋 정보를 비운다 — 이전 평가의 표본 수가 새 성적서에 인쇄되지 않게", () => {
-    useWorkflowStore.getState().setDatasetInfo({
-      ...DEFAULT_DATASET_INFO,
-      validationSampleCount: "9999",
+  it("학습 데이터 정보를 비운다 — 이전 평가의 표본 수가 새 성적서에 인쇄되지 않게", () => {
+    // 학습 데이터는 ⑥ 카드가 받는다(종전의 Details 학습 데이터 폼, persist v10).
+    useWorkflowStore.getState().setComposerTrainingData({
+      trainingVolume: { entries: [{ key: "Validation", value: "9999" }] },
     });
 
     useWorkflowStore.getState().setTaskType("multiclass");
 
-    expect(useWorkflowStore.getState().datasetInfo.validationSampleCount).toBe(
-      DEFAULT_DATASET_INFO.validationSampleCount,
-    );
+    expect(useWorkflowStore.getState().composerTrainingData).toEqual({});
   });
 
   it("기업정보(basicInfo)는 유지한다 — 작업 유형만 바꿨는데 1단계까지 날아가면 안 된다", () => {

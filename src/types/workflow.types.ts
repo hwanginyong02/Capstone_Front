@@ -33,6 +33,11 @@ export interface BasicInfoFormData {
    *  직렬화 가능한 형태가 참 타입이다(ISSUES.md E-09). UI 경계에서만 Date 로 변환한다. */
   contractDate?: string;
   reportPurpose: string;
+  /**
+   * 성적서 용도에 덧붙이는 글(선택). 서술 설계 D26 — 모든 선택지 필드는 추가 서술을 함께 받는다.
+   * 성적서 1.3 개요 칸에 "의뢰자 제공"으로 싣고 AI 에도 넘긴다. persist v11 에서 생겼다.
+   */
+  reportPurposeNote: string;
   projectName: string;
   projectAgency: string;
   projectNumber: string;
@@ -67,15 +72,6 @@ export interface UploadedFileInfo {
   previewUrl?: string;
 }
 
-export interface DatasetInfoFormData {
-  trainingSampleCount: string;
-  validationSampleCount: string;
-  trainingDatasetName: string;
-  trainingDataFormat: string;
-  trainingClassDistribution: string;
-  trainingDataDescription: string;
-}
-
 export const DEFAULT_BASIC_INFO: BasicInfoFormData = {
   companyName: "",
   representative: "",
@@ -86,6 +82,7 @@ export const DEFAULT_BASIC_INFO: BasicInfoFormData = {
   address: "",
   contractDate: todayIsoDate(),
   reportPurpose: "",
+  reportPurposeNote: "",
   projectName: "",
   projectAgency: "",
   projectNumber: "",
@@ -99,14 +96,5 @@ export const DEFAULT_BASIC_INFO: BasicInfoFormData = {
   envGPU: "",
   envMemory: "",
   envSoftware: "",
-};
-
-export const DEFAULT_DATASET_INFO: DatasetInfoFormData = {
-  trainingSampleCount: "",
-  validationSampleCount: "",
-  trainingDatasetName: "",
-  trainingDataFormat: "",
-  trainingClassDistribution: "",
-  trainingDataDescription: "",
 };
 

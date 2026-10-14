@@ -1,13 +1,26 @@
-import type { MetricFormula, MetricItem } from "../../../types/finalReport.types";
+import type {
+  MetricFormula,
+  MetricItem,
+  ReportMaterials,
+} from "../../../types/finalReport.types";
 import { SectionTitle } from "../shared/SectionTitle";
+import { TwoColTable } from "../shared/TwoColTable";
+import { materialText, toTableRows } from "../shared/materialRows";
 
 interface MetricListSectionProps {
   metricList: MetricItem[];
   metricFormulas: MetricFormula[];
   taskTypeLabel: string;
+  /** 의뢰자 선언(⑤)과 멀티레이블 지표 선택 이유(②). 옛 성적서에는 없다. */
+  materials?: ReportMaterials;
 }
 
-export function MetricListSection({ metricList, metricFormulas, taskTypeLabel }: MetricListSectionProps) {
+export function MetricListSection({
+  metricList,
+  metricFormulas,
+  taskTypeLabel,
+  materials,
+}: MetricListSectionProps) {
   const formulaMap = new Map(metricFormulas.map((f) => [f.metricId, f]));
 
   const commonItems = metricList.filter((metric) => formulaMap.get(metric.metricId)?.isCommon);
@@ -16,6 +29,21 @@ export function MetricListSection({ metricList, metricFormulas, taskTypeLabel }:
   return (
     <section className="space-y-8 border-t border-slate-200 py-10">
       <SectionTitle number={5} title="시험항목 및 방법" subtitle="사용자가 선택한 시험항목에 대해서만 평가를 수행한다." />
+
+      {/* 의뢰자 선언 — 지표와 평균 방식을 정하는 근거라 시험 방법 절에 싣는다(서술 설계 D35). */}
+      {materials && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-slate-700">의뢰자 선언</h3>
+          <TwoColTable rows={toTableRows(materials.declarations)} />
+        </div>
+      )}
+
+      {/* 멀티레이블 지표의 선택 기준(TS 4213 6.5.1) — 2층 항목. 다른 유형에는 해당 없음. */}
+      {materials && materials.metricRationale !== undefined && (
+        <p className="text-sm leading-relaxed text-slate-600">
+          지표 선택 기준: {materialText(materials.metricRationale)}
+        </p>
+      )}
 
       {/* 5.1 공통 지표 */}
       <div className="space-y-3">

@@ -3,17 +3,24 @@ import { FileImage, ZoomIn, X } from "lucide-react";
 import type {
   DatasetInfo,
   DatasetSampleRow,
+  ReportMaterials,
   TrainingDatasetInfo,
   UploadedFileInfo,
 } from "../../../types/finalReport.types";
 import { SectionTitle } from "../shared/SectionTitle";
 import { TwoColTable } from "../shared/TwoColTable";
+import { toTableRows } from "../shared/materialRows";
 
 interface DatasetSectionProps {
   datasetInfo: DatasetInfo;
   datasetSamples: DatasetSampleRow[];
   datasetDiagnosis: string;
   trainingDatasetInfo?: TrainingDatasetInfo;
+  /**
+   * 고객 재료(⑥ ⑦ ⑧). 있으면 학습 데이터 표를 이것으로 그리고, 평가 데이터 표와 정답 라벨 표에
+   * 줄을 더한다. 2층 항목이 빠졌으면 "제공되지 않음"으로 적는다. 옛 성적서에는 없다.
+   */
+  materials?: ReportMaterials;
 }
 
 export function DatasetSection({
@@ -21,16 +28,20 @@ export function DatasetSection({
   datasetSamples,
   datasetDiagnosis,
   trainingDatasetInfo,
+  materials,
 }: DatasetSectionProps) {
   const [activeImage, setActiveImage] = useState<{ url: string; title: string } | null>(null);
 
-  const trainingRows = trainingDatasetInfo
+  const legacyTrainingRows = trainingDatasetInfo
     ? [
         { label: "학습 데이터셋명", value: trainingDatasetInfo.name },
-        {
-          label: "학습 샘플 수",
-          value: `${trainingDatasetInfo.trainingSampleCount.toLocaleString()}개`,
-        },
+        // 건수는 ⑥ 에서 "모름"을 고를 수 있다 — 0개로 찍지 않고 줄을 뺀다.
+        ...(trainingDatasetInfo.trainingSampleCount > 0
+          ? [{
+              label: "학습 샘플 수",
+              value: `${trainingDatasetInfo.trainingSampleCount.toLocaleString()}개`,
+            }]
+          : []),
         ...(trainingDatasetInfo.validationSampleCount > 0
           ? [{
               label: "검증 샘플 수",
@@ -46,6 +57,9 @@ export function DatasetSection({
         ...(trainingDatasetInfo.description
           ? [{ label: "학습 데이터 설명", value: trainingDatasetInfo.description }]
           : []),
+        ...(trainingDatasetInfo.notes
+          ? [{ label: "비고", value: trainingDatasetInfo.notes }]
+          : []),
       ]
     : [];
 
@@ -59,7 +73,13 @@ export function DatasetSection({
       value: `${datasetInfo.classCount}개 — 클래스 목록: ${datasetInfo.classLabels.join(", ")}`,
     },
     { label: "업로드 파일명",      value: datasetInfo.fileName },
+    // ⑦ 평가 데이터 — 출처·학습 데이터와의 관계(2층), 수집 기간(선택).
+    ...(materials ? toTableRows(materials.test) : []),
   ];
+
+  // 학습 데이터 표는 ⑥ 재료로 그린다. ⑥ 을 꺼도 2층 항목은 "제공되지 않음"으로 남는다.
+  const trainingRows = materials ? toTableRows(materials.training) : legacyTrainingRows;
+  const hasTrainingTable = Boolean(materials) || Boolean(trainingDatasetInfo);
 
   const classLabelDescriptions = datasetInfo.classLabelDescriptions ?? [];
 
@@ -71,14 +91,15 @@ export function DatasetSection({
       <div className="space-y-6">
         <h3 className="text-base font-semibold text-slate-800">학습 데이터셋</h3>
 
-        {trainingDatasetInfo ? (
+        {hasTrainingTable ? (
           <>
             <div className="space-y-3">
               <h4 className="text-sm font-semibold text-slate-700">학습 데이터 정보</h4>
               <TwoColTable rows={trainingRows} />
             </div>
 
-            {(trainingDatasetInfo.validExamples.length > 0 ||
+            {trainingDatasetInfo &&
+              (trainingDatasetInfo.validExamples.length > 0 ||
               trainingDatasetInfo.edgeExamples.length > 0) && (
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-slate-700">학습 데이터 예시</h4>
@@ -104,6 +125,14 @@ export function DatasetSection({
           <h4 className="text-sm font-semibold text-slate-700">평가 데이터 정보</h4>
           <TwoColTable rows={evalRows} />
         </div>
+
+        {/* 정답 라벨(⑧) — 구축 방법·신뢰성은 2층이라 빠지면 "제공되지 않음". */}
+        {materials && (
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-slate-700">정답 라벨</h4>
+            <TwoColTable rows={toTableRows(materials.groundTruth)} />
+          </div>
+        )}
 
         {/* 클래스 레이블 설명 */}
         {classLabelDescriptions.length > 0 && (

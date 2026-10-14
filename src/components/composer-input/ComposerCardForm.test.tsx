@@ -78,9 +78,9 @@ describe("Unknown", () => {
     renderForm("groundTruth");
 
     expect(screen.getByRole("checkbox", { name: "Who labelled it unknown" })).toBeInTheDocument();
-    // 조건부 필드인 검수 인원·일치율에는 없다.
+    // 조건부 필드인 라벨러 수·일치도에는 없다.
     expect(
-      screen.queryByRole("checkbox", { name: /Reviewers and agreement unknown/ }),
+      screen.queryByRole("checkbox", { name: /Number of reviewers unknown/ }),
     ).not.toBeInTheDocument();
   });
 
@@ -167,11 +167,11 @@ describe("더보기", () => {
   it("선택 항목은 접혀 있다", async () => {
     renderForm("trainingData");
 
-    expect(screen.queryByText("Preprocessing")).not.toBeInTheDocument();
+    expect(screen.queryByText("Data format")).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /Show 2 optional fields/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Show 3 optional fields/ }));
 
-    expect(screen.getByText("Preprocessing")).toBeInTheDocument();
+    expect(screen.getByText("Data format")).toBeInTheDocument();
   });
 });
 
@@ -232,12 +232,13 @@ describe("필수 표시", () => {
   it("조건부 필드는 조건이 성립해야 별표가 붙는다", () => {
     // 조건이 성립하기 전에는 그려지지도 않는다.
     renderForm("groundTruth");
-    expect(screen.queryByText("Reviewers and agreement")).not.toBeInTheDocument();
+    expect(screen.queryByText("Number of reviewers")).not.toBeInTheDocument();
 
     renderForm("groundTruth", { values: { labelReview: { text: "Several reviewers" } } });
-    expect(
-      screen.getByText("Reviewers and agreement").querySelector("span"),
-    ).toHaveTextContent("*");
+    expect(screen.getByText("Number of reviewers").querySelector("span")).toHaveTextContent("*");
+    // 일치도는 종류를 먼저 묻는다. 값 칸은 종류를 고른 뒤에 나타난다.
+    expect(screen.getByText("Agreement measure").querySelector("span")).toHaveTextContent("*");
+    expect(screen.queryByText("Agreement value")).not.toBeInTheDocument();
   });
 });
 
@@ -331,5 +332,125 @@ describe("선택지 타일", () => {
 
     // 모양은 체크박스를 닮았지만 역할은 radio 다.
     expect(screen.getByRole("radio", { name: "Domain experts" })).toBeInTheDocument();
+  });
+});
+
+describe("Other 직접 입력", () => {
+  it("Other 를 고르기 전에는 칸이 없다", () => {
+    renderForm("groundTruth", { values: { labelAuthor: { text: "Domain experts" } } });
+
+    expect(screen.queryByRole("textbox", { name: "Who labelled it other" })).not.toBeInTheDocument();
+  });
+
+  it("Other 를 고르면 칸이 나타나고, 적은 내용을 보고한다", async () => {
+    const { onChange } = renderForm("groundTruth", {
+      values: { labelAuthor: { text: "Other (free text)" } },
+    });
+
+    await userEvent.type(screen.getByRole("textbox", { name: "Who labelled it other" }), "X");
+
+    expect(onChange).toHaveBeenLastCalledWith("labelAuthor", {
+      text: "Other (free text)",
+      otherText: "X",
+      unknown: false,
+    });
+  });
+
+  it("여럿 고르기에서도 Other 를 고르면 칸이 나타난다 — ⑥ 수집 환경 차이", () => {
+    renderForm("trainingData", {
+      values: { channelEffects: { choices: ["Different equipment", "Other (free text)"] } },
+    });
+
+    expect(
+      screen.getByRole("textbox", { name: "Collection differences other" }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("숫자 칸", () => {
+  it("라벨러 수와 일치도 종류를 받고, 종류를 고르면 값 칸이 나타난다", () => {
+    renderForm("groundTruth", {
+      values: {
+        labelReview: { text: "Several reviewers" },
+        labelAgreementKind: { text: "Cohen's kappa" },
+      },
+    });
+
+    // 필수 표시(*)가 이름 끝에 붙는다.
+    expect(screen.getByRole("textbox", { name: /^Number of reviewers/ })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Krippendorff's alpha" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /^Agreement value/ })).toBeInTheDocument();
+  });
+
+  it("범위 밖이면 다음을 누르기 전에 바로 알린다 — 범위는 고른 종류를 따른다", () => {
+    renderForm("groundTruth", {
+      values: {
+        labelReview: { text: "Several reviewers" },
+        labelReviewerCount: { text: "0" },
+        labelAgreementKind: { text: "Krippendorff's alpha" },
+        labelAgreementValue: { text: "1.5" },
+      },
+    });
+
+    expect(screen.getByText("Enter a whole number of at least 1.")).toBeInTheDocument();
+    expect(screen.getByText("Enter a number from -1 to 1.")).toBeInTheDocument();
+  });
+
+  it("라벨러 수와 맞지 않는 종류를 고르면 이유를 적는다", () => {
+    renderForm("groundTruth", {
+      values: {
+        labelReview: { text: "Several reviewers" },
+        labelReviewerCount: { text: "2" },
+        labelAgreementKind: { text: "Fleiss' kappa" },
+      },
+    });
+
+    expect(screen.getByText(/Fleiss' kappa is for three or more reviewers/)).toBeInTheDocument();
+  });
+});
+
+describe("수집 기간", () => {
+  it("시작 월·끝 월 두 칸이다", async () => {
+    renderForm("testData");
+
+    await userEvent.click(screen.getByRole("button", { name: /Show 1 optional field/ }));
+
+    expect(screen.getByLabelText("From")).toHaveAttribute("type", "month");
+    expect(screen.getByLabelText("To")).toHaveAttribute("type", "month");
+  });
+
+  it("틀린 기간이 더보기 안에 있으면 펼쳐서 보여준다 — 접힌 채로 막히면 찾을 수 없다", () => {
+    renderForm("testData", {
+      values: {
+        testPeriod: {
+          entries: [
+            { key: "From", value: "2025-03" },
+            { key: "To", value: "2024-12" },
+          ],
+        },
+      },
+    });
+
+    expect(screen.getByText("Enter both months, with From no later than To.")).toBeInTheDocument();
+    expect(screen.getByLabelText("From")).toHaveValue("2025-03");
+  });
+});
+
+describe("덧붙이는 글", () => {
+  it("전처리 일치 칸은 선택지와 함께 글을 받는다 (서술 설계 D26)", async () => {
+    const { onChange } = renderForm("testData", { values: { preprocessingMatch: { text: "Different" } } });
+
+    await userEvent.type(screen.getByRole("textbox", { name: "Same preprocessing as training note" }), "Y");
+
+    expect(onChange).toHaveBeenLastCalledWith("preprocessingMatch", {
+      text: "Different",
+      note: "Y",
+      unknown: false,
+    });
+  });
+
+  it("글을 받지 않는 칸에는 글칸이 없다", () => {
+    renderForm("testData");
+    expect(screen.queryByRole("textbox", { name: "Relation to the training data note" })).not.toBeInTheDocument();
   });
 });

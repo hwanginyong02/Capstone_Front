@@ -16,6 +16,8 @@ export interface FactSheetMetric {
   value: number;
   threshold: number | null;
   status: string;
+  /** 핵심 지표 — 미달하면 불합격이다. 판정(D19)의 재료라 서술도 알아야 한다. */
+  is_core: boolean;
 }
 
 export interface FactSheetPerClass {
@@ -52,6 +54,11 @@ export interface NarrativeRequestPayload {
   task_type: string;
   report_purpose: string;
   fact_sheet: FactSheet;
+  /**
+   * 고객이 제공한 입력(서술 설계 D25). 회사·과제 정보는 넣지 않는다(D34).
+   * 만드는 곳은 `lib/report/reportMaterials.ts` 의 `buildClientInputs`.
+   */
+  client_inputs?: Record<string, unknown>;
 }
 
 export interface BuildFactSheetInput {
@@ -177,6 +184,7 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
       value: r.value,
       threshold: isInfoOnly ? null : r.threshold,
       status: isInfoOnly ? "info" : r.status,
+      is_core: Boolean(r.isCore),
     };
   });
 

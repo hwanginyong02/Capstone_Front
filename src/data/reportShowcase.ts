@@ -15,11 +15,7 @@
  */
 import { mapWorkflowToFinalReport, type MapWorkflowToReportInput } from "../lib/report/mapWorkflowToFinalReport";
 import type { FinalReportData } from "../types/finalReport.types";
-import {
-  DEFAULT_BASIC_INFO,
-  DEFAULT_DATASET_INFO,
-  type MetricDetailState,
-} from "../types/workflow.types";
+import { DEFAULT_BASIC_INFO, type MetricDetailState } from "../types/workflow.types";
 import { METRICS } from "./evaluationData";
 
 /** 지표 상세는 실제 지표 정의에서 만든다 — 이름·설명이 성적서와 어긋나지 않도록. */
@@ -47,10 +43,6 @@ const SHOWCASE_INPUT: MapWorkflowToReportInput = {
     versionName: "v1.2.0",
     contractDate: "2026-01-15",
   },
-  datasetInfo: {
-    ...DEFAULT_DATASET_INFO,
-    validationSampleCount: "1200",
-  },
   taskType: "binary",
   selectedMetricIds: ["M1", "M2", "M3", "M4"],
   metricDetails: {
@@ -68,4 +60,13 @@ const SHOWCASE_INPUT: MapWorkflowToReportInput = {
 };
 
 /** 랜딩 미리보기용 성적서. 방문자 입력이 섞이지 않는 고정 예시다. */
-export const REPORT_SHOWCASE: FinalReportData = mapWorkflowToFinalReport(SHOWCASE_INPUT);
+const mapped = mapWorkflowToFinalReport(SHOWCASE_INPUT);
+
+/**
+ * 평가 표본 수는 실제로는 서버가 센 행 수다(검증·평가 응답). 이 예시에는 서버 응답이 없어
+ * 그 값을 직접 넣는다 — 종전에는 학습 데이터 폼의 검증 샘플 수(1200)가 이 칸에 새어 들었다.
+ */
+export const REPORT_SHOWCASE: FinalReportData = {
+  ...mapped,
+  datasetInfo: { ...mapped.datasetInfo, sampleCount: 1200 },
+};

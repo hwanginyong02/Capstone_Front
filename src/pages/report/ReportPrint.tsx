@@ -42,11 +42,12 @@ export function ReportPrint() {
             datasetSamples={data.datasetSamples}
             datasetDiagnosis={data.datasetDiagnosis}
             trainingDatasetInfo={data.trainingDatasetInfo}
+            materials={data.materials}
           />
-          <EvalEnvSection meta={data.meta} evalScope={data.evalScope} evalEnv={data.evalEnv} />
+          <EvalEnvSection meta={data.meta} evalScope={data.evalScope} evalEnv={data.evalEnv} materials={data.materials} />
         </PageBreak>
         <PageBreak>
-          <MetricListSection metricList={data.metricList} metricFormulas={data.metricFormulas} taskTypeLabel={data.meta.taskTypeLabel} />
+          <MetricListSection metricList={data.metricList} metricFormulas={data.metricFormulas} taskTypeLabel={data.meta.taskTypeLabel} materials={data.materials} />
         </PageBreak>
         <PageBreak>
           <DataValidationSection
@@ -55,7 +56,13 @@ export function ReportPrint() {
             totalSamples={data.datasetInfo.sampleCount}
             validationSummary={data.validationSummary}
           />
-          <KpiResultSection kpiResults={data.kpiResults} taskType={data.meta.taskType} meta={data.meta} />
+          <KpiResultSection
+            kpiResults={data.kpiResults}
+            taskType={data.meta.taskType}
+            meta={data.meta}
+            // 판정 규칙 문구는 그 규칙(D19)으로 판정한 성적서에만 — judgedCount 가 그 표시다.
+            showVerdictRule={data.conclusion.judgedCount !== undefined}
+          />
         </PageBreak>
         <PageBreak>
           <ChartSection charts={data.charts} />

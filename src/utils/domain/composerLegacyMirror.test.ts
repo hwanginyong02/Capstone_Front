@@ -13,38 +13,39 @@ import type { ComposerField } from "../../types/reportComposer.types";
 const fieldOf = (cardId: Parameters<typeof getCard>[0], fieldId: string): ComposerField =>
   getCard(cardId).fields.find((field) => field.id === fieldId)!;
 
+/** 한 칸짜리 연결. 지금 레지스트리에는 이런 필드가 없어 규칙만 고정한다. */
+const singleLinked: ComposerField = {
+  id: "fixture",
+  label: "Fixture",
+  inputExample: "x",
+  kind: "required",
+  input: "text",
+  legacy: { target: "basicInfo", field: "envOS" },
+};
+
 describe("연결이 없는 필드", () => {
   it("빈 patch 를 돌려준다", () => {
-    // ⑥ 수집 환경 차이는 기존 저장소에 대응 칸이 없다 — 저장만 하는 새 필드다.
-    expect(buildLegacyPatch(fieldOf("trainingData", "channelEffects"), { choices: ["장비 차이"] }))
+    // ⑥ 은 기존 저장소로 흘려보내지 않는다 — 성적서가 카드 값을 직접 읽는다(persist v10).
+    expect(buildLegacyPatch(fieldOf("trainingData", "trainingDatasetName"), { text: "고객 로그" }))
       .toEqual({});
+    expect(buildLegacyPatch(fieldOf("trainingData", "trainingVolume"), { entries: [] })).toEqual({});
   });
 });
 
 describe("한 칸 → 한 필드", () => {
-  it("⑥ 데이터 이름이 datasetInfo 로 간다", () => {
-    expect(buildLegacyPatch(fieldOf("trainingData", "trainingDatasetName"), { text: "고객 로그 2024" }))
-      .toEqual({ datasetInfo: { trainingDatasetName: "고객 로그 2024" } });
+  it("값을 그 필드에 쓴다", () => {
+    expect(buildLegacyPatch(singleLinked, { text: "Ubuntu" })).toEqual({
+      basicInfo: { envOS: "Ubuntu" },
+    });
   });
 
   it('"모름"은 빈 값으로 보낸다', () => {
     // 기존 저장소에 모름을 담을 자리가 없고, 성적서는 빈 칸을 "제공되지 않음"으로 그린다.
-    expect(buildLegacyPatch(fieldOf("trainingData", "trainingDatasetName"), { unknown: true }))
-      .toEqual({ datasetInfo: { trainingDatasetName: "" } });
+    expect(buildLegacyPatch(singleLinked, { unknown: true })).toEqual({ basicInfo: { envOS: "" } });
   });
 });
 
 describe("칸마다 다른 필드 (byKey)", () => {
-  it("⑥ 데이터 양이 학습·검증 건수로 갈린다", () => {
-    const value = {
-      entries: [{ key: "Training", value: "12000" }, { key: "Validation", value: "3000" }],
-    };
-
-    expect(buildLegacyPatch(fieldOf("trainingData", "trainingVolume"), value)).toEqual({
-      datasetInfo: { trainingSampleCount: "12000", validationSampleCount: "3000" },
-    });
-  });
-
   it("⑨ 실행 환경이 OS·CPU·GPU·메모리·소프트웨어로 갈린다", () => {
     const value = {
       entries: [
@@ -73,46 +74,16 @@ describe("칸마다 다른 필드 (byKey)", () => {
   });
 });
 
-describe("칸이 동적인 필드는 한 줄로 합친다", () => {
-  it("⑥ 클래스별 데이터 양", () => {
-    // 칸이 업로드한 클래스마다 생기므로 짝지을 기존 필드가 하나뿐이다.
-    const value = { entries: [{ key: "정상", value: "8400" }, { key: "이탈", value: "3600" }] };
-
-    expect(buildLegacyPatch(fieldOf("trainingData", "trainingClassVolume"), value)).toEqual({
-      datasetInfo: { trainingClassDistribution: "정상 8400 / 이탈 3600" },
-    });
-  });
-
-  it("빈 줄은 빼고 합친다", () => {
-    const value = {
-      entries: [{ key: "정상", value: "8400" }, { key: "", value: "" }],
-    };
-
-    expect(buildLegacyPatch(fieldOf("trainingData", "trainingClassVolume"), value)).toEqual({
-      datasetInfo: { trainingClassDistribution: "정상 8400" },
-    });
-  });
-});
-
 describe("레지스트리와 기존 저장소가 어긋나지 않는다", () => {
   it("연결된 필드 이름이 실제 저장소 키와 같다", () => {
     const BASIC_INFO_KEYS = ["envOS", "envCPU", "envGPU", "envMemory", "envSoftware"];
-    const DATASET_INFO_KEYS = [
-      "trainingDatasetName",
-      "trainingSampleCount",
-      "validationSampleCount",
-      "trainingClassDistribution",
-      "trainingDataFormat",
-      "trainingDataDescription",
-    ];
 
     for (const card of [getCard("trainingData"), getCard("modelEnv")]) {
       for (const field of card.fields) {
         if (!field.legacy) continue;
         const names =
           "byKey" in field.legacy ? Object.values(field.legacy.byKey) : [field.legacy.field];
-        const allowed = field.legacy.target === "basicInfo" ? BASIC_INFO_KEYS : DATASET_INFO_KEYS;
-        for (const name of names) expect(allowed, `${field.id} → ${name}`).toContain(name);
+        for (const name of names) expect(BASIC_INFO_KEYS, `${field.id} → ${name}`).toContain(name);
       }
     }
   });

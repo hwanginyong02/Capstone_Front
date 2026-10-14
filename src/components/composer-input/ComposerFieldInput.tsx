@@ -16,11 +16,12 @@ import { Label } from "../ui/label";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { TEXTAREA_CLASS } from "../data-upload/shared";
 import { cn } from "../../utils/styling/styles";
-import { isFieldRequired } from "../../utils/domain/composerFieldGate";
-import type {
-  ComposerField,
-  ComposerFieldValue,
-  ComposerValueMap,
+import { isFieldRequired, isOtherChosen } from "../../utils/domain/composerFieldGate";
+import {
+  MONTH_RANGE_KEYS,
+  type ComposerField,
+  type ComposerFieldValue,
+  type ComposerValueMap,
 } from "../../types/reportComposer.types";
 
 /**
@@ -85,6 +86,8 @@ export function ComposerFieldInput({
   const controlId = "field-" + field.id;
   const isFreeEntries = field.input === "entries" && !field.entryKeys && !field.entryKeysFrom;
   const required = isFieldRequired(field, siblingValues);
+  const otherChosen = isOtherChosen(field, value);
+  const otherText = value?.otherText ?? "";
 
   return (
     <div className={cn("space-y-2", unknown && "opacity-60")}>
@@ -149,6 +152,54 @@ export function ComposerFieldInput({
                 />
                 <span className="text-body-medium text-foreground">{choice}</span>
               </label>
+            ))}
+          </div>
+        )}
+
+        {/* "Other" 를 고른 순간 무엇인지 적을 칸이 나타난다. 선택지만으로는 내용이 없다. */}
+        {otherChosen && (
+          <Input
+            id={controlId + "-other"}
+            aria-label={field.label + " other"}
+            placeholder="Describe it"
+            aria-invalid={(invalid && otherText.trim() === "") || undefined}
+            value={otherText}
+            onChange={(event) => onChange({ ...value, otherText: event.target.value, unknown: false })}
+          />
+        )}
+
+        {/* 덧붙이는 글(서술 설계 D26). 맞는 선택지가 없으면 글만 써도 답한 것으로 센다. */}
+        {field.allowsNote && (
+          <textarea
+            id={controlId + "-note"}
+            className={TEXTAREA_CLASS}
+            rows={2}
+            aria-label={field.label + " note"}
+            placeholder="Add a note (optional)"
+            value={value?.note ?? ""}
+            onChange={(event) => onChange({ ...value, note: event.target.value, unknown: false })}
+          />
+        )}
+
+        {field.input === "monthRange" && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[MONTH_RANGE_KEYS.from, MONTH_RANGE_KEYS.to].map((key) => (
+              <div key={key} className="space-y-1">
+                <Label
+                  htmlFor={controlId + "-" + key}
+                  className="text-body-small font-normal text-muted-foreground"
+                >
+                  {key}
+                </Label>
+                <Input
+                  id={controlId + "-" + key}
+                  type="month"
+                  className="font-mono tabular-nums"
+                  aria-invalid={invalid || undefined}
+                  value={entryValue(key)}
+                  onChange={(event) => setEntry(key, event.target.value)}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -290,6 +341,7 @@ export function ComposerFieldInput({
             className={TEXTAREA_CLASS}
             aria-invalid={invalid || undefined}
             rows={3}
+            placeholder={field.inputExample}
             value={value?.text ?? ""}
             onChange={(event) => setText(event.target.value)}
           />
@@ -299,7 +351,13 @@ export function ComposerFieldInput({
           <Input
             id={controlId}
             className={cn(field.mono && "font-mono", field.input === "number" && "tabular-nums")}
-            inputMode={field.input === "number" ? "decimal" : undefined}
+            inputMode={
+              field.input === "number"
+                ? field.numberRange?.integer
+                  ? "numeric"
+                  : "decimal"
+                : undefined
+            }
             aria-invalid={invalid || undefined}
             placeholder={field.inputExample}
             value={value?.text ?? ""}

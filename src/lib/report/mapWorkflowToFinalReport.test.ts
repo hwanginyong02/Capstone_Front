@@ -16,12 +16,28 @@
 import { describe, expect, it } from "vitest";
 
 import { mapWorkflowToFinalReport, type MapWorkflowToReportInput } from "./mapWorkflowToFinalReport";
-import { DEFAULT_BASIC_INFO, DEFAULT_DATASET_INFO } from "../../types/workflow.types";
+import type { ReportComposerInput } from "./reportMaterials";
+import { DEFAULT_BASIC_INFO } from "../../types/workflow.types";
+import type { ComposerValueMap } from "../../types/reportComposer.types";
+
+/** ⑥ 값과 켜짐 여부만 바꾼 성적서 구성 입력. 나머지 카드는 꺼져 있다. */
+function withTraining(trainingData: ComposerValueMap, on: boolean): { composer: ReportComposerInput } {
+  return {
+    composer: {
+      cards: { trainingData: on, testData: false, groundTruth: false, modelEnv: false },
+      metrics: {},
+      perspective: {},
+      trainingData,
+      testData: {},
+      groundTruth: {},
+      modelEnv: {},
+    },
+  };
+}
 
 function baseInput(overrides: Partial<MapWorkflowToReportInput> = {}): MapWorkflowToReportInput {
   return {
     basicInfo: { ...DEFAULT_BASIC_INFO, companyName: "테스트 주식회사", modelName: "MyModel" },
-    datasetInfo: DEFAULT_DATASET_INFO,
     taskType: "binary",
     selectedMetricIds: ["M1"],
     metricDetails: {},
@@ -96,5 +112,121 @@ describe("기본 변환", () => {
     const report = mapWorkflowToFinalReport(baseInput({ taskType: "" }));
 
     expect(report.meta.taskType).toBe("binary");
+  });
+});
+
+/**
+ * 학습 데이터 설명·비고는 ⑥ 카드에서 온다.
+ *
+ * 종전에는 Details 합격 기준 카드의 "Report notes"(평가에 대한 메모)가 "학습 데이터 설명"으로
+ * 인쇄됐다. 학습 데이터와 무관한 글이 그 자리에 찍힌 것이다.
+ */
+describe("학습 데이터 설명·비고", () => {
+  const card = {
+    trainingDescription: { text: "Customer logs from 2024." },
+    trainingNotes: { text: "Two outlier days were removed." },
+  };
+
+  it("⑥ 을 켰으면 설명과 비고를 싣는다", () => {
+    const report = mapWorkflowToFinalReport(
+      baseInput(withTraining(card, true)),
+    );
+
+    expect(report.trainingDatasetInfo?.description).toBe("Customer logs from 2024.");
+    expect(report.trainingDatasetInfo?.notes).toBe("Two outlier days were removed.");
+  });
+
+  it("⑥ 을 껐으면 싣지 않는다 — 끈 카드의 값은 성적서에 들어가지 않는다", () => {
+    const report = mapWorkflowToFinalReport(
+      baseInput(withTraining(card, false)),
+    );
+
+    expect(report.trainingDatasetInfo).toBeUndefined();
+  });
+
+  it("이 키가 없는 옛 스냅샷도 그대로 그린다", () => {
+    expect(() => mapWorkflowToFinalReport(baseInput())).not.toThrow();
+    expect(mapWorkflowToFinalReport(baseInput()).trainingDatasetInfo).toBeUndefined();
+  });
+});
+
+describe("buildReportInput", () => {
+  it("성적서 구성 카드의 켜짐 여부와 값을 함께 담는다", async () => {
+    const { buildReportInput } = await import("./mapWorkflowToFinalReport");
+    const base = baseInput();
+
+    const input = buildReportInput({
+      ...base,
+      composerCards: { trainingData: true, testData: false, groundTruth: false, modelEnv: false },
+      composerMetrics: {},
+      composerPerspective: { usageMode: { text: "Batch" } },
+      composerTrainingData: { trainingNotes: { text: "n" } },
+      composerTestData: {},
+      composerGroundTruth: {},
+      composerModelEnv: {},
+    });
+
+    expect(input.composer?.cards.trainingData).toBe(true);
+    expect(input.composer?.trainingData).toEqual({ trainingNotes: { text: "n" } });
+    expect(input.composer?.perspective).toEqual({ usageMode: { text: "Batch" } });
+  });
+});
+
+/**
+ * 학습 데이터 절 — ⑥ 카드에서만 온다.
+ *
+ * 종전에는 Details 의 학습 데이터 폼과 ⑥ 이 같은 이름·건수·클래스 분포를 따로 받았다. 두 곳을
+ * ⑥ 하나로 합쳤다(persist v10).
+ */
+describe("학습 데이터 절은 ⑥ 에서 온다", () => {
+  const card = {
+    trainingDatasetName: { text: "Customer logs 2024" },
+    trainingVolume: {
+      entries: [
+        { key: "Training", value: "12,000" },
+        { key: "Validation", value: "3000" },
+      ],
+    },
+    trainingClassVolume: {
+      entries: [
+        { key: "normal", value: "8400" },
+        { key: "churn", value: "3600" },
+      ],
+    },
+    trainingDataFormat: { text: "CSV" },
+  };
+
+  it("이름·건수·클래스별 양·형식을 싣는다", () => {
+    const info = mapWorkflowToFinalReport(
+      baseInput(withTraining(card, true)),
+    ).trainingDatasetInfo;
+
+    expect(info?.name).toBe("Customer logs 2024");
+    expect(info?.trainingSampleCount).toBe(12000);
+    expect(info?.validationSampleCount).toBe(3000);
+    expect(info?.classDistribution).toBe("normal 8400 / churn 3600");
+    expect(info?.format).toBe("CSV");
+  });
+
+  it('"모름"을 고른 칸은 싣지 않는다', () => {
+    const info = mapWorkflowToFinalReport(
+      baseInput(withTraining({ ...card, trainingVolume: { unknown: true } }, true)),
+    ).trainingDatasetInfo;
+
+    expect(info?.trainingSampleCount).toBe(0);
+    expect(info?.validationSampleCount).toBe(0);
+    expect(info?.name).toBe("Customer logs 2024");
+  });
+});
+
+describe("평가 데이터 표본 수", () => {
+  it("학습 데이터의 검증 건수를 빌려 쓰지 않는다 — 모델 학습용 검증 세트는 평가 파일과 무관하다", () => {
+    const report = mapWorkflowToFinalReport(
+      baseInput(
+        withTraining({ trainingVolume: { entries: [{ key: "Validation", value: "3000" }] } }, true),
+      ),
+    );
+
+    expect(report.datasetInfo.sampleCount).toBe(0);
   });
 });

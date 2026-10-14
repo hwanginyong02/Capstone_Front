@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getCardIssues,
+  getFieldIssue,
   hasValue,
   isCardComplete,
   isFieldRequired,
@@ -136,7 +137,7 @@ describe('"알려진 것 없음"은 "모름"과 다르다', () => {
 
 describe("조건부 필드", () => {
   it("조건이 성립할 때만 필수가 된다", () => {
-    const 일치율 = 정답라벨.fields.find((f) => f.id === "labelAgreement")!;
+    const 일치율 = 정답라벨.fields.find((f) => f.id === "labelReviewerCount")!;
 
     expect(isFieldRequired(일치율, { labelReview: { text: "1인 검수" } })).toBe(false);
     expect(isFieldRequired(일치율, { labelReview: { text: "Several reviewers" } })).toBe(true);
@@ -147,11 +148,19 @@ describe("조건부 필드", () => {
       labelAuthor: { text: "Domain experts" },
       labelReview: { text: "Several reviewers" },
     };
+    // 일치도는 종류를 먼저 묻는다. 값 칸은 종류를 고른 뒤에 나타난다.
     expect(getCardIssues(정답라벨, "binary", values, true).map((i) => i.fieldId)).toEqual([
-      "labelAgreement",
+      "labelReviewerCount",
+      "labelAgreementKind",
     ]);
 
-    values.labelAgreement = { text: "3명 · 82%" };
+    values.labelReviewerCount = { text: "3" };
+    values.labelAgreementKind = { text: "Fleiss' kappa" };
+    expect(getCardIssues(정답라벨, "binary", values, true).map((i) => i.fieldId)).toEqual([
+      "labelAgreementValue",
+    ]);
+
+    values.labelAgreementValue = { text: "0.71" };
     expect(isCardComplete(정답라벨, "binary", values, true)).toBe(true);
   });
 
@@ -219,7 +228,7 @@ describe("⑤ 평가 관점은 유형에 따라 다른 필드를 요구한다", 
 });
 
 describe("조건부 필드는 조건이 성립할 때만 나타난다", () => {
-  const 일치율 = 정답라벨.fields.find((f) => f.id === "labelAgreement")!;
+  const 일치율 = 정답라벨.fields.find((f) => f.id === "labelReviewerCount")!;
 
   it("조건 전에는 그리지 않는다", () => {
     // 조건이 성립하기 전에 보여주면 왜 비어 있는 칸이 있는지 알 수 없다.
@@ -241,5 +250,265 @@ describe("조건부 필드는 조건이 성립할 때만 나타난다", () => {
     // ② 의 β 는 지표 선택에 달려 있어 그 조건을 아는 화면이 따로 다룬다.
     const beta = getCard("metrics").fields.find((f) => f.id === "beta")!;
     expect(isFieldVisible(beta, {})).toBe(true);
+  });
+});
+
+/**
+ * "Other" — 고르면 무엇인지 적어야 답한 것이다.
+ *
+ * 종전에는 ⑥ 수집 환경 차이에 "Other (free text)" 선택지만 있고 적을 칸이 없었다. 고르기만
+ * 하고 넘어가면 성적서에는 "기타"라는 말만 남는다.
+ */
+describe("Other 선택지", () => {
+  const base = fill("trainingData");
+
+  it("여럿 고르기에서 Other 를 고르고 비워 두면 막는다", () => {
+    const values = { ...base, channelEffects: { choices: ["Different equipment", "Other (free text)"] } };
+    expect(getCardIssues(학습데이터, "binary", values, true).map((i) => [i.fieldId, i.reason])).toEqual([
+      ["channelEffects", "missing"],
+    ]);
+  });
+
+  it("내용을 적으면 통과한다", () => {
+    const values = {
+      ...base,
+      channelEffects: { choices: ["Other (free text)"], otherText: "Two hospitals, two scanners" },
+    };
+    expect(isCardComplete(학습데이터, "binary", values, true)).toBe(true);
+  });
+
+  it("하나 고르기에서도 같다 — ⑧ 라벨 작성 주체", () => {
+    const values: ComposerValueMap = {
+      labelAuthor: { text: "Other (free text)", otherText: "  " },
+      labelReview: { text: "No review" },
+    };
+    expect(getCardIssues(정답라벨, "binary", values, true).map((i) => i.fieldId)).toEqual([
+      "labelAuthor",
+    ]);
+
+    values.labelAuthor = { text: "Other (free text)", otherText: "Partner clinic staff" };
+    expect(isCardComplete(정답라벨, "binary", values, true)).toBe(true);
+  });
+
+  it("Other 를 고르지 않았으면 남은 글은 따지지 않는다", () => {
+    const values: ComposerValueMap = {
+      labelAuthor: { text: "Domain experts", otherText: "" },
+      labelReview: { text: "No review" },
+    };
+    expect(isCardComplete(정답라벨, "binary", values, true)).toBe(true);
+  });
+});
+
+describe("⑥ 편향 감소 노력", () => {
+  const base = fill("trainingData");
+
+  it("여럿 고를 수 있다", () => {
+    const values = {
+      ...base,
+      imbalanceHandling: { choices: ["Balanced the counts", "Widened the sources"] },
+    };
+    expect(isCardComplete(학습데이터, "binary", values, true)).toBe(true);
+  });
+
+  it('"Did nothing" 은 다른 노력과 함께 고를 수 없다', () => {
+    const values = {
+      ...base,
+      imbalanceHandling: { choices: ["Did nothing", "Balanced the counts"] },
+    };
+    expect(getCardIssues(학습데이터, "binary", values, true).map((i) => i.reason)).toEqual([
+      "exclusive",
+    ]);
+  });
+});
+
+/**
+ * 숫자 범위 — ⑧ 라벨러 수는 1 이상의 정수, 일치도는 0~100(%) 이다.
+ *
+ * 비어 있는 것은 필수 점검이 따로 본다. 여기서 보는 것은 **값이 있는데 틀린** 경우다.
+ */
+describe("숫자 범위", () => {
+  // 일치도는 단순 일치율(%)로 — 0~100 범위다.
+  const several = (count: string, rate: string): ComposerValueMap => ({
+    labelAuthor: { text: "Domain experts" },
+    labelReview: { text: "Several reviewers" },
+    labelReviewerCount: { text: count },
+    labelAgreementKind: { text: "Percent agreement" },
+    labelAgreementValue: { text: rate },
+  });
+  const reasonsOf = (values: ComposerValueMap) =>
+    getCardIssues(정답라벨, "binary", values, true).map((i) => [i.fieldId, i.reason]);
+
+  it("범위 안이면 통과한다", () => {
+    expect(reasonsOf(several("3", "82"))).toEqual([]);
+    expect(reasonsOf(several("1", "0"))).toEqual([]);
+    expect(reasonsOf(several("12", "100"))).toEqual([]);
+    expect(reasonsOf(several("2", "82.5"))).toEqual([]);
+  });
+
+  it.each([
+    ["0", "라벨러가 0명"],
+    ["1.5", "라벨러 수가 정수가 아님"],
+    ["three", "숫자가 아님"],
+  ])("라벨러 수 %s 는 범위 밖이다 (%s)", (count) => {
+    expect(reasonsOf(several(count, "82"))).toEqual([["labelReviewerCount", "outOfRange"]]);
+  });
+
+  it.each(["101", "-1"])("일치도 %s 는 범위 밖이다", (rate) => {
+    expect(reasonsOf(several("3", rate))).toEqual([["labelAgreementValue", "outOfRange"]]);
+  });
+
+  it("조건이 사라져 그려지지 않는 칸의 값은 따지지 않는다", () => {
+    // 복수 검수를 골라 0 을 적었다가 1인 검수로 바꾼 경우 — 사용자가 고칠 칸이 화면에 없다.
+    const values = { ...several("0", "500"), labelReview: { text: "One reviewer" } };
+    expect(reasonsOf(values)).toEqual([]);
+  });
+});
+
+/** 수집 기간 — 시작 월·끝 월 두 칸이다. 선택 항목이라 비워도 되지만, 적었다면 맞아야 한다. */
+describe("수집 기간", () => {
+  const 테스트데이터 = getCard("testData");
+  const filled: ComposerValueMap = {
+    testDataSource: { text: "Q1 logs" },
+    testSourceRelation: { text: "Different source" },
+  };
+  const period = (from: string, to: string): ComposerValueMap => ({
+    ...filled,
+    testPeriod: {
+      entries: [
+        { key: "From", value: from },
+        { key: "To", value: to },
+      ],
+    },
+  });
+  const reasonsOf = (values: ComposerValueMap) =>
+    getCardIssues(테스트데이터, "binary", values, true).map((i) => [i.fieldId, i.reason]);
+
+  it("비워 두면 막지 않는다", () => {
+    expect(reasonsOf(filled)).toEqual([]);
+    expect(reasonsOf(period("", ""))).toEqual([]);
+  });
+
+  it("시작이 끝보다 앞이거나 같으면 통과한다", () => {
+    expect(reasonsOf(period("2025-01", "2025-03"))).toEqual([]);
+    expect(reasonsOf(period("2025-01", "2025-01"))).toEqual([]);
+  });
+
+  it("한쪽만 적으면 막는다", () => {
+    expect(reasonsOf(period("2025-01", ""))).toEqual([["testPeriod", "invalidPeriod"]]);
+    expect(reasonsOf(period("", "2025-03"))).toEqual([["testPeriod", "invalidPeriod"]]);
+  });
+
+  it("시작이 끝보다 늦으면 막는다", () => {
+    expect(reasonsOf(period("2025-03", "2024-12"))).toEqual([["testPeriod", "invalidPeriod"]]);
+  });
+});
+
+/**
+ * ② 는 필드마다 받는 화면이 다르다. 지표 화면은 자기가 받는 칸(지표 선택 이유)만 검사해야
+ * 한다 — 카드 전체를 검사하면 Details 가 받는 합격 기준까지 여기서 걸린다.
+ */
+describe("필드 하나만 검사", () => {
+  const 지표 = getCard("metrics");
+  const 선택이유 = 지표.fields.find((f) => f.id === "metricRationale")!;
+
+  it("비어 있으면 그 필드만 걸린다", () => {
+    expect(getFieldIssue(지표, 선택이유, {})?.fieldId).toBe("metricRationale");
+  });
+
+  it("고르면 통과한다", () => {
+    expect(getFieldIssue(지표, 선택이유, { metricRationale: { text: "Degree of overlap" } })).toBeNull();
+  });
+
+  it("Other 를 고르면 내용까지 적어야 한다", () => {
+    expect(
+      getFieldIssue(지표, 선택이유, { metricRationale: { text: "Other (own words)" } })?.reason,
+    ).toBe("missing");
+    expect(
+      getFieldIssue(지표, 선택이유, {
+        metricRationale: { text: "Other (own words)", otherText: "Matches the client's KPI" },
+      }),
+    ).toBeNull();
+  });
+});
+
+/**
+ * 라벨 일치도 — 종류를 먼저 고르고, 값의 범위는 종류를 따른다(서술 설계 D42).
+ * 단순 일치율은 화면에서 % 로 받는다(0~100). 카파·알파는 −1~1. 기타는 검사하지 않는다.
+ */
+describe("라벨 일치도 종류와 범위", () => {
+  const withKind = (kind: string, value?: string, count = "2"): ComposerValueMap => ({
+    labelAuthor: { text: "Domain experts" },
+    labelReview: { text: "Several reviewers" },
+    labelReviewerCount: { text: count },
+    labelAgreementKind: { text: kind },
+    ...(value !== undefined ? { labelAgreementValue: { text: value } } : {}),
+  });
+  const reasonsOf = (values: ComposerValueMap) =>
+    getCardIssues(정답라벨, "binary", values, true).map((i) => [i.fieldId, i.reason]);
+
+  it("카파는 −1~1 이다 — 음수도 받는다", () => {
+    expect(reasonsOf(withKind("Cohen's kappa", "-0.2"))).toEqual([]);
+    expect(reasonsOf(withKind("Cohen's kappa", "1.2"))).toEqual([["labelAgreementValue", "outOfRange"]]);
+  });
+
+  it("단순 일치율은 % 로 받는다 — 82 는 범위 안이다", () => {
+    expect(reasonsOf(withKind("Percent agreement", "82"))).toEqual([]);
+  });
+
+  it("기타는 범위를 검사하지 않는다 — 대신 이름을 적어야 한다", () => {
+    const values = withKind("Other", "37");
+    expect(reasonsOf(values)).toEqual([["labelAgreementKind", "missing"]]);
+    values.labelAgreementKind = { text: "Other", otherText: "Gwet's AC1" };
+    expect(reasonsOf(values)).toEqual([]);
+  });
+
+  it("측정 안 함이면 값 칸이 없고, 제공된 답으로 센다", () => {
+    const values = withKind("Not measured");
+    const valueField = 정답라벨.fields.find((f) => f.id === "labelAgreementValue")!;
+    expect(isFieldVisible(valueField, values)).toBe(false);
+    expect(reasonsOf(values)).toEqual([]);
+  });
+
+  it("라벨러가 2명이면 Fleiss의 카파를 고를 수 없다", () => {
+    const issues = getCardIssues(정답라벨, "binary", withKind("Fleiss' kappa", "0.6", "2"), true);
+    expect(issues.map((i) => [i.fieldId, i.reason])).toEqual([["labelAgreementKind", "incompatible"]]);
+    expect(issues[0].message).toMatch(/three or more/);
+  });
+
+  it("라벨러가 3명 이상이면 Cohen의 카파를 고를 수 없다", () => {
+    expect(reasonsOf(withKind("Cohen's kappa", "0.6", "4"))).toEqual([
+      ["labelAgreementKind", "incompatible"],
+    ]);
+    expect(reasonsOf(withKind("Fleiss' kappa", "0.6", "4"))).toEqual([]);
+  });
+
+  it("검수 방식을 바꾸면 일치도 칸이 함께 사라진다 — 조건이 둘 다 성립해야 한다", () => {
+    const values = { ...withKind("Cohen's kappa", "5"), labelReview: { text: "One reviewer" } };
+    expect(reasonsOf(values)).toEqual([]);
+  });
+});
+
+describe('조건이 걸린 답에 "모름"을 체크하면', () => {
+  it("그 조건으로 나타나던 칸은 필수가 아니다", () => {
+    // 종전에는 "복수 검수"를 고른 뒤 모름을 체크해도 라벨러 수 칸이 계속 필수였다.
+    const values: ComposerValueMap = {
+      labelAuthor: { text: "Domain experts" },
+      labelReview: { text: "Several reviewers", unknown: true },
+    };
+    expect(isCardComplete(정답라벨, "binary", values, true)).toBe(true);
+  });
+});
+
+describe("덧붙이는 글", () => {
+  const 전처리 = getCard("testData").fields.find((f) => f.id === "preprocessingMatch")!;
+
+  it("맞는 선택지가 없으면 글만 써도 답한 것이다 (서술 설계 D26)", () => {
+    expect(hasValue(전처리, { note: "Test data had extra outlier filtering" })).toBe(true);
+    expect(hasValue(전처리, { note: "   " })).toBe(false);
+  });
+
+  it("글을 받지 않는 필드는 글만으로 답이 되지 않는다", () => {
+    const 관계 = getCard("testData").fields.find((f) => f.id === "testSourceRelation")!;
+    expect(hasValue(관계, { note: "something" })).toBe(false);
   });
 });

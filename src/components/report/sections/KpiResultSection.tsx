@@ -1,6 +1,7 @@
 import type { DerivedPredictionFact, FinalReportMeta, KpiResult } from "../../../types/finalReport.types";
 import { MetricRow } from "../shared/MetricRow";
 import { PassBadge } from "../shared/PassBadge";
+import { verdictRuleText } from "../../../lib/report/reportConstants";
 
 import type { TaskType } from "../../../data/evaluationData";
 
@@ -8,6 +9,11 @@ interface KpiResultSectionProps {
   kpiResults: KpiResult[];
   taskType: TaskType;
   meta?: FinalReportMeta;
+  /**
+   * 판정 규칙 문구(고정 문구 10)를 찍을지. 이 규칙(D19)으로 판정한 성적서에만 찍는다 — 그 전
+   * 규칙으로 판정해 저장된 성적서에 새 규칙을 적으면 판정과 설명이 어긋난다.
+   */
+  showVerdictRule?: boolean;
 }
 
 const KPI_CORE_IDS_BY_TASK: Record<TaskType, Set<string>> = {
@@ -37,7 +43,12 @@ function describeDerivation(fact: DerivedPredictionFact): string {
   return `점수 컬럼 [${source}] 이 결정 임계값 ${fact.threshold} 이상이면 양성으로 판정했습니다.${positive}`;
 }
 
-export function KpiResultSection({ kpiResults, taskType, meta }: KpiResultSectionProps) {
+export function KpiResultSection({
+  kpiResults,
+  taskType,
+  meta,
+  showVerdictRule = false,
+}: KpiResultSectionProps) {
   const coreIds = KPI_CORE_IDS_BY_TASK[taskType] || KPI_CORE_IDS_BY_TASK.binary;
   const kpiCore   = kpiResults.filter((r) => coreIds.has(r.metricId));
   const kpiDetail = kpiResults.filter((r) => !coreIds.has(r.metricId));
@@ -87,10 +98,18 @@ export function KpiResultSection({ kpiResults, taskType, meta }: KpiResultSectio
                 threshold={r.threshold}
                 status={r.status}
                 higherIsBetter={r.higherIsBetter}
+                isCore={r.isCore}
               />
             ))}
           </tbody>
         </table>
+        {showVerdictRule && (
+          <p className="text-xs leading-5 text-slate-500">
+            {verdictRuleText(
+              kpiResults.filter((r) => r.isCore).map((r) => `${r.name}(${r.metricId})`),
+            )}
+          </p>
+        )}
       </div>
 
       {/* 6.2 세부 시험항목별 결과 */}
@@ -116,10 +135,12 @@ export function KpiResultSection({ kpiResults, taskType, meta }: KpiResultSectio
                 threshold={r.threshold}
                 status={r.status}
                 higherIsBetter={r.higherIsBetter}
+                isCore={r.isCore}
               />
             ))}
           </tbody>
         </table>
+
 
         {/* Per-class 세부 결과 */}
         {kpiResults.some((r) => r.perClass?.length) && (

@@ -1,0 +1,248 @@
+/**
+ * 고객 재료 → 성적서 줄과 AI 입력.
+ *
+ * 종전에는 성적서 구성 카드(⑤~⑨)와 지표 선택 이유가 저장만 되고 성적서에도 AI 에도 가지
+ * 않았다. 여기서 고정하는 것은 재료 목록의 인쇄 규칙이다 — 2층 항목이 빠지면 "제공되지 않음",
+ * 선택 항목이 비면 줄이 없음, 선택지는 재료 목록의 한국어 이름으로.
+ */
+import { describe, expect, it } from "vitest";
+
+import {
+  NOT_PROVIDED,
+  buildClientInputs,
+  buildReportMaterials,
+  type ReportComposerInput,
+} from "./reportMaterials";
+import type { MaterialRow } from "../../types/finalReport.types";
+
+function composer(overrides: Partial<ReportComposerInput> = {}): ReportComposerInput {
+  return {
+    cards: { trainingData: false, testData: false, groundTruth: false, modelEnv: false },
+    metrics: {},
+    perspective: {},
+    trainingData: {},
+    testData: {},
+    groundTruth: {},
+    modelEnv: {},
+    ...overrides,
+  };
+}
+
+const ALL_ON = { trainingData: true, testData: true, groundTruth: true, modelEnv: true };
+
+const valueOf = (rows: MaterialRow[], label: string) => rows.find((row) => row.label === label)?.value;
+const labelsOf = (rows: MaterialRow[]) => rows.map((row) => row.label);
+
+describe("카드를 끄면", () => {
+  const materials = buildReportMaterials(composer(), "binary");
+
+  it("2층 항목은 제공되지 않음(null)으로 남는다 — 부실 여부는 성적서에 드러난다", () => {
+    for (const label of ["학습 데이터셋명", "학습 데이터 출처", "학습 샘플 수", "채널 효과", "편향 감소 노력"]) {
+      expect(valueOf(materials.training, label), label).toBeNull();
+    }
+    expect(valueOf(materials.test, "평가 데이터 출처")).toBeNull();
+    expect(valueOf(materials.groundTruth, "정답 라벨 구축 방법")).toBeNull();
+    expect(valueOf(materials.environment, "학습 가속")).toBeNull();
+    expect(materials.hyperparameters).toEqual({ algorithm: null, rows: null });
+  });
+
+  it("선택 항목은 줄을 만들지 않는다", () => {
+    expect(labelsOf(materials.training)).not.toContain("수집 기간");
+    expect(labelsOf(materials.training)).not.toContain("학습 데이터 설명");
+    expect(labelsOf(materials.test)).not.toContain("평가 데이터 수집 기간");
+  });
+});
+
+describe("⑥ 학습 데이터", () => {
+  const materials = buildReportMaterials(
+    composer({
+      cards: ALL_ON,
+      trainingData: {
+        trainingDatasetName: { text: "Customer logs 2024" },
+        trainingDataSource: { text: "Internal CRM" },
+        trainingVolume: {
+          entries: [
+            { key: "Training", value: "12000" },
+            { key: "Validation", value: "3,000" },
+          ],
+        },
+        trainingClassVolume: { entries: [{ key: "normal", value: "8400" }, { key: "churn", value: "3600" }] },
+        channelEffects: { choices: ["Different equipment", "Other (free text)"], otherText: "Two clinics" },
+        imbalanceHandling: { choices: ["Balanced the counts", "Widened the sources"] },
+        trainingPeriod: { entries: [{ key: "From", value: "2023-01" }, { key: "To", value: "2024-12" }] },
+        trainingDescription: { text: "Logs labelled by churn" },
+      },
+    }),
+    "binary",
+  );
+
+  it("값을 재료 목록의 이름으로 적는다", () => {
+    expect(valueOf(materials.training, "학습 데이터셋명")).toBe("Customer logs 2024");
+    expect(valueOf(materials.training, "학습 데이터 출처")).toBe("Internal CRM");
+    expect(valueOf(materials.training, "학습 샘플 수")).toBe("12,000개");
+    expect(valueOf(materials.training, "검증 샘플 수")).toBe("3,000개");
+    expect(valueOf(materials.training, "학습 클래스 분포")).toBe("normal 8,400 / churn 3,600");
+    expect(valueOf(materials.training, "채널 효과")).toBe("수집 장치 차이, 기타(Two clinics)");
+    expect(valueOf(materials.training, "편향 감소 노력")).toBe("클래스 균형 조정, 데이터 출처 다양화");
+    expect(valueOf(materials.training, "수집 기간")).toBe("2023-01 ~ 2024-12");
+    expect(valueOf(materials.training, "학습 데이터 설명")).toBe("Logs labelled by churn");
+  });
+
+  it('"모름"을 고른 2층 항목은 제공되지 않음이다', () => {
+    const unknown = buildReportMaterials(
+      composer({ cards: ALL_ON, trainingData: { trainingVolume: { unknown: true } } }),
+      "binary",
+    );
+    expect(valueOf(unknown.training, "학습 샘플 수")).toBeNull();
+    expect(valueOf(unknown.training, "검증 샘플 수")).toBeNull();
+  });
+
+  it('"알려진 것 없음"은 제공된 답이다', () => {
+    const none = buildReportMaterials(
+      composer({ cards: ALL_ON, trainingData: { channelEffects: { choices: ["None known"] } } }),
+      "binary",
+    );
+    expect(valueOf(none.training, "채널 효과")).toBe("알려진 것 없음");
+  });
+});
+
+describe("⑧ 정답 라벨", () => {
+  const groundTruth = (values: Record<string, unknown>) =>
+    buildReportMaterials(composer({ cards: ALL_ON, groundTruth: values as never }), "binary").groundTruth;
+  const several = {
+    labelAuthor: { text: "Outside workers" },
+    labelReview: { text: "Several reviewers" },
+    labelReviewerCount: { text: "2" },
+  };
+
+  it("구축 방법과 신뢰성을 재료 목록의 이름으로 적는다", () => {
+    const rows = groundTruth(several);
+    expect(valueOf(rows, "정답 라벨 구축 방법")).toBe("크라우드소싱");
+    expect(valueOf(rows, "정답 라벨 신뢰성")).toBe("복수 라벨러 합의");
+    expect(valueOf(rows, "라벨러 수")).toBe("2명");
+  });
+
+  it("일치도는 종류와 값을 함께 적는다 — 단순 일치율은 % 다", () => {
+    expect(
+      valueOf(groundTruth({ ...several, labelAgreementKind: { text: "Cohen's kappa" }, labelAgreementValue: { text: "0.71" } }), "라벨 일치도"),
+    ).toBe("Cohen의 카파 0.71");
+    expect(
+      valueOf(groundTruth({ ...several, labelAgreementKind: { text: "Percent agreement" }, labelAgreementValue: { text: "82" } }), "라벨 일치도"),
+    ).toBe("단순 일치율 82%");
+    expect(
+      valueOf(groundTruth({ ...several, labelAgreementKind: { text: "Other", otherText: "Gwet's AC1" }, labelAgreementValue: { text: "0.6" } }), "라벨 일치도"),
+    ).toBe("기타(Gwet's AC1) 0.6");
+  });
+
+  it('"측정 안 함"은 제공된 답이다 — 제공되지 않음으로 세지 않는다', () => {
+    expect(valueOf(groundTruth({ ...several, labelAgreementKind: { text: "Not measured" } }), "라벨 일치도")).toBe(
+      "측정 안 함",
+    );
+  });
+
+  it("복수 라벨러 합의가 아니면 라벨러 수·일치도 줄이 없다", () => {
+    const rows = groundTruth({ labelAuthor: { text: "Domain experts" }, labelReview: { text: "One reviewer" } });
+    expect(labelsOf(rows)).toEqual(["정답 라벨 구축 방법", "정답 라벨 신뢰성"]);
+  });
+});
+
+describe("⑨ 실행 환경", () => {
+  const materials = buildReportMaterials(
+    composer({
+      cards: ALL_ON,
+      modelEnv: {
+        algorithm: { text: "XGBoost" },
+        hyperparameters: { entries: [{ key: "max_depth", value: "6" }, { key: "", value: "" }] },
+        gpuUsage: { entries: [{ key: "Training", value: "Yes" }, { key: "Inference", value: "Unknown" }] },
+      },
+    }),
+    "binary",
+  );
+
+  it("가속 사용은 예/아니오로, 모름은 제공되지 않음으로 적는다", () => {
+    expect(valueOf(materials.environment, "학습 가속")).toBe("예");
+    expect(valueOf(materials.environment, "추론 가속")).toBeNull();
+  });
+
+  it("하이퍼파라미터는 빈 줄을 빼고 이름 = 값으로 담는다", () => {
+    expect(materials.hyperparameters).toEqual({
+      algorithm: "XGBoost",
+      rows: [{ name: "max_depth", value: "6" }],
+    });
+  });
+});
+
+describe("선언과 지표 선택 이유", () => {
+  const perspective = {
+    criticalErrorType: { text: "Missed (FN)" },
+    classPriority: { text: "All equal" },
+    usageMode: { text: "Real-time" },
+  };
+
+  it("이 작업 유형에 해당하는 선언만 적는다", () => {
+    expect(buildReportMaterials(composer({ perspective }), "binary").declarations).toEqual([
+      { label: "위험 방향", value: "FN이 더 위험" },
+      { label: "사용 방식", value: "대화형(실시간)" },
+    ]);
+    expect(buildReportMaterials(composer({ perspective }), "multiclass").declarations).toEqual([
+      { label: "클래스 중요도", value: "모든 클래스가 동등" },
+      { label: "사용 방식", value: "대화형(실시간)" },
+    ]);
+  });
+
+  it("지표 선택 이유는 멀티레이블에서만 있다 — 그 밖은 해당 없음", () => {
+    const metrics = { metricRationale: { text: "Degree of overlap" } };
+    expect(buildReportMaterials(composer({ metrics }), "multilabel").metricRationale).toBe("겹치는 정도를 봄");
+    expect(buildReportMaterials(composer({ metrics }), "binary").metricRationale).toBeUndefined();
+    expect(buildReportMaterials(composer(), "multilabel").metricRationale).toBeNull();
+  });
+});
+
+describe("AI 에 넘기는 고객 입력 (서술 설계 D25, D34)", () => {
+  const input = composer({
+    cards: ALL_ON,
+    perspective: { usageMode: { text: "Batch" }, criticalErrorType: { text: "Similar" } },
+    testData: {
+      testDataSource: { text: "Q1 logs" },
+      preprocessingMatch: { text: "Different", note: "Extra outlier filtering" },
+    },
+  });
+  const inputs = buildClientInputs({
+    composer: input,
+    materials: buildReportMaterials(input, "binary"),
+    model: { name: "ChurnPredictor", version: "v1.0.0", purpose: "Churn", category: "" },
+    reportPurposeNote: "For the Q3 audit",
+    coreMetrics: ["Accuracy(M1)"],
+    classLabelDescriptions: { "0": "stays", "1": "" },
+    runtime: { 운영체제: "Ubuntu 22.04", GPU: "" },
+  });
+
+  it("모델명·버전과 용도는 넘기고, 회사·과제 정보는 넘기지 않는다", () => {
+    expect(inputs.model).toEqual({ 모델명: "ChurnPredictor", 버전: "v1.0.0", "모델 용도": "Churn" });
+    const text = JSON.stringify(inputs);
+    for (const key of ["companyName", "회사", "사업자", "주소", "project"]) expect(text).not.toContain(key);
+  });
+
+  it("빠진 2층 항목은 제공되지 않음으로 넘긴다 — AI 가 지어내지 않게", () => {
+    expect((inputs.training_data as Record<string, string>)["학습 데이터셋명"]).toBe(NOT_PROVIDED);
+  });
+
+  it("성적서에 찍지 않는 전처리 일치도 넘기고, 덧붙인 글은 의뢰자 덧붙임으로 표시한다", () => {
+    expect((inputs.test_data as Record<string, string>)["학습·평가 전처리 일치"]).toBe(
+      "다름 (의뢰자 덧붙임: Extra outlier filtering)",
+    );
+  });
+
+  it("실행 환경을 넘기고, 빈 칸은 제공되지 않음으로 적는다", () => {
+    const environment = inputs.environment as Record<string, unknown>;
+    expect(environment["운영체제"]).toBe("Ubuntu 22.04");
+    expect(environment["GPU"]).toBe(NOT_PROVIDED);
+  });
+
+  it("성적서 용도 덧붙임·핵심 지표·클래스 설명을 함께 넘긴다", () => {
+    expect(inputs.report_purpose_note).toBe("For the Q3 audit");
+    expect(inputs.core_metrics).toEqual(["Accuracy(M1)"]);
+    expect(inputs.class_label_descriptions).toEqual({ "0": "stays" });
+    expect(inputs.declarations).toEqual({ "위험 방향": "비슷함", "사용 방식": "배치" });
+  });
+});

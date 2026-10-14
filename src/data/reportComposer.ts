@@ -59,7 +59,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     description: "What to measure, and the target each measure must reach.",
     locked: true,
     viewer: "metricList",
-    steps: ["metrics"],
+    // 합격 기준과 핵심 지표는 Details 에서 받는다(docs/WORKFLOW_REDESIGN.md §11.2).
+    steps: ["metrics", "clientInfo"],
     fields: [
       {
         id: "selectedMetrics",
@@ -95,12 +96,47 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         // 멀티레이블에서만 묻는다. 세 지표군의 뜻이 서로 달라 고른 이유를 성적서에 적는다.
         id: "metricRationale",
         label: "Reason for this choice",
-        inputExample: "Errors weighted evenly / Every label must match / Degree of overlap",
+        inputExample:
+          "Errors weighted evenly / Every label must match / Degree of overlap / Other (own words)",
         kind: "required",
         taskTypes: ["multilabel"],
         input: "single",
-        choices: ["Errors weighted evenly", "Every label must match", "Degree of overlap"],
+        choices: [
+          "Errors weighted evenly",
+          "Every label must match",
+          "Degree of overlap",
+          "Other (own words)",
+        ],
+        reportLabels: {
+          "Errors weighted evenly": "오차를 고르게 봄",
+          "Every label must match": "샘플의 모든 레이블이 맞아야 함",
+          "Degree of overlap": "겹치는 정도를 봄",
+          "Other (own words)": "기타",
+        },
+        otherChoice: "Other (own words)",
+        help:
+          "Multi-label metrics answer different questions, so the report says why these were chosen.",
+        // 지표 격자 바로 아래에서 받는다. 카드의 나머지 필드는 다른 화면이 맡아 따로 검사한다.
+        step: "metrics",
         reportSection: "3절",
+        sentToAi: true,
+      },
+      {
+        /**
+         * 미달하면 최종 불합격(FAIL)이 되는 지표. 나머지 지표의 미달은 조건부 합격에 그친다
+         * (`lib/report/computeVerdict.ts`).
+         *
+         * 목표값이 있는 지표 중 최소 1개(재료 목록 7절). 유형별 기본값이 미리 체크돼 있다. 판정이
+         * 목표값과 함께 결정되므로 목표값을 적는 Details 의 합격 기준 표에서 고른다
+         * (`pages/report/ReportInfo.tsx`).
+         */
+        id: "coreMetrics",
+        label: "Core metrics",
+        inputExample: "Defaults by type: Accuracy · F1 (binary). At least one",
+        kind: "required",
+        input: "metricSelect",
+        step: "clientInfo",
+        reportSection: "6절",
         sentToAi: true,
       },
     ],
@@ -126,7 +162,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       {
         id: "reportPurpose",
         label: "Report purpose",
-        inputExample: "Internal review / External submission / Project submission",
+        inputExample: "Internal review / External submission / Project submission (+ optional note)",
         kind: "required",
         input: "single",
         choices: ["Internal review", "External submission", "Project submission"],
@@ -225,6 +261,11 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         taskTypes: ["binary"],
         input: "single",
         choices: ["Missed (FN)", "False alarm (FP)", "Similar"],
+        reportLabels: {
+          "Missed (FN)": "FN이 더 위험",
+          "False alarm (FP)": "FP가 더 위험",
+          Similar: "비슷함",
+        },
         help:
           "Picking Missed suggests Recall or Fβ with β greater than 1; picking False alarm " +
           "suggests Precision or Fβ with β less than 1.",
@@ -240,6 +281,11 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         taskTypes: ["multiclass", "multilabel"],
         input: "single",
         choices: ["All equal", "Larger classes first", "Individual samples first"],
+        reportLabels: {
+          "All equal": "모든 클래스가 동등",
+          "Larger classes first": "다수 클래스 우선",
+          "Individual samples first": "샘플 단위로 중요",
+        },
         help: "These map to macro, weighted, and micro averaged metrics in that order.",
         standardClause: "6.4.3",
         reportSection: "5절",
@@ -252,6 +298,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "required",
         input: "single",
         choices: ["Real-time", "Batch"],
+        reportLabels: { "Real-time": "대화형(실시간)", Batch: "배치" },
         help: "Picking Real-time checks whether your file has a latency column.",
         standardClause: "6.6.2",
         reportSection: "5절",
@@ -283,7 +330,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         allowsUnknown: true,
         reportSection: "7절",
         sentToAi: true,
-        legacy: { target: "datasetInfo", field: "trainingDatasetName" },
       },
       {
         /**
@@ -312,10 +358,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         allowsUnknown: true,
         reportSection: "7절",
         sentToAi: true,
-        legacy: {
-          target: "datasetInfo",
-          byKey: { Training: "trainingSampleCount", Validation: "validationSampleCount" },
-        },
       },
       {
         id: "trainingClassVolume",
@@ -329,8 +371,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         allowsUnknown: true,
         reportSection: "7절",
         sentToAi: true,
-        // 칸이 클래스마다 생기므로 byKey 로 짝지을 수 없다. 한 줄로 합쳐 넘긴다.
-        legacy: { target: "datasetInfo", field: "trainingClassDistribution" },
       },
       {
         id: "channelEffects",
@@ -347,8 +387,17 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           "Different surroundings",
           "Other (free text)",
         ],
+        reportLabels: {
+          "None known": "알려진 것 없음",
+          "Different equipment": "수집 장치 차이",
+          "Different processing": "전처리 차이",
+          "Different collectors": "수집자 차이",
+          "Different surroundings": "수집 환경 차이",
+          "Other (free text)": "기타",
+        },
         // "None known" 은 원문이 요구하는 답이라 **제공된 것으로 센다**. "모름"과 다르다.
         exclusiveChoice: "None known",
+        otherChoice: "Other (free text)",
         help:
           "Whether data of the same class was gathered with different equipment, processing, " +
           "people or surroundings. There can be more than one.",
@@ -357,14 +406,27 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         sentToAi: true,
       },
       {
+        /**
+         * 편향 감소 노력. 여러 가지를 함께 했을 수 있어 복수 선택이다. "Did nothing" 은 다른
+         * 노력과 함께 고를 수 없다 — 둘을 같이 고르면 어느 쪽이 참인지 알 수 없다.
+         */
         id: "imbalanceHandling",
         label: "Imbalance handling",
-        inputExample: "Balanced the counts / Widened the sources / Did nothing",
+        inputExample:
+          "Balanced the counts / Widened the sources / Did nothing / Other (choose any)",
         kind: "required",
-        input: "single",
-        choices: ["Balanced the counts", "Widened the sources", "Did nothing"],
+        input: "multi",
+        choices: ["Balanced the counts", "Widened the sources", "Did nothing", "Other (free text)"],
+        reportLabels: {
+          "Balanced the counts": "클래스 균형 조정",
+          "Widened the sources": "데이터 출처 다양화",
+          "Did nothing": "수행 안 함",
+          "Other (free text)": "기타",
+        },
+        exclusiveChoice: "Did nothing",
+        otherChoice: "Other (free text)",
         allowsUnknown: true,
-        help: "What you did about classes that held far more samples than others.",
+        help: "What you did about classes that held far more samples than others. There can be more than one.",
         standardClause: "8절",
         reportSection: "7절",
         sentToAi: true,
@@ -374,21 +436,44 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         label: "Collection period",
         inputExample: "2023-01 ~ 2024-12",
         kind: "optional",
-        input: "date",
+        input: "monthRange",
         advanced: true,
         mono: true,
         reportSection: "7절",
         sentToAi: true,
       },
       {
-        id: "preprocessing",
-        label: "Preprocessing",
-        inputExample: "Dropped missing values, normalized (free text)",
+        /**
+         * 종전에는 이 칸이 없었고, Details 합격 기준 카드의 "Report notes"(평가에 대한 메모)가
+         * 성적서에 "학습 데이터 설명"으로 인쇄됐다. 칸을 여기로 옮기고 그 메모 칸은 없앴다.
+         *
+         * 선택 항목이지만 더보기에 접지 않는다 — 접어 두었더니 칸이 없는 것으로 보였다.
+         */
+        id: "trainingDescription",
+        label: "Description",
+        inputExample: "What the data contains and how it was gathered (free text)",
+        kind: "optional",
+        input: "textarea",
+        reportSection: "7절",
+      },
+      {
+        // Details 의 학습 데이터 폼에만 있던 칸이다. 폼을 이 카드로 합치면서 옮겼다.
+        id: "trainingDataFormat",
+        label: "Data format",
+        inputExample: "Structured CSV, images (JPG/PNG), text",
         kind: "optional",
         input: "text",
         advanced: true,
         reportSection: "7절",
-        sentToAi: true,
+      },
+      {
+        id: "trainingNotes",
+        label: "Notes",
+        inputExample: "Anything else the reader should know about the training data (free text)",
+        kind: "optional",
+        input: "textarea",
+        advanced: true,
+        reportSection: "7절",
       },
     ],
   },
@@ -421,6 +506,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "required",
         input: "single",
         choices: ["Same source", "Different source"],
+        reportLabels: { "Same source": "같은 출처", "Different source": "다른 출처" },
         allowsUnknown: true,
         help: "Scores can look better than they are when both came from the same place.",
         reportSection: "4절",
@@ -431,11 +517,32 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         label: "Collection period",
         inputExample: "2025-01 ~ 2025-03",
         kind: "optional",
-        input: "date",
+        input: "monthRange",
         advanced: true,
         mono: true,
         reportSection: "4절",
         sentToAi: true,
+      },
+      {
+        /**
+         * 학습과 평가 데이터의 전처리가 같은가 — 종전의 자유서술 세 칸(⑥ 전처리, ⑦ 전처리·전처리
+         * 내용)을 이 한 칸으로 바꿨다(서술 설계 D44).
+         *
+         * TS 4213 5.3.3 은 전처리를 "주의를 기울여야 할 것"으로만 적고 보고를 요구하지 않는다.
+         * 걱정하는 것은 일관되지 않은 전처리가 해석을 비트는 경우라, 같은지만 묻고 코드가 조건으로
+         * 쓸 수 있게 선택지로 받는다. 전처리가 채널 효과의 원인이면 ⑥ "Different processing"이 받는다.
+         */
+        id: "preprocessingMatch",
+        label: "Same preprocessing as training",
+        inputExample: "Same / Different / Unknown (+ optional note)",
+        kind: "optional",
+        input: "single",
+        choices: ["Same", "Different", "Unknown"],
+        allowsNote: true,
+        help: "Were the training data and the test data preprocessed the same way?",
+        reportSection: "정할 것",
+        sentToAi: true,
+        reportLabels: { Same: "같음", Different: "다름", Unknown: "모름" },
       },
     ],
   },
@@ -454,10 +561,25 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       {
         id: "labelAuthor",
         label: "Who labelled it",
-        inputExample: "Domain experts / Outside workers / A program or rule / Recorded outcomes",
+        inputExample:
+          "Domain experts / Outside workers / A program or rule / Recorded outcomes / Other",
         kind: "required",
         input: "single",
-        choices: ["Domain experts", "Outside workers", "A program or rule", "Recorded outcomes"],
+        choices: [
+          "Domain experts",
+          "Outside workers",
+          "A program or rule",
+          "Recorded outcomes",
+          "Other (free text)",
+        ],
+        reportLabels: {
+          "Domain experts": "전문가 수동",
+          "Outside workers": "크라우드소싱",
+          "A program or rule": "규칙·자동",
+          "Recorded outcomes": "운영 로그",
+          "Other (free text)": "기타",
+        },
+        otherChoice: "Other (free text)",
         allowsUnknown: true,
         reportSection: "4절",
         sentToAi: true,
@@ -469,20 +591,109 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "required",
         input: "single",
         choices: ["Several reviewers", "One reviewer", "No review"],
+        reportLabels: {
+          "Several reviewers": "복수 라벨러 합의",
+          "One reviewer": "단일 라벨러",
+          "No review": "검토 없음",
+        },
         allowsUnknown: true,
         reportSection: "4절",
         sentToAi: true,
       },
       {
-        id: "labelAgreement",
-        label: "Reviewers and agreement",
-        inputExample: "3 people · 82%",
+        /**
+         * 라벨러 수와 일치도는 칸을 나눈다. 한 칸("3 people · 82%")으로 받으면 숫자인지도,
+         * 범위 안인지도 검사할 수 없다.
+         */
+        id: "labelReviewerCount",
+        label: "Number of reviewers",
+        inputExample: "3",
         kind: "conditional",
         conditionLabel: "When several reviewers checked",
         requiredWhen: { field: "labelReview", equals: "Several reviewers" },
-        input: "text",
+        input: "number",
+        numberRange: { min: 1, integer: true },
         mono: true,
         reportSection: "4절",
+        sentToAi: true,
+      },
+      {
+        /**
+         * 일치도를 무엇으로 쟀는가. 종류를 알아야 숫자를 읽을 수 있다 — 같은 0.8 이라도 단순
+         * 일치율이면 보통이고 카파면 높은 편이다. TS 4213 5.3.9 는 Cohen의 카파를 예로만 든다
+         * (서술 설계 D42).
+         *
+         * "Not measured" 는 제공된 답이다. 일치도는 2층 항목인 신뢰성에 딸린 세부 값이고, 대부분의
+         * 고객은 일치도 숫자가 없다(심판 설계 6.2).
+         */
+        id: "labelAgreementKind",
+        label: "Agreement measure",
+        inputExample:
+          "Percent agreement / Cohen's kappa / Fleiss' kappa / Krippendorff's alpha / Other / Not measured",
+        kind: "conditional",
+        conditionLabel: "When several reviewers checked",
+        requiredWhen: { field: "labelReview", equals: "Several reviewers" },
+        input: "single",
+        choices: [
+          "Percent agreement",
+          "Cohen's kappa",
+          "Fleiss' kappa",
+          "Krippendorff's alpha",
+          "Other",
+          "Not measured",
+        ],
+        otherChoice: "Other",
+        choiceRequires: {
+          "Cohen's kappa": {
+            field: "labelReviewerCount",
+            max: 2,
+            message: "Cohen's kappa compares two reviewers. For three or more, choose Fleiss' kappa.",
+          },
+          "Fleiss' kappa": {
+            field: "labelReviewerCount",
+            min: 3,
+            message: "Fleiss' kappa is for three or more reviewers. For two, choose Cohen's kappa.",
+          },
+        },
+        reportSection: "3절",
+        sentToAi: true,
+        reportLabels: {
+          "Percent agreement": "단순 일치율",
+          "Cohen's kappa": "Cohen의 카파",
+          "Fleiss' kappa": "Fleiss의 카파",
+          "Krippendorff's alpha": "Krippendorff의 알파",
+          Other: "기타",
+          "Not measured": "측정 안 함",
+        },
+      },
+      {
+        // 단순 일치율은 화면에서 % 로 받는다(0~100). 카파·알파는 −1~1, 기타는 검사하지 않는다.
+        id: "labelAgreementValue",
+        label: "Agreement value",
+        inputExample: "82 (percent agreement) or 0.71 (kappa)",
+        kind: "conditional",
+        conditionLabel: "When an agreement measure was used",
+        requiredWhen: [
+          { field: "labelReview", equals: "Several reviewers" },
+          {
+            field: "labelAgreementKind",
+            in: ["Percent agreement", "Cohen's kappa", "Fleiss' kappa", "Krippendorff's alpha", "Other"],
+          },
+        ],
+        input: "number",
+        help: "Percent agreement takes 0 to 100 (%). Kappa and alpha take −1 to 1.",
+        numberRangeBy: {
+          field: "labelAgreementKind",
+          ranges: {
+            "Percent agreement": { min: 0, max: 100 },
+            "Cohen's kappa": { min: -1, max: 1 },
+            "Fleiss' kappa": { min: -1, max: 1 },
+            "Krippendorff's alpha": { min: -1, max: 1 },
+            Other: null,
+          },
+        },
+        mono: true,
+        reportSection: "3절",
         sentToAi: true,
       },
     ],
@@ -556,6 +767,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         input: "entries",
         entryKeys: ["Training", "Inference"],
         choices: ["Yes", "No", "Unknown"],
+        reportLabels: { Yes: "예", No: "아니오", Unknown: "모름" },
         allowsUnknown: true,
         reportSection: "8절",
         sentToAi: true,
