@@ -19,7 +19,7 @@ import {
  *
  * 학습 데이터셋 정보도 이 화면에서 빠졌다 — 평가에 쓰이지 않고 성적서 3절을 채우는 값이라
  * 성적서 구간(`/report/:id/issue-info`)으로 옮겼다. 다만 모델명·버전은 여기 남는다:
- * 평가 결과를 식별하는 이름표라, 성적서를 내지 않는 run 에도 반드시 있어야 한다.
+ * run 을 식별하는 이름표라, 검증에서 run 을 만들 때 이미 있어야 한다.
  */
 export function DataUpload() {
   const navigate = useNavigate();

@@ -12,6 +12,7 @@ import { useSearchParams } from "react-router";
 import { apiUrl } from "@/lib/apiBase";
 import { translateRoleToBackend } from "../lib/mapping/translateRoleToBackend";
 import {
+  buildReportInput,
   mapWorkflowToFinalReport,
   type MapWorkflowToReportInput,
 } from "../lib/report/mapWorkflowToFinalReport";
@@ -124,19 +125,7 @@ export function useDataValidation(): UseDataValidationResult {
   }, [store.rawFile, store.columnMapping, store.selectedMetricIds, store.taskType]);
 
   const buildEvaluationResult = (): EvaluationResult => {
-    const workflowSnapshot: MapWorkflowToReportInput = {
-      basicInfo: store.basicInfo,
-      datasetInfo: store.datasetInfo,
-      taskType: store.taskType,
-      selectedMetricIds: store.selectedMetricIds,
-      metricDetails: store.metricDetails,
-      uploadedFile: store.uploadedFile,
-      trainingExampleFiles: store.trainingExampleFiles,
-      trainingUnsuitableExampleFiles: store.trainingUnsuitableExampleFiles,
-      columnMapping: store.columnMapping,
-      classLabelDescriptions: store.classLabelDescriptions,
-      metadata: store.metadata,
-    };
+    const workflowSnapshot: MapWorkflowToReportInput = buildReportInput(store);
     const reportData = mapWorkflowToFinalReport(workflowSnapshot, validationData);
     return { workflowSnapshot, reportData };
   };

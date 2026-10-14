@@ -8,9 +8,8 @@
  *
  * 함께 다뤄야 하는 것들 — persist 를 붙이는 순간 **지금은 새로고침이 초기화 역할을 해서
  * 세션 안에 갇혀 있던 오염이 영속화된다**:
- *   E-08 `setTaskType` 이 completedSteps·datasetInfo 를 비우지 않는다
+ *   E-08 `setTaskType` 이 completedSteps·학습 데이터 정보를 비우지 않는다
  *   E-05 `?showcase=1` 이 실제 store 에 가짜 기업정보를 주입한다
- *   E-09 `loadWorkflowSnapshot` 이 rawFile=null 인데 completedSteps 를 [1..6] 으로 채운다
  */
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -18,7 +17,7 @@ import {
   WORKFLOW_STORAGE_KEY,
   useWorkflowStore,
 } from "./useWorkflowStore";
-import { DEFAULT_BASIC_INFO, DEFAULT_DATASET_INFO } from "../../types/workflow.types";
+import { DEFAULT_BASIC_INFO } from "../../types/workflow.types";
 
 /** persist 가 실제로 기록한 내용을 읽는다. */
 function persistedState(): Record<string, unknown> | null {
@@ -123,17 +122,15 @@ describe("[E-08] 작업 유형 변경", () => {
     expect(useWorkflowStore.getState().completedStepIds).toEqual([]);
   });
 
-  it("데이터셋 정보를 비운다 — 이전 평가의 표본 수가 새 성적서에 인쇄되지 않게", () => {
-    useWorkflowStore.getState().setDatasetInfo({
-      ...DEFAULT_DATASET_INFO,
-      validationSampleCount: "9999",
+  it("학습 데이터 정보를 비운다 — 이전 평가의 표본 수가 새 성적서에 인쇄되지 않게", () => {
+    // 학습 데이터는 ⑥ 카드가 받는다(종전의 Details 학습 데이터 폼, persist v10).
+    useWorkflowStore.getState().setComposerTrainingData({
+      trainingVolume: { entries: [{ key: "Validation", value: "9999" }] },
     });
 
     useWorkflowStore.getState().setTaskType("multiclass");
 
-    expect(useWorkflowStore.getState().datasetInfo.validationSampleCount).toBe(
-      DEFAULT_DATASET_INFO.validationSampleCount,
-    );
+    expect(useWorkflowStore.getState().composerTrainingData).toEqual({});
   });
 
   it("기업정보(basicInfo)는 유지한다 — 작업 유형만 바꿨는데 1단계까지 날아가면 안 된다", () => {
@@ -158,38 +155,10 @@ describe("[E-08] 작업 유형 변경", () => {
   });
 });
 
-describe("[E-09] 과거 평가 스냅샷 복원", () => {
-  const snapshot = {
-    basicInfo: { ...DEFAULT_BASIC_INFO, companyName: "과거 평가" },
-    datasetInfo: DEFAULT_DATASET_INFO,
-    taskType: "binary" as const,
-    selectedMetricIds: ["M1"],
-    metricDetails: {},
-    uploadedFile: { name: "old.csv", size: "1 KB", type: "text/csv" },
-    trainingExampleFiles: [],
-    trainingUnsuitableExampleFiles: [],
-    columnMapping: [],
-    classLabelDescriptions: {},
-  };
-
-  it("파일이 없는 단계까지 '완료'로 표시하지 않는다", () => {
-    useWorkflowStore.getState().loadWorkflowSnapshot(snapshot);
-
-    const s = useWorkflowStore.getState();
-    expect(s.rawFile).toBeNull();
-    // 업로드부터가 파일이 있어야 성립한다 — 완료로 표시하면 거짓말이다.
-    expect(s.completedStepIds).toEqual([]);
-    expect(s.currentStepId).toBe("upload");
-  });
-
-  it("파일 재업로드가 필요하다는 사실을 상태로 남긴다", () => {
-    useWorkflowStore.getState().loadWorkflowSnapshot(snapshot);
-
-    expect(useWorkflowStore.getState().needsFileReupload).toBe(true);
-  });
-
+describe("파일 재업로드 표시", () => {
   it("파일을 다시 올리면 재업로드 필요 표시가 사라진다", () => {
-    useWorkflowStore.getState().loadWorkflowSnapshot(snapshot);
+    // 재수화 직후의 상태 — 입력은 남았고 원본 파일만 없다.
+    useWorkflowStore.setState({ needsFileReupload: true, rawFile: null });
     useWorkflowStore
       .getState()
       .setUploadedFile({ name: "new.csv", size: "1 B", type: "text/csv" }, new File(["x"], "new.csv"));

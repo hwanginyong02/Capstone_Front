@@ -1,10 +1,13 @@
 # 워크플로우 개편 — 분류 유형별 분리 + 평가/발급 분리
 
-> 상태: **구현 완료** · 브랜치 `feature/workflow-redesign` · 최종 갱신 2026-09-20
+> 상태: **구현 완료** · 브랜치 `feature/workflow-redesign` · 최종 갱신 2026-10-05
 >
 > 착수 전에는 단계 번호 대응표를 고정하려고 쓴 문서였다(§3). 지금은 **구현된 결과**를
 > 기록한다 — 착수 후 순서가 한 번 더 바뀌었고(§2.1), 워크스페이스에 모델 계층이
 > 생겼다(§8). 낡은 계획을 지우지 않고 무엇이 왜 바뀌었는지 남긴다.
+>
+> **2026-10-05 — 평가와 발급의 분리는 끝났다(§11).** 고객이 시험 기관이라 "평가만 하는
+> 사용자"가 없다. 평가 결과 화면(§2·§5 의 7)과 모델 계층·버전 비교(§8)를 걷어냈다.
 
 ---
 
@@ -330,6 +333,9 @@ KS X ISO/IEC TS 4213 기반 국내 시험성적서를 만드는 서비스에서 
 
 ## 8. 워크스페이스 → 모델 → 버전 (2026-09-20)
 
+> **§11 로 폐지.** 모델별 카드·`New version`·비교 화면을 모두 걷어냈다. 워크스페이스 상세는
+> 다시 평가 목록 한 테이블이다. 모델명·버전은 성적서 2절 항목이라 업로드 화면에 남는다.
+
 ### 8.1 왜 생겼나
 
 평가는 일회성이 아니다. 실제 사용 패턴은 이렇다.
@@ -602,9 +608,90 @@ const LEGACY_STEP_IDS = ["upload","metrics","mapping","validation","summary","re
   **그대로 두었다.** 카드를 켠 사용자는 같은 값을 두 번 적게 되고, 안 켠 사용자는 Details
   에서만 적을 수 있다. 셋 중 어느 쪽으로 갈지(폼 삭제 / ⑥⑨ 를 필수 카드로 승격 / 양쪽 유지)
   는 다음 결정이다.
+  - **→ 정함(2026-10-06): 학습 데이터 폼은 ⑥ 으로 합쳤다.** Details 의 학습 데이터셋 폼을 없애고,
+    데이터 형식은 ⑥ 더보기로, 예시 파일은 Data info 의 ⑥ 카드 아래로 옮겼다. 성적서는 ⑥ 값을
+    읽는다(persist v10). 실행 환경(⑨ ↔ Details Test environment)은 아직 둘 다 남아 있다.
   - 겹치는 범위: ⑨ 실행 환경 ↔ `basicInfo.env*` 다섯이 1:1. ⑥ ↔ `datasetInfo` 는 데이터
     이름·학습/검증 건수·클래스 분포가 겹치고 **Training data format 하나만** ⑥ 에 없다.
 - **`composerLegacyMirror` 배선.** 위가 정해지기 전에 카드 값을 기존 저장소로 흘려보내면,
   사용자가 Details 에서 고친 값을 카드 값이 조용히 덮는다. 함수와 테스트만 둔다.
 - 새 카드 필드의 성적서 인쇄 · 합격 기준을 Metrics 로 옮기기 · 평가 표본 수 인쇄 버그
   (`mapWorkflowToFinalReport.ts:89,191`) · 문서의 단계 번호 정정.
+
+---
+
+## 11. 평가 결과·버전 비교 폐지, 검증 뒤를 카드 순서로 (2026-10-05, 브랜치 `refactor/card-order-workflow`)
+
+### 11.1 왜 바꾸나
+
+고객은 자기 모델을 지표로 재 보는 회사가 아니라 **TTA 같은 시험 기관**이다. 평가하는 목적이
+언제나 **성적서 발급**이다. §5 의 6~8 은 "성적서를 안 내고 평가만 하려는 사용자"를 따라가다
+생긴 것인데, 그 사용자가 실재하지 않는다는 것이 확인됐다.
+
+- **평가 결과 화면**(`/report/:id/summary`): 성적서 직전에 지표 값만 보여 주는 화면이었다.
+  같은 값이 바로 다음 성적서에 나온다
+- **모델 계층과 버전 비교**(§8): 시험 기관은 의뢰받은 모델을 시험하지, 같은 모델의 버전끼리
+  견주지 않는다
+
+또 구성 화면의 카드 순서(③ 의뢰자 → ⑥ ⑦ ⑧ 데이터 → ⑨ 모델 설정)와 달리, ③ 을 받는
+Details 가 선택 카드 단계 **뒤**에 있었다. "평가와 무관한 정보가 평가를 막지 않게"라는 근거
+(§1.2)는 평가만 하는 사용자를 위한 것이라 함께 사라졌다.
+
+### 11.2 새 순서
+
+```
+Evaluation File → Metrics → Column mapping → Validation
+  → Details → [Data info] → [Model info] → Result
+```
+
+최소 구성 **6단계**, 전체 **8단계**다(종전 7 / 9).
+
+- **검증 뒤는 카드 순서다.** 켠 선택 카드의 단계는 카드 순서대로 나오고, 필수 카드가 받는
+  단계(③ 의 Details 포함)보다 항상 뒤다. `workflowSteps.test.ts` 의 "카드 순서" 테스트가
+  선택 카드 16가지 조합 전부에서 이것을 확인한다. 카탈로그와 레지스트리가 따로 적혀 있어
+  한쪽만 고치면 조용히 어긋나기 때문이다
+- **검증 앞의 필수 카드는 카드 순서를 따를 수 없다.** 매핑이 지표에 기댄다
+  (`mappingValidity.ts` 의 `no_metrics`, 지표별 필수 역할, 백엔드 `selected_metric_ids`
+  `min_length=1`). 그래서 ① 이 업로드와 매핑으로 갈리고, ⑤ 는 지표를 권하는 근거라 지표
+  화면 안에 있다(§10.1). 사용자가 카드 순서를 직접 바꾸는 방식도 같은 이유로 하지 않는다
+- **검증은 매핑 바로 뒤에 둔다.** 파일·매핑 오류를 의뢰자 정보를 적기 전에 알 수 있다.
+  검증에서 run 이 만들어지므로 Details·Data info·Model info 는 계속 `/report/:id/*` 경로다
+- **Data info 는 한 화면으로 둔다.** ⑥ ⑦ ⑧ 을 한 단계씩 나누는 안도 있었지만, 같은 데이터
+  이야기라 한 화면에서 켠 카드만 카드 순서대로 그린다(§10.1 과 같은 판단)
+- **합격 기준은 Details 에 둔다.** 레지스트리상 ② 소속이라 Metrics 로 옮기는 안(§10.6)은
+  이번에도 하지 않았다
+
+### 11.3 덤으로 고쳐진 것 — 성적서에 Details 가 안 찍히던 문제
+
+평가 결과 화면은 `useReportData` 를 불러 `/api/evaluate` 와 AI 서술을 돌리고, 완성본을
+`isEvaluated: true` 로 run 에 **캐시**했다. 성적서 화면은 그 캐시를 그대로 쓴다
+(`useReportData.ts` 의 조기 반환). 그래서 **그 뒤에 적은** 회사 정보·합격 기준·선택 카드
+값이 성적서와 AI 서술에 들어가지 않았다. 합격 기준이 없으니 판정도 전부 기준 없이 났다.
+
+이제 `useReportData` 는 모든 입력을 마친 Result 에서 처음 불린다.
+
+### 11.4 바뀐 것
+
+| 위치 | 변경 |
+|---|---|
+| `StepId`·`STEP_CATALOG` | `summary` 제거, `clientInfo` 를 `dataInfo`·`modelEnv` 앞으로 |
+| `routes.ts` | `/report/:id/summary` → `/report/:id`, `/workspaces/:id/models/:name` → `/workspaces/:id` 리다이렉트(`redirectWithParams`) |
+| persist **v7 → v8** | 완료 목록에서 `summary` 제거, 현재 위치가 `summary` 면 `clientInfo` 로. `LEGACY_STEP_IDS` 는 v4→v5 체인이 옛 이름을 만들어야 해서 `string[]` 이 됐다 |
+| 검증 화면 | 다음 버튼 "Run evaluation" → "Next step"(다음이 Details 다) |
+| Details·Data info·Model info | 다음 버튼은 다음이 성적서면 "View report", 아니면 "Next step" |
+| 성적서 화면 | "Enter report details" 안내 띠 제거 — Details 를 항상 지나온다 |
+| 워크스페이스 상세 | 모델별 카드 → 평가 목록 한 테이블. 미발급은 "Draft" 배지 + 성적서 링크 |
+| 삭제 | `EvaluationSummary`(화면·컴포넌트), `ModelComparison`·`ModelRunGroups`, `modelComparison.ts`, `nextVersionName.ts`, `loadWorkflowSnapshot` |
+
+### 11.5 남은 것
+
+- **검증 뒤 새로고침 위험.** 원본 파일은 메모리에만 있다(`rawFile`, E-01). 검증 뒤
+  Details·Data info·Model info 를 적다가 새로고침하면, Result 에서 평가를 돌릴 파일이 없다.
+  `UnevaluatedDraftNotice` 가 이 상태를 알리지만 다시 올려야 한다. 종전에는 평가 결과 화면이
+  검증 직후 평가를 돌려 이 구간이 없었다
+- **성적서를 본 뒤 Details 로 돌아가 고치면 반영되지 않는다.** §11.3 의 캐시가 그대로라,
+  완성본이 한 번 저장되면 입력이 바뀌어도 다시 계산하지 않는다. 입력이 바뀔 때 `isEvaluated`
+  를 무효화하는 식으로 따로 다룬다
+- **`WorkspaceEvaluationRun.workflowSnapshot`.** New version 이 사라져 읽는 곳이 없다.
+  localStorage 용량(E-11)을 생각하면 지울 만하지만 저장 형식이 바뀌므로 따로 한다
+- README·SPEC·랜딩 데모의 단계 표기(§9.7 과 같은 이유)

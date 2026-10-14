@@ -44,9 +44,30 @@ export type FieldInput =
   | "number" // 숫자
   | "single" // 선택지 하나
   | "multi" // 선택지 여럿
-  | "date" // 날짜 / 기간
+  | "date" // 날짜 하나 (③ 의뢰일)
+  | "monthRange" // 시작 월 ~ 끝 월 (⑥ ⑦ 수집 기간). 값은 entries 의 From·To 로 둔다
   | "entries" // 키-값 줄 추가 (클래스별 수량, 하이퍼파라미터)
   | "metricSelect"; // 지표 선택 (기존 지표 선택 화면이 담당)
+
+/** `monthRange` 의 두 칸. 저장소에 들어가는 키라 화면 문구와 따로 둔다. */
+export const MONTH_RANGE_KEYS = { from: "From", to: "To" } as const;
+
+/**
+ * 조건부 필드의 조건 하나 — 같은 카드의 다른 필드가 이 값일 때 성립한다.
+ * `equals` 는 값 하나, `in` 은 여러 값 중 하나.
+ */
+export interface FieldCondition {
+  field: string;
+  equals?: string;
+  in?: string[];
+}
+
+/** 숫자 칸의 허용 범위. `max` 가 없으면 위로 열려 있다. */
+export interface NumberRange {
+  min: number;
+  max?: number;
+  integer?: boolean;
+}
 
 export interface ComposerField {
   /** 레지스트리 전역에서 유일하다. 스토어 값 맵의 키가 된다. */
@@ -64,8 +85,11 @@ export interface ComposerField {
    *
    * 조건이 카드 밖에 있는 필드(② 의 β 는 지표 선택에 달려 있다)에는 두지 않는다. 그런 필드는
    * 그 조건을 아는 화면이 따로 검사한다.
+   *
+   * 배열이면 **모두** 성립해야 한다. ⑧ 라벨 일치도 값은 "복수 검수"이면서 "측정한 종류"일 때만
+   * 받는다 — 앞의 조건이 풀리면(검수 방식을 바꾸면) 뒤의 값도 함께 사라져야 한다.
    */
-  requiredWhen?: { field: string; equals: string };
+  requiredWhen?: FieldCondition | FieldCondition[];
   /** 이 필드를 보여줄 분류 유형. 없으면 전 유형. */
   taskTypes?: TaskType[];
   input: FieldInput;
@@ -76,6 +100,38 @@ export interface ComposerField {
    * 이 값은 "모름"과 달리 **제공된 것으로 센다** — 원문이 요구하는 답이기 때문이다.
    */
   exclusiveChoice?: string;
+  /**
+   * 고르면 내용을 직접 적어야 하는 선택지("Other (free text)").
+   *
+   * 선택지만 있고 쓸 칸이 없으면 "기타"를 고른 사용자가 무엇인지 말할 길이 없다. 고르는
+   * 순간 칸이 나타나고(`ComposerFieldValue.otherText`), 비어 있으면 미입력으로 센다.
+   */
+  otherChoice?: string;
+  /**
+   * 숫자 칸의 허용 범위(⑧ 라벨러 수·라벨 일치도). **값이 있을 때만** 검사한다 — 비어
+   * 있는지는 필수 점검이 따로 본다.
+   */
+  numberRange?: NumberRange;
+  /**
+   * 허용 범위가 같은 카드의 다른 답에 따라 달라지는 숫자 칸(⑧ 라벨 일치도 값 — 단순 일치율은
+   * 0~100 %, 카파·알파는 −1~1). 그 답에 해당하는 범위가 `null` 이면 검사하지 않는다("기타").
+   */
+  numberRangeBy?: { field: string; ranges: Record<string, NumberRange | null> };
+  /**
+   * 고를 수 있는 조건이 다른 칸의 숫자에 달린 선택지(⑧ Cohen의 카파는 라벨러 2명, Fleiss의
+   * 카파는 3명 이상). 조건 칸이 비어 있으면 검사하지 않는다.
+   */
+  choiceRequires?: Record<string, { field: string; min?: number; max?: number; message: string }>;
+  /**
+   * 선택지와 함께 **덧붙이는 글**을 받는다(서술 설계 D26: 모든 선택지 필드는 추가 서술을 함께
+   * 받는다). 맞는 선택지가 없으면 글만 써도 답한 것으로 센다. 성적서에는 "의뢰자 제공"으로 싣는다.
+   */
+  allowsNote?: boolean;
+  /**
+   * 성적서에 찍을 선택지 이름. 화면은 영어인데 성적서는 한국어이고, 재료 목록이 정한 이름이
+   * 있다(예: "Missed (FN)" → "FN이 더 위험"). 저장값은 화면 선택지 그대로다.
+   */
+  reportLabels?: Record<string, string>;
   /** `entries` 의 고정 행 키(⑥ 데이터 양의 학습·검증, ⑨ GPU 사용 여부의 학습·추론). */
   entryKeys?: string[];
   /**
@@ -110,10 +166,12 @@ export interface ComposerField {
   /**
    * 같은 내용을 받던 **기존 저장소 필드**. 카드에 입력하면 여기에도 함께 쓴다.
    *
-   * 카드가 생기기 전부터 `basicInfo`·`datasetInfo` 의 몇몇 필드가 같은 것을 받고 있었고,
-   * 성적서를 그리는 코드는 그쪽을 읽는다. 둘을 한 화면에 나란히 두면 사용자가 같은 값을 두 번
-   * 적게 되므로 **입력란은 카드 하나로 합치되, 값은 기존 저장소에도 흘려보내** 성적서 출력을
-   * 그대로 둔다.
+   * 카드가 생기기 전부터 `basicInfo` 의 몇몇 필드가 같은 것을 받고 있었고, 성적서를 그리는
+   * 코드는 그쪽을 읽는다. 둘을 한 화면에 나란히 두면 사용자가 같은 값을 두 번 적게 되므로
+   * **입력란은 카드 하나로 합치되, 값은 기존 저장소에도 흘려보내** 성적서 출력을 그대로 둔다.
+   *
+   * ⑥ 학습 데이터는 이 방식을 쓰지 않는다. 기존 저장소(`datasetInfo`)를 아예 없애고 성적서가
+   * 카드 값을 직접 읽는다(persist v10) — 저장소가 둘이면 어느 쪽이 참인지 다시 갈린다.
    *
    * `field` — 값 하나를 그 필드에 쓴다.
    * `byKey` — `entries` 의 칸마다 다른 필드에 쓴다(⑨ 실행 환경의 OS·CPU·… 처럼).
@@ -124,7 +182,7 @@ export interface ComposerField {
 }
 
 /** 카드 값을 함께 흘려보낼 기존 저장소. */
-export type LegacyTarget = "basicInfo" | "datasetInfo";
+export type LegacyTarget = "basicInfo";
 
 export interface ComposerCard {
   id: ComposerCardId;
@@ -176,6 +234,10 @@ export interface ComposerFieldValue {
   text?: string;
   /** `multi` 의 값. */
   choices?: string[];
+  /** `otherChoice` 를 골랐을 때 직접 적은 내용. */
+  otherText?: string;
+  /** `allowsNote` 필드에 덧붙인 글. */
+  note?: string;
   /** `entries` 의 값 — 클래스별 수량, 하이퍼파라미터 줄. */
   entries?: Array<{ key: string; value: string }>;
   /** "모름"을 골랐다. */

@@ -4,6 +4,7 @@ import { RemainingNotice } from "../../components/composer-input/RemainingNotice
 import { focusFirstIssue } from "../../components/composer-input/focusFirstIssue";
 import { WorkflowShell } from "../../layout/WorkflowShell";
 import { DataInfo as DataInfoContent, DATA_INFO_CARDS } from "../../components/data-info/DataInfo";
+import { TrainingExamplesSection } from "../../components/report-info/TrainingExamplesSection";
 import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
 import { useStepFlow } from "../../hooks/useStepFlow";
 import { getCard } from "../../data/reportComposer";
@@ -15,7 +16,7 @@ import type {
 } from "../../types/reportComposer.types";
 
 /**
- * 데이터 정보 (`/report/:id/data-info`) — 발급 구간.
+ * 데이터 정보 (`/report/:id/data-info`) — 성적서 입력, Details 다음.
  *
  * ⑥ ⑦ ⑧ 중 **하나라도** 켜면 나타나고, 켠 카드의 폼만 그린다. 끈 카드는 검사하지도 않는다 —
  * 끄는 것은 허용된 선택이고, 그때 그 카드의 표준 보고 항목은 성적서에 "제공되지 않음"으로
@@ -74,7 +75,7 @@ export function DataInfo() {
         flow.goNext({ runId: id });
       }}
       previousLabel="Back"
-      nextLabel="Next step"
+      nextLabel={flow.next === "report" ? "View report" : "Next step"}
       rightAction={<RemainingNotice issues={issues} />}
     >
       <DataInfoContent
@@ -88,6 +89,17 @@ export function DataInfo() {
         issues={issues}
         classNames={classNames}
         showErrors={showErrors}
+        afterCard={{
+          // ⑥ 의 예시 파일. 종전에는 Details 의 학습 데이터셋 폼 아래에 있었다.
+          trainingData: (
+            <TrainingExamplesSection
+              trainingExampleFiles={store.trainingExampleFiles}
+              onTrainingExampleFilesChange={store.setTrainingExampleFiles}
+              trainingUnsuitableExampleFiles={store.trainingUnsuitableExampleFiles}
+              onTrainingUnsuitableExampleFilesChange={store.setTrainingUnsuitableExampleFiles}
+            />
+          ),
+        }}
       />
     </WorkflowShell>
   );

@@ -18,12 +18,9 @@ import { getAvailableMetrics, type TaskType } from "../../data/evaluationData";
 import type { ColumnNote, MappingWarning } from "../../lib/report/backendNotices";
 import type { MappingRow } from "../../types/mapping.types";
 import type { ValidateDataResponseData } from "../../types/validation.types";
-import type { MapWorkflowToReportInput } from "../../lib/report/mapWorkflowToFinalReport";
 import {
   DEFAULT_BASIC_INFO,
-  DEFAULT_DATASET_INFO,
   type BasicInfoFormData,
-  type DatasetInfoFormData,
   type MetricDetailStateMap,
   type StepId,
   type UploadedFileInfo,
@@ -49,14 +46,17 @@ import { presetSelection } from "../../data/reportComposer";
  */
 
 /** persist 스키마 버전. 저장된 상태의 의미가 바뀔 때만 올린다. */
-export const WORKFLOW_PERSIST_VERSION = 7;
+export const WORKFLOW_PERSIST_VERSION = 11;
 
 /**
  * 구 번호 체계(v4 까지)의 1~6 이 가리켰던 단계.
  *
  * v4→v5 마이그레이션 **전용**이다. 새 코드에서 번호로 단계를 가리키는 곳은 없다.
+ *
+ * `StepId` 가 아니라 문자열인 이유: 구 5번(`"summary"`)은 v8 에서 폐지돼 지금의 `StepId` 에
+ * 없다. 여기서는 그 시절 이름을 그대로 만들고, v7 → v8 단계가 정리한다.
  */
-const LEGACY_STEP_IDS: StepId[] = [
+const LEGACY_STEP_IDS: readonly string[] = [
   "upload", // 1
   "metrics", // 2
   "mapping", // 3
@@ -65,9 +65,15 @@ const LEGACY_STEP_IDS: StepId[] = [
   "report", // 6
 ];
 
-/** v3 → v4 에서 생긴 성적서 구성 상태의 기본값. 마이그레이션과 초기 상태가 함께 쓴다. */
+/**
+ * 성적서 구성 상태의 기본값. 마이그레이션과 초기 상태가 함께 쓴다.
+ *
+ * `composerMetrics` 는 v9 에서 생겼다(② 지표 선택 이유·핵심 지표). 그 전에는 ② 카드 값을
+ * 담을 그룹이 없어 레지스트리에 정의만 있고 받을 곳이 없었다.
+ */
 const INITIAL_COMPOSER_STATE = {
   composerCards: DEFAULT_COMPOSER_SELECTION,
+  composerMetrics: {} as ComposerValueMap,
   composerPerspective: {} as ComposerValueMap,
   composerTrainingData: {} as ComposerValueMap,
   composerTestData: {} as ComposerValueMap,
@@ -77,12 +83,192 @@ const INITIAL_COMPOSER_STATE = {
 
 /** 분류 유형이 바뀌면 비우는 입력 그룹(카드 선택은 남긴다 — 아래 `setTaskType` 참고). */
 const EMPTY_COMPOSER_INPUTS = {
+  composerMetrics: {} as ComposerValueMap,
   composerPerspective: {} as ComposerValueMap,
   composerTrainingData: {} as ComposerValueMap,
   composerTestData: {} as ComposerValueMap,
   composerGroundTruth: {} as ComposerValueMap,
   composerModelEnv: {} as ComposerValueMap,
 };
+
+/**
+ * v8 → v9 — 입력 형태가 바뀐 필드의 옛 값을 새 형태로 옮긴다.
+ *
+ * v6 → v7 은 선택지가 통째로 바뀌어 비웠지만, 여기는 **같은 답을 다른 그릇에 담는 것**이라
+ * 옮길 수 있다. 옮기지 못하는 값(형식이 다른 자유 텍스트)만 버린다 — 틀리게 옮긴 숫자가
+ * 성적서에 찍히는 것보다 빈 칸으로 다시 묻는 편이 안전하다.
+ */
+function migrateComposerShapesV9(next: any): any {
+  const training: ComposerValueMap = { ...(next.composerTrainingData ?? {}) };
+  const test: ComposerValueMap = { ...(next.composerTestData ?? {}) };
+  const groundTruth: ComposerValueMap = { ...(next.composerGroundTruth ?? {}) };
+
+  // ⑥ 편향 감소 노력: 하나 고르기 → 여럿 고르기.
+  const imbalance = training.imbalanceHandling;
+  if (imbalance?.text) {
+    const { text, ...rest } = imbalance;
+    training.imbalanceHandling = { ...rest, choices: [text] };
+  }
+
+  // ⑥ ⑦ 수집 기간: "YYYY-MM ~ YYYY-MM" 한 줄 → 시작 월·끝 월.
+  const toMonthRange = (map: ComposerValueMap, fieldId: string) => {
+    const old = map[fieldId];
+    if (!old || old.entries || old.text === undefined) return;
+    const match = old.text.match(/(\d{4}-\d{2})\s*[~–—-]\s*(\d{4}-\d{2})/);
+    if (match) {
+      map[fieldId] = {
+        entries: [
+          { key: "From", value: match[1] },
+          { key: "To", value: match[2] },
+        ],
+      };
+    } else {
+      delete map[fieldId];
+    }
+  };
+  toMonthRange(training, "trainingPeriod");
+  toMonthRange(test, "testPeriod");
+
+  // ⑧ "3명 · 82%" 한 칸 → 라벨러 수·일치도 두 칸. 일치도는 % 앞 숫자, 라벨러 수는 나머지
+  // 정수 하나다. 둘 중 하나라도 못 찾으면 그 칸만 비운다.
+  const agreement = groundTruth.labelAgreement;
+  if (agreement) {
+    delete groundTruth.labelAgreement;
+    const text = agreement.text ?? "";
+    const rate = text.match(/(\d+(?:\.\d+)?)\s*%/);
+    const withoutRate = rate ? text.replace(rate[0], "") : text;
+    const count = withoutRate.match(/\d+/);
+    if (count) groundTruth.labelReviewerCount = { text: count[0] };
+    if (rate) groundTruth.labelAgreementRate = { text: rate[1] };
+  }
+
+  // Details "Report notes" → ⑥ 학습 데이터 설명. 그 메모가 이미 "학습 데이터 설명"으로
+  // 인쇄되고 있었으므로 사용자가 본 성적서와 같은 자리로 옮긴다.
+  let datasetInfo = next.datasetInfo;
+  if (datasetInfo && "trainingDataDescription" in datasetInfo) {
+    const { trainingDataDescription, ...restInfo } = datasetInfo;
+    datasetInfo = restInfo;
+    const memo = typeof trainingDataDescription === "string" ? trainingDataDescription.trim() : "";
+    if (memo && !training.trainingDescription?.text) {
+      training.trainingDescription = { text: trainingDataDescription };
+    }
+  }
+
+  return {
+    ...next,
+    ...(datasetInfo ? { datasetInfo } : {}),
+    composerMetrics: next.composerMetrics ?? {},
+    composerTrainingData: training,
+    composerTestData: test,
+    composerGroundTruth: groundTruth,
+  };
+}
+
+/**
+ * v9 → v10 — Details 의 학습 데이터 폼(`datasetInfo`)을 ⑥ 카드로 합쳤다.
+ *
+ * 같은 값을 두 화면에서 받던 것을 하나로 줄였다(docs/WORKFLOW_REDESIGN.md §10.6). 폼에 적은
+ * 값을 ⑥ 의 같은 칸으로 옮기고 `datasetInfo` 는 지운다. ⑥ 에 이미 값이 있으면 덮지 않는다 —
+ * 카드 값이 나중에 생긴 쪽이다.
+ *
+ * 클래스 분포는 옮기지 않는다. 폼은 한 줄 자유 텍스트였고 ⑥ 은 클래스마다 칸이 따로 있어,
+ * 글을 쪼개 칸에 넣으면 틀릴 수 있다. 카드를 켜는 것도 사용자의 결정이라 건드리지 않는다.
+ */
+function migrateTrainingDataV10(next: any): any {
+  const { datasetInfo, ...rest } = next;
+  if (!datasetInfo || typeof datasetInfo !== "object") return rest;
+
+  const training: ComposerValueMap = { ...(rest.composerTrainingData ?? {}) };
+  const textOf = (key: string) =>
+    typeof datasetInfo[key] === "string" ? datasetInfo[key].trim() : "";
+  const isEmpty = (fieldId: string) => {
+    const value = training[fieldId];
+    return !value || (!value.unknown && !value.text && !(value.entries?.length));
+  };
+
+  const name = textOf("trainingDatasetName");
+  if (name && isEmpty("trainingDatasetName")) training.trainingDatasetName = { text: name };
+
+  const format = textOf("trainingDataFormat");
+  if (format && isEmpty("trainingDataFormat")) training.trainingDataFormat = { text: format };
+
+  const trainingCount = textOf("trainingSampleCount");
+  const validationCount = textOf("validationSampleCount");
+  if ((trainingCount || validationCount) && isEmpty("trainingVolume")) {
+    training.trainingVolume = {
+      entries: [
+        { key: "Training", value: trainingCount },
+        { key: "Validation", value: validationCount },
+      ],
+    };
+  }
+
+  return { ...rest, composerTrainingData: training };
+}
+
+/** 옛 ⑦ 전처리 선택지 → 새 "학습과 같은 전처리인가" 선택지. "None"(전처리 없음)은 짝이 없다. */
+const LEGACY_PREPROCESSING_CHOICE: Record<string, string> = {
+  "Same as training": "Same",
+  "Different from training": "Different",
+};
+
+/**
+ * v10 → v11 — 문서에서 정할 것으로 남았던 항목을 정했다(2026-10-14, 서술 설계 D41~D44).
+ *
+ * - 전처리 자유서술 세 칸(⑥ 전처리, ⑦ 전처리·전처리 내용)을 ⑦ "학습과 같은 전처리인가" 한 칸으로
+ *   합쳤다. 고른 답은 짝이 있으면 옮기고, 적어 둔 글은 버리지 않고 덧붙이는 글로 옮긴다.
+ * - ⑧ 라벨 일치도는 종류를 먼저 받는다. 옛 값은 % 로 받던 칸이라 "단순 일치율"로 옮긴다.
+ * - 성적서 용도에 덧붙이는 글(`basicInfo.reportPurposeNote`)이 생겼다. 얕은 merge 라 옛 저장분의
+ *   `basicInfo` 에는 이 키가 없으므로 채운다.
+ */
+function migrateDecisionsV11(next: any): any {
+  const training: ComposerValueMap = { ...(next.composerTrainingData ?? {}) };
+  const test: ComposerValueMap = { ...(next.composerTestData ?? {}) };
+  const groundTruth: ComposerValueMap = { ...(next.composerGroundTruth ?? {}) };
+
+  const oldChoice = test.testPreprocessing;
+  const notes = [
+    training.preprocessing?.text?.trim() ? "Training: " + training.preprocessing.text.trim() : "",
+    oldChoice?.text === "None" ? "Test: no preprocessing" : "",
+    test.testPreprocessingDetail?.text?.trim()
+      ? "Test: " + test.testPreprocessingDetail.text.trim()
+      : "",
+  ].filter(Boolean);
+  const choice = oldChoice?.unknown
+    ? "Unknown"
+    : LEGACY_PREPROCESSING_CHOICE[oldChoice?.text ?? ""];
+  if ((choice || notes.length > 0) && !test.preprocessingMatch) {
+    test.preprocessingMatch = {
+      ...(choice ? { text: choice } : {}),
+      ...(notes.length > 0 ? { note: notes.join(" / ") } : {}),
+    };
+  }
+  delete training.preprocessing;
+  delete test.testPreprocessing;
+  delete test.testPreprocessingDetail;
+
+  const oldRate = groundTruth.labelAgreementRate;
+  if (oldRate) {
+    delete groundTruth.labelAgreementRate;
+    if (oldRate.text?.trim()) {
+      groundTruth.labelAgreementKind = { text: "Percent agreement" };
+      groundTruth.labelAgreementValue = { text: oldRate.text.trim() };
+    }
+  }
+
+  const basicInfo =
+    next.basicInfo && typeof next.basicInfo === "object"
+      ? { reportPurposeNote: "", ...next.basicInfo }
+      : next.basicInfo;
+
+  return {
+    ...next,
+    ...(basicInfo ? { basicInfo } : {}),
+    composerTrainingData: training,
+    composerTestData: test,
+    composerGroundTruth: groundTruth,
+  };
+}
 
 /**
  * 저장된 워크플로우 상태를 현재 규칙으로 옮긴다(순수 함수 — 테스트가 직접 호출한다).
@@ -124,6 +310,22 @@ const EMPTY_COMPOSER_INPUTS = {
  * 쓰는 라벨이면서 **저장되는 값 자체**다("알려진 것 없음" 이 값으로 들어 있다). 그대로 두면
  * 저장된 값이 어느 선택지와도 맞지 않아 라디오가 전부 빈 채로 열리고, 필수 점검은 통과하는
  * 모순이 생긴다. 네 입력 그룹을 비운다 — ⑤ 는 선택지가 이미 영어였으므로 남긴다.
+ *
+ * **v7 → v8**: 평가 결과(`"summary"`) 단계가 폐지되고 Details 가 선택 카드 단계 앞으로
+ * 왔다(docs/WORKFLOW_REDESIGN.md §11). 완료 목록에서 `"summary"` 를 지우고, 현재 위치면
+ * 검증 다음 단계인 Details(`clientInfo`)로 옮긴다. 순서가 바뀐 나머지 단계는 이름이 그대로라
+ * 손대지 않는다 — 진입 가드가 처음 미완료 단계로 보낸다.
+ *
+ * **v8 → v9**: 입력 화면을 재료 목록에 맞췄다. ② 카드 값 그룹(`composerMetrics`)이 생겼고,
+ * 형태가 바뀐 필드(⑥ 편향 감소 노력·수집 기간, ⑦ 수집 기간, ⑧ 라벨러 수·일치도)의 옛 값을
+ * 새 형태로 옮긴다. Details 의 "Report notes" 칸이 없어져, 거기 적힌 메모는 ⑥ 학습 데이터
+ * 설명으로 간다(`migrateComposerShapesV9`).
+ *
+ * **v9 → v10**: Details 의 학습 데이터 폼을 없애고 ⑥ 카드 하나로 받는다. 폼에 적은 이름·건수·
+ * 형식을 ⑥ 으로 옮기고 `datasetInfo` 를 지운다(`migrateTrainingDataV10`).
+ *
+ * **v10 → v11**: 전처리 세 칸을 ⑦ 한 칸으로, ⑧ 라벨 일치도를 종류 + 값으로 바꾸고, 성적서 용도에
+ * 덧붙이는 글을 더했다(`migrateDecisionsV11`).
  */
 export function migrateWorkflowState(persisted: any, version: number): any {
   if (!persisted || version >= WORKFLOW_PERSIST_VERSION) return persisted;
@@ -169,7 +371,7 @@ export function migrateWorkflowState(persisted: any, version: number): any {
     const legacyCompleted: unknown = next.completedSteps;
     const completedStepIds = (Array.isArray(legacyCompleted) ? legacyCompleted : [])
       .map((step: unknown) => LEGACY_STEP_IDS[Number(step) - 1])
-      .filter((id): id is StepId => Boolean(id));
+      .filter((id): id is string => Boolean(id));
 
     const currentStepId = LEGACY_STEP_IDS[Number(next.currentStep) - 1] ?? "upload";
 
@@ -203,6 +405,33 @@ export function migrateWorkflowState(persisted: any, version: number): any {
     };
   }
 
+  // v7 → v8 — 평가 결과 단계가 폐지됐다.
+  if (version < 8) {
+    const completed: unknown = next.completedStepIds;
+    next = {
+      ...next,
+      completedStepIds: (Array.isArray(completed) ? completed : []).filter(
+        (id: unknown) => id !== "summary",
+      ),
+      currentStepId: next.currentStepId === "summary" ? "clientInfo" : next.currentStepId,
+    };
+  }
+
+  // v8 → v9 — 입력 형태 변경. 옛 값을 새 그릇으로 옮긴다.
+  if (version < 9) {
+    next = migrateComposerShapesV9(next);
+  }
+
+  // v9 → v10 — Details 의 학습 데이터 폼을 ⑥ 카드로 합쳤다.
+  if (version < 10) {
+    next = migrateTrainingDataV10(next);
+  }
+
+  // v10 → v11 — 전처리 한 칸, 라벨 일치도 종류, 성적서 용도 덧붙이는 글.
+  if (version < 11) {
+    next = migrateDecisionsV11(next);
+  }
+
   return next;
 }
 
@@ -232,9 +461,9 @@ interface WorkflowState {
   uploadedFile: UploadedFileInfo | null;
   rawFile: File | null;
   metadata: any | null;
+  /** ⑥ 학습 데이터의 예시 파일. ⑥ 을 켰을 때 Data info 에서 받는다. */
   trainingExampleFiles: UploadedFileInfo[];
   trainingUnsuitableExampleFiles: UploadedFileInfo[];
-  datasetInfo: DatasetInfoFormData;
 
   /**
    * 결정 임계값 — 하드 예측이 없을 때 확률에서 예측을 파생하는 기준(ISSUES.md A-01).
@@ -265,8 +494,8 @@ interface WorkflowState {
   validationResult: ValidateDataResponseData | null;
 
   /**
-   * 과거 평가 스냅샷을 복원했거나 저장소에서 재수화해, 입력은 있는데 원본 파일이 없는 상태.
-   * 파일은 어떤 경우에도 복원할 수 없으므로 재업로드를 유도해야 한다(ISSUES.md E-01·E-09).
+   * 저장소에서 재수화해, 입력은 있는데 원본 파일이 없는 상태.
+   * 파일은 어떤 경우에도 복원할 수 없으므로 재업로드를 유도해야 한다(ISSUES.md E-01).
    */
   needsFileReupload: boolean;
 
@@ -284,10 +513,15 @@ interface WorkflowState {
   /**
    * 카드별 입력값. 키는 재료 레지스트리의 `field.id` 다(`data/reportComposer.ts`).
    *
-   * **이번 범위에서는 저장까지만 한다** — 백엔드로 보내거나 성적서에 인쇄하지 않는다.
-   * 기존 `datasetInfo`·`basicInfo.env*` 와 내용이 겹치는 부분이 있는데, 그쪽은 지금도
-   * 성적서를 그리는 데 쓰이므로 건드리지 않았다. 중복 정리는 별도 작업이다.
+   * **대부분 저장까지만 한다** — 백엔드로 보내거나 성적서에 인쇄하지 않는다.
+   * ⑨ 실행 환경은 기존 `basicInfo.env*` 와 내용이 겹치는데, 그쪽은 지금도 성적서를 그리는 데
+   * 쓰이므로 건드리지 않았다. 중복 정리는 별도 작업이다.
+   *
+   * 예외 둘: ② 핵심 지표는 판정에 쓰이고(`resolveCoreMetricIds`), ⑥ 학습 데이터는 성적서
+   * 학습 데이터 절이 직접 읽는다(`buildTrainingDatasetInfo`). ⑥ 은 Details 의 학습 데이터 폼을
+   * 흡수해 유일한 입력처다(persist v10).
    */
+  composerMetrics: ComposerValueMap;
   composerPerspective: ComposerValueMap;
   composerTrainingData: ComposerValueMap;
   composerTestData: ComposerValueMap;
@@ -325,11 +559,6 @@ interface WorkflowState {
   setTrainingUnsuitableExampleFiles: (
     value: UploadedFileInfo[] | ((prev: UploadedFileInfo[]) => UploadedFileInfo[]),
   ) => void;
-  setDatasetInfo: (
-    value:
-      | DatasetInfoFormData
-      | ((prev: DatasetInfoFormData) => DatasetInfoFormData),
-  ) => void;
 
   // Actions — Step 5
   setColumnMapping: (
@@ -348,6 +577,9 @@ interface WorkflowState {
   // Actions — 성적서 구성
   setComposerCard: (id: OptionalCardId, on: boolean) => void;
   applyComposerPreset: (preset: ComposerPreset) => void;
+  setComposerMetrics: (
+    value: ComposerValueMap | ((prev: ComposerValueMap) => ComposerValueMap),
+  ) => void;
   setComposerPerspective: (
     value: ComposerValueMap | ((prev: ComposerValueMap) => ComposerValueMap),
   ) => void;
@@ -366,7 +598,6 @@ interface WorkflowState {
 
   // Reset
   resetWorkflow: () => void;
-  loadWorkflowSnapshot: (snapshot: MapWorkflowToReportInput) => void;
 }
 
 const INITIAL_STATE = {
@@ -381,7 +612,6 @@ const INITIAL_STATE = {
   metadata: null as any | null,
   trainingExampleFiles: [] as UploadedFileInfo[],
   trainingUnsuitableExampleFiles: [] as UploadedFileInfo[],
-  datasetInfo: DEFAULT_DATASET_INFO,
   columnNotes: [] as ColumnNote[],
   mappingWarnings: [] as MappingWarning[],
   availableMetricIds: null as string[] | null,
@@ -451,9 +681,9 @@ export const useWorkflowStore = create<WorkflowState>()(
           // 작업 유형이 바뀌면 뒤 단계의 근거가 전부 사라진다. 완료 표시와 데이터셋 정보를
           // 남겨두면 (a) 빈 상태로 뒤 단계에 점프할 수 있고 (b) 이전 평가의 표본 수가 새
           // 성적서에 인쇄된다(ISSUES.md E-08). persist 도입 전에는 새로고침이 사실상
-          // 초기화 역할을 해서 세션 안에 갇혀 있던 오염이다.
+          // 초기화 역할을 해서 세션 안에 갇혀 있던 오염이다. 학습 데이터 정보는 이제 ⑥ 카드
+          // 값이라 아래 `EMPTY_COMPOSER_INPUTS` 가 함께 비운다.
           completedStepIds: [],
-          datasetInfo: DEFAULT_DATASET_INFO,
           needsFileReupload: false,
           // basicInfo 는 유지한다 — 작업 유형만 바꿨는데 1단계 입력까지 날아가면 안 된다.
           /**
@@ -461,7 +691,8 @@ export const useWorkflowStore = create<WorkflowState>()(
            *
            * 입력값을 비우는 이유: ⑤ 평가 관점은 유형마다 묻는 질문이 다르고(이진은 중요 오류
            * 유형, 그 외는 클래스 중요도), ⑥ 클래스별 데이터 양은 업로드한 클래스 목록에
-           * 매여 있다. 유형이 바뀌면 둘 다 근거가 사라진다.
+           * 매여 있다. ② 핵심 지표는 고른 지표 중에서 고르는데 지표 선택이 위에서 비워지고,
+           * 지표 선택 이유는 멀티레이블에서만 묻는다. 유형이 바뀌면 모두 근거가 사라진다.
            *
            * 카드 선택을 남기는 이유: "어떤 정보를 성적서에 넣을지"는 분류 유형과 무관한
            * 결정이고, 9개 카드 모두 전 유형에 적용된다. 어차피 유형을 바꾸면 구성 화면을
@@ -503,12 +734,6 @@ export const useWorkflowStore = create<WorkflowState>()(
             typeof value === "function" ? value(state.trainingUnsuitableExampleFiles) : value,
         })),
 
-      setDatasetInfo: (value) =>
-        set((state) => ({
-          datasetInfo:
-            typeof value === "function" ? value(state.datasetInfo) : value,
-        })),
-
       // Step 5
       setColumnMapping: (value) =>
         set((state) => ({
@@ -534,6 +759,12 @@ export const useWorkflowStore = create<WorkflowState>()(
         set((state) => ({ composerCards: { ...state.composerCards, [id]: on } })),
 
       applyComposerPreset: (preset) => set({ composerCards: presetSelection(preset) }),
+
+      setComposerMetrics: (value) =>
+        set((state) => ({
+          composerMetrics:
+            typeof value === "function" ? value(state.composerMetrics) : value,
+        })),
 
       setComposerPerspective: (value) =>
         set((state) => ({
@@ -567,49 +798,6 @@ export const useWorkflowStore = create<WorkflowState>()(
 
       // Reset
       resetWorkflow: () => set(INITIAL_STATE),
-
-      loadWorkflowSnapshot: (snapshot) =>
-        set({
-          basicInfo: snapshot.basicInfo,
-          taskType: snapshot.taskType,
-          selectedMetricIds: snapshot.selectedMetricIds,
-          metricDetails: snapshot.metricDetails,
-          uploadedFile: snapshot.uploadedFile,
-          rawFile: null,
-          metadata: null,
-          trainingExampleFiles: snapshot.trainingExampleFiles,
-          trainingUnsuitableExampleFiles: snapshot.trainingUnsuitableExampleFiles,
-          datasetInfo: snapshot.datasetInfo,
-          decisionThreshold: null,
-          columnNotes: [],
-          mappingWarnings: [],
-          availableMetricIds: null,
-          columnMapping: snapshot.columnMapping,
-          classLabelDescriptions: snapshot.classLabelDescriptions,
-          validationResult: null,
-          currentStepId: "upload",
-          /**
-           * 원본 파일은 복원할 수 없다(File 객체).
-           *
-           * 2026-09-19 재배치로 **업로드가 1단계**가 됐다. 파일이 없으면 1단계부터 성립하지
-           * 않으므로 완료로 표시할 단계가 하나도 없다 — 종전의 `[1, 2, 3]` 은 구 번호 체계
-           * (기본정보·지표·지표상세)를 가리키던 값이라, 그대로 두면 새 체계에서
-           * 업로드·지표·매핑이 '완료'로 둔갑해 사용자가 빈 상태로 뒤 단계에 진입한다
-           * (ISSUES.md E-09 가 막으려던 바로 그 상태).
-           *
-           * 지표 선택·매핑 **입력 자체는 위에서 복원**했으므로, 파일만 다시 올리면
-           * 그대로 이어서 진행할 수 있다.
-           */
-          completedStepIds: [],
-          needsFileReupload: true,
-          /**
-           * 성적서 구성 입력값도 비운다. 스냅샷(`MapWorkflowToReportInput`)은 아직 이 값들을
-           * 싣지 않으므로, 비우지 않으면 **직전 세션에 남아 있던 값**이 새 run 으로 흘러든다 —
-           * 물려받은 것이 아니라 치우지 않은 것이다. 카드 선택은 `setTaskType` 과 같은 이유로
-           * 남긴다.
-           */
-          ...EMPTY_COMPOSER_INPUTS,
-        }),
     }),
     {
       name: WORKFLOW_STORAGE_KEY,

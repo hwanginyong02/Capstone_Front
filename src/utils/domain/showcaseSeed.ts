@@ -83,15 +83,26 @@ export function seedShowcaseData(store: WorkflowStore, step: StepId) {
     positive_class_ambiguous: false,
     class_distribution: { "0": 52, "1": 48 },
   });
-  store.setDatasetInfo({
-    trainingDatasetName: "Binary review dataset",
-    trainingSampleCount: "100",
-    validationSampleCount: "100",
-    trainingDataFormat: "Structured JSON",
-    trainingClassDistribution: "Negative 52 / Positive 48",
-    trainingDataDescription:
-      "Customer review sentiment samples labeled by human annotators.",
-  });
+  // 학습 데이터는 ⑥ 카드가 받는다(종전의 Details 학습 데이터 폼을 흡수했다). 카드가 꺼져
+  // 있으면 성적서에 찍히지 않는다.
+  store.setComposerTrainingData((prev) => ({
+    ...prev,
+    trainingDatasetName: { text: "Binary review dataset" },
+    trainingVolume: {
+      entries: [
+        { key: "Training", value: "100" },
+        { key: "Validation", value: "100" },
+      ],
+    },
+    trainingClassVolume: {
+      entries: [
+        { key: "0", value: "52" },
+        { key: "1", value: "48" },
+      ],
+    },
+    trainingDataFormat: { text: "Structured JSON" },
+    trainingDescription: { text: "Customer review sentiment samples labeled by human annotators." },
+  }));
   store.setUploadedFile({
     name: "eval_result_1775625159458.json",
     size: "42 KB",

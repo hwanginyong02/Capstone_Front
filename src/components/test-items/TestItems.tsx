@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Checkbox } from "../ui/checkbox";
 import { Input } from "../ui/input";
 import { ComposerCardForm } from "../composer-input/ComposerCardForm";
-import { getCard } from "../../data/reportComposer";
+import { ComposerFieldInput } from "../composer-input/ComposerFieldInput";
+import { getCard, getCardFields } from "../../data/reportComposer";
 import { cn } from "../../utils/styling/styles";
 import type { ComposerFieldValue, ComposerValueMap } from "../../types/reportComposer.types";
 import type { FieldIssue } from "../../utils/domain/composerFieldGate";
@@ -42,6 +43,13 @@ interface TestItemsProps {
   perspectiveIssues?: FieldIssue[];
   /** 빈 필수 칸을 빨갛게 칠할지. 페이지가 다음을 누른 뒤에 켠다. */
   perspectiveShowErrors?: boolean;
+  /**
+   * ② 지표와 합격 기준 카드 중 **이 화면이 받는 필드**의 값(멀티레이블의 지표 선택 이유).
+   * 카드의 나머지(합격 기준·핵심 지표)는 Details 가 받는다. 값과 setter 를 함께 넘겨야 그려진다.
+   */
+  metricCardValues?: ComposerValueMap;
+  onMetricCardChange?: (fieldId: string, next: ComposerFieldValue) => void;
+  metricCardIssues?: FieldIssue[];
 }
 
 export function TestItems({
@@ -53,6 +61,9 @@ export function TestItems({
   onPerspectiveChange,
   perspectiveIssues = [],
   perspectiveShowErrors = false,
+  metricCardValues,
+  onMetricCardChange,
+  metricCardIssues = [],
 }: TestItemsProps) {
   const availableMetrics = useMemo(() => getAvailableMetrics(taskType), [taskType]);
   const resolvedTaskType = taskType || "";
@@ -128,6 +139,11 @@ export function TestItems({
     setSelectedMetrics([]);
     onSelectedMetricsChange?.([]);
   };
+
+  // ② 카드에서 이 화면이 받는 필드. 지금은 멀티레이블의 지표 선택 이유 하나뿐이다.
+  const metricCardFields = resolvedTaskType
+    ? getCardFields("metrics", resolvedTaskType).filter((field) => field.step === "metrics")
+    : [];
 
   const handleToggleColumn = (columnCode: RequiredColumnCode) => {
     setSelectedColumns((prev) =>
@@ -341,6 +357,32 @@ export function TestItems({
               </Card>
             )}
           </div>
+        )}
+
+        {/* 고른 지표 바로 아래에서 고른 이유를 묻는다. 다음을 누른 뒤에만 빈 칸을 칠한다. */}
+        {onMetricCardChange && metricCardFields.length > 0 && (
+          <Card className="gap-0 rounded-lg border-border bg-card">
+            <CardContent className="space-y-5 p-6">
+              {metricCardFields.map((field) => {
+                const issue = metricCardIssues.find((item) => item.fieldId === field.id);
+                const showMissing = perspectiveShowErrors && issue?.reason === "missing";
+                return (
+                  <div key={field.id}>
+                    <ComposerFieldInput
+                      field={field}
+                      value={metricCardValues?.[field.id]}
+                      onChange={(next) => onMetricCardChange(field.id, next)}
+                      siblingValues={metricCardValues}
+                      invalid={showMissing}
+                    />
+                    {showMissing && (
+                      <p className="mt-1 text-body-small text-destructive">Required.</p>
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
         )}
 
         {selectedMetrics.includes("M5") && (

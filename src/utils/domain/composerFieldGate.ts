@@ -14,11 +14,14 @@
  */
 import { getCardFields } from "../../data/reportComposer";
 import type { TaskType } from "../../data/evaluationData";
-import type {
-  ComposerCard,
-  ComposerField,
-  ComposerFieldValue,
-  ComposerValueMap,
+import {
+  MONTH_RANGE_KEYS,
+  type ComposerCard,
+  type ComposerField,
+  type ComposerFieldValue,
+  type ComposerValueMap,
+  type FieldCondition,
+  type NumberRange,
 } from "../../types/reportComposer.types";
 
 export interface FieldIssue {
@@ -26,10 +29,18 @@ export interface FieldIssue {
   fieldId: string;
   label: string;
   /**
-   * `missing` — 필수인데 비어 있다.
+   * `missing` — 필수인데 비어 있다(Other 를 고르고 내용을 비운 것 포함).
    * `exclusive` — 배타 선택지를 다른 선택지와 함께 골랐다.
+   * `outOfRange` — 숫자가 아니거나 허용 범위 밖이다.
+   * `invalidPeriod` — 기간의 한쪽만 적었거나 시작이 끝보다 늦다.
+   * `incompatible` — 고른 선택지가 다른 칸의 값과 맞지 않는다(⑧ 라벨러 2명인데 Fleiss의 카파).
+   *
+   * `missing` 말고는 **지금 당장 틀린 값**이라 다음을 누르기 전부터 표시한다. `missing` 만 아직
+   * 입력하지 않은 것이라 넘어가려 한 뒤에야 표시한다.
    */
-  reason: "missing" | "exclusive";
+  reason: "missing" | "exclusive" | "outOfRange" | "invalidPeriod" | "incompatible";
+  /** 화면에 그대로 적을 설명. `incompatible` 처럼 이유가 선택지마다 다른 경우에 쓴다. */
+  message?: string;
   /**
    * 이 필드에 "모름" 이 있는가. 안내 문구가 "모르면 모름을 고르세요" 를 붙일지 정한다 —
    * ⑤ 평가 관점처럼 모름이 없는 필드에 그 말을 하면 있지도 않은 길을 알려주는 셈이다.
@@ -43,7 +54,18 @@ export function hasValue(field: ComposerField, value: ComposerFieldValue | undef
   // "모름" 은 성적서에 "제공되지 않음" 으로 찍히지만, 진행은 막지 않는다.
   if (value.unknown) return true;
 
+  // "Other" 를 골랐으면 무엇인지 적어야 답한 것이다. 선택지만으로는 내용이 없다.
+  if (isOtherChosen(field, value) && (value.otherText ?? "").trim() === "") return false;
+
+  // 덧붙이는 글을 받는 필드는 맞는 선택지가 없을 때 글만 써도 답한 것이다(서술 설계 D26).
+  if (field.allowsNote && (value.note ?? "").trim() !== "") return true;
+
   if (field.input === "multi") return (value.choices?.length ?? 0) > 0;
+
+  if (field.input === "monthRange") {
+    // 기간은 양 끝이 다 있어야 기간이다. 한쪽만 있는 것은 `invalidPeriod` 가 따로 잡는다.
+    return Boolean(monthOf(value, MONTH_RANGE_KEYS.from) && monthOf(value, MONTH_RANGE_KEYS.to));
+  }
 
   if (field.input === "entries") {
     const entries = value.entries ?? [];
@@ -62,11 +84,101 @@ export function hasValue(field: ComposerField, value: ComposerFieldValue | undef
   return (value.text ?? "").trim() !== "";
 }
 
+/** `otherChoice` 가 골라져 있는가. 하나 고르기·여럿 고르기 모두 본다. */
+export function isOtherChosen(field: ComposerField, value: ComposerFieldValue | undefined): boolean {
+  if (!field.otherChoice || !value) return false;
+  if (field.input === "multi") return (value.choices ?? []).includes(field.otherChoice);
+  return value.text === field.otherChoice;
+}
+
+/** `monthRange` 한쪽 끝의 값("YYYY-MM"). 비어 있으면 "". */
+export function monthOf(value: ComposerFieldValue | undefined, key: string): string {
+  return (value?.entries ?? []).find((entry) => entry.key === key)?.value.trim() ?? "";
+}
+
+/**
+ * 이 숫자 칸에 지금 적용할 허용 범위. 없으면 `null`(검사하지 않음).
+ *
+ * `numberRangeBy` 는 같은 카드의 다른 답에 따라 범위를 고른다 — ⑧ 라벨 일치도 값은 단순
+ * 일치율이면 0~100(%), 카파·알파면 −1~1 이다. 화면의 안내 문구도 이 값을 쓴다.
+ */
+export function rangeFor(field: ComposerField, values: ComposerValueMap): NumberRange | null {
+  if (field.numberRangeBy) {
+    const chosen = values[field.numberRangeBy.field]?.text ?? "";
+    return field.numberRangeBy.ranges[chosen] ?? null;
+  }
+  return field.numberRange ?? null;
+}
+
+/**
+ * 값이 **있는데 틀렸는가.** 비어 있는 것은 여기서 보지 않는다 — 그건 필수 점검의 몫이고,
+ * 선택 필드를 비워 두는 것은 허용된다.
+ */
+function invalidReason(
+  field: ComposerField,
+  value: ComposerFieldValue | undefined,
+  values: ComposerValueMap,
+): { reason: "outOfRange" | "invalidPeriod" | "incompatible"; message?: string } | null {
+  if (!value || value.unknown) return null;
+
+  const range = field.input === "number" ? rangeFor(field, values) : null;
+  if (range) {
+    const raw = (value.text ?? "").trim();
+    if (raw === "") return null;
+    const parsed = Number(raw);
+    const { min, max, integer } = range;
+    if (!Number.isFinite(parsed)) return { reason: "outOfRange" };
+    if (parsed < min || (max !== undefined && parsed > max)) return { reason: "outOfRange" };
+    if (integer && !Number.isInteger(parsed)) return { reason: "outOfRange" };
+    return null;
+  }
+
+  // 고른 선택지가 다른 칸의 숫자와 맞는가(⑧ Cohen의 카파는 2명, Fleiss의 카파는 3명 이상).
+  const rule = value.text ? field.choiceRequires?.[value.text] : undefined;
+  if (rule) {
+    const raw = (values[rule.field]?.text ?? "").trim();
+    const count = Number(raw);
+    // 조건 칸이 비었거나 숫자가 아니면 여기서 따지지 않는다 — 그 칸의 점검이 따로 잡는다.
+    if (raw !== "" && Number.isFinite(count)) {
+      const tooFew = rule.min !== undefined && count < rule.min;
+      const tooMany = rule.max !== undefined && count > rule.max;
+      if (tooFew || tooMany) return { reason: "incompatible", message: rule.message };
+    }
+  }
+
+  if (field.input === "monthRange") {
+    const from = monthOf(value, MONTH_RANGE_KEYS.from);
+    const to = monthOf(value, MONTH_RANGE_KEYS.to);
+    if (from === "" && to === "") return null;
+    if (from === "" || to === "") return { reason: "invalidPeriod" };
+    // "YYYY-MM" 은 글자 순서가 곧 시간 순서다.
+    if (from > to) return { reason: "invalidPeriod" };
+    return null;
+  }
+
+  return null;
+}
+
+/**
+ * 조건 하나가 성립하는가.
+ *
+ * 조건이 걸린 답에 "모름"을 체크했으면 성립하지 않는다. 종전에는 "복수 검수"를 고른 뒤 모름을
+ * 체크해도 고른 글자가 남아 있어 라벨러 수 칸이 계속 필수였다.
+ */
+function conditionHolds(condition: FieldCondition, values: ComposerValueMap): boolean {
+  const trigger = values[condition.field];
+  if (!trigger || trigger.unknown) return false;
+  const text = trigger.text ?? "";
+  if (condition.equals !== undefined && text !== condition.equals) return false;
+  if (condition.in !== undefined && !condition.in.includes(text)) return false;
+  return condition.equals !== undefined || condition.in !== undefined;
+}
+
 /** 조건부 필드가 지금 필수인가. 조건을 기계가 읽을 수 없는 필드는 여기서 강제하지 않는다. */
 function isConditionalRequired(field: ComposerField, values: ComposerValueMap): boolean {
   if (!field.requiredWhen) return false;
-  const trigger = values[field.requiredWhen.field];
-  return (trigger?.text ?? "") === field.requiredWhen.equals;
+  const conditions = Array.isArray(field.requiredWhen) ? field.requiredWhen : [field.requiredWhen];
+  return conditions.every((condition) => conditionHolds(condition, values));
 }
 
 /** 이 필드를 지금 반드시 입력해야 하는가. */
@@ -92,10 +204,51 @@ export function isFieldVisible(field: ComposerField, values: ComposerValueMap): 
 }
 
 /**
+ * 필드 하나의 문제. 없으면 `null`.
+ *
+ * 카드 전체가 아니라 필드 하나만 검사해야 하는 화면이 있다 — ② 카드는 지표·β·지표 선택
+ * 이유·합격 기준이 각각 다른 화면에서 받아, 지표 화면이 카드 전체를 검사하면 다른 화면의
+ * 칸까지 걸린다. `values` 는 같은 카드의 값 전체다(조건부 필드의 조건을 읽는다).
+ */
+export function getFieldIssue(
+  card: ComposerCard,
+  field: ComposerField,
+  values: ComposerValueMap,
+): FieldIssue | null {
+  // 조건이 성립하지 않아 그려지지 않은 필드에 남은 값은 따지지 않는다 — 사용자가 고칠 수 없다.
+  if (!isFieldVisible(field, values)) return null;
+
+  const value = values[field.id];
+  const issue = (reason: FieldIssue["reason"]): FieldIssue => ({
+    cardId: card.id,
+    fieldId: field.id,
+    label: field.label,
+    reason,
+    allowsUnknown: Boolean(field.allowsUnknown),
+  });
+
+  const invalid = invalidReason(field, value, values);
+  if (invalid) {
+    const base = issue(invalid.reason);
+    return invalid.message ? { ...base, message: invalid.message } : base;
+  }
+
+  if (field.exclusiveChoice) {
+    const chosen = value?.choices ?? [];
+    if (chosen.includes(field.exclusiveChoice) && chosen.length > 1) return issue("exclusive");
+  }
+
+  if (isFieldRequired(field, values) && !hasValue(field, value)) return issue("missing");
+
+  return null;
+}
+
+/**
  * 카드 하나의 문제 목록. 카드를 끄면 빈 배열이다.
  *
  * 더보기로 접히는 필드도 검사 대상이다 — 접혀 있다고 면제되면 사용자가 그 필드의 존재를
- * 모른 채 막히게 된다. 다만 더보기 필드는 전부 `optional` 이라 실제로는 걸리지 않는다.
+ * 모른 채 막히게 된다. 다만 더보기 필드는 전부 `optional` 이라 비어 있다고 걸리지는 않는다.
+ * 값을 **틀리게** 적은 것(범위 밖 숫자, 뒤집힌 기간)은 더보기 안에서도 걸린다.
  */
 export function getCardIssues(
   card: ComposerCard,
@@ -105,37 +258,9 @@ export function getCardIssues(
 ): FieldIssue[] {
   if (!included) return [];
 
-  const issues: FieldIssue[] = [];
-
-  for (const field of getCardFields(card.id, taskType)) {
-    const value = values[field.id];
-
-    if (field.exclusiveChoice) {
-      const chosen = value?.choices ?? [];
-      if (chosen.includes(field.exclusiveChoice) && chosen.length > 1) {
-        issues.push({
-          cardId: card.id,
-          fieldId: field.id,
-          label: field.label,
-          reason: "exclusive",
-          allowsUnknown: Boolean(field.allowsUnknown),
-        });
-        continue;
-      }
-    }
-
-    if (isFieldRequired(field, values) && !hasValue(field, value)) {
-      issues.push({
-        cardId: card.id,
-        fieldId: field.id,
-        label: field.label,
-        reason: "missing",
-        allowsUnknown: Boolean(field.allowsUnknown),
-      });
-    }
-  }
-
-  return issues;
+  return getCardFields(card.id, taskType)
+    .map((field) => getFieldIssue(card, field, values))
+    .filter((issue): issue is FieldIssue => issue !== null);
 }
 
 /** 켠 카드의 필수 입력이 모두 채워졌는가. */

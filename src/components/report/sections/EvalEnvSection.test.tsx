@@ -60,3 +60,44 @@ describe("4절 평가 수행 환경", () => {
     expect(screen.getByText("v1.2.0")).toBeInTheDocument();
   });
 });
+
+/** ⑨ 의 가속 사용(환경 표)과 하이퍼파라미터(표 아래) — 2층 항목이라 빠지면 "제공되지 않음". */
+describe("4절 고객 재료", () => {
+  const materials = {
+    declarations: [],
+    training: [],
+    test: [],
+    groundTruth: [],
+    environment: [
+      { label: "학습 가속", value: "예" },
+      { label: "추론 가속", value: null },
+    ],
+    hyperparameters: { algorithm: "XGBoost", rows: [{ name: "max_depth", value: "6" }] },
+  };
+
+  it("가속 사용을 환경 표에, 하이퍼파라미터를 표 아래에 찍는다", () => {
+    render(<EvalEnvSection meta={meta} evalScope={evalScope} evalEnv={env(undefined)} materials={materials} />);
+
+    expect(screen.getByText("학습 가속").nextSibling).toHaveTextContent("예");
+    expect(screen.getByText("추론 가속").nextSibling).toHaveTextContent("제공되지 않음");
+    expect(screen.getByText("XGBoost")).toBeInTheDocument();
+    expect(screen.getByText("max_depth")).toBeInTheDocument();
+  });
+
+  it("하이퍼파라미터가 없으면 제공되지 않음으로 적는다", () => {
+    render(
+      <EvalEnvSection
+        meta={meta}
+        evalScope={evalScope}
+        evalEnv={env(undefined)}
+        materials={{ ...materials, hyperparameters: { algorithm: null, rows: null } }}
+      />,
+    );
+    expect(screen.getByText("하이퍼파라미터: 제공되지 않음")).toBeInTheDocument();
+  });
+
+  it("옛 성적서(재료 없음)에는 하이퍼파라미터 절이 없다", () => {
+    render(<EvalEnvSection meta={meta} evalScope={evalScope} evalEnv={env(undefined)} />);
+    expect(screen.queryByText("하이퍼파라미터")).not.toBeInTheDocument();
+  });
+});

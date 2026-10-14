@@ -190,12 +190,12 @@ describe("상세 영역", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Training data details" }));
 
-    const moreButton = screen.getByRole("button", { name: /Show 2 optional fields/ });
-    expect(screen.queryByText("Preprocessing")).not.toBeInTheDocument();
+    const moreButton = screen.getByRole("button", { name: /Show 3 optional fields/ });
+    expect(screen.queryByText("Data format")).not.toBeInTheDocument();
 
     await userEvent.click(moreButton);
 
-    expect(screen.getByText("Preprocessing")).toBeInTheDocument();
+    expect(screen.getByText("Data format")).toBeInTheDocument();
     expect(screen.getByText("Collection period")).toBeInTheDocument();
   });
 
@@ -204,7 +204,8 @@ describe("상세 영역", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Ground truth details" }));
 
-    expect(screen.getByText("When several reviewers checked")).toBeInTheDocument();
+    // 라벨러 수·일치도 두 칸이 같은 조건을 가진다.
+    expect(screen.getAllByText("When several reviewers checked")).toHaveLength(2);
   });
 
   it("③ 의뢰자 정보의 예시는 항목 이름을 붙여 보여준다", async () => {

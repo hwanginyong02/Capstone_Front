@@ -15,12 +15,11 @@ export type StepId =
   | "upload" // 1. Evaluation File — ① 결과 파일, ④ 모델명·버전
   | "metrics" // 2. Metrics — ⑤ 평가 관점 + ② 지표
   | "mapping" // 3. Column mapping — ① 컬럼 매핑·양성 클래스·결정 임계값
-  | "validation" // 4. Validation — 검증·평가 실행
-  | "summary" // 5. Evaluation — 평가 결과
+  | "validation" // 4. Validation — 검증·평가 run 저장
+  | "clientInfo" // 5. Details — ③, ④ 모델 용도, 합격 기준
   | "dataInfo" // 6. Data info — ⑥ ⑦ ⑧ 중 켠 카드 (조건부)
   | "modelEnv" // 7. Model info — ⑨ (조건부)
-  | "clientInfo" // 8. Details — ③, ④ 모델 용도
-  | "report"; // 9. Result — 성적서
+  | "report"; // 8. Result — 성적서
 
 export interface BasicInfoFormData {
   companyName: string;
@@ -34,6 +33,11 @@ export interface BasicInfoFormData {
    *  직렬화 가능한 형태가 참 타입이다(ISSUES.md E-09). UI 경계에서만 Date 로 변환한다. */
   contractDate?: string;
   reportPurpose: string;
+  /**
+   * 성적서 용도에 덧붙이는 글(선택). 서술 설계 D26 — 모든 선택지 필드는 추가 서술을 함께 받는다.
+   * 성적서 1.3 개요 칸에 "의뢰자 제공"으로 싣고 AI 에도 넘긴다. persist v11 에서 생겼다.
+   */
+  reportPurposeNote: string;
   projectName: string;
   projectAgency: string;
   projectNumber: string;
@@ -68,15 +72,6 @@ export interface UploadedFileInfo {
   previewUrl?: string;
 }
 
-export interface DatasetInfoFormData {
-  trainingSampleCount: string;
-  validationSampleCount: string;
-  trainingDatasetName: string;
-  trainingDataFormat: string;
-  trainingClassDistribution: string;
-  trainingDataDescription: string;
-}
-
 export const DEFAULT_BASIC_INFO: BasicInfoFormData = {
   companyName: "",
   representative: "",
@@ -87,6 +82,7 @@ export const DEFAULT_BASIC_INFO: BasicInfoFormData = {
   address: "",
   contractDate: todayIsoDate(),
   reportPurpose: "",
+  reportPurposeNote: "",
   projectName: "",
   projectAgency: "",
   projectNumber: "",
@@ -100,14 +96,5 @@ export const DEFAULT_BASIC_INFO: BasicInfoFormData = {
   envGPU: "",
   envMemory: "",
   envSoftware: "",
-};
-
-export const DEFAULT_DATASET_INFO: DatasetInfoFormData = {
-  trainingSampleCount: "",
-  validationSampleCount: "",
-  trainingDatasetName: "",
-  trainingDataFormat: "",
-  trainingClassDistribution: "",
-  trainingDataDescription: "",
 };
 

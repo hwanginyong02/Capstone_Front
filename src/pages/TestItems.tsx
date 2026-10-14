@@ -9,8 +9,8 @@ import { TestItems as TestItemsContent } from "../components/test-items/TestItem
 import { useColumnAnalysis } from "../hooks/useColumnAnalysis";
 import { RemainingNotice } from "../components/composer-input/RemainingNotice";
 import { focusFirstIssue } from "../components/composer-input/focusFirstIssue";
-import { getCard } from "../data/reportComposer";
-import { getCardIssues } from "../utils/domain/composerFieldGate";
+import { getCard, getCardFields } from "../data/reportComposer";
+import { getCardIssues, getFieldIssue, type FieldIssue } from "../utils/domain/composerFieldGate";
 
 /**
  * 평가 지표 선택.
@@ -33,7 +33,7 @@ export function TestItems() {
   const { analyzeColumns, isAnalyzing, cancel } = useColumnAnalysis();
   // 종전에는 raw alert() 로만 드러났다. 화면 안에 남겨야 사용자가 읽고 조치할 수 있다(E-18).
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  // ⑤ 의 빈 칸은 다음을 누른 뒤에만 빨갛게 칠한다(`pages/report/DataInfo.tsx` 와 같은 규칙).
+  // ⑤ 와 지표 선택 이유의 빈 칸은 다음을 누른 뒤에만 빨갛게 칠한다(`pages/report/DataInfo.tsx` 와 같은 규칙).
   const [showPerspectiveErrors, setShowPerspectiveErrors] = useState(false);
 
   // ⑤ 는 잠긴 필수 카드라 included 는 항상 참이다.
@@ -43,6 +43,19 @@ export function TestItems() {
     store.composerPerspective,
     true,
   );
+
+  /**
+   * ② 카드 중 이 화면이 받는 필드(멀티레이블의 지표 선택 이유)만 검사한다. 카드 전체를
+   * 검사하면 Details 가 받는 합격 기준까지 여기서 걸린다.
+   */
+  const metricCard = getCard("metrics");
+  const metricCardIssues = getCardFields("metrics", store.taskType)
+    .filter((field) => field.step === "metrics")
+    .map((field) => getFieldIssue(metricCard, field, store.composerMetrics))
+    .filter((issue): issue is FieldIssue => issue !== null);
+
+  // 화면 위에서 아래 순서 — ⑤ 가 맨 위, 지표 선택 이유가 격자 아래다.
+  const inputIssues = [...perspectiveIssues, ...metricCardIssues];
 
   const beta = store.metricDetails["M5"]?.beta ?? "1.0";
   const betaInvalid =
@@ -72,10 +85,10 @@ export function TestItems() {
    * 결과가 필요 없는 이 화면으로 오려고 그 시간을 기다리게 된다.
    */
   const handleNext = async () => {
-    // 평가 관점을 먼저 본다 — 화면 맨 위의 질문이라 여기서 막히면 긴 분석을 돌릴 이유가 없다.
-    if (perspectiveIssues.length > 0) {
+    // 입력 칸을 먼저 본다 — 여기서 막히면 긴 분석을 돌릴 이유가 없다.
+    if (inputIssues.length > 0) {
       setShowPerspectiveErrors(true);
-      focusFirstIssue(perspectiveIssues);
+      focusFirstIssue(inputIssues);
       return;
     }
 
@@ -116,7 +129,7 @@ export function TestItems() {
       // 있어 무엇을 해야 할지 보이므로 종전대로 잠근다.
       nextDisabled={store.selectedMetricIds.length === 0 || betaInvalid || isAnalyzing}
       nextLabel={isAnalyzing ? "Analyzing columns..." : "Next step"}
-      rightAction={<RemainingNotice issues={perspectiveIssues} />}
+      rightAction={<RemainingNotice issues={inputIssues} />}
       leftAction={
         isAnalyzing ? (
           <Button variant="outline" onClick={cancel}>
@@ -142,6 +155,11 @@ export function TestItems() {
         }
         perspectiveIssues={perspectiveIssues}
         perspectiveShowErrors={showPerspectiveErrors}
+        metricCardValues={store.composerMetrics}
+        onMetricCardChange={(fieldId, next) =>
+          store.setComposerMetrics((prev) => ({ ...prev, [fieldId]: next }))
+        }
+        metricCardIssues={metricCardIssues}
       />
     </WorkflowShell>
   );

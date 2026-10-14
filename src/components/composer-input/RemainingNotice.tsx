@@ -25,6 +25,21 @@ export function RemainingNotice({ issues }: RemainingNoticeProps) {
     );
   }
 
+  // 범위 밖 숫자·뒤집힌 기간도 빈 칸이 아니라 틀린 값이다. 비어 있다고 말하면 안 된다.
+  const wrongValue = issues.find(
+    (issue) =>
+      issue.reason === "outOfRange" ||
+      issue.reason === "invalidPeriod" ||
+      issue.reason === "incompatible",
+  );
+  if (wrongValue) {
+    return (
+      <p className="text-body-small text-muted-foreground">
+        Check the value for {wrongValue.label}.
+      </p>
+    );
+  }
+
   const [first] = issues;
   // "Unknown" 이 없는 필드뿐이라면 그 길을 알려주지 않는다 — ⑤ 평가 관점이 그렇다.
   const canSayUnknown = issues.some((issue) => issue.allowsUnknown);

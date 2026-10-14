@@ -101,3 +101,29 @@ describe("성능 평가 산출 기준 — 파생 예측 기재", () => {
     expect(item.textContent).toContain("score_b ≥ 0.5");
   });
 });
+
+/**
+ * 6.1 판정 규칙 — 성적서 고정 문구 10(서술 설계 D19, D32).
+ * 이 규칙으로 판정한 성적서에만 찍는다. 그 전 규칙으로 판정해 저장된 성적서에 새 규칙을 적으면
+ * 판정과 설명이 어긋난다.
+ */
+describe("6.1 판정 규칙 문구", () => {
+  const withCore: KpiResult[] = [
+    { metricId: "M1", name: "Accuracy", value: 0.9, threshold: 0.8, status: "pass", isCore: true },
+    { metricId: "M4", name: "F1 Score", value: 0.7, threshold: 0.8, status: "fail" },
+  ];
+
+  it("의뢰자가 지정한 핵심 지표를 넣어 판정 규칙을 적는다", () => {
+    render(<KpiResultSection kpiResults={withCore} taskType="binary" meta={meta()} showVerdictRule />);
+    const rule = screen.getByText(/^판정 규칙:/);
+    expect(rule.textContent).toContain("핵심 지표는 의뢰자가 지정하였다(Accuracy(M1))");
+    expect(rule.textContent).toContain("판정 불가");
+    // 근소 차이 표시(8.3)는 아직 구현되지 않아 그 문장을 찍지 않는다.
+    expect(rule.textContent).not.toContain("8.3");
+  });
+
+  it("옛 규칙으로 판정한 성적서에는 찍지 않는다", () => {
+    render(<KpiResultSection kpiResults={withCore} taskType="binary" meta={meta()} />);
+    expect(screen.queryByText(/^판정 규칙:/)).not.toBeInTheDocument();
+  });
+});

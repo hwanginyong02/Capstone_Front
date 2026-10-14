@@ -8,6 +8,7 @@
  * ⑥ 의 클래스별 데이터 양은 **업로드한 파일의 클래스 목록으로 칸을 만든다** — 그래서 이
  * 단계가 업로드 뒤에 있어야 한다.
  */
+import type { ReactNode } from "react";
 import { ComposerCardForm } from "../composer-input/ComposerCardForm";
 import { getCard } from "../../data/reportComposer";
 import type { TaskType } from "../../data/evaluationData";
@@ -32,6 +33,11 @@ interface DataInfoProps {
   classNames?: string[];
   /** 빈 필수 칸을 빨갛게 칠할지. 페이지가 다음을 누른 뒤에 켠다. */
   showErrors?: boolean;
+  /**
+   * 카드 바로 아래에 붙일 것. 레지스트리로 그릴 수 없는 입력(⑥ 의 예시 파일 업로드)을
+   * 그 카드 곁에 둔다 — 화면 맨 끝에 두면 어느 카드의 것인지 알 수 없다.
+   */
+  afterCard?: Partial<Record<ComposerCardId, ReactNode>>;
 }
 
 export function DataInfo({
@@ -42,6 +48,7 @@ export function DataInfo({
   issues,
   classNames,
   showErrors = false,
+  afterCard = {},
 }: DataInfoProps) {
   return (
     <main className="mx-auto max-w-[1344px] space-y-6 px-8 pt-12 pb-24">
@@ -54,16 +61,18 @@ export function DataInfo({
       </div>
 
       {DATA_INFO_CARDS.filter((id) => includedCards.includes(id)).map((id) => (
-        <ComposerCardForm
-          key={id}
-          card={getCard(id)}
-          taskType={taskType}
-          values={valuesOf(id)}
-          onChange={(fieldId, next) => onChange(id, fieldId, next)}
-          issues={issues.filter((issue) => issue.cardId === id)}
-          classNames={classNames}
-          showErrors={showErrors}
-        />
+        <div key={id} className="space-y-6">
+          <ComposerCardForm
+            card={getCard(id)}
+            taskType={taskType}
+            values={valuesOf(id)}
+            onChange={(fieldId, next) => onChange(id, fieldId, next)}
+            issues={issues.filter((issue) => issue.cardId === id)}
+            classNames={classNames}
+            showErrors={showErrors}
+          />
+          {afterCard[id]}
+        </div>
       ))}
     </main>
   );

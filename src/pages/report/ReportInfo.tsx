@@ -2,28 +2,35 @@ import { useParams } from "react-router";
 import { WorkflowShell } from "../../layout/WorkflowShell";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
+import { Checkbox } from "../../components/ui/checkbox";
 import { BasicInfo as BasicInfoContent, isBasicInfoValid } from "../../components/basic-info/BasicInfo";
-import { TrainingDatasetSection } from "../../components/report-info/TrainingDatasetSection";
-import { Field, TEXTAREA_CLASS } from "../../components/data-upload/shared";
 import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
 import { useStepFlow } from "../../hooks/useStepFlow";
 import { getSelectedMetrics } from "../../data/evaluationData";
 import { getTargetValueRule, metricNeedsTargetValue, parseNumericValue } from "../../utils/domain/validation";
+import { resolveCoreMetricIds } from "../../lib/report/computeVerdict";
 
 /**
- * 성적서 구간 — 평가가 끝난 뒤에만 온다.
+ * Details — 검증 바로 다음, 성적서 입력의 첫 화면.
  *
- * 여기 모인 셋은 **평가에 전혀 쓰이지 않는다**. `/api/evaluate` 페이로드는
+ * 여기 모인 것은 **평가 계산에 쓰이지 않는다**. `/api/evaluate` 페이로드는
  * task_type·column_mappings·selected_metric_ids·metadata·beta·decision_threshold 뿐이고,
- * 기관 정보·학습 데이터셋 정보·목표값은 하나도 들어가지 않는다. 성적서 문서를 그릴 때만
- * 쓰인다 — 그래서 "정확도가 몇 %인지"만 보려는 사용자의 앞을 막지 않도록 뒤로 뺐다.
+ * 기관 정보·목표값은 하나도 들어가지 않는다. 성적서 문서와 판정을 그릴 때만
+ * 쓰인다 — 그래서 검증(run 저장) 뒤에 둔다.
  *
- * 세 기능을 한 화면의 세 카드로 묶었다. 각각을 별도 단계로 두면 성적서까지 가는 길이
- * 네 화면 더 길어지는데, 셋 다 단순 입력 폼이라 나눌 이유가 없다.
+ * 순서는 구성 화면의 카드 순서를 따른다 — ③ 의뢰자 정보가 ⑥ ~ ⑨ 선택 카드보다 앞이다
+ * (docs/WORKFLOW_REDESIGN.md §11). 평가 API 는 이 뒤의 입력까지 모두 마친 성적서 화면에서
+ * 처음 불리므로 여기 적은 값이 성적서와 AI 서술에 그대로 들어간다.
+ *
+ * 두 기능을 한 화면의 두 카드로 묶었다. 각각을 별도 단계로 두면 성적서까지 가는 길이
+ * 더 길어지는데, 둘 다 단순 입력 폼이라 나눌 이유가 없다.
+ *
+ * 학습 데이터셋 폼은 여기서 빠졌다. 이름·건수·클래스 분포가 ⑥ 학습 데이터 카드와 겹쳐 같은 값을
+ * 두 번 적어야 했다 — ⑥ 하나로 합쳤다(Data info, persist v10).
  *
  * 종전에는 이 화면만 `AppShell` 을 써서 **단계 화면 중 혼자 달랐다** — 여기서만 상단 탭이
  * 사라지고, 하단 고정 바 대신 본문 안에 버튼이 있고, 다음 목적지를 경로로 직접 적었다.
- * 나머지 여섯 화면과 같은 `WorkflowShell` + `useStepFlow` 로 맞췄다.
+ * 나머지 화면과 같은 `WorkflowShell` + `useStepFlow` 로 맞췄다.
  */
 export function ReportInfo() {
   const { id = "" } = useParams();
@@ -51,6 +58,23 @@ export function ReportInfo() {
     });
   };
 
+  /**
+   * 핵심 지표 — 미달하면 최종 불합격이 된다. 고르지 않았으면 유형별 기본값이 체크돼 보인다
+   * (`resolveCoreMetricIds`). 하나를 바꾸는 순간 지금 보이는 목록 전체를 사용자의 선택으로
+   * 저장한다 — 기본값과 사용자 선택이 섞여 어느 쪽인지 모르게 되지 않게 한다.
+   */
+  const coreMetricIds = resolveCoreMetricIds(
+    store.taskType || "multiclass",
+    store.selectedMetricIds,
+    store.composerMetrics,
+  );
+  const toggleCore = (metricId: string, on: boolean) => {
+    const next = on
+      ? [...new Set([...coreMetricIds, metricId])]
+      : coreMetricIds.filter((id) => id !== metricId);
+    store.setComposerMetrics((prev) => ({ ...prev, coreMetrics: { choices: next } }));
+  };
+
   const targetsValid = targetMetrics.every((metric) => {
     const raw = store.metricDetails[metric.id]?.targetValue ?? "";
     if (raw.trim() === "") return false;
@@ -59,7 +83,11 @@ export function ReportInfo() {
     return getTargetValueRule(metric.id).validate(parsed) === null;
   });
 
-  const canContinue = isBasicInfoValid(store.basicInfo) && targetsValid;
+  // 목표값이 있는 지표가 있으면 핵심 지표를 1개 이상 골라야 한다(재료 목록 7절). 없으면 판정 규칙의
+  // 첫 줄("핵심 지표가 하나라도 미달하면 불합격")이 성립하지 않는다.
+  const coreValid = targetMetrics.length === 0 || coreMetricIds.length > 0;
+
+  const canContinue = isBasicInfoValid(store.basicInfo) && targetsValid && coreValid;
 
   return (
     <WorkflowShell
@@ -69,27 +97,18 @@ export function ReportInfo() {
       onPrevious={() => flow.goPrevious({ runId: id })}
       onNext={() => flow.goNext({ runId: id })}
       nextDisabled={!canContinue}
-      nextLabel="Save and view report"
+      nextLabel={flow.next === "report" ? "View report" : "Next step"}
     >
       <main className="mx-auto max-w-[1344px] space-y-6 px-8 pt-12 pb-24">
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Details</h1>
           <p className="text-sm text-muted-foreground">
-            Your evaluation is already complete. These details are only used to render the official
-            test report.
+            Who the report is for, and the target each metric must reach. These details appear on the
+            test report and do not change the measured results.
           </p>
         </div>
 
         <BasicInfoContent formData={store.basicInfo} onFormDataChange={store.setBasicInfo} />
-
-        <TrainingDatasetSection
-          datasetInfo={store.datasetInfo}
-          onDatasetInfoChange={store.setDatasetInfo}
-          trainingExampleFiles={store.trainingExampleFiles}
-          onTrainingExampleFilesChange={store.setTrainingExampleFiles}
-          trainingUnsuitableExampleFiles={store.trainingUnsuitableExampleFiles}
-          onTrainingUnsuitableExampleFilesChange={store.setTrainingUnsuitableExampleFiles}
-        />
 
         <Card>
           <CardHeader>
@@ -98,7 +117,8 @@ export function ReportInfo() {
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Set the target each metric must reach for the report to mark it as passing. These values
-              do not change the measured results.
+              do not change the measured results. Choose at least one core metric: if a core metric
+              misses its target the verdict is FAIL, and any other miss makes it a conditional pass.
             </p>
 
             {targetMetrics.length === 0 ? (
@@ -121,7 +141,7 @@ export function ReportInfo() {
                   return (
                     <div
                       key={metric.id}
-                      className="grid grid-cols-1 gap-3 rounded-lg border border-border p-4 md:grid-cols-[1fr_200px]"
+                      className="grid grid-cols-1 gap-3 rounded-lg border border-border p-4 md:grid-cols-[1fr_200px_auto] md:items-start"
                     >
                       <div>
                         <div className="flex items-center gap-2">
@@ -141,26 +161,23 @@ export function ReportInfo() {
                         />
                         {error && <p className="text-xs text-destructive">{error}</p>}
                       </div>
+                      <label className="flex h-9 cursor-pointer items-center gap-2 text-sm text-foreground">
+                        <Checkbox
+                          checked={coreMetricIds.includes(metric.id)}
+                          onCheckedChange={(next) => toggleCore(metric.id, next === true)}
+                          aria-label={`${metric.id} core metric`}
+                        />
+                        Core
+                      </label>
                     </div>
                   );
                 })}
               </div>
             )}
 
-            <Field label="Report notes">
-              <textarea
-                className={TEXTAREA_CLASS}
-                rows={3}
-                value={store.datasetInfo.trainingDataDescription}
-                onChange={(event) =>
-                  store.setDatasetInfo((prev) => ({
-                    ...prev,
-                    trainingDataDescription: event.target.value,
-                  }))
-                }
-                placeholder="Anything the reader should know about this evaluation (optional)"
-              />
-            </Field>
+            {!coreValid && (
+              <p className="text-sm text-destructive">Choose at least one core metric.</p>
+            )}
           </CardContent>
         </Card>
       </main>

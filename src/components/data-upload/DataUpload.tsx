@@ -143,16 +143,15 @@ export function DataUpload({
         </p>
       </div>
 
-      {/* 모델명·버전은 성적서 서식이 아니라 평가 결과의 이름표다. 워크스페이스는 이 이름으로
-          평가를 모델별로 묶고, 버전별 성능 비교 화면도 여기서 갈라진다. */}
+      {/* 모델명·버전은 평가 결과의 이름표다 — 워크스페이스 목록과 성적서 2절에 이 이름으로 찍힌다. */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-semibold">Model</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Evaluations that share a model name are grouped together, so you can compare versions of
-            the same model later.
+            The model name and version identify this evaluation in your workspace and appear on the
+            test report.
           </p>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <Field label="Model name" required>

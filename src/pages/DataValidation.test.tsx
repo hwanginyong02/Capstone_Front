@@ -1,7 +1,7 @@
 /**
  * Step 6 페이지 게이트 — ISSUES.md E-04.
  *
- * 검증이 실패했거나 수행되지 않았을 때 'Run evaluation' 이 눌리면, 검증 절이 통째로
+ * 검증이 실패했거나 수행되지 않았을 때 다음 버튼(run 저장)이 눌리면, 검증 절이 통째로
  * 비어 있는 성적서가 만들어진다(6절에 "오류 0건 / 경고 0건"이 인쇄된다).
  * 이 결함은 rawFile 이 멀쩡히 살아 있어도 서버가 500 을 내거나 네트워크가 끊기면
  * 발동하므로 E-01(상태 비영속)의 자식이 아니다 — 독립적으로 막아야 한다.
@@ -36,7 +36,7 @@ function renderPage(hookResult: Record<string, unknown>) {
       <DataValidation />
     </MemoryRouter>
   );
-  return screen.getByRole("button", { name: /Run evaluation/i });
+  return screen.getByRole("button", { name: /Next step/i });
 }
 
 beforeEach(() => {

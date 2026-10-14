@@ -10,7 +10,6 @@
  * 계산한다(docs/COMPOSER_COMPONENTS.md "카드별 입력 단계").
  */
 import {
-  BarChart3,
   Building2,
   Columns3,
   Database,
@@ -47,30 +46,34 @@ export interface StepDefinition {
    * 경로↔단계를 양방향으로 옮기는 근거이기도 하다(`stepIdToPath`·`pathToStepId`).
    */
   runSegment?: string;
-  /**
-   * 이 선택 카드 중 **하나라도** 켜져 있을 때만 나타난다. 없으면 항상 나타난다.
-   * 평가만 하는 사용자는 6단계에서 끝나고 7~10단계는 성적서를 발급할 때 걷는다.
-   */
+  /** 이 선택 카드 중 **하나라도** 켜져 있을 때만 나타난다. 없으면 항상 나타난다. */
   requiresCards?: OptionalCardId[];
 }
 
-/** 정본 순서. 최소 구성이면 7개, 전체면 9개가 된다. */
+/**
+ * 정본 순서. 최소 구성이면 6개, 전체면 8개가 된다.
+ *
+ * 검증 뒤는 **구성 화면의 카드 순서**를 따른다 — ③ 의뢰자 정보 → ⑥ ⑦ ⑧ 데이터 → ⑨ 모델 설정.
+ * 검증 앞은 카드 순서를 그대로 따를 수 없다. 매핑이 고른 지표에 기대고(백엔드도 지표 없이는
+ * 검증을 받지 않는다), ⑤ 평가 관점은 지표를 권하는 근거라 지표 화면에 붙어 있어야 한다
+ * (docs/WORKFLOW_REDESIGN.md §11). 이 규칙은 `workflowSteps.test.ts` 의 카드 순서 테스트가 지킨다.
+ */
 export const STEP_CATALOG: StepDefinition[] = [
-  // ─── 평가 구간 ──────────────────────────────────────────────────────────
+  // ─── 평가 입력 — 파일·지표·매핑을 받고 검증에서 run 을 만든다 ────────────────
   { id: "upload", label: "Evaluation File", Icon: Upload, path: "/app/data-upload" },
   // ⑤ 평가 관점은 지표를 고르는 근거라 Metrics 화면 맨 위에 있다 — 단계를 따로 두지 않는다.
   { id: "metrics", label: "Metrics", Icon: ListChecks, path: "/app/metrics" },
   { id: "mapping", label: "Column mapping", Icon: Columns3, path: "/app/column-mapping" },
   { id: "validation", label: "Validation", Icon: ShieldCheck, path: "/app/data-validation" },
-  {
-    id: "summary",
-    label: "Evaluation",
-    Icon: BarChart3,
-    runScoped: true,
-    runSegment: "summary",
-  },
 
-  // ─── 발급 구간 — 평가와 무관한 정보가 평가를 막지 않도록 뒤에 둔다 ──────────
+  // ─── 성적서 입력 — 카드 순서대로. run 이 생긴 뒤라 경로가 run 에 매인다 ────────
+  {
+    id: "clientInfo",
+    label: "Details",
+    Icon: Building2,
+    runScoped: true,
+    runSegment: "issue-info",
+  },
   {
     id: "dataInfo",
     label: "Data info",
@@ -87,14 +90,7 @@ export const STEP_CATALOG: StepDefinition[] = [
     runSegment: "model-env",
     requiresCards: ["modelEnv"],
   },
-  {
-    id: "clientInfo",
-    label: "Details",
-    Icon: Building2,
-    runScoped: true,
-    runSegment: "issue-info",
-  },
-  // 성적서는 `/report/<runId>` 자체다 — 뒤에 붙는 조각이 없다.
+  // 성적서는 `/report/<runId>` 자체다 — 뒤에 붙는 조각이 없다. 평가 API 도 여기서 처음 불린다.
   { id: "report", label: "Result", Icon: FileBarChart, runScoped: true },
 ];
 

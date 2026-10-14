@@ -10,10 +10,12 @@ interface MetricRowProps {
   status: "pass" | "fail" | "warning" | "unavailable";
   /** 낮을수록 좋은 지표(false)면 합격 기준을 "≤"로 표기. 미지정=높을수록 좋음("≥"). */
   higherIsBetter?: boolean;
+  /** 핵심 지표 — 미달하면 최종 불합격이다. 판정 근거가 보이도록 이름 옆에 표시한다. */
+  isCore?: boolean;
   className?: string;
 }
 
-export function MetricRow({ metricId, name, formula, value, threshold, status, higherIsBetter, className }: MetricRowProps) {
+export function MetricRow({ metricId, name, formula, value, threshold, status, higherIsBetter, isCore, className }: MetricRowProps) {
   // 표시 모드
   // 1) threshold > 0            → 일반 KPI (값 + 기준 + 판정)
   // 2) threshold == 0 & value>0 → 정보 제공 (MCC 등 — 값은 표시, 기준 "—", "ℹ 정보 제공")
@@ -28,7 +30,14 @@ export function MetricRow({ metricId, name, formula, value, threshold, status, h
   return (
     <tr className={cn("border-b border-slate-100 last:border-b-0", className)}>
       <td className="py-2.5 pr-3 font-mono text-xs text-slate-400">{metricId}</td>
-      <td className="py-2.5 pr-4 font-medium text-slate-800">{name}</td>
+      <td className="py-2.5 pr-4 font-medium text-slate-800">
+        {name}
+        {isCore && (
+          <span className="ml-2 rounded border border-slate-300 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+            핵심
+          </span>
+        )}
+      </td>
       {formula !== undefined && (
         <td className="py-2.5 pr-4 font-mono text-xs text-slate-500">{formula}</td>
       )}

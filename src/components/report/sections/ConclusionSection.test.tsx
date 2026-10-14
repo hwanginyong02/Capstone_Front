@@ -22,29 +22,35 @@ const conclusion: ConclusionData = {
   risks: "",
 };
 
-describe("8절 종합 점수 — 정의 명시 (결정 5)", () => {
-  it("숫자에 라벨이 붙는다", () => {
+describe("8절 통과율 — 정의 명시 (결정 5) · 참고 수치 (D19)", () => {
+  it("숫자에 라벨이 붙는다 — 참고 수치임을 함께 적는다", () => {
     render(<ConclusionSection conclusion={conclusion} />);
-    expect(screen.getByText("종합 점수")).toBeInTheDocument();
+    expect(screen.getByText("통과율 (참고)")).toBeInTheDocument();
+  });
+
+  it("판정의 근거가 아니라고 밝힌다 (서술 설계 D19)", () => {
+    render(<ConclusionSection conclusion={conclusion} />);
+    const definition = screen.getByText(/통과율의 정의/).closest("p")!;
+    expect(definition.textContent).toMatch(/판정의 근거가 아닙니다/);
   });
 
   it("정의를 문장으로 적는다 — '합격 목표값을 설정한 항목의 달성률'", () => {
     render(<ConclusionSection conclusion={conclusion} />);
-    const definition = screen.getByText(/종합 점수의 정의/).closest("p")!;
+    const definition = screen.getByText(/통과율의 정의/).closest("p")!;
     expect(definition.textContent).toMatch(/합격 목표값/);
     expect(definition.textContent).toMatch(/충족한 항목의 비율/);
   });
 
   it("분모에서 빠지는 것을 밝힌다(목표값 미설정·측정 불가)", () => {
     render(<ConclusionSection conclusion={conclusion} />);
-    const definition = screen.getByText(/종합 점수의 정의/).closest("p")!;
+    const definition = screen.getByText(/통과율의 정의/).closest("p")!;
     expect(definition.textContent).toMatch(/측정 불가/);
     expect(definition.textContent).toMatch(/분모에서 제외/);
   });
 
   it("데이터셋 특성 지표도 섞일 수 있다는 사실을 밝힌다 (C-09)", () => {
     render(<ConclusionSection conclusion={conclusion} />);
-    const definition = screen.getByText(/종합 점수의 정의/).closest("p")!;
+    const definition = screen.getByText(/통과율의 정의/).closest("p")!;
     expect(definition.textContent).toMatch(/불균형 비율|데이터셋 특성/);
     expect(definition.textContent).toMatch(/모델 성능만의 지표가\s*아닙니다/);
   });
@@ -52,5 +58,28 @@ describe("8절 종합 점수 — 정의 명시 (결정 5)", () => {
   it("점수 값 자체는 종전 그대로 인쇄한다(결정 5 — 계산은 바꾸지 않는다)", () => {
     render(<ConclusionSection conclusion={conclusion} />);
     expect(screen.getByText("66.7%")).toBeInTheDocument();
+  });
+});
+
+/**
+ * 판정 불가 — 핵심 지표가 산출되지 않았거나 판정 대상 지표가 없을 때(서술 설계 D19).
+ * 종전에는 조건부 합격으로 적어 확인하지 못한 것을 합격처럼 보이게 했다.
+ */
+describe("8절 판정 불가", () => {
+  it("판정 불가로 적는다", () => {
+    render(
+      <ConclusionSection conclusion={{ ...conclusion, verdict: "INCONCLUSIVE", judgedCount: 2 }} />,
+    );
+    expect(screen.getByText("판정 불가")).toBeInTheDocument();
+  });
+
+  it("판정 대상이 없으면 통과율을 0% 가 아니라 — 로 적는다", () => {
+    render(
+      <ConclusionSection
+        conclusion={{ ...conclusion, verdict: "INCONCLUSIVE", score: 0, judgedCount: 0 }}
+      />,
+    );
+    expect(screen.queryByText("0.0%")).not.toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
   });
 });

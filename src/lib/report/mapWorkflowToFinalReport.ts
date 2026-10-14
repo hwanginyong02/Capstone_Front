@@ -38,10 +38,11 @@ import { mapValidationResultToReport } from "./mapValidationResultToReport";
 import { buildConclusion } from "./computeVerdict";
 import type {
   BasicInfoFormData,
-  DatasetInfoFormData,
   MetricDetailStateMap,
   UploadedFileInfo,
 } from "../../types/workflow.types";
+import { buildReportMaterials, type ReportComposerInput } from "./reportMaterials";
+import type { ComposerSelection, ComposerValueMap } from "../../types/reportComposer.types";
 import {
   DEFAULT_EVAL_ENV_CONSTANTS,
   DEFAULT_EVAL_PURPOSE_TEXT,
@@ -53,7 +54,6 @@ import {
 
 export interface MapWorkflowToReportInput {
   basicInfo: BasicInfoFormData;
-  datasetInfo: DatasetInfoFormData;
   taskType: TaskType | "";
   selectedMetricIds: string[];
   metricDetails: MetricDetailStateMap;
@@ -76,6 +76,57 @@ export interface MapWorkflowToReportInput {
     detected_labels?: string[];
     class_distribution?: Record<string, number>;
   } | null;
+  /**
+   * 성적서 구성 카드의 값과 켜짐 여부. 성적서의 고객 재료 줄(`materials`)과 학습 데이터 절이
+   * 여기서 온다. 학습 데이터는 종전에 Details 의 폼(`datasetInfo`)이 따로 받았는데 ⑥ 하나로
+   * 합쳤다(persist v10).
+   *
+   * 선택적인 이유: 이 키가 생기기 전에 저장된 run 의 스냅샷(`workflowSnapshot`)에는 없다.
+   * 없으면 카드를 모두 끈 것과 같다.
+   */
+  composer?: ReportComposerInput;
+}
+
+/** `buildReportInput` 이 읽는 워크플로우 상태. 스토어를 그대로 넘겨도 된다. */
+export type ReportInputSource = Omit<MapWorkflowToReportInput, "composer"> & {
+  composerCards: ComposerSelection;
+  composerMetrics: ComposerValueMap;
+  composerPerspective: ComposerValueMap;
+  composerTrainingData: ComposerValueMap;
+  composerTestData: ComposerValueMap;
+  composerGroundTruth: ComposerValueMap;
+  composerModelEnv: ComposerValueMap;
+};
+
+/**
+ * 워크플로우 상태에서 성적서 입력을 고른다.
+ *
+ * 종전에는 같은 객체를 세 곳(`useReportData` 두 곳, `useDataValidation`)이 키를 하나씩 적어
+ * 따로 조립했다. 키가 늘 때 한 곳만 빠뜨리면 그 경로의 성적서에서만 값이 조용히 사라진다.
+ * 필요한 키만 골라 담는다 — 스냅샷이 run 에 저장되므로 스토어 전체를 싣지 않는다.
+ */
+export function buildReportInput(state: ReportInputSource): MapWorkflowToReportInput {
+  return {
+    basicInfo: state.basicInfo,
+    taskType: state.taskType,
+    selectedMetricIds: state.selectedMetricIds,
+    metricDetails: state.metricDetails,
+    uploadedFile: state.uploadedFile,
+    trainingExampleFiles: state.trainingExampleFiles,
+    trainingUnsuitableExampleFiles: state.trainingUnsuitableExampleFiles,
+    columnMapping: state.columnMapping,
+    classLabelDescriptions: state.classLabelDescriptions,
+    metadata: state.metadata,
+    composer: {
+      cards: state.composerCards,
+      metrics: state.composerMetrics,
+      perspective: state.composerPerspective,
+      trainingData: state.composerTrainingData,
+      testData: state.composerTestData,
+      groundTruth: state.composerGroundTruth,
+      modelEnv: state.composerModelEnv,
+    },
+  };
 }
 
 export function mapWorkflowToFinalReport(
@@ -86,9 +137,12 @@ export function mapWorkflowToFinalReport(
 
   // 데이터 검증 결과: 백엔드 /api/validate-data 응답이 있으면 실제 값으로 채우고,
   // 없으면 빈 배열(가짜 MOCK 8항목을 노출하지 않음 — 섹션이 "검증 미수행" 안내로 처리).
-  const sampleCountFallback = parseCount(input.datasetInfo.validationSampleCount) ?? 0;
+  //
+  // 표본 수 폴백은 0 이다. 종전에는 학습 데이터 폼의 **검증 샘플 수**를 폴백으로 썼다 —
+  // 모델 학습 때 쓴 검증 세트 크기라 평가 파일의 행 수와 무관한데 평가 표본 수 칸에
+  // 인쇄됐다(docs/COMPOSER_COMPONENTS.md 구현 메모의 "평가 표본 수 칸에도 인쇄되는 버그").
   const mappedValidation = validationResult
-    ? mapValidationResultToReport(validationResult, sampleCountFallback)
+    ? mapValidationResultToReport(validationResult, 0)
     : null;
 
   return {
@@ -96,7 +150,7 @@ export function mapWorkflowToFinalReport(
     applicant: buildApplicant(input.basicInfo),
     performer: DEFAULT_PERFORMER,
     evalScope: buildEvalScope(input.basicInfo),
-    datasetInfo: buildDatasetInfo(input, resolvedTaskType),
+    datasetInfo: buildDatasetInfo(input, resolvedTaskType, mappedValidation?.summary.totalRows),
     // 데이터 예시 행: 가짜 MOCK 10행 제거. 실제 샘플 렌더링은 백엔드 샘플 반환 + 타입 일반화 후속 작업(P1-7) 필요.
     datasetSamples: [],
     // datasetDiagnosis 는 실제 클래스 분포 기반으로 useReportData 에서 채운다(가짜 MOCK 제거).
@@ -121,6 +175,8 @@ export function mapWorkflowToFinalReport(
     recommendations: [],
     // 서명/발급 이력은 발급 시점에 백엔드 IssuanceOut 으로 채운다(초안은 빈 값 → "미발급" 표기).
     signature: { issuer: "", signedAt: "", history: [] },
+    // 고객 재료 — 재료 목록의 인쇄 위치대로 각 절이 찍는다. 옛 스냅샷에는 카드 값이 없다.
+    materials: input.composer ? buildReportMaterials(input.composer, resolvedTaskType) : undefined,
   };
 }
 
@@ -183,12 +239,22 @@ function buildEvalScope(basicInfo: BasicInfoFormData): EvalScope {
     reportPurposeKey: purposeKey,
     modelPurpose: basicInfo.modelPurpose || undefined,
     modelCategory: basicInfo.modelCategory || undefined,
+    purposeNote: basicInfo.reportPurposeNote?.trim() || undefined,
     projectInfo,
   };
 }
 
-function buildDatasetInfo(input: MapWorkflowToReportInput, taskType: TaskType): DatasetInfo {
-  const sampleCount = parseCount(input.datasetInfo.validationSampleCount);
+/**
+ * 평가 데이터 절. 표본 수는 서버가 검증에서 센 행 수다 — 평가 결과가 오면 `useReportData` 가
+ * 평가에 실제로 쓴 표본 수로 다시 덮는다. 둘 다 없으면 0 이다(학습 데이터의 건수를 빌려 쓰지
+ * 않는다).
+ */
+function buildDatasetInfo(
+  input: MapWorkflowToReportInput,
+  taskType: TaskType,
+  validatedRows?: number,
+): DatasetInfo {
+  const sampleCount = validatedRows && validatedRows > 0 ? validatedRows : null;
 
   // y_true 컬럼에서 실제 클래스 값을 도출 (있으면 mock/추론 대신 실제 값 사용)
   const yTrueRow = input.columnMapping.find((r) => r.confirmedRole === "y_true");
@@ -232,30 +298,54 @@ function buildDatasetInfo(input: MapWorkflowToReportInput, taskType: TaskType): 
   };
 }
 
+/**
+ * 학습 데이터 절 — ⑥ 카드에서만 온다. ⑥ 을 끄면 절이 빠진다.
+ *
+ * 종전에는 Details 의 학습 데이터 폼(`datasetInfo`)을 읽었고, 그 폼과 ⑥ 이 같은 것을 따로
+ * 받았다. 설명 칸에는 Details 의 "Report notes"(평가에 대한 메모)가 찍히기도 했다.
+ *
+ * "모름"을 고른 칸은 빈 칸과 같이 다룬다 — 이 절은 빈 칸을 그리지 않는다.
+ */
 function buildTrainingDatasetInfo(input: MapWorkflowToReportInput): TrainingDatasetInfo | undefined {
-  const { datasetInfo, trainingExampleFiles, trainingUnsuitableExampleFiles } = input;
-  const training = parseCount(datasetInfo.trainingSampleCount);
-  const validation = parseCount(datasetInfo.validationSampleCount);
-  const format = datasetInfo.trainingDataFormat.trim();
-  const classDistribution = datasetInfo.trainingClassDistribution.trim();
-  const description = datasetInfo.trainingDataDescription.trim();
-  const hasName = datasetInfo.trainingDatasetName.trim() !== "";
-  const hasCounts = training !== null && validation !== null;
+  if (!input.composer?.cards.trainingData) return undefined;
+
+  const { trainingExampleFiles, trainingUnsuitableExampleFiles } = input;
+  const values = input.composer.trainingData;
+  const known = (fieldId: string) => (values[fieldId]?.unknown ? undefined : values[fieldId]);
+  const text = (fieldId: string) => (known(fieldId)?.text ?? "").trim();
+  const entry = (fieldId: string, key: string) =>
+    known(fieldId)?.entries?.find((item) => item.key === key)?.value ?? "";
+
+  const name = text("trainingDatasetName");
+  const training = parseCount(entry("trainingVolume", "Training"));
+  const validation = parseCount(entry("trainingVolume", "Validation"));
+  const format = text("trainingDataFormat");
+  // 클래스마다 칸이 따로 있다. 성적서에는 한 줄로 적는다("정상 8,400 / 이탈 3,600").
+  const classDistribution = (known("trainingClassVolume")?.entries ?? [])
+    .filter((item) => item.value.trim() !== "")
+    .map((item) => `${item.key} ${item.value.trim()}`)
+    .join(" / ");
+  const description = text("trainingDescription");
+  const notes = text("trainingNotes");
+
+  const hasName = name !== "";
+  const hasCounts = training !== null || validation !== null;
   const hasExamples =
     trainingExampleFiles.length > 0 || trainingUnsuitableExampleFiles.length > 0;
-  const hasMeta = format !== "" || classDistribution !== "" || description !== "";
+  const hasMeta = format !== "" || classDistribution !== "" || description !== "" || notes !== "";
 
   if (!hasName && !hasCounts && !hasExamples && !hasMeta) {
     return undefined;
   }
 
   return {
-    name: datasetInfo.trainingDatasetName || "—",
+    name: name || "—",
     trainingSampleCount: training ?? 0,
     validationSampleCount: validation ?? 0,
     format: format || undefined,
     classDistribution: classDistribution || undefined,
     description: description || undefined,
+    notes: notes || undefined,
     validExamples: trainingExampleFiles,
     edgeExamples: trainingUnsuitableExampleFiles,
   };

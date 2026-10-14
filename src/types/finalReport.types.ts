@@ -60,6 +60,8 @@ export interface EvalScope {
   reportPurposeKey: ReportPurposeKey;
   modelPurpose?: string;
   modelCategory?: string;
+  /** 성적서 용도에 덧붙인 글. 1.3 개요 칸에 "의뢰자 제공"으로 싣는다(서술 설계 D26). */
+  purposeNote?: string;
   projectInfo?: {
     name: string;
     agency: string;
@@ -158,6 +160,8 @@ export interface KpiResult {
   perClass?: PerClassKpi[];
   /** M11/12/13 등 dict 반환 메트릭의 세부 수치 (Precision / Recall / F1) */
   subMetrics?: { precision: number; recall: number; f1Score: number };
+  /** 핵심 지표 — 미달하면 최종 불합격이다(`resolveCoreMetricIds`). 성적서에 표시해 판정 근거를 보인다. */
+  isCore?: boolean;
 }
 
 export interface LatencyStats {
@@ -171,8 +175,12 @@ export interface LatencyStats {
 }
 
 export interface ConclusionData {
-  verdict: "PASS" | "CONDITIONAL_PASS" | "FAIL";
+  /** INCONCLUSIVE = 판정 불가(핵심 지표 미산출 또는 판정 대상 없음, 서술 설계 D19). */
+  verdict: "PASS" | "CONDITIONAL_PASS" | "FAIL" | "INCONCLUSIVE";
+  /** 통과율(%). 참고 수치일 뿐 판정 근거가 아니다(D19). */
   score: number;
+  /** 판정 대상 지표 수. 0 이면 통과율을 셀 수 없다. 이 키가 생기기 전 저장된 성적서에는 없다. */
+  judgedCount?: number;
   benchmark: string;
   narrative: string;
   risks: string;
@@ -212,7 +220,10 @@ export interface TrainingDatasetInfo {
   validationSampleCount: number;
   format?: string;
   classDistribution?: string;
+  /** ⑥ 학습 데이터 설명. ⑥ 을 켰을 때만 있다. */
   description?: string;
+  /** ⑥ 비고. ⑥ 을 켰을 때만 있다. */
+  notes?: string;
   validExamples: UploadedFileInfo[];
   edgeExamples: UploadedFileInfo[];
 }
@@ -252,5 +263,42 @@ export interface FinalReportData {
    * **6단계가 아니라 성적서 화면에서 도착한다** — evaluate 를 호출하는 곳이 여기다.
    */
   evaluationWarnings?: string[];
+  /**
+   * 고객이 제공한 재료 — 성적서의 정해진 자리에 찍는 줄(재료 목록의 인쇄 위치).
+   * 이 키가 생기기 전 저장된 성적서에는 없다. 없으면 각 절이 종전처럼 그린다.
+   */
+  materials?: ReportMaterials;
   signature: SignatureData;
+}
+
+/**
+ * 고객 재료 한 칸의 값. `null` 은 **제공되지 않음**이다 — 2층 보고 항목인데 카드를 껐거나
+ * "모름"을 골랐다(재료 선택 점검 4.2). 선택 항목이 비었으면 줄 자체를 만들지 않는다.
+ */
+export type MaterialValue = string | null;
+
+export interface MaterialRow {
+  label: string;
+  value: MaterialValue;
+}
+
+/** 고객 재료를 성적서 자리별로 모은 것. 같은 값을 AI 에도 넘긴다(서술 설계 D25). */
+export interface ReportMaterials {
+  /** 5절 의뢰자 선언 표 — 이 작업 유형에 해당하는 선언만. */
+  declarations: MaterialRow[];
+  /** 5절 선택 기준 문장. 멀티레이블에서만 있다(그 밖은 해당 없음). */
+  metricRationale?: MaterialValue;
+  /** 3절 학습 데이터셋 표. */
+  training: MaterialRow[];
+  /** 3절 평가 데이터셋 표에 덧붙이는 줄(출처, 학습 데이터와의 관계, 수집 기간). */
+  test: MaterialRow[];
+  /** 3절 정답 라벨 표. */
+  groundTruth: MaterialRow[];
+  /** 4절 환경 표에 덧붙이는 줄(학습·추론 가속). */
+  environment: MaterialRow[];
+  /** 4절 환경 표 아래 — 알고리즘과 "이름 = 값" 표. `rows` 가 null 이면 제공되지 않음. */
+  hyperparameters: {
+    algorithm: MaterialValue;
+    rows: Array<{ name: string; value: string }> | null;
+  };
 }
