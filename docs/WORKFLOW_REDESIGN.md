@@ -117,7 +117,7 @@
 | Multi-class | ○●○○ (4개 중 1개) | 샘플 하나가 **여럿 중 하나** |
 | Multi-label | ●●○● (4개 중 3개) | 샘플 하나에 **여러 개** |
 
-단계 탭은 lucide 로 충분: `ListChecks` · `Upload` · `Columns3` · `ShieldCheck` · `FileText`.
+단계 탭은 lucide 로 충분: `ListChecks` · `Upload` · `Columns3` · `ShieldCheck` · `FileText`. *(MATERIAL_PICKER.md로 대체됨, §9 — 단계 표시줄은 입력 화면 오른쪽의 세로 목록이고 아이콘 없이 이름과 완료 표시만 둔다)*
 
 ---
 
@@ -260,6 +260,8 @@ M21 Confusion     —         목표값 없음
 다시 한다(백엔드 `docs/ARCHITECTURE.md` §8 의 방식을 따른다).
 
 ### 6.1 ~~업로드 먼저~~ → 했다. 다만 "계산 가능한 지표만 제시"는 여전히 안 한다
+
+> **MATERIAL_PICKER.md로 대체됨** (§3) — 매핑이 지표보다 앞으로 오면서 이 절의 전제("지표 화면에서는 `available_metric_ids` 가 아직 없다")가 사라졌다. 이제 지표 화면은 매핑된 컬럼으로 계산할 수 없는 지표를 처음부터 비활성으로 두고 이유를 한 줄 붙인다(`metricAvailability`). 매핑 확정 응답의 `available_metric_ids` 가 정본이고, 매핑 화면의 "지표 제외"는 없앴다. 아래는 종전 기록.
 
 업로드를 앞으로 옮기는 것은 §2.1 대로 **했다**. 하지만 원래 묶여 있던
 "계산 가능한 지표만 제시"는 **하지 않았고, 하지 않기로 한다.**

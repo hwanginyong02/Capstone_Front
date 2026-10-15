@@ -38,7 +38,7 @@ Based on a 4px grid. All spacing on the screen snaps to these values. Do NOT use
 
 ### Tab bar → page title
 
-- `--space-12` (48px) from bottom of tab bar to the page title.
+- `--space-12` (48px) from bottom of tab bar to the page title. *(MATERIAL_PICKER.md로 대체됨, §9 — 위쪽 탭 바는 없다. 단계 표시줄은 본문 오른쪽이다)*
 
 ### Page title → first card
 
@@ -148,7 +148,7 @@ Following Tailwind defaults:
 
 ### Below `md` (mobile)
 
-- Tabs become horizontally scrollable. Do NOT collapse them into a dropdown — scrolling preserves orientation.
+- Tabs become horizontally scrollable. Do NOT collapse them into a dropdown — scrolling preserves orientation. *(MATERIAL_PICKER.md로 대체됨, §9 — 좁은 화면에서는 세로 단계 표시줄이 본문 위로 올라간다)*
 - Action bar buttons remain side-by-side but narrower.
 - Content padding reduces from 32px to 16px.
 - Metric blocks stack single-column.

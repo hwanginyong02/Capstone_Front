@@ -54,7 +54,7 @@
 ## 5. 레이아웃 내부 구성요소의 분리
 
 *   **규칙 1**: `src/layout/`의 최상위에는 외부(Pages)로 노출되는 **공개 셸(Wrapper)만** 남겨둡니다. 현재는 워크플로우 스텝용 `WorkflowShell.tsx` 와 비-워크플로우(워크스페이스 등) 페이지용 경량 셸 `AppShell.tsx` 두 개가 있습니다. 페이지는 `layout/components/` 내부 부품을 직접 import 하지 말고 반드시 공개 셸을 거쳐야 합니다.
-*   **규칙 2**: 레이아웃을 구성하는 내부 부품(`AppHeader.tsx`, `ActionBar.tsx`, `StepTabs.tsx`)은 `src/layout/components/` 디렉토리 내부에 분리하여 은닉성(Encapsulation)을 유지합니다.
+*   **규칙 2**: 레이아웃을 구성하는 내부 부품(`AppHeader.tsx`, `ActionBar.tsx`, `StepRail.tsx`)은 `src/layout/components/` 디렉토리 내부에 분리하여 은닉성(Encapsulation)을 유지합니다.
 
 ---
 

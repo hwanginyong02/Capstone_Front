@@ -128,7 +128,7 @@ export function TaskTypeIcon({ type, size = 40 }: { type: TaskType; size?: numbe
 - **카드 클릭 = 즉시 다음 화면.** 라디오 인디케이터를 넣지 않는다 — 선택 상태를 보여줄
   시간이 없고, 넣으면 "고르고 → 다음 버튼" 두 동작이 된다
 - 하단 Action Bar 없음
-- `StepTabs` 숨김 — 아직 워크플로우에 들어가기 전이다
+- 단계 표시줄(`StepRail`) 숨김 — 아직 워크플로우에 들어가기 전이다
 
 **각 카드가 담는 3줄**
 1. 유형 이름

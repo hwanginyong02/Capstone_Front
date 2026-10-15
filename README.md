@@ -59,7 +59,7 @@ Linear, Vercel, Supabase 대시보드에서 영감을 받은 정밀하고 깔끔
 
 ### 레이아웃
 - Full-width with inner cap (1280px centered, 32px side padding)
-- Sticky top navigation (App Header 56px + Step Tabs 48px)
+- Sticky top navigation (App Header 56px + Step Tabs 48px) *(MATERIAL_PICKER.md로 대체됨, §9 — 단계 표시줄은 입력 화면 오른쪽의 세로 목록이다)*
 - Sticky bottom Action Bar (72px)
 - 카드 간격: 24px (기본), 40px (주요 섹션 구분)
 
@@ -74,7 +74,7 @@ Linear, Vercel, Supabase 대시보드에서 영감을 받은 정밀하고 깔끔
 - 체크박스 + 지표 ID(mono) + 메트릭명 + 설명
 - 그리드: xl=4열, lg=3열, md=2열, sm=1열
 - M5 선택 시 하단에 β값 입력 카드 표시
-- 요구사항 Badge: "score 필요", "prob 필요", "β값 필요"
+- 요구사항 Badge: "score 필요", "prob 필요", "β값 필요" *(MATERIAL_PICKER.md로 대체됨, §3 — 매핑한 컬럼으로 계산할 수 없는 지표는 비활성으로 두고 이유를 한 줄 붙인다)*
 
 ### Metric Block
 - 대형 메트릭 표시 (성적서/결과)

@@ -16,7 +16,7 @@ This project uses **shadcn/ui** as the base component library, with Tailwind CSS
 | `Badge` | Short status label | 감지된 클래스, 상태 표시 (정상, 진행 중). |
 | `Alert` | Warnings, success, errors | 검증 결과, 샘플 부족 경고. |
 | `Table` | Tabular data | Class-wise metrics, class distribution, 지표 selection summary. |
-| `Tabs` | Top step navigation | See **Step Tabs** pattern below. |
+| `Tabs` | Top step navigation | See **Step Tabs** pattern below. *(MATERIAL_PICKER.md로 대체됨, §9 — 세로 단계 표시줄이고 Tabs 를 쓰지 않는다)* |
 | `Tooltip` | Contextual help | Field-level help icons, metric definitions. |
 | Drop zone (custom) | File upload | Step 3. See `components/drop-zone.md`. |
 
@@ -38,6 +38,8 @@ Structure:
 - **Bottom border**: 1px `border-border`. No shadow.
 
 ### Step Tabs (48px, fixed below header)
+
+> **MATERIAL_PICKER.md로 대체됨** (§9) — 입력 화면 오른쪽의 세로 단계 표시줄(`StepRail`)이다. 단계 수는 고른 카드에 따라 8~10개다. 화면이 `lg` 보다 좁으면 본문 위로 올라간다. 아래는 종전 기록.
 
 A horizontal row of 7 tabs, each equally distributed across the inner max-width (1280px, centered with the same 32px side padding as content).
 

@@ -45,9 +45,9 @@ Capstone_Front/
 │   ├── data/                  # 정적 도메인 데이터/카탈로그 (evaluationData, templateExamples, landingData, dataValidationShowcase)
 │   ├── hooks/                 # React 결합 재사용 로직 (useReportData, useIssuance, usePdfDownload, useDataValidation, useColumnAnalysis, usePrintOnReady)
 │   ├── layout/                # 공개 레이아웃 셸
-│   │   ├── WorkflowShell.tsx  # 워크플로우 스텝 페이지용 셸 (AppHeader + StepTabs + ActionBar)
+│   │   ├── WorkflowShell.tsx  # 워크플로우 스텝 페이지용 셸 (AppHeader + StepRail + ActionBar)
 │   │   ├── AppShell.tsx       # 비-워크플로우 페이지용 경량 셸 (AppHeader만)
-│   │   └── components/        # 레이아웃 내부 부품 (AppHeader, ActionBar, StepTabs) — 은닉
+│   │   └── components/        # 레이아웃 내부 부품 (AppHeader, ActionBar, StepRail) — 은닉
 │   ├── lib/                   # 백엔드 계약·외부 연동(API)·리포트 도메인 로직 계층
 │   │   ├── apiBase.ts         # API base URL 헬퍼
 │   │   ├── mapping/           # 프론트↔백엔드 역할 변환 (translateRoleToBackend/Frontend)

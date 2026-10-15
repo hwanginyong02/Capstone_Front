@@ -127,7 +127,7 @@ S003,,news,0.12,0.57
 | 다중 클래스 (13개) | M1 Accuracy, M2 Precision, M3 Recall, M4 F1, M5 Fβ, M6 KL Divergence, M11 Macro 평균, M12 Micro 평균, M13 Weighted 평균, M14 분포 차이, M21 혼동행렬, M22 클래스별 지표, M23 불균형 비율 |
 | 멀티레이블 (11개) | M2 Precision, M3 Recall, M4 F1, M5 Fβ, M15 Hamming Loss, M16 Exact Match, M17 Jaccard, M18 분포 차이, M21 혼동행렬, M22 레이블별 지표, M23 불균형 비율 |
 
-\* 확률(score) 컬럼이 있어야 고를 수 있다.
+\* 확률(score) 컬럼이 있어야 고를 수 있다. 확률 컬럼을 매핑하지 않았으면 지표 화면에서 이유와 함께 비활성으로 보인다(MATERIAL_PICKER.md §3).
 
 멀티레이블에서는 M1 Accuracy를 고를 수 없다. TS 4213 6.5.1은 멀티레이블에서 정확한 일치율을 "이진 정확도를 조정한 것"으로, 6.5.3은 이를 "서브 세트 정확도"로 정의하므로 멀티레이블의 Accuracy는 M16 Exact Match와 같은 값이다. 백엔드도 같은 이유로 멀티레이블에서 M1·M11·M12·M13을 노출하지 않는다(app/core/schemas.py, 2026-09-07 결정 2).
 

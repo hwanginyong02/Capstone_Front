@@ -124,6 +124,8 @@ Never write 지표 IDs in the sans-serif default font.
 
 ### Tab Label Pattern
 
+> **MATERIAL_PICKER.md로 대체됨** (§9) — 탭 대신 세로 단계 표시줄이다. 단계 이름은 16px, 현재 단계만 500이다. 아래는 종전 기록.
+
 ```jsx
 {/* Active tab */}
 <span className="text-body-medium font-medium text-foreground">기본 정보</span>

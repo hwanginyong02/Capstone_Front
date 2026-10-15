@@ -61,7 +61,7 @@ Every main screen uses this single-column, full-width structure:
 
 ### Layout rules
 
-- **No left sidebar.** All navigation is at the top.
+- **No left sidebar.** All navigation is at the top. *(MATERIAL_PICKER.md로 대체됨, §9 — 입력 화면의 단계 표시줄은 본문 오른쪽의 세로 목록이다)*
 - **Full width with inner cap.** The content area uses full viewport width with 32px side padding, but inner content is capped at 1280px and centered. This gives breathing room on ultra-wide monitors without wasting space on 1440px screens.
 - **Sticky action bar at the bottom.** Navigation buttons stay visible as the user scrolls. Essential for long screens like data upload or result preview.
 - **No floating help bubble.** The help icon lives in the top-right of the app header.
@@ -82,6 +82,8 @@ Tabs are always visible at the top. Users can click any completed or current tab
 
 ### Tab states
 
+> **MATERIAL_PICKER.md로 대체됨** (§9) — 세로 단계 표시줄이다. 지난 단계는 본문색이고 누를 수 있다. 현재 단계는 제목색·굵기 500에 강조색 막대를 붙이고 `aria-current="step"` 이다. 다음 단계는 흐린 글자이고 누를 수 없다. 마친 단계에는 완료 표시(강조색 원 안의 체크)가 붙는다. 아래는 종전 기록.
+
 - **Active** (current step): step number in a solid primary circle, label in `text-foreground font-medium`, 2px primary-colored underline along the bottom edge of the tab.
 - **Completed**: step number replaced with a small check icon in primary color, label in `text-foreground`, clickable with hover state.
 - **Upcoming**: step number in a muted outlined circle, label in `text-muted-foreground`, cursor not-allowed.
@@ -97,7 +99,7 @@ IMPORTANT: Always prefer shadcn/ui components over custom HTML.
 - Use `Input`, `Label`, `Select`, `RadioGroup`, `Checkbox` for all form inputs.
 - Use `Badge` for status labels and inline tags.
 - Use `Alert` with `variant="default" | "destructive"` for messages.
-- Use `Tabs` component from shadcn for the top navigation (with custom styling to match our step tab pattern).
+- Use `Tabs` component from shadcn for the top navigation (with custom styling to match our step tab pattern). *(MATERIAL_PICKER.md로 대체됨, §9 — 단계 표시줄은 `<nav><ol>` 세로 목록이고 Tabs 를 쓰지 않는다)*
 - Use `Table` for any tabular data — do NOT hand-roll tables.
 
 ## Data Density Principles
