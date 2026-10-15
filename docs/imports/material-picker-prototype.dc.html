@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>시험성적서 입력 위저드</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300..700&amp;family=IBM+Plex+Sans+KR:wght@300;400;500;600&amp;family=Gothic+A1:wght@300;400;500;600&amp;display=swap">
+<style>
+@font-face{font-family:'Pretendard Variable';src:url("/_blob/3df3404736173d53c7d10de22183f860") format("woff2");font-weight:45 920;font-style:normal;font-display:swap}
+body{margin:0;background:#ffffff}
+button,input{font-family:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid {{th.accent}};outline-offset:2px}
+a{color:{{th.accent}}}a:hover{color:{{th.accent}}}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-direction: column; font-family: {{ff}}; color: {{th.ink}}; background: #ffffff">
+
+<header style="height: 60px; flex-shrink: 0; background: {{th.chrome}}; display: flex; align-items: center; padding: 0 32px; font-size: 16px; font-weight: 500; color: {{th.nav}}">[서비스명]</header>
+
+<nav aria-label="진행 단계" style="flex-shrink: 0; border-bottom: 1px solid {{th.rule}}; padding: 0 32px; display: flex; flex-wrap: wrap; align-items: center; column-gap: 10px; min-height: 48px">
+<sc-for list="{{steps}}" as="st" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 10px">
+<sc-if value="{{st.notFirst}}" hint-placeholder-val="{{true}}">
+<svg aria-hidden="true" width="8" height="12" viewBox="0 0 8 12"><path d="M2 1L6 6L2 11" fill="none" stroke="{{th.arrow}}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</sc-if>
+<sc-if value="{{st.canGo}}" hint-placeholder-val="{{false}}">
+<button type="button" onClick="{{st.go}}" style="{{st.style}}">{{st.label}}</button>
+</sc-if>
+<sc-if value="{{st.noGo}}" hint-placeholder-val="{{true}}">
+<span aria-current="{{st.current}}" style="{{st.style}}">{{st.label}}</span>
+</sc-if>
+</div>
+</sc-for>
+</nav>
+
+<main style="flex: 1; display: flex; flex-direction: column">
+
+<sc-if value="{{isType}}" hint-placeholder-val="{{true}}">
+<section style="max-width: 1000px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 56px 32px; display: flex; flex-direction: column; gap: 32px">
+<div role="radiogroup" aria-label="작업 유형" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px">
+<sc-for list="{{types}}" as="o" hint-placeholder-count="3">
+<button type="button" role="radio" aria-checked="{{o.aria}}" onClick="{{o.pick}}" style="{{o.style}}">
+<span style="font-size: 22px; font-weight: 500; color: {{th.head}}">{{o.name}}</span>
+<span style="font-size: 14px; line-height: 21px; color: {{th.ink}}">{{o.desc}}</span>
+<span style="font-size: 14px; line-height: 21px; color: {{th.meta}}">{{o.note}}</span>
+</button>
+</sc-for>
+</div>
+<div style="display: flex; justify-content: flex-end">
+<button type="button" disabled="{{noType}}" onClick="{{toPick}}" style="{{typeNextStyle}}">다음</button>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{isPick}}" hint-placeholder-val="{{false}}">
+<div style="flex: 1; display: flex; flex-wrap: wrap; align-items: stretch">
+
+<aside aria-label="재료 카탈로그" style="flex: 1 1 280px; max-width: 340px; box-sizing: border-box; padding: 24px; border-right: 1px solid {{th.rule}}; display: flex; flex-direction: column; gap: 16px">
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="4">
+<button type="button" aria-pressed="{{c.aria}}" onClick="{{c.pick}}" style="{{c.style}}">
+<span style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%">
+<span style="font-size: 16px; font-weight: 500; color: {{th.head}}">{{c.name}}</span>
+<sc-if value="{{c.complete}}" hint-placeholder-val="{{false}}"><svg role="img" aria-label="필수 카드 모두 저장됨" width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="{{th.accent}}"></circle><path d="M6 10.5L8.8 13.2L14 7.5" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+</span>
+<span style="font-size: 14px; color: {{th.meta}}">{{c.count}}</span>
+</button>
+</sc-for>
+</div>
+<ul aria-label="{{curCatName}}" style="list-style: none; margin: 0; padding: 0; border: 1px solid {{th.line}}; border-radius: 8px; overflow: hidden">
+<sc-for list="{{subs}}" as="s" hint-placeholder-count="3">
+<li style="{{s.liStyle}}">
+<button type="button" onClick="{{s.pick}}" aria-current="{{s.current}}" style="{{s.style}}">
+<span style="flex: 1; font-size: 16px; color: {{th.head}}; font-weight: 400">{{s.name}}</span>
+<sc-if value="{{s.req}}" hint-placeholder-val="{{false}}"><span style="font-size: 14px; color: {{th.meta}}">필수</span></sc-if>
+<sc-if value="{{s.saved}}" hint-placeholder-val="{{false}}"><svg role="img" aria-label="저장됨" width="18" height="18" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="{{th.accent}}"></circle><path d="M6 10.5L8.8 13.2L14 7.5" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+<sc-if value="{{s.notSaved}}" hint-placeholder-val="{{true}}"><span aria-hidden="true" style="width: 18px; height: 18px; box-sizing: border-box; border: 1.5px solid {{th.line}}; border-radius: 50%"></span></sc-if>
+</button>
+</li>
+</sc-for>
+</ul>
+</aside>
+
+<section aria-label="필드" style="flex: 999 1 420px; min-width: 0; box-sizing: border-box; padding: 32px 40px 56px">
+<div style="max-width: 680px; display: flex; flex-direction: column; gap: 32px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<h1 style="margin: 0; font-size: 22px; font-weight: 500; color: {{th.head}}">{{cardName}}</h1>
+<p style="margin: 0; font-size: 14px; line-height: 21px; color: {{th.meta}}">{{cardDesc}}</p>
+</div>
+<sc-for list="{{sections}}" as="sec" hint-placeholder-count="2">
+<div style="display: flex; flex-direction: column">
+<h2 style="margin: 0 0 6px; font-size: 14px; font-weight: 500; color: {{th.ink}}">{{sec.title}}</h2>
+<sc-for list="{{sec.rows}}" as="f" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; padding: 14px 0; border-top: 1px solid {{th.rule}}">
+<div style="display: flex; gap: 14px; align-items: flex-start">
+<sc-if value="{{f.toggle}}" hint-placeholder-val="{{false}}">
+<button type="button" role="checkbox" aria-checked="{{f.aria}}" aria-label="{{f.name}}" onClick="{{f.flip}}" style="{{f.boxStyle}}">
+<sc-if value="{{f.checked}}" hint-placeholder-val="{{false}}"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"><path d="M2 6.5L5 9.5L10 3" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+</button>
+</sc-if>
+<div style="flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px">
+<span style="font-size: 16px; font-weight: 500; color: {{th.head}}">{{f.name}}</span>
+<sc-if value="{{f.hasFmt}}" hint-placeholder-val="{{true}}"><span style="font-size: 14px; color: {{th.meta}}; text-align: right">{{f.fmt}}</span></sc-if>
+</div>
+<sc-if value="{{f.hasCond}}" hint-placeholder-val="{{false}}"><span style="font-size: 14px; line-height: 21px; color: {{th.ink}}">조건: {{f.cond}}</span></sc-if>
+<span style="font-size: 14px; line-height: 21px; color: {{th.meta}}">{{f.desc}}</span>
+</div>
+</div>
+<sc-if value="{{f.isGroup}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 12px 0 0 34px">
+<sc-for list="{{f.subs}}" as="g" hint-placeholder-count="2">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px">
+<span style="font-size: 16px; font-weight: 400; color: {{th.head}}">{{g.name}}</span>
+<span style="font-size: 14px; color: {{th.meta}}; text-align: right">{{g.fmt}}</span>
+</div>
+<span style="font-size: 14px; line-height: 21px; color: {{th.meta}}">{{g.desc}}</span>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</sc-for>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding-top: 8px; border-top: 1px solid {{th.rule}}">
+<button type="button" disabled="{{saveDisabled}}" onClick="{{save}}" style="{{saveStyle}}">
+<sc-if value="{{isClean}}" hint-placeholder-val="{{false}}"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 12 12"><path d="M2 6.5L5 9.5L10 3" fill="none" stroke="{{th.accent}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+<span>{{saveLabel}}</span>
+</button>
+<sc-if value="{{isDirty}}" hint-placeholder-val="{{false}}"><span style="font-size: 14px; color: {{th.meta}}">{{dirtyMsg}}</span></sc-if>
+</div>
+</div>
+</section>
+
+<aside aria-label="입력 순서" style="flex: 1 1 260px; max-width: 320px; box-sizing: border-box; background: {{th.chrome}}; padding: 24px; display: flex; flex-direction: column; gap: 20px">
+<ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+<sc-for list="{{flow}}" as="n" hint-placeholder-count="6">
+<li style="display: flex; flex-direction: column; align-items: stretch">
+<sc-if value="{{n.notFirst}}" hint-placeholder-val="{{true}}">
+<div aria-hidden="true" style="display: flex; justify-content: center; height: 20px"><svg width="12" height="20" viewBox="0 0 12 20"><path d="M6 1V18M2.5 14.5L6 18L9.5 14.5" fill="none" stroke="{{th.arrow}}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+</sc-if>
+<button type="button" onClick="{{n.pick}}" aria-current="{{n.current}}" style="{{n.style}}">
+<span style="flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<span style="font-size: 16px; font-weight: 500; color: {{th.head}}">{{n.name}}</span>
+<sc-if value="{{n.hasExtra}}" hint-placeholder-val="{{false}}"><span style="font-size: 14px; color: {{th.meta}}">{{n.extra}}</span></sc-if>
+</span>
+<sc-if value="{{n.saved}}" hint-placeholder-val="{{false}}"><svg role="img" aria-label="저장됨" width="18" height="18" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="{{th.accent}}"></circle><path d="M6 10.5L8.8 13.2L14 7.5" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+</button>
+</li>
+</sc-for>
+</ol>
+<div style="margin-top: auto; display: flex; flex-direction: column; gap: 12px">
+<sc-if value="{{hasErr}}" hint-placeholder-val="{{false}}"><p role="alert" style="margin: 0; font-size: 14px; line-height: 21px; color: #aa0808">{{errMsg}}</p></sc-if>
+<span style="font-size: 14px; color: {{th.meta}}">{{progress}}</span>
+<div style="display: flex; gap: 8px">
+<button type="button" onClick="{{toType}}" style="height: 44px; padding: 0 16px; border: 1px solid {{th.meta}}; border-radius: 8px; background: #ffffff; color: {{th.ink}}; font-size: 16px; font-weight: 500; cursor: pointer">이전</button>
+<button type="button" onClick="{{toInput}}" style="flex: 1; height: 44px; padding: 0 20px; border: 0; border-radius: 8px; background: {{th.accent}}; color: #ffffff; font-size: 16px; font-weight: 500; cursor: pointer">다음</button>
+</div>
+</div>
+</aside>
+
+</div>
+</sc-if>
+
+<sc-if value="{{isInput}}" hint-placeholder-val="{{false}}">
+<section style="max-width: 760px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 40px 32px 56px; display: flex; flex-direction: column; gap: 28px">
+<h1 style="margin: 0; font-size: 22px; font-weight: 500; color: {{th.head}}">{{curName}}</h1>
+<sc-for list="{{curFields}}" as="f" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="{{f.inputId}}" style="font-size: 16px; font-weight: 500; color: {{th.head}}">{{f.name}}</label>
+<sc-if value="{{f.hasCond}}" hint-placeholder-val="{{false}}"><span style="font-size: 14px; color: {{th.meta}}">조건이 맞을 때만 나타남: {{f.cond}}</span></sc-if>
+<input id="{{f.inputId}}" placeholder="{{f.fmt}}" style="height: 44px; box-sizing: border-box; border: 1px solid {{th.arrow}}; border-radius: 8px; padding: 0 12px; font-size: 16px; color: {{th.ink}}; background: #ffffff">
+<span style="font-size: 14px; line-height: 21px; color: {{th.meta}}">{{f.desc}}</span>
+</div>
+</sc-for>
+<div style="display: flex; justify-content: space-between; gap: 8px; padding-top: 8px">
+<button type="button" onClick="{{prevInput}}" style="height: 44px; padding: 0 16px; border: 1px solid {{th.meta}}; border-radius: 8px; background: #ffffff; color: {{th.ink}}; font-size: 16px; font-weight: 500; cursor: pointer">이전</button>
+<button type="button" onClick="{{nextInput}}" style="height: 44px; padding: 0 24px; border: 0; border-radius: 8px; background: {{th.accent}}; color: #ffffff; font-size: 16px; font-weight: 500; cursor: pointer">다음</button>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{isReview}}" hint-placeholder-val="{{false}}">
+<section style="max-width: 760px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 40px 32px 56px; display: flex; flex-direction: column; gap: 20px">
+<sc-if value="{{hasMissing}}" hint-placeholder-val="{{true}}">
+<p style="margin: 0; font-size: 16px; line-height: 24px; color: {{th.ink}}">아래 권장 항목은 성적서에 "제공되지 않음"으로 표시됩니다.</p>
+</sc-if>
+<sc-if value="{{noMissing}}" hint-placeholder-val="{{false}}">
+<p style="margin: 0; font-size: 16px; line-height: 24px; color: {{th.ink}}">빠진 권장 항목이 없습니다.</p>
+</sc-if>
+<div style="display: flex; flex-direction: column">
+<sc-for list="{{missing}}" as="g" hint-placeholder-count="4">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 8px 24px; padding: 16px 0; border-top: 1px solid {{th.rule}}">
+<div style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 360px; min-width: 0">
+<span style="font-size: 16px; font-weight: 500; color: {{th.head}}">{{g.name}}</span>
+<span style="font-size: 14px; line-height: 21px; color: {{th.ink}}">{{g.items}}</span>
+</div>
+<button type="button" onClick="{{g.go}}" style="background: none; border: 0; padding: 0; min-height: 44px; font-size: 14px; color: {{th.ink}}; text-decoration: underline; text-underline-offset: 4px; cursor: pointer">재료 고르기에서 넣기</button>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-top: 8px">
+<button type="button" onClick="{{reviewBack}}" style="height: 44px; padding: 0 16px; border: 1px solid {{th.meta}}; border-radius: 8px; background: #ffffff; color: {{th.ink}}; font-size: 16px; font-weight: 500; cursor: pointer">이전</button>
+<div style="display: flex; align-items: center; gap: 16px">
+<sc-if value="{{done}}" hint-placeholder-val="{{false}}"><span style="font-size: 14px; color: {{th.meta}}">[생성 이후 화면은 범위 밖]</span></sc-if>
+<button type="button" onClick="{{generate}}" style="height: 44px; padding: 0 28px; border: 0; border-radius: 8px; background: {{th.accent}}; color: #ffffff; font-size: 16px; font-weight: 500; cursor: pointer">생성</button>
+</div>
+</div>
+</section>
+</sc-if>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["SAP 블루","인증 네이비","검증 그린","먹색 모노"],"default":"인증 네이비","section":"디자인 시스템"},"font":{"editor":"enum","options":["Noto Sans KR","Pretendard","IBM Plex Sans KR","Gothic A1"],"default":"Pretendard","section":"디자인 시스템"},"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  data() {
+    var R = 'req', C = 'rec', O = 'opt', D = 'cond';
+    var PROJ = '성적서 용도가 과제 제출이면 나타나고, 나타나면 필수';
+    var CROSS = '라벨 검수 방식이 복수 교차 검수일 때';
+    var YNU = '하나 선택: 예 / 아니오 / 모름';
+    return [
+      { id: 'info', name: '의뢰 정보', cards: [
+        { id: 'client', name: '의뢰자 정보', req: true, desc: '성적서를 받는 회사와 용도입니다. 성적서 1절에 들어가고, 회사 정보는 AI에 넘기지 않습니다.', f: [
+          { id: 'cl_name', k: R, name: '회사명', fmt: '텍스트', desc: '의뢰하는 회사의 정식 명칭입니다.' },
+          { id: 'cl_ceo', k: R, name: '대표자', fmt: '텍스트', desc: '회사 대표자 이름입니다.' },
+          { id: 'cl_brn', k: R, name: '사업자등록번호', fmt: '텍스트', desc: '회사의 사업자등록번호입니다.' },
+          { id: 'cl_tel', k: R, name: '전화번호', fmt: '텍스트', desc: '회사 연락처입니다.' },
+          { id: 'cl_addr', k: R, name: '주소', fmt: '텍스트', desc: '회사 소재지입니다.' },
+          { id: 'cl_use', k: R, name: '성적서 용도', fmt: '하나 선택: 내부 검증 / 외부 제출 / 과제 제출. 덧붙이는 글 가능', desc: '1절의 용도 문장이 되고, AI가 서술할 때도 참고합니다.' },
+          { id: 'cl_web', k: O, name: '홈페이지', fmt: '텍스트', desc: '회사 웹사이트 주소입니다.' },
+          { id: 'cl_fax', k: O, name: '팩스', fmt: '텍스트', desc: '회사 팩스 번호입니다.' },
+          { id: 'cl_pno', k: O, name: '과제 번호', fmt: '텍스트', desc: '과제의 관리 번호입니다.' },
+          { id: 'cl_date', k: O, name: '평가 의뢰일', fmt: '날짜. 기본값 오늘', desc: '표지의 시험기간 시작일이 됩니다. 켜지 않으면 오늘 날짜로 들어갑니다.' },
+          { id: 'cl_pname', k: D, name: '과제명', cond: PROJ, fmt: '텍스트', desc: '1절에 들어갑니다.' },
+          { id: 'cl_porg', k: D, name: '과제 기관', cond: PROJ, fmt: '텍스트', desc: '과제를 맡긴 기관입니다. 1절에 들어갑니다.' }
+        ] }
+      ] },
+      { id: 'model', name: '모델', cards: [
+        { id: 'model', name: '평가 대상 모델', req: true, desc: '시험 대상 모델의 이름과 쓰임새입니다.', f: [
+          { id: 'md_name', k: R, name: '모델 이름', fmt: '텍스트', desc: '1절, 2절, 4절에 적힙니다.' },
+          { id: 'md_ver', k: R, name: '버전', fmt: '텍스트. 기본값 v1.0.0', desc: '모델 이름과 함께 적힙니다.' },
+          { id: 'md_use', k: R, name: '모델 용도', fmt: '한 줄 텍스트', desc: '모델이 하는 일입니다. 1절 대상 모델 문장이 됩니다.' }
+        ] },
+        { id: 'modelEnv', name: '모델 설정과 실행 환경', desc: '모델 설정값과 실행한 컴퓨터입니다. 4절에 들어갑니다.', f: [
+          { id: 'me_algo', k: C, name: '알고리즘', fmt: '텍스트', desc: '학습에 쓴 알고리즘입니다.' },
+          { id: 'me_hp', k: C, name: '하이퍼파라미터', fmt: '"이름 = 값" 줄 추가', desc: '학습에 쓴 설정값입니다. 4절 환경 표 아래에 들어갑니다.' },
+          { id: 'me_env', k: C, name: '실행 환경', desc: '모델을 돌린 장비와 소프트웨어입니다. 4절 환경 표에 들어갑니다.', fields: [
+            { name: 'OS', fmt: '텍스트', desc: '운영체제와 버전입니다.' },
+            { name: 'CPU', fmt: '텍스트', desc: '프로세서 모델입니다.' },
+            { name: 'GPU', fmt: '텍스트', desc: '그래픽 처리 장치 모델입니다.' },
+            { name: '메모리', fmt: '텍스트', desc: '메모리 용량입니다.' },
+            { name: '소프트웨어', fmt: '텍스트', desc: '주요 라이브러리와 버전입니다.' }
+          ] },
+          { id: 'me_gpu', k: C, name: 'GPU 사용 여부', desc: 'GPU 같은 가속 장치를 썼는지입니다.', fields: [
+            { name: '학습', fmt: YNU, desc: '학습할 때 GPU를 썼는지입니다.' },
+            { name: '추론', fmt: YNU, desc: '추론할 때 GPU를 썼는지입니다.' }
+          ] }
+        ] }
+      ] },
+      { id: 'data', name: '데이터', cards: [
+        { id: 'evalData', name: '평가 데이터', req: true, desc: '모델의 예측 결과 파일과 그 컬럼입니다. 모든 지표를 이 파일로 계산합니다.', f: [
+          { id: 'ev_file', k: R, name: '결과 파일', fmt: 'CSV 또는 JSON 1개, 20 MiB 이하', desc: '모델이 테스트 데이터에 낸 예측 결과가 담긴 파일입니다.' },
+          { id: 'ev_true', k: R, name: '정답 컬럼', fmtBy: { bin: '컬럼 지정. 값은 0/1', multi: '컬럼 지정. 값은 클래스명', ml: '컬럼 지정. 값은 | 로 구분한 레이블' }, desc: '정답이 든 컬럼입니다.' },
+          { id: 'ev_pred', k: R, name: '예측 컬럼 또는 확률 컬럼', fmtBy: { bin: '컬럼 지정. 예측 또는 양성 확률(score, 0~1)', multi: '컬럼 지정. 예측 또는 클래스별 확률(prob_클래스명)', ml: '컬럼 지정. 예측 또는 레이블별 점수(score_레이블명)' }, desc: '둘 중 하나는 있어야 하고, 둘 다 있으면 예측을 씁니다. 확률이 있어야 AUROC, AUPRC, Log Loss를 고를 수 있습니다.' },
+          { id: 'ev_pos', k: R, t: ['bin'], name: '양성 클래스', fmt: '하나 선택. 자동 판단값이 기본', desc: '양성으로 볼 값입니다. 6.0 일러두기에 적힙니다.' },
+          { id: 'ev_lat', k: C, name: '응답시간 컬럼', fmt: '컬럼 지정. 숫자, 단위 ms', desc: '샘플마다 걸린 응답 시간입니다. 6.4 응답시간에 들어갑니다. 사용 방식이 실시간 응답이면 필요합니다.' },
+          { id: 'ev_id', k: O, name: '식별자 컬럼', fmt: '컬럼 지정. 고유 문자열', desc: '중복 검사에만 씁니다.' },
+          { id: 'ev_ign', k: O, name: '무시할 컬럼', fmt: '컬럼 지정', desc: '평가에서 뺄 컬럼입니다.' },
+          { id: 'ev_cls', k: O, name: '클래스 레이블 설명', fmt: '클래스마다 자유서술', desc: '각 클래스가 무엇인지입니다. 3절 클래스 설명 표에 들어갑니다.' },
+          { id: 'ev_thr', k: D, t: ['bin', 'ml'], name: '결정 임계값', cond: '예측 컬럼 없이 확률 컬럼만 지정했을 때', fmtBy: { bin: '숫자. 기본 0.5', ml: '레이블마다 숫자. 기본 0.5' }, desc: '확률을 예측으로 바꿀 때 씁니다. 7.1 앞 문구에 적힙니다.' }
+        ] },
+        { id: 'trainingData', name: '학습 데이터', desc: '모델을 훈련할 때 쓴 데이터입니다. 3절 학습 데이터셋 표에 들어갑니다.', f: [
+          { id: 'td_name', k: C, name: '데이터 이름', fmt: '텍스트', desc: '학습 데이터셋의 이름입니다.' },
+          { id: 'td_src', k: C, name: '데이터 출처', fmt: '한 줄 텍스트', desc: '학습 데이터를 어디서 얻었는지입니다.' },
+          { id: 'td_vol', k: C, name: '데이터 양', desc: '학습과 검증에 쓴 샘플 수입니다.', fields: [
+            { name: '학습 건수', fmt: '숫자', desc: '학습에 쓴 샘플 수입니다.' },
+            { name: '검증 건수', fmt: '숫자', desc: '검증에 쓴 샘플 수입니다.' }
+          ] },
+          { id: 'td_cls', k: C, name: '클래스별 데이터 양', fmt: '클래스마다 숫자', desc: '클래스별 학습 샘플 수입니다. 평가 데이터의 클래스 목록으로 칸이 만들어집니다.' },
+          { id: 'td_ch', k: C, name: '수집 환경 차이', fmt: '여러 개 선택: 알려진 것 없음 / 장비 차이 / 전처리 차이 / 수집자 차이 / 수집 환경 차이 / 기타', desc: '같은 클래스의 데이터가 서로 다른 장비, 처리 방식, 사람, 환경에서 모였는지입니다. "알려진 것 없음"은 다른 것과 함께 고를 수 없습니다.' },
+          { id: 'td_imb', k: C, name: '불균형 보정', fmt: '여러 개 선택: 클래스 수 맞춤 / 출처 다양화 / 보정 안 함 / 기타. 모름 가능', desc: '한쪽 클래스에 몰린 데이터를 보정했는지입니다. "보정 안 함"은 다른 것과 함께 고를 수 없습니다.' },
+          { id: 'td_desc', k: O, name: '학습 데이터 설명', fmt: '자유서술', desc: '학습 데이터에 대한 설명입니다.' },
+          { id: 'td_per', k: O, name: '수집 기간', fmt: '시작 월과 끝 월', desc: '학습 데이터를 모은 기간입니다.' },
+          { id: 'td_fmt', k: O, name: '데이터 형식', fmt: '텍스트', desc: '파일 형식이나 구조입니다.' },
+          { id: 'td_note', k: O, name: '비고', fmt: '자유서술', desc: '그 밖에 남길 내용입니다.' },
+          { id: 'td_ok', k: O, name: '적합 예시 파일', fmt: '파일 여러 개', desc: '3절에 파일명과 크기만 적힙니다.' },
+          { id: 'td_ng', k: O, name: '부적합 예시 파일', fmt: '파일 여러 개', desc: '3절에 파일명과 크기만 적힙니다.' }
+        ] },
+        { id: 'testData', name: '테스트 데이터', desc: '성능을 잰 테스트 데이터의 출처입니다. 건수와 클래스별 건수는 올린 파일에서 시스템이 셉니다.', f: [
+          { id: 'te_src', k: C, name: '데이터 출처', fmt: '한 줄 텍스트', desc: '테스트 데이터를 어디서 얻었는지입니다. 3절 평가 데이터셋 표에 들어갑니다.' },
+          { id: 'te_rel', k: C, name: '학습 데이터와 출처 관계', fmt: '하나 선택: 같음 / 다름 / 모름', desc: '출처가 같으면 점수가 실제보다 좋게 나올 수 있어 성적서에 함께 적습니다.' },
+          { id: 'te_pre', k: O, name: '학습과 같은 전처리', fmt: '하나 선택: 같음 / 다름 / 모름. 덧붙이는 글 가능', desc: '전처리 내용이 아니라 학습 때와 같은지만 묻습니다.' },
+          { id: 'te_per', k: O, name: '수집 기간', fmt: '시작 월과 끝 월', desc: '테스트 데이터를 모은 기간입니다.' }
+        ] },
+        { id: 'groundTruth', name: '정답 라벨', desc: '테스트 데이터의 정답을 누가, 어떻게 붙였는지입니다. 3절에 들어갑니다.', f: [
+          { id: 'gt_who', k: C, name: '라벨 작성 주체', fmt: '하나 선택: 전문가 / 외부 작업자 / 프로그램·규칙 / 실제 결과 기록 / 기타', desc: '정답을 붙인 주체입니다. 실제 결과 기록은 사후에 확인된 결과를 정답으로 쓴 경우입니다.' },
+          { id: 'gt_rev', k: C, name: '라벨 검수 방식', fmt: '하나 선택: 복수 교차 검수 / 1인 검수 / 검수 없음 / 모름', desc: '정답을 검토한 방식입니다.' },
+          { id: 'gt_n', k: D, name: '라벨러 수', cond: CROSS, fmt: '숫자. 1 이상의 정수', desc: '정답을 붙인 사람 수입니다.' },
+          { id: 'gt_kind', k: D, name: '일치도 종류', cond: CROSS, fmt: '하나 선택: 단순 일치율 / Cohen의 카파 / Fleiss의 카파 / Krippendorff의 알파 / 기타 / 측정 안 함', desc: '라벨러가 2명이면 Fleiss의 카파, 3명 이상이면 Cohen의 카파를 고를 수 없습니다.' },
+          { id: 'gt_val', k: D, name: '일치도 값', cond: '측정한 일치도 종류를 골랐을 때', fmt: '숫자. 단순 일치율 0~100(%), 카파·알파 −1~1', desc: '라벨러끼리 답이 얼마나 일치했는지입니다.' }
+        ] }
+      ] },
+      { id: 'crit', name: '평가 기준', cards: [
+        { id: 'perspective', name: '평가 관점', req: true, desc: '이 모델에서 무엇을 중요하게 볼지입니다. 5절 의뢰자 선언 표에 들어가고, 지표 추천과 AI 서술의 기준이 됩니다.', f: [
+          { id: 'pv_err', k: R, t: ['bin'], name: '중요 오류 유형', fmt: '하나 선택: 놓침(FN) / 잘못 잡음(FP) / 비슷함', desc: '놓치는 오류와 잘못 잡는 오류 중 무엇이 더 치명적인지입니다.' },
+          { id: 'pv_cls', k: R, t: ['multi', 'ml'], name: '클래스 중요도', fmt: '하나 선택: 모두 동등 / 큰 클래스 우선 / 개별 샘플 우선', desc: '클래스를 어떤 기준으로 중요하게 볼지입니다.' },
+          { id: 'pv_use', k: R, name: '사용 방식', fmt: '하나 선택: 실시간 응답 / 일괄 처리', desc: '실시간으로 쓰는지, 모아서 한꺼번에 처리하는지입니다.' }
+        ] },
+        { id: 'metrics', name: '지표와 합격 기준', req: true, desc: '어떤 지표로 몇 점이면 합격인지 정합니다. 결과와의 비교는 성적서에서 확인합니다.', f: [
+          { id: 'mt_sel', k: R, name: '지표', fmt: '체크. 최소 1개', desc: '평가 데이터로 계산할 수 없는 지표(예: 확률 컬럼 없이 AUROC)는 비활성으로 보입니다.' },
+          { id: 'mt_tgt', k: R, name: '합격 기준', fmt: '지표마다 목표값. 혼동행렬은 면제', desc: '계산한 지표 값과 비교해 합격을 판정합니다.' },
+          { id: 'mt_key', k: R, name: '핵심 지표', fmtBy: { bin: '지표마다 체크. 기본값 Accuracy, F1', multi: '지표마다 체크. 기본값 Accuracy, F1', ml: '지표마다 체크. 기본값 F1, Jaccard' }, desc: '종합 판정에 쓰는 지표입니다. 목표값이 있는 지표 중 최소 1개를 고릅니다.' },
+          { id: 'mt_why', k: R, t: ['ml'], name: '지표 선택 이유', fmt: '하나 선택: 오차를 고르게 봄 / 모든 레이블 일치 / 겹치는 정도 / 기타', desc: '5절 선택 기준 문장이 됩니다.' },
+          { id: 'mt_beta', k: D, name: 'β', cond: 'Fβ를 골랐을 때', fmt: '숫자. 기본 1.0', desc: '5절 지표명에 적힙니다.' }
+        ] }
+      ] }
+    ];
+  }
+
+  renderVals() {
+    var self = this;
+    var THEMES = {
+      'SAP 블루': { accent: '#0057d2', tint: '#ebf8ff', ink: '#223548', head: '#000000', meta: '#475e75', chrome: '#f5f6f7', line: '#c5ced6', rule: '#eaecee', nav: '#545454', muted: '#627588', arrow: '#8396a8' },
+      '인증 네이비': { accent: '#1d3b6e', tint: '#edf2f9', ink: '#1f2a3a', head: '#0d1420', meta: '#4a5568', chrome: '#f4f5f7', line: '#c9ced6', rule: '#e6e8ec', nav: '#4a4f57', muted: '#667080', arrow: '#98a1ae' },
+      '검증 그린': { accent: '#0b6e4f', tint: '#e8f5ef', ink: '#1e2b26', head: '#0b1410', meta: '#4b5e56', chrome: '#f4f6f5', line: '#c7d2cd', rule: '#e4e9e6', nav: '#4d5551', muted: '#62716a', arrow: '#95a39c' },
+      '먹색 모노': { accent: '#1a1a1a', tint: '#f0efeb', ink: '#2b2b2b', head: '#000000', meta: '#5c5c5c', chrome: '#f6f6f3', line: '#cfcfca', rule: '#e8e8e4', nav: '#555555', muted: '#6b6b6b', arrow: '#a3a39e' }
+    };
+    var FONTS = {
+      'Noto Sans KR': "'Noto Sans KR', sans-serif",
+      'Pretendard': "'Pretendard Variable', sans-serif",
+      'IBM Plex Sans KR': "'IBM Plex Sans KR', sans-serif",
+      'Gothic A1': "'Gothic A1', sans-serif"
+    };
+    var th = THEMES[this.props.theme] || THEMES['인증 네이비'];
+    var ff = FONTS[this.props.font] || FONTS['Pretendard'];
+    var s = Object.assign({ type: null, screen: 'type', cat: 'info', card: 'client', draft: {}, saved: {}, idx: 0, done: false, err: false }, this.state || {});
+    var T = s.type, draft = s.draft || {}, saved = s.saved || {};
+    var cats = this.data();
+    var set = function (p) { self.setState(p); };
+
+    var vis = function (f) { return !f.t || (T && f.t.indexOf(T) >= 0); };
+    var fmtOf = function (f) { return f.fmtBy ? (f.fmtBy[T] || f.fmtBy.bin) : (f.fmt || ''); };
+    var itemsOf = function (c) { return c.f.filter(vis); };
+    var pickable = function (f) { return f.k === 'rec' || f.k === 'opt'; };
+    var draftIds = function (c) { return itemsOf(c).filter(function (f) { return pickable(f) && draft[f.id]; }).map(function (f) { return f.id; }); };
+    var isSaved = function (c) { return saved[c.id] !== undefined; };
+    var savedIds = function (c) { return (saved[c.id] || []).filter(function (id) { return itemsOf(c).some(function (f) { return f.id === id; }); }); };
+    var isDirtyCard = function (c) {
+      var a = draftIds(c).slice().sort().join('|');
+      var b = (saved[c.id] || []).filter(function (id) { return itemsOf(c).some(function (f) { return f.id === id; }); }).slice().sort().join('|');
+      return a !== b;
+    };
+    var inFlow = function (c) { return c.req || savedIds(c).length > 0; };
+
+    var allCards = [];
+    cats.forEach(function (cat) { cat.cards.forEach(function (c) { allCards.push(Object.assign({ cat: cat.id }, c)); }); });
+    var reqCards = allCards.filter(function (c) { return c.req; });
+    var unsavedReq = reqCards.filter(function (c) { return !isSaved(c); });
+
+    var selectCard = function (c) { set({ cat: c.cat, card: c.id }); };
+    var check = '';
+    var boxStyle = function (on) {
+      return 'width: 20px; height: 20px; margin-top: 2px; flex-shrink: 0; box-sizing: border-box; border-radius: 4px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; ' +
+        (on ? 'background: ' + th.ink + '; border: 1.5px solid ' + th.ink + '' : 'background: #ffffff; border: 1.5px solid ' + th.meta + '');
+    };
+
+    var flowCards = allCards.filter(inFlow);
+    var idx = Math.max(0, Math.min(s.idx, flowCards.length - 1));
+
+    var steps = [{ label: '작업 유형', key: 'type' }, { label: '재료 고르기', key: 'pick' }];
+    var inInput = s.screen === 'input' || s.screen === 'review';
+    if (inInput) flowCards.forEach(function (c, i) { steps.push({ label: c.name, key: 'input' + i, idx: i }); });
+    else steps.push({ label: '재료 입력', key: 'input' });
+    steps.push({ label: '확인과 생성', key: 'review' });
+    var curKey = s.screen === 'input' ? 'input' + idx : s.screen;
+    var curPos = 0;
+    steps.forEach(function (x, i) { if (x.key === curKey) curPos = i; });
+    var stepsV = steps.map(function (x, i) {
+      var done = i < curPos, active = i === curPos;
+      var go = function () {
+        if (x.key === 'type') set({ screen: 'type' });
+        else if (x.key === 'pick') set({ screen: 'pick' });
+        else if (x.idx !== undefined) set({ screen: 'input', idx: x.idx });
+      };
+      var style = 'height: 48px; box-sizing: border-box; display: flex; align-items: center; font-size: 14px; font-weight: 400; background: none; border: 0; padding: 0; border-bottom: 2px solid ' +
+        (active ? '' + th.head + '' : 'transparent') + '; color: ' + (active ? '' + th.head + '' : (done ? '' + th.ink + '' : '' + th.muted + '')) + ';' + (done ? ' cursor: pointer;' : '');
+      return { label: x.label, notFirst: i > 0, canGo: done, noGo: !done, go: go, style: style, current: active ? 'step' : 'false' };
+    });
+
+    var typeDefs = [
+      { id: 'bin', name: '이진 분류', desc: '정답이 두 값 중 하나입니다.', note: '사용 맥락에서 위험 방향을 받습니다.' },
+      { id: 'multi', name: '다중 클래스 분류', desc: '정답이 셋 이상의 클래스 중 하나입니다.', note: '사용 맥락에서 클래스 중요도를 받습니다.' },
+      { id: 'ml', name: '멀티레이블 분류', desc: '한 샘플에 정답 레이블이 여러 개일 수 있습니다.', note: '사용 맥락에서 클래스 중요도를 받습니다.' }
+    ];
+    var types = typeDefs.map(function (o) {
+      var sel = o.id === T;
+      return {
+        name: o.name, desc: o.desc, note: o.note, aria: sel ? 'true' : 'false',
+        pick: function () { set({ type: o.id }); },
+        style: 'display: flex; flex-direction: column; align-items: flex-start; gap: 8px; text-align: left; border-radius: 8px; cursor: pointer; box-sizing: border-box; ' +
+          (sel ? 'background: ' + th.tint + '; border: 2px solid ' + th.ink + '; padding: 23px' : 'background: #ffffff; border: 1px solid ' + th.line + '; padding: 24px')
+      };
+    });
+    var typeNextStyle = 'height: 44px; padding: 0 28px; border: 0; border-radius: 8px; font-size: 16px; font-weight: 500; ' +
+      (T ? 'background: ' + th.accent + '; color: #ffffff; cursor: pointer' : 'background: ' + th.rule + '; color: ' + th.muted + '; cursor: not-allowed');
+
+    var catsV = cats.map(function (cat) {
+      var sel = cat.id === s.cat;
+      var reqs = cat.cards.filter(function (c) { return c.req; });
+      var complete = reqs.length > 0 && reqs.every(function (c) { return isSaved(c); });
+      var bg = complete ? 'background: ' + th.tint + '; ' : 'background: #ffffff; ';
+      var border = sel ? 'border: 2px solid ' + th.ink + '; padding: 15px' : (complete ? 'border: 1px solid ' + th.accent + '; padding: 16px' : 'border: 1px solid ' + th.line + '; padding: 16px');
+      return {
+        name: cat.name, count: '카드 ' + cat.cards.length + '장', aria: sel ? 'true' : 'false', complete: complete,
+        pick: function () { set({ cat: cat.id, card: cat.cards[0].id }); },
+        style: 'aspect-ratio: 1 / 1; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; text-align: left; border-radius: 8px; cursor: pointer; box-sizing: border-box; ' + bg + border
+      };
+    });
+
+    var curCat = cats.filter(function (c) { return c.id === s.cat; })[0] || cats[0];
+    var subs = curCat.cards.map(function (c0, i) {
+      var c = Object.assign({ cat: curCat.id }, c0);
+      var sel = c.id === s.card;
+      var sv = isSaved(c);
+      return {
+        name: c.name, req: !!c.req, saved: sv, notSaved: !sv, current: sel ? 'true' : 'false',
+        pick: function () { selectCard(c); },
+        liStyle: i > 0 ? 'border-top: 1px solid ' + th.rule + '' : '',
+        style: 'width: 100%; min-height: 52px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border: 0; text-align: left; cursor: pointer; box-sizing: border-box; ' +
+          (sv ? 'background: ' + th.tint + '; ' : 'background: #ffffff; ') + (sel ? 'box-shadow: inset 0 0 0 2px ' + th.ink + '' : '')
+      };
+    });
+
+    var card = allCards.filter(function (c) { return c.id === s.card; })[0] || allCards[0];
+    var rows = itemsOf(card).map(function (f) {
+      var on = !!draft[f.id];
+      return {
+        name: f.name, k: f.k, toggle: pickable(f), hasCond: f.k === 'cond', cond: f.cond || '',
+        desc: f.desc, fmt: fmtOf(f), hasFmt: !f.fields, isGroup: !!f.fields,
+        subs: (f.fields || []).map(function (g) { return { name: g.name, desc: g.desc, fmt: fmtOf(g) }; }),
+        aria: on ? 'true' : 'false', checked: on, boxStyle: boxStyle(on),
+        flip: function () { var n = Object.assign({}, draft); n[f.id] = !on; set({ draft: n }); }
+      };
+    });
+    var sections = [
+      { title: '필수', rows: rows.filter(function (r) { return r.k === 'req'; }) },
+      { title: '권장', rows: rows.filter(function (r) { return r.k === 'rec'; }) },
+      { title: '선택', rows: rows.filter(function (r) { return r.k === 'opt'; }) },
+      { title: '조건부', rows: rows.filter(function (r) { return r.k === 'cond'; }) }
+    ].filter(function (x) { return x.rows.length > 0; });
+
+    var cardSaved = isSaved(card), cardDirty = isDirtyCard(card);
+    var isClean = cardSaved && !cardDirty;
+    var save = function () {
+      var n = Object.assign({}, saved);
+      n[card.id] = draftIds(card);
+      var stillMissing = reqCards.filter(function (c) { return c.id !== card.id && n[c.id] === undefined; });
+      set({ saved: n, err: s.err && stillMissing.length > 0 });
+    };
+    var saveStyle = 'height: 44px; padding: 0 20px; display: flex; align-items: center; gap: 8px; border-radius: 8px; font-size: 16px; font-weight: 500; background: #ffffff; ' +
+      (isClean ? 'border: 1px solid ' + th.accent + '; color: ' + th.accent + '; cursor: default' : 'border: 1px solid ' + th.ink + '; color: ' + th.ink + '; cursor: pointer');
+
+    var flow = flowCards.map(function (c, i) {
+      var n = savedIds(c).length;
+      var sel = c.id === s.card;
+      var sv = isSaved(c);
+      return {
+        name: c.name, notFirst: i > 0, hasExtra: n > 0, extra: '고른 항목 ' + n + '개', saved: sv, current: sel ? 'true' : 'false',
+        pick: function () { selectCard(c); },
+        style: 'width: 100%; min-height: 52px; box-sizing: border-box; display: flex; align-items: center; gap: 12px; text-align: left; border-radius: 8px; cursor: pointer; padding: 8px 16px; ' +
+          (sv ? 'background: ' + th.tint + '; ' : 'background: #ffffff; ') +
+          (sel ? 'border: 1px solid transparent; box-shadow: inset 0 0 0 2px ' + th.ink + '' : (sv ? 'border: 1px solid ' + th.accent + '' : 'border: 1px solid ' + th.line + ''))
+      };
+    });
+
+    var cur = flowCards[idx];
+    var rank = { req: 0, rec: 1, opt: 1, cond: 2 };
+    var curIds = savedIds(cur);
+    var curFields = [];
+    itemsOf(cur)
+      .filter(function (f) { return f.k === 'req' || f.k === 'cond' || curIds.indexOf(f.id) >= 0; })
+      .sort(function (a, b) { return rank[a.k] - rank[b.k]; })
+      .forEach(function (f) {
+        var parts = f.fields ? f.fields : [f];
+        parts.forEach(function (g, j) {
+          curFields.push({ name: g.name, hasCond: f.k === 'cond', cond: f.cond || '', fmt: fmtOf(g), desc: g.desc, inputId: 'in_' + f.id + '_' + j });
+        });
+      });
+
+    var missing = allCards.map(function (c) {
+      var ids = savedIds(c);
+      return { c: c, items: itemsOf(c).filter(function (f) { return f.k === 'rec' && ids.indexOf(f.id) < 0; }) };
+    }).filter(function (g) { return g.items.length > 0; }).map(function (g) {
+      return {
+        name: g.c.name, items: g.items.map(function (f) { return f.name; }).join(' · '),
+        go: function () { set({ screen: 'pick', cat: g.c.cat, card: g.c.id }); }
+      };
+    });
+
+    return {
+      th: th, ff: ff,
+      steps: stepsV,
+      isType: s.screen === 'type', isPick: s.screen === 'pick', isInput: s.screen === 'input', isReview: s.screen === 'review',
+      types: types, noType: !T, typeNextStyle: typeNextStyle,
+      toPick: function () { if (T) set({ screen: 'pick' }); },
+      cats: catsV, subs: subs, curCatName: curCat.name + ' 카드',
+      cardName: card.name, cardDesc: card.desc, sections: sections,
+      save: save, saveStyle: saveStyle, saveDisabled: isClean, isClean: isClean, saveLabel: isClean ? '저장됨' : '저장',
+      isDirty: cardDirty && (cardSaved || draftIds(card).length > 0),
+      dirtyMsg: cardSaved ? '저장하지 않은 변경이 있어요' : '저장해야 반영돼요',
+      flow: flow,
+      progress: '필수 ' + reqCards.length + '개 중 ' + (reqCards.length - unsavedReq.length) + '개 저장',
+      hasErr: !!s.err && unsavedReq.length > 0,
+      errMsg: '저장하지 않은 필수 카드가 있어요: ' + unsavedReq.map(function (c) { return c.name; }).join(', '),
+      toType: function () { set({ screen: 'type' }); },
+      toInput: function () { if (unsavedReq.length > 0) set({ err: true }); else set({ screen: 'input', idx: 0, err: false }); },
+      curName: cur.name, curFields: curFields,
+      prevInput: function () { if (idx > 0) set({ idx: idx - 1 }); else set({ screen: 'pick' }); },
+      nextInput: function () { if (idx < flowCards.length - 1) set({ idx: idx + 1 }); else set({ screen: 'review' }); },
+      missing: missing, hasMissing: missing.length > 0, noMissing: missing.length === 0,
+      reviewBack: function () { set({ screen: 'input', idx: flowCards.length - 1 }); },
+      done: !!s.done, generate: function () { set({ done: true }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
