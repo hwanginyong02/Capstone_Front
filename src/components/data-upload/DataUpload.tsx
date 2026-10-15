@@ -260,24 +260,24 @@ export function DataUpload({
 
           <div className="space-y-3">
             {requiredColumns.map((column) => (
-              <div key={column.code} className="rounded-lg border border-green-200 bg-[#F0FDF4] p-4">
+              <div key={column.code} className="rounded-lg border border-success-border bg-success-subtle p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Badge variant="outline">{column.code}</Badge>
-                  <span className="text-sm font-semibold text-slate-900">{column.label}</span>
+                  <span className="text-sm font-semibold text-foreground">{column.label}</span>
                 </div>
-                <p className="text-sm text-slate-700">
+                <p className="text-sm text-foreground-secondary">
                   {getColumnHelpText(column.code, column.description)}
                 </p>
               </div>
             ))}
           </div>
 
-          <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-4">
+          <div className="rounded-lg border border-primary/30 bg-primary-subtle p-4">
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="outline">inference_time_ms</Badge>
-              <span className="text-sm font-semibold text-slate-900">Inference latency</span>
+              <span className="text-sm font-semibold text-foreground">Inference latency</span>
             </div>
-            <p className="text-sm text-slate-700">
+            <p className="text-sm text-foreground-secondary">
               Optional. Add one latency value per sample in milliseconds to include mean, P95, P99, max,
               and min latency in the report.
             </p>

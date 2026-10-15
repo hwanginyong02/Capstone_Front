@@ -68,7 +68,7 @@ export function DecisionThresholdCard({
     <Card>
       <CardHeader>
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          <SlidersHorizontal className="h-5 w-5 text-blue-500" />
+          <SlidersHorizontal className="h-5 w-5 text-primary" />
           Decision threshold
         </CardTitle>
       </CardHeader>
@@ -86,7 +86,7 @@ export function DecisionThresholdCard({
           <div className="space-y-2">
             {probabilityRows.map((row) => (
               <label key={row.originalName} className="flex items-center justify-between gap-4 text-sm">
-                <span className="font-mono text-slate-700">{row.originalName}</span>
+                <span className="font-mono text-foreground-secondary">{row.originalName}</span>
                 <input
                   type="number"
                   min={0}
@@ -95,19 +95,19 @@ export function DecisionThresholdCard({
                   aria-label={`${row.originalName} decision threshold`}
                   value={thresholdFor(row.originalName)}
                   onChange={(e) => setForColumn(row.originalName, e.target.value)}
-                  className="w-28 rounded border border-slate-300 px-2 py-1 text-right"
+                  className="w-28 rounded border border-border-strong px-2 py-1 text-right"
                 />
               </label>
             ))}
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Each label can take its own threshold and is decided independently.
             </p>
           </div>
         ) : (
           <label className="flex items-center justify-between gap-4 text-sm">
-            <span className="text-slate-700">
+            <span className="text-foreground-secondary">
               Scores at or above this value count as positive
-              <span className="ml-1 font-mono text-slate-500">
+              <span className="ml-1 font-mono text-muted-foreground">
                 ({probabilityRows.map((r) => r.originalName).join(", ")})
               </span>
             </span>
@@ -119,7 +119,7 @@ export function DecisionThresholdCard({
               aria-label="decision threshold"
               value={scalarValue}
               onChange={(e) => setScalar(e.target.value)}
-              className="w-28 rounded border border-slate-300 px-2 py-1 text-right"
+              className="w-28 rounded border border-border-strong px-2 py-1 text-right"
             />
           </label>
         )}

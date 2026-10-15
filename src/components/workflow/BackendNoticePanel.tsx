@@ -35,10 +35,10 @@ export function BackendNoticePanel({
     <Alert className="mb-6">
       <Info className="h-4 w-4" />
       <AlertDescription>
-        <ul className="list-disc space-y-1 pl-4 text-sm text-slate-600">
+        <ul className="list-disc space-y-1 pl-4 text-sm text-foreground-secondary">
           {notices.map((notice) => (
             <li key={`${notice.source}:${notice.message}`}>
-              <span className="mr-1 font-medium text-slate-500">
+              <span className="mr-1 font-medium text-muted-foreground">
                 [{SOURCE_LABEL[notice.source] ?? notice.source}]
               </span>
               {notice.message}

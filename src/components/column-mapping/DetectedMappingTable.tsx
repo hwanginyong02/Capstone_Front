@@ -81,7 +81,7 @@ export function DetectedMappingTable({
                 const matchState = getRowMatchState(row, duplicate);
 
                 return (
-                  <TableRow key={row.originalName} className={cn(needsAttention && "bg-amber-50/40")}>
+                  <TableRow key={row.originalName} className={cn(needsAttention && "bg-warning-subtle/40")}>
                     <TableCell className="align-top">
                       <div className="font-mono text-sm">{row.originalName}</div>
                     </TableCell>

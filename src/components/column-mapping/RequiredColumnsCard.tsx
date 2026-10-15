@@ -62,14 +62,14 @@ export function RequiredColumnsCard({
                         <span className="font-semibold text-lg">{role.code}</span>
                         <Badge variant={status.tone}>{status.label}</Badge>
                       </div>
-                      <div className="text-sm font-medium text-slate-700">{role.label}</div>
+                      <div className="text-sm font-medium text-foreground-secondary">{role.label}</div>
                     </div>
                   </div>
                   <p className="text-sm text-muted-foreground flex-grow mb-4">{role.description}</p>
 
                   {metricsRequiringThis.length > 0 && (
-                    <div className="mt-auto pt-4 border-t border-slate-100">
-                      <div className="text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider">
+                    <div className="mt-auto pt-4 border-t border-border">
+                      <div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
                         Required by
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -77,7 +77,7 @@ export function RequiredColumnsCard({
                           <Badge
                             key={metric.id}
                             variant="outline"
-                            className="bg-slate-50 text-slate-600 font-normal border-slate-200"
+                            className="bg-muted text-foreground-secondary font-normal border-border"
                           >
                             {metric.name}
                           </Badge>

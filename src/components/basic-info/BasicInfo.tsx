@@ -104,7 +104,7 @@ export function BasicInfo({
           <Card>
             <CardHeader>
               <CardTitle className="text-lg font-semibold">
-                Report purpose <span className="text-red-600">*</span>
+                Report purpose <span className="text-destructive">*</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -238,7 +238,7 @@ function Field({
   return (
     <div className="space-y-2">
       <Label>
-        {label} {required && <span className="text-red-600">*</span>}
+        {label} {required && <span className="text-destructive">*</span>}
       </Label>
       {children}
     </div>
@@ -259,7 +259,7 @@ function DateField({
   return (
     <div className="space-y-2">
       <Label>
-        {label} {required && <span className="text-red-600">*</span>}
+        {label} {required && <span className="text-destructive">*</span>}
       </Label>
       <Popover>
         <PopoverTrigger asChild>
@@ -295,7 +295,7 @@ function ChoiceCard({
       htmlFor={id}
       className={cn(
         "flex flex-col p-5 rounded-lg border-2 cursor-pointer transition-colors",
-        selected ? "border-primary bg-blue-50" : "border-border bg-card hover:border-gray-400",
+        selected ? "border-primary bg-primary-subtle" : "border-border bg-card hover:border-border-strong",
       )}
     >
       <div className="flex items-start gap-2">

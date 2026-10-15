@@ -5,7 +5,7 @@
  *
  * | 무엇 | 어떻게 |
  * |---|---|
- * | 성적서에 들어가는가 | 2px 파란 **테두리**(`--color-primary`) |
+ * | 성적서에 들어가는가 | 2px 강조색 **테두리**(`--color-primary`) |
  * | 지금 아래에서 보고 있는가 | 진한 회색 **채움**(`--color-border-strong`) |
  *
  * 두 가지가 한 카드에 겹치므로 서로 다른 성질에 실어야 읽힌다. 종전에는 둘 다 테두리에
@@ -45,7 +45,7 @@ export function ComposerCard({ card, included, viewing, onView }: ComposerCardPr
         "relative min-h-24 rounded-lg",
         // 테두리 = 성적서에 들어가는가. 2px 일 때 여백을 15px 로 줄여 크기를 맞춘다.
         included ? "border-2 border-primary p-[15px]" : "border p-4",
-        // 채움 = 지금 보고 있는가. 보고 있지 않으면 들어간 카드만 연한 파랑을 깐다.
+        // 채움 = 지금 보고 있는가. 보고 있지 않으면 들어간 카드만 강조 배경을 깐다.
         viewing ? "bg-border-strong" : included ? "bg-primary-subtle" : "bg-card",
         !included && !viewing && "hover:border-border-strong",
       )}
@@ -66,7 +66,7 @@ export function ComposerCard({ card, included, viewing, onView }: ComposerCardPr
         <div className="min-w-0">
           <div className="text-body-medium font-semibold text-foreground">{fullName}</div>
           {/* 두 줄을 넘으면 자른다. 전체 문장은 상세 영역에서 보여준다. */}
-          <p className="mt-1 line-clamp-2 text-body-small text-foreground-secondary">
+          <p className="mt-1 line-clamp-2 text-body-small text-muted-foreground">
             {card.description}
           </p>
         </div>

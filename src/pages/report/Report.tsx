@@ -44,8 +44,8 @@ export function Report() {
       <BackendNoticePanel evaluationWarnings={data.evaluationWarnings} />
 
       {narrativePending && (
-        <div className="mb-4 flex items-center gap-2 rounded-md border border-teal-200 bg-teal-50 px-4 py-2.5 text-sm text-teal-700">
-          <span className="inline-block size-3 animate-spin rounded-full border-2 border-teal-500 border-t-transparent" />
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-primary/30 bg-primary-subtle px-4 py-2.5 text-sm text-primary">
+          <span className="inline-block size-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           AI 정성 서술(7·8·9절)을 생성하는 중입니다. 아래 지표·차트는 이미 확정된 결과이며, 서술은 완료되는 대로 채워집니다.
         </div>
       )}

@@ -34,7 +34,7 @@ export function CsvExampleViewer({ taskType, showNote = true }: CsvExampleViewer
               {header.map((cell) => (
                 <th
                   key={cell}
-                  className="border border-border bg-muted px-2 py-1 text-left font-medium text-foreground-secondary"
+                  className="border border-border bg-muted px-2 py-1 text-left font-medium text-muted-foreground"
                 >
                   {cell}
                 </th>

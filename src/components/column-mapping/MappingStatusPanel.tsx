@@ -58,11 +58,11 @@ export function MappingStatusPanel({
   };
   if (mappingSummary.isValid) {
     return (
-      <Alert className="bg-green-50 border-green-200 text-green-900">
-        <CheckCircle2 className="h-4 w-4 text-green-600" />
+      <Alert className="bg-success-subtle border-success-border text-success-strong">
+        <CheckCircle2 className="h-4 w-4 text-success" />
         <AlertDescription>
-          <div className="font-semibold text-green-800">All required settings are satisfied.</div>
-          <p className="text-green-700">You can confirm this mapping and continue to validation.</p>
+          <div className="font-semibold text-success-strong">All required settings are satisfied.</div>
+          <p className="text-success-strong">You can confirm this mapping and continue to validation.</p>
         </AlertDescription>
       </Alert>
     );
@@ -73,12 +73,12 @@ export function MappingStatusPanel({
       {mappingSummary.missingRoles.length > 0 && (
         <>
           {!isResolutionMode ? (
-            <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-900 p-6">
-              <AlertCircle className="h-5 w-5 text-red-600 mt-1" />
+            <Alert variant="destructive" className="bg-destructive/5 border-destructive/30 text-destructive p-6">
+              <AlertCircle className="h-5 w-5 text-destructive mt-1" />
               <AlertDescription className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-1">
-                  <div className="font-bold text-lg text-red-800">Missing required columns</div>
-                  <p className="text-red-700">
+                  <div className="font-bold text-lg text-destructive">Missing required columns</div>
+                  <p className="text-destructive">
                     {mappingSummary.missingRoles.length} required roles are not assigned yet.
                     You cannot proceed to the next step.
                   </p>
@@ -86,14 +86,14 @@ export function MappingStatusPanel({
                 <div className="flex flex-wrap gap-3 shrink-0">
                   <Button
                     variant="outline"
-                    className="bg-white hover:bg-red-50 border-red-200 text-red-700 font-semibold px-5"
+                    className="bg-white hover:bg-destructive/10 border-destructive/30 text-destructive font-semibold px-5"
                     onClick={() => setIsResolutionMode(true)}
                   >
                     Adjust Metrics to Resolve
                   </Button>
                   <Button
                     variant="outline"
-                    className="bg-white hover:bg-slate-50 border-slate-200 text-slate-700 px-5"
+                    className="bg-white hover:bg-muted border-border text-foreground-secondary px-5"
                     onClick={onGoBackToUpload}
                   >
                     <Undo2 className="mr-2 h-4 w-4" />
@@ -117,11 +117,11 @@ export function MappingStatusPanel({
       )}
 
       {mappingSummary.duplicateCount > 0 && (
-        <Alert variant="destructive" className="bg-amber-50 border-amber-200 text-amber-900">
-          <ShieldAlert className="h-4 w-4 text-amber-600" />
+        <Alert variant="destructive" className="bg-warning-subtle border-warning-border text-warning-strong">
+          <ShieldAlert className="h-4 w-4 text-warning" />
           <AlertDescription>
-            <div className="font-semibold mb-1 text-amber-800">Role conflict detected</div>
-            <p className="text-amber-700">
+            <div className="font-semibold mb-1 text-warning-strong">Role conflict detected</div>
+            <p className="text-warning-strong">
               Some single-use roles are assigned to multiple columns. Each single-use role must be assigned to exactly one column.
             </p>
           </AlertDescription>
@@ -132,11 +132,11 @@ export function MappingStatusPanel({
         positiveClass === "" &&
         yTrueRow &&
         mappingSummary.missingRoles.filter((r) => r.code === "y_true").length === 0 && (
-          <Alert variant="destructive" className="bg-amber-50 border-amber-200 text-amber-900">
-            <AlertCircle className="h-4 w-4 text-amber-600" />
+          <Alert variant="destructive" className="bg-warning-subtle border-warning-border text-warning-strong">
+            <AlertCircle className="h-4 w-4 text-warning" />
             <AlertDescription>
-              <div className="font-semibold mb-1 text-amber-800">Missing positive class</div>
-              <p className="text-amber-700">
+              <div className="font-semibold mb-1 text-warning-strong">Missing positive class</div>
+              <p className="text-warning-strong">
                 Please select the positive class value for the binary classification task.
               </p>
             </AlertDescription>

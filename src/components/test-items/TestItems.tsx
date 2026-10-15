@@ -279,8 +279,8 @@ export function TestItems({
                       className={cn(
                         "flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-md border px-3 text-sm transition-colors",
                         selectedColumns.includes(column.code)
-                          ? "border-primary bg-blue-50 text-foreground"
-                          : "border-border bg-card text-muted-foreground hover:border-gray-400 hover:text-foreground",
+                          ? "border-primary bg-primary-subtle text-foreground"
+                          : "border-border bg-card text-muted-foreground hover:border-border-strong hover:text-foreground",
                       )}
                     >
                       <Checkbox
@@ -320,7 +320,7 @@ export function TestItems({
                   key={metric.id}
                   className={cn(
                     "relative flex flex-col p-5 rounded-lg border-2 cursor-pointer transition-colors min-h-[180px]",
-                    isSelected ? "border-primary bg-blue-50" : "border-border bg-card hover:border-gray-400",
+                    isSelected ? "border-primary bg-primary-subtle" : "border-border bg-card hover:border-border-strong",
                   )}
                 >
                   <div className="flex items-start gap-2 mb-3">
@@ -344,7 +344,7 @@ export function TestItems({
                     </div>
                     <h3 className="text-base font-semibold leading-tight">{metric.name}</h3>
                     <div className="text-sm text-foreground">{metric.subtitle}</div>
-                    <p className="text-xs text-[#6B7280] leading-[1.5]">{metric.description}</p>
+                    <p className="text-xs text-muted-foreground leading-[1.5]">{metric.description}</p>
                   </div>
                 </label>
               );
@@ -391,8 +391,8 @@ export function TestItems({
               <CardTitle className="text-lg font-semibold">F-beta note</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
-              <div className="flex gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="flex gap-3 p-4 bg-primary-subtle rounded-lg border border-primary/30">
+                <Info className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                 <p>`M5` requires a beta value in the next step.</p>
               </div>
             </CardContent>

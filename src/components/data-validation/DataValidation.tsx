@@ -56,7 +56,7 @@ function getStatusBadge(status: string) {
 function GroupStatBadge({ count, label, variant }: { count: number; label: string; variant: "error" | "warning" | "pass" }) {
   const colorClass =
     variant === "error"   ? "text-destructive" :
-    variant === "warning" ? "text-yellow-600 dark:text-yellow-400" :
+    variant === "warning" ? "text-warning" :
                             "text-muted-foreground";
   return (
     <span className={`text-xs font-medium ${colorClass}`}>

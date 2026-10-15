@@ -28,8 +28,8 @@ export function KindBadge({ field }: { field: ComposerField }) {
   }
 
   /**
-   * 필수는 파랑으로 — 카드의 "성적서에 들어감" 과 같은 색이다. 연한 파랑 바탕 위의 파란
-   * 글자는 7:1 로, 상태색을 옅은 배경에 올릴 때 쓰는 짝과 같다(imports `colors.md`).
+   * 필수는 강조색으로 — 카드의 "성적서에 들어감" 과 같은 색이다. 강조 배경 위의 강조색
+   * 글자는 9.8:1 로, 상태색을 옅은 배경에 올릴 때 쓰는 짝과 같다(imports `colors.md`).
    */
   return (
     <Badge

@@ -10,7 +10,7 @@ import { AppHeader } from "./components/AppHeader";
  */
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="mx-auto flex w-full max-w-[1120px] flex-col gap-8 px-8 py-8">
         {children}

@@ -52,7 +52,7 @@ export function Field({
   return (
     <div className="space-y-2">
       <Label>
-        {label} {required && <span className="text-red-600">*</span>}
+        {label} {required && <span className="text-destructive">*</span>}
       </Label>
       {children}
     </div>
@@ -105,8 +105,8 @@ export function UploadDropzone({
 
   return (
     <Card
-      className={`border-2 border-dashed border-border hover:border-primary hover:bg-blue-50/30 transition-colors cursor-pointer ${
-        isDragActive ? "border-primary bg-blue-50" : ""
+      className={`border-2 border-dashed border-border hover:border-primary hover:bg-primary-subtle transition-colors cursor-pointer ${
+        isDragActive ? "border-primary bg-primary-subtle" : ""
       }`}
       onClick={onClick}
       onDragEnter={handleDrag}
@@ -222,8 +222,8 @@ export function ExampleUploadSlot({
           onDragOver={handleDrag}
           onDragLeave={handleDrag}
           onDrop={handleDrop}
-          className={`flex min-h-[160px] w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-border bg-muted/20 px-4 py-8 text-center transition-colors hover:border-primary hover:bg-blue-50/30 ${
-            isDragActive ? "border-primary bg-blue-50" : ""
+          className={`flex min-h-[160px] w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-border bg-muted/20 px-4 py-8 text-center transition-colors hover:border-primary hover:bg-primary-subtle ${
+            isDragActive ? "border-primary bg-primary-subtle" : ""
           }`}
         >
           <FileImage className="mb-3 h-9 w-9 text-muted-foreground" />

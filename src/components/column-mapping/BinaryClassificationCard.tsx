@@ -32,7 +32,7 @@ export function BinaryClassificationCard({
     <Card>
       <CardHeader>
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-blue-500" />
+          <Sparkles className="h-5 w-5 text-primary" />
           Binary classification settings
         </CardTitle>
       </CardHeader>
@@ -43,9 +43,9 @@ export function BinaryClassificationCard({
           </p>
 
           {yTrueRow && positiveClassAmbiguous && (
-            <Alert className="border-amber-300 bg-amber-50">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-amber-800">
+            <Alert className="border-warning-border bg-warning-subtle">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              <AlertDescription className="text-warning-strong">
                 The positive class could not be determined automatically. Check that the value below
                 is correct — picking the wrong one skews Precision, Recall, FPR, and AUROC.
               </AlertDescription>

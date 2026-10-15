@@ -27,7 +27,7 @@ interface FieldTableProps {
   onToggleExpanded: () => void;
 }
 
-const HEAD_CLASS = "h-9 bg-muted px-3 text-body-xs font-medium text-foreground-secondary";
+const HEAD_CLASS = "h-9 bg-muted px-3 text-body-xs font-medium text-muted-foreground";
 
 export function FieldTable({
   fields,

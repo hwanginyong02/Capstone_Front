@@ -82,8 +82,8 @@ export function TaskTypeSelect({ selected, onSelect }: TaskTypeSelectProps) {
                 "flex flex-col gap-4 p-6 cursor-pointer border-2 transition-colors text-left",
                 "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                 isSelected
-                  ? "border-primary bg-blue-50 text-primary"
-                  : "border-border bg-card hover:border-gray-400",
+                  ? "border-primary bg-primary-subtle text-primary"
+                  : "border-border bg-card hover:border-border-strong",
               )}
             >
               {/* 아이콘은 크게 — 세 카드를 훑을 때 도형이 먼저 눈에 들어와야 한다. */}

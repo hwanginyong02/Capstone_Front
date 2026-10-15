@@ -26,7 +26,7 @@ import {
 
 /**
  * 선택지 한 줄의 모양. 구성 화면의 카드와 같은 규칙이다
- * (`report-composer/ComposerCard.tsx`): 고른 것은 굵은 파란 테두리 + 연한 파랑 바탕.
+ * (`report-composer/ComposerCard.tsx`): 고른 것은 굵은 강조색 테두리 + 강조 배경.
  *
  * 줄 전체가 `<label>` 이라 글자를 눌러도 골라진다 — 16px 짜리 표식 하나만 누를 수 있으면
  * 과녁이 너무 작다. 고른 줄은 테두리가 1px 두꺼워지므로 여백을 1px 줄여 줄 높이를 지킨다.
@@ -95,11 +95,11 @@ export function ComposerFieldInput({
         <Label htmlFor={controlId} className="text-body-medium font-medium text-foreground">
           {field.label}
           {/* 기존 폼의 필수 표시와 같은 모양이다(`data-upload/shared.tsx` 의 `Field`). */}
-          {required && <span className="ml-1 text-red-600">*</span>}
+          {required && <span className="ml-1 text-destructive">*</span>}
         </Label>
 
         {field.allowsUnknown && (
-          /* 켜면 다른 선택지와 같은 파란 테두리가 뜬다 — 이것도 하나의 답이다. */
+          /* 켜면 다른 선택지와 같은 강조색 테두리가 뜬다 — 이것도 하나의 답이다. */
           <label
             className={cn(
               "flex shrink-0 cursor-pointer items-center gap-2 rounded-md text-body-small transition-colors",

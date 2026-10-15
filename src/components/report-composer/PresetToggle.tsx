@@ -5,8 +5,8 @@
  * 해제**로 보인다(docs/COMPOSER_DESIGN.md "프리셋"). 둘 중 하나를 억지로 켜 두면 화면이
  * 거짓을 말한다.
  *
- * 꺼진 칸의 글자는 회색 배경 위라 `foreground-secondary` 를 쓴다 — `muted-foreground` 는
- * 그 배경에서 4.4:1 로 기준에 못 미친다(같은 문서 "색").
+ * 꺼진 칸의 글자는 보조 글자(`muted-foreground`)다. 인증 네이비의 보조 글자는 회색 배경
+ * 위에서도 7:1 이라 연한 배경용 색을 따로 두지 않는다(docs/MATERIAL_PICKER.md §10).
  */
 import { cn } from "../../utils/styling/styles";
 import type { ComposerPreset } from "../../types/reportComposer.types";
@@ -43,7 +43,7 @@ export function PresetToggle({ active, onApply }: PresetToggleProps) {
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
               isActive
                 ? "border border-border bg-card font-medium text-foreground"
-                : "text-foreground-secondary",
+                : "text-muted-foreground",
             )}
           >
             {preset.label}

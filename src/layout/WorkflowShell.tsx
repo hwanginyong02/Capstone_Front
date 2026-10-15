@@ -116,7 +116,7 @@ export function WorkflowShell({
   }, [location.pathname, location.search, isShowcaseMode, isStepPage, navigate]);
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex flex-col relative">
+    <div className="min-h-screen bg-background flex flex-col relative">
       {/* 워크플로우 안에서는 현재 분류 유형을 계속 보여준다(docs/UI_DESIGN.md §4). */}
       <AppHeader showTaskType />
       {showStepTabs && <StepTabs />}

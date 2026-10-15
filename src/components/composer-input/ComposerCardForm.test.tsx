@@ -291,7 +291,7 @@ describe("차단 표시", () => {
  * 선택지 타일.
  *
  * 과녁이 16px 짜리 표식 하나뿐이면 누르기 어렵다. 줄 전체가 label 이라 글자를 눌러도
- * 골라지고, 고른 줄은 구성 화면의 카드와 같은 파란 테두리를 단다.
+ * 골라지고, 고른 줄은 구성 화면의 카드와 같은 강조색 테두리를 단다.
  */
 describe("선택지 타일", () => {
   it("글자를 눌러도 골라진다", async () => {
@@ -317,7 +317,7 @@ describe("선택지 타일", () => {
     });
   });
 
-  it("고른 줄에 파란 테두리를 단다", () => {
+  it("고른 줄에 강조색 테두리를 단다", () => {
     renderForm("groundTruth", { values: { labelAuthor: { text: "Domain experts" } } });
 
     const chosen = screen.getByRole("radio", { name: "Domain experts" }).closest("label");

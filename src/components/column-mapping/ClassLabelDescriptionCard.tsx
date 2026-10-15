@@ -33,7 +33,7 @@ export function ClassLabelDescriptionCard({
     <Card>
       <CardHeader>
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          <Tags className="h-5 w-5 text-blue-500" />
+          <Tags className="h-5 w-5 text-primary" />
           Class label descriptions
         </CardTitle>
       </CardHeader>

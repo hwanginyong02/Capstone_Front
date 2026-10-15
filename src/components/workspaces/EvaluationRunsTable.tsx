@@ -51,7 +51,7 @@ export function EvaluationRunsTable({ runs, onDelete }: EvaluationRunsTableProps
                 {issued ? (
                   <Badge variant="secondary">Report issued</Badge>
                 ) : (
-                  <Badge variant="outline" className="border-amber-300 text-amber-700">
+                  <Badge variant="outline" className="border-warning-border text-warning-strong">
                     Draft
                   </Badge>
                 )}
