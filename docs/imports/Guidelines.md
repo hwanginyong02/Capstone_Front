@@ -68,6 +68,8 @@ Every main screen uses this single-column, full-width structure:
 
 ## The 7-Step Workflow (as Top Tabs)
 
+> **MATERIAL_PICKER.md로 대체됨** (§3) — 단계는 재료 고르기에서 넣은 카드에 따라 8~10개이고 카드 순서를 따른다. 아래는 종전 기록.
+
 Tabs are always visible at the top. Users can click any completed or current tab; upcoming tabs are disabled.
 
 1. 기본 정보

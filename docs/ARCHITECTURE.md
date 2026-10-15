@@ -6,7 +6,7 @@
 
 - **목적**: KS X ISO/IEC TS 4213:2022 표준에 기반한 머신러닝 모델 성능 평가 보고서("시험성적서") 자동 생성 웹 애플리케이션
 - **주요 워크플로우 (7단계, 각 단계 = 독립 라우트 `/app/*`)**:
-  기본 정보 입력 → 시험항목(지표) 선택 → 지표 상세 → 데이터 업로드 → 컬럼 매핑 → 데이터 검증 → 결과 미리보기(보고서 생성)
+  기본 정보 입력 → 시험항목(지표) 선택 → 지표 상세 → 데이터 업로드 → 컬럼 매핑 → 데이터 검증 → 결과 미리보기(보고서 생성) *(MATERIAL_PICKER.md로 대체됨, §3 — 재료 고르기 뒤 카드 순서로 8~10단계다. 확인과 생성만 run 에 매인 `/report/:id` 이고 나머지는 `/app/*` 다)*
 - **핵심 정책 및 스펙 문서**:
   - `SPEC.md`: 각 테스트 케이스(지표)별 필요 컬럼 및 동적 계산 로직이 정의된 **단일 진실 문서(Single Source of Truth)**. (프론트/백엔드 공통 기준)
   - `FRONTEND_DEVELOPMENT_GUIDELINE.md`: 프론트엔드 아키텍처 규칙 및 개발 시 준수해야 할 구조적 가이드라인 명시
@@ -24,6 +24,8 @@
 ## 3. 디렉토리 구조 (Directory Structure)
 
 프로젝트는 **"페이지 기반 컴포넌트 코로케이션(Page-based Component Colocation)"** 아키텍처를 따릅니다. 페이지(`pages/`)는 상태를 스토어에서 읽어 도메인 컴포넌트에 주입하고 레이아웃을 제어하는 **얇은 조립자(Assembler)** 역할만 하며, 실제 UI와 비즈니스 로직은 도메인별 `components/`, `hooks/`, `lib/` 로 분리됩니다.
+
+> **MATERIAL_PICKER.md로 대체됨** (§3) — 아래 트리의 Step 1~6 번호는 종전 7단계 기준이다. 지금 단계는 번호가 아니라 이름으로 부르고 순서는 MATERIAL_PICKER.md §3 을 따른다. `metric-detail/` 은 없어졌고, 재료 고르기(`material-picker/`)·카드 입력(`composer-input/`, `data-info/`, `model-env/`) 폴더가 생겼다.
 
 ```text
 Capstone_Front/

@@ -160,7 +160,7 @@ export function TaskTypeIcon({ type, size = 40 }: { type: TaskType; size?: numbe
 - 워크플로우 밖(`AppShell`·랜딩·워크스페이스)에서는 숨긴다
 - **클릭 시 유형 변경 가능. 단 확인 대화를 띄운다** — `useWorkflowStore` 의 `setTaskType`
   은 2~5단계 입력을 **전부 리셋**한다(`selectedMetricIds`·`metricDetails`·
-  `uploadedFile`·`columnMapping`·`completedSteps`…). 경고 없이 날리면 안 된다
+  `uploadedFile`·`columnMapping`·`completedSteps`…). 경고 없이 날리면 안 된다 *(MATERIAL_PICKER.md로 대체됨, §3 — "2~5단계"는 종전 번호다. 지금은 유형 선택 뒤의 입력 전부다)*
 
 ---
 

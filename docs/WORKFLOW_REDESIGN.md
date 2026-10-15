@@ -94,11 +94,11 @@
 안내한다. 확률 컬럼을 포함한 예시를 기본으로 보여주는 것도 같은 이유다 — 나중에
 "확률이 없어서 AUROC 를 못 쓴다"를 알게 되는 것보다 처음에 알려주는 편이 낫다.
 
-**검증은 매핑 바로 뒤에 둔다.** 검증 결과가 평가에 쓰이므로 매핑과 붙어 있어야 한다.
+**검증은 매핑 바로 뒤에 둔다.** 검증 결과가 평가에 쓰이므로 매핑과 붙어 있어야 한다. *(MATERIAL_PICKER.md로 대체됨, §3 — 검증은 지표 뒤, 확인과 생성 바로 앞이다)*
 
 지표 선택이 매핑보다 **앞**인 것은 백엔드 제약이다. `/api/evaluate` 의
 `selected_metric_ids` 가 `Field(min_length=1)` 이라(`evaluation/schemas.py`) 빈 배열이면
-422 가 난다. 백엔드를 건드리지 않기로 했으므로 순서로 푼다.
+422 가 난다. 백엔드를 건드리지 않기로 했으므로 순서로 푼다. *(MATERIAL_PICKER.md로 대체됨, §3 — 이 제약은 evaluate·validate-data 의 것이다. `/api/confirm-mapping` 은 빈 지표 목록을 받아 지표별 가용성을 돌려주므로, 매핑을 지표 앞에 두고 검증을 지표 뒤에 둔다)*
 
 > 옛 근거(보존): "`DataUpload` 는 선택한 지표에 필요한 컬럼을 계산해 보여주므로
 > (`getRequiredColumnsForSelection`) 순서를 뒤집으면 그 화면의 근거가 사라진다."
@@ -148,7 +148,7 @@ export const STEP = {
 
 5·6 은 run 하나에 매인 화면이라 `/app/*` 이 아니라 `/report/:id/*` 아래 있다
 (`RUN_SCOPED_STEPS`). `/app/*` 에 두면 어느 run 을 보는지 URL 이 말하지 못해
-새로고침·공유·뒤로가기가 전부 깨진다.
+새로고침·공유·뒤로가기가 전부 깨진다. *(MATERIAL_PICKER.md로 대체됨, §5 — 지금 run 에 매인 단계는 확인과 생성 하나다. 의뢰자 정보·데이터 정보·모델 설정과 실행 환경은 run 을 만들기 전이라 `/app/*` 다)*
 
 ### 3.1 구 3단계를 흡수하는 이유
 
@@ -530,7 +530,7 @@ const LEGACY_STEP_IDS = ["upload","metrics","mapping","validation","summary","re
 
 ### 9.7 이번에 하지 않은 것
 
-- **`README.md`·`docs/ARCHITECTURE.md`·`SPEC.md` §6·`docs/imports/*` 의 단계 번호 정정.**
+- **`README.md`·`docs/ARCHITECTURE.md`·`SPEC.md` §6·`docs/imports/*` 의 단계 번호 정정.** *(MATERIAL_PICKER.md로 대체됨, §3 — README·ARCHITECTURE·docs/imports 의 단계 목록에는 재료 고르기 개편에서 대체 표시를 달았다. SPEC.md §6 은 아직이다)*
   네 문서 모두 7단계 또는 구 번호를 적고 있다(SPEC §6 은 "실제 앱 라우트 기준"이라 적었지만
   매핑·검증을 5·6단계로 쓴다). 문서 정정은 코드 변경과 섞지 않는다.
 - **랜딩의 낡은 단계 표기**(`LiveProcessDemo.tsx` 7단계 패널, `landingData.ts` 의 `step: "01".."04"`
@@ -544,6 +544,8 @@ const LEGACY_STEP_IDS = ["upload","metrics","mapping","validation","summary","re
 가지가 걸렸다. 모두 화면 쪽 문제고 백엔드 요청 형식은 건드리지 않았다.
 
 ### 10.1 평가 관점을 지표 선택 화면으로 (10 → 9단계)
+
+> **MATERIAL_PICKER.md로 대체됨** (§3·§5) — 평가 관점은 다시 단독 단계다. 지표와 합격 기준 바로 앞에 오므로 "지표를 권하는 근거"라는 이 절의 판단은 그대로 지켜진다. `/app/perspective` 리다이렉트는 없앴다. 아래는 종전 기록.
 
 ⑤ 평가 관점은 질문이 **둘**뿐인데 단계 하나를 차지하고 있었다. 그 둘(중대 오류 유형 또는
 클래스 우선순위, 사용 방식)은 곧 **어떤 지표를 권할지 정하는 근거**라, 고르는 화면과 떨어뜨릴
@@ -618,13 +620,13 @@ const LEGACY_STEP_IDS = ["upload","metrics","mapping","validation","summary","re
   는 다음 결정이다.
   - **→ 정함(2026-10-06): 학습 데이터 폼은 ⑥ 으로 합쳤다.** Details 의 학습 데이터셋 폼을 없애고,
     데이터 형식은 ⑥ 더보기로, 예시 파일은 Data info 의 ⑥ 카드 아래로 옮겼다. 성적서는 ⑥ 값을
-    읽는다(persist v10). 실행 환경(⑨ ↔ Details Test environment)은 아직 둘 다 남아 있다.
+    읽는다(persist v10). 실행 환경(⑨ ↔ Details Test environment)은 아직 둘 다 남아 있다. *(MATERIAL_PICKER.md로 대체됨, §5 — 시험 환경 폼을 없애고 ⑨ 하나로 받는다. 성적서는 ⑨ 값을 쓰고, ⑨ 가 없는 옛 run 만 폼 값을 쓴다)*
   - 겹치는 범위: ⑨ 실행 환경 ↔ `basicInfo.env*` 다섯이 1:1. ⑥ ↔ `datasetInfo` 는 데이터
     이름·학습/검증 건수·클래스 분포가 겹치고 **Training data format 하나만** ⑥ 에 없다.
 - **`composerLegacyMirror` 배선.** 위가 정해지기 전에 카드 값을 기존 저장소로 흘려보내면,
   사용자가 Details 에서 고친 값을 카드 값이 조용히 덮는다. 함수와 테스트만 둔다.
 - 새 카드 필드의 성적서 인쇄 · 합격 기준을 Metrics 로 옮기기 · 평가 표본 수 인쇄 버그
-  (`mapWorkflowToFinalReport.ts:89,191`) · 문서의 단계 번호 정정.
+  (`mapWorkflowToFinalReport.ts:89,191`) · 문서의 단계 번호 정정. *(MATERIAL_PICKER.md로 대체됨, §5 — 합격 기준은 지표와 합격 기준 화면으로 옮겼다)*
 
 ---
 
@@ -646,6 +648,8 @@ Details 가 선택 카드 단계 **뒤**에 있었다. "평가와 무관한 정�
 (§1.2)는 평가만 하는 사용자를 위한 것이라 함께 사라졌다.
 
 ### 11.2 새 순서
+
+> **MATERIAL_PICKER.md로 대체됨** (§3·§5) — 매핑이 지표에 기대지 않게 되면서(유형 기준 필수 역할만 막고 `no_metrics` 를 없앴다. `/api/confirm-mapping` 은 빈 지표 목록을 받는다) 검증 앞도 카드 순서다. 새 순서와 단계 수(최소 8, 전체 10)는 MATERIAL_PICKER.md §3 이다. 의뢰자 정보·데이터 정보·모델 설정과 실행 환경은 `/app/*` 경로로 옮겼고, 합격 기준은 지표와 합격 기준 화면이 받는다. "카드 순서" 테스트는 이제 예외 없이 카탈로그 전체 순서를 확인한다. 아래는 종전 기록.
 
 ```
 Evaluation File → Metrics → Column mapping → Validation
@@ -696,7 +700,7 @@ Evaluation File → Metrics → Column mapping → Validation
 - **검증 뒤 새로고침 위험.** 원본 파일은 메모리에만 있다(`rawFile`, E-01). 검증 뒤
   Details·Data info·Model info 를 적다가 새로고침하면, Result 에서 평가를 돌릴 파일이 없다.
   `UnevaluatedDraftNotice` 가 이 상태를 알리지만 다시 올려야 한다. 종전에는 평가 결과 화면이
-  검증 직후 평가를 돌려 이 구간이 없었다
+  검증 직후 평가를 돌려 이 구간이 없었다 *(MATERIAL_PICKER.md로 대체됨, §3 — 검증이 확인과 생성 바로 앞이라 이 구간이 없어졌다)*
 - **성적서를 본 뒤 Details 로 돌아가 고치면 반영되지 않는다.** §11.3 의 캐시가 그대로라,
   완성본이 한 번 저장되면 입력이 바뀌어도 다시 계산하지 않는다. 입력이 바뀔 때 `isEvaluated`
   를 무효화하는 식으로 따로 다룬다

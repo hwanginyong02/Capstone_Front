@@ -82,7 +82,7 @@ Three visual states:
 - Flex row `justify-between`, same 32px side padding as content.
 - Left slot: `← 이전` in `outline` variant, hidden on step 1.
 - Right slot: `다음 단계 →` in `default` variant, disabled until the step's validation passes.
-- On step 7, the right slot has TWO buttons (`결과 내보내기 (JSON)` as `outline`, `시험성적서 생성` as `default`) with 8px gap.
+- On step 7, the right slot has TWO buttons (`결과 내보내기 (JSON)` as `outline`, `시험성적서 생성` as `default`) with 8px gap. *(MATERIAL_PICKER.md로 대체됨, §3 — 단계 번호는 고정이 아니다. 마지막 단계는 확인과 생성이다)*
 - Sticky bottom — stays visible as main content scrolls.
 
 ## Content Patterns
