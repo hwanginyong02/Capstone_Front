@@ -110,7 +110,7 @@ Because this is a full-width, data-dense product, follow these rules:
 - **Labels**: short noun phrases ("회사명", "대표자", "시험항목 선택").
 - **Helper text**: single sentence, direct and informational ("평가에 필요한 기본 정보를 입력해주세요.").
 - **Validation messages**: start with what is wrong, not what to do. ("샘플 수가 적습니다.", "y_true에 없는 클래스가 y_pred에 있습니다.")
-- **Buttons**: verb + arrow for directional motion ("다음 단계 →", "← 이전"). Plain verbs for standalone actions ("시험성적서 생성", "결과 내보내기").
+- **Buttons**: verb + arrow for directional motion ("다음 단계 →", "← 이전"). Plain verbs for standalone actions ("시험성적서 생성", "결과 내보내기"). *(MATERIAL_PICKER.md로 대체됨, §8 — 이동 버튼은 프로토타입대로 화살표 없이 "이전"·"다음")*
 
 Never use casual language, emoji in production copy, or exclamation marks outside success confirmations.
 

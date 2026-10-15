@@ -289,6 +289,8 @@ M21 Confusion     —         목표값 없음
 
 ### 6.3 UI 한국어화
 
+> **MATERIAL_PICKER.md로 대체됨** (§8) — 화면 문구를 한국어로 바꿨고, 영문 문자열을 찾던 테스트도 함께 고쳤다. 저장값은 영어 그대로다. 아래는 종전 기록.
+
 화면이 전부 영어인데 산출물인 성적서는 한국어다. `evaluationData.ts` 는 M6 설명만
 한국어이고 `formula` 필드에도 한국어가 섞여 **일관성이 이미 깨져 있다**.
 
@@ -556,6 +558,8 @@ const LEGACY_STEP_IDS = ["upload","metrics","mapping","validation","summary","re
 
 ### 10.2 단계 이름을 화면이 받는 것에 맞춤
 
+> **MATERIAL_PICKER.md로 대체됨** (§8) — 단계 이름은 받는 카드의 한국어 이름을 따른다(평가 데이터, 지표와 합격 기준, 컬럼 매핑, 검증, 의뢰자 정보, 데이터 정보, 모델 설정과 실행 환경, 확인과 생성). 아래는 종전 기록.
+
 | 전 | 후 | 이유 |
 |---|---|---|
 | Data upload | **Evaluation File** | 올리는 것은 평가할 결과 파일이다 |
@@ -563,6 +567,8 @@ const LEGACY_STEP_IDS = ["upload","metrics","mapping","validation","summary","re
 | Report details | **Details** | 성적서 구간 안이라 "Report" 가 겹친다 |
 
 ### 10.3 구성·입력 화면을 영어로, 카드 번호는 화면에서 제거
+
+> **MATERIAL_PICKER.md로 대체됨** (§8) — 화면 문구는 다시 한국어다. 다만 아래 "선택지와 칸 이름은 저장되는 값이다" 결정은 그대로 지킨다: 저장값(`choices`·`entryKeys`)은 영어로 두고, 화면 이름은 레지스트리의 `choiceLabels`·`entryLabels` 가 정한다. 카드 번호를 화면에서 뺀 것도 그대로다. 아래는 종전 기록.
 
 카드 제목 앞의 ① ~ ⑨ 는 사용자에게 뜻이 없는 기호다. 화면에서 빼고 레지스트리의 `number`
 필드만 남겼다 — `docs/COMPOSER_COMPONENTS.md` 와 코드를 잇는 유일한 고리다.
