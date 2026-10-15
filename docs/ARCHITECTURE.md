@@ -10,7 +10,7 @@
 - **핵심 정책 및 스펙 문서**:
   - `SPEC.md`: 각 테스트 케이스(지표)별 필요 컬럼 및 동적 계산 로직이 정의된 **단일 진실 문서(Single Source of Truth)**. (프론트/백엔드 공통 기준)
   - `FRONTEND_DEVELOPMENT_GUIDELINE.md`: 프론트엔드 아키텍처 규칙 및 개발 시 준수해야 할 구조적 가이드라인 명시
-  - `README.md`: 전체적인 디자인 시스템(색상, 타이포그래피, 레이아웃) 및 기타 설정 명시
+  - `README.md`: 전체적인 디자인 시스템(색상, 타이포그래피, 레이아웃) 및 기타 설정 명시 *(MATERIAL_PICKER.md로 대체됨, §10 — 색·글자·모서리의 정본은 MATERIAL_PICKER.md §10 과 `src/styles/theme.css`)*
 
 ## 2. 기술 스택
 

@@ -4,7 +4,7 @@
 >
 > **범위**: 세 분류 유형(이진·다중 클래스·다중 레이블)을 **아이콘으로 구분되는 독립
 > 진입점**으로 분리하는 화면 설계. 단계 구조·라우트·스토어는
-> `docs/WORKFLOW_REDESIGN.md`, 색상·타이포 등 디자인 시스템은 `README.md`.
+> `docs/WORKFLOW_REDESIGN.md`, 색상·타이포 등 디자인 시스템은 `README.md`. *(MATERIAL_PICKER.md로 대체됨, §10 — 디자인 시스템의 정본은 MATERIAL_PICKER.md §10)*
 >
 > 문구의 언어(한/영)는 이번 범위 밖이다. 아래 문구는 **자리와 길이를 잡기 위한
 > 임시안**이며 나중에 일괄 정리한다.
@@ -121,7 +121,7 @@ export function TaskTypeIcon({ type, size = 40 }: { type: TaskType; size?: numbe
 **레이아웃**
 - 그리드 `md` 이상 3열 / 미만 1열 (README 반응형 규칙)
 - 카드는 기존 `ClassifierCard`(`components/basic-info/BasicInfo.tsx`) 스타일 재사용 —
-  선택 `border-primary` + `bg-blue-50`, 비선택 `border-border` + hover
+  선택 `border-primary` + `bg-blue-50`, 비선택 `border-border` + hover *(MATERIAL_PICKER.md로 대체됨, §10 — `bg-blue-50` 은 `bg-primary-subtle` 토큰으로 바뀌었다)*
 - **아이콘은 카드 상단에 크게(40px)** 놓는다. 세 카드를 훑을 때 도형이 먼저 눈에 들어와야 한다
 
 **동작**

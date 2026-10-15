@@ -2,6 +2,8 @@
 
 ## Spacing Scale
 
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 간격은 8px 단위를 기본으로 한다. 아래는 종전 기록.
+
 Based on a 4px grid. All spacing on the screen snaps to these values. Do NOT use arbitrary pixel values like `7px` or `13px`.
 
 | Token | Value | Usage |
@@ -92,6 +94,8 @@ When two fields sit side-by-side:
 - Button-to-button gap (when multiple on same side): `--space-2` (8px).
 
 ## Border Radius
+
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 버튼·카드·입력은 8px, 체크박스는 4px 이다. `theme.css` 의 `--radius-md` 를 8px 로 바꿨다. 아래는 종전 기록.
 
 | Token | Value | Usage |
 |-------|-------|-------|

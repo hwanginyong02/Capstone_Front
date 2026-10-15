@@ -8,12 +8,14 @@ Following **Linear/Vercel/Supabase** conventions: precise sans-serif for all UI,
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--font-sans` | `'Pretendard Variable', 'Pretendard', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif` | All UI text |
+| `--font-sans` | `'Pretendard Variable', 'Pretendard', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif` | All UI text *(MATERIAL_PICKER.md로 대체됨, §10 — 글꼴은 Pretendard Variable 이다. Inter 는 불러오지 않는다)* |
 | `--font-mono` | `'JetBrains Mono', 'D2Coding', 'SF Mono', Menlo, monospace` | 지표 IDs, metric values, code, filenames, tabular numbers |
 
 Do NOT use a display/serif font anywhere. Do NOT use Geist (Vercel's font) — Pretendard is better for Korean.
 
 ## Font Weights
+
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 굵기는 500(제목·이름·버튼)과 400(설명) 두 가지다. 아래는 종전 기록.
 
 | Token | Value | Usage |
 |-------|-------|-------|
@@ -23,6 +25,8 @@ Do NOT use a display/serif font anywhere. Do NOT use Geist (Vercel's font) — P
 | `--font-weight-bold` | `700` | Page title (H1), metric values |
 
 ## Type Scale
+
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 제목 22px/500, 이름·버튼 16px/500, 설명 14px/400. `theme.css` 의 `--text-heading-large` 는 22px 로 바꿨다. 아래는 종전 기록.
 
 Sizes use rem. Line-heights tuned for Korean readability.
 

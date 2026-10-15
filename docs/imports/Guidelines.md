@@ -12,7 +12,7 @@ The visual language draws directly from **Linear**, **Vercel**, and **Supabase**
 - Sharp, precise typography with generous line-height
 - Flat surfaces — borders do the work, not shadows
 - Full-width layout that trusts the data to fill the space
-- One accent color (a considered blue) that appears only on interactive elements
+- One accent color (a considered blue) that appears only on interactive elements *(MATERIAL_PICKER.md로 대체됨, §10 — 강조색은 네이비 #1d3b6e)*
 
 This is NOT a warm/friendly tool (Notion, Airbnb). It is NOT a playful tool (Figma, Miro). It is a precise instrument.
 
@@ -27,9 +27,9 @@ This is NOT a warm/friendly tool (Notion, Airbnb). It is NOT a playful tool (Fig
 Before generating any UI, read these files in order:
 
 1. `overview-components.md` — component catalog and shared patterns
-2. `design-tokens/colors.md` — color roles and semantic usage
-3. `design-tokens/typography.md` — type scale
-4. `design-tokens/spacing.md` — spacing, radius, elevation
+2. `colors.md` — color roles and semantic usage
+3. `typography.md` — type scale
+4. `spacing.md` — spacing, radius, elevation
 
 ## Core Layout — Full-width with Top Tab Navigation
 
@@ -119,7 +119,7 @@ Never use casual language, emoji in production copy, or exclamation marks outsid
 - ❌ Do NOT use gradients, glows, or animated background effects.
 - ❌ Do NOT use rounded corners larger than 8px on cards. 4–6px is standard. Corporate precision > soft friendliness.
 - ❌ Do NOT use shadows on default card states. Borders only.
-- ❌ Do NOT use more than ONE accent color per screen. The primary blue is the only accent.
+- ❌ Do NOT use more than ONE accent color per screen. The primary blue is the only accent. *(MATERIAL_PICKER.md로 대체됨, §10 — 유일한 강조색은 네이비다)*
 - ❌ Do NOT use icons decoratively next to text labels. Icons appear only for actions or status.
 - ❌ Do NOT use a left sidebar anywhere in the main workflow.
 - ❌ Do NOT stack more than 3 nested containers.

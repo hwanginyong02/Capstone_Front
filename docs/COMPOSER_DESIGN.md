@@ -15,8 +15,8 @@ Oct 3, 2026 · @인용
 이어받는 원칙은 다음과 같다.
 
 - 밝은 중립 배경 위에 흰 카드를 놓고, 그림자 없이 테두리로만 구분한다.
-- 강조색은 파랑(`--color-primary`) 하나만 쓴다. 상태 색(경고 등)은 한 번에 하나만 보인다.
-- 카드 모서리는 8px, 버튼은 6px, 배지·체크박스는 4px. 그라디언트와 장식 아이콘은 쓰지 않는다.
+- 강조색은 파랑(`--color-primary`) 하나만 쓴다. 상태 색(경고 등)은 한 번에 하나만 보인다. *(MATERIAL_PICKER.md로 대체됨, §10 — 강조색은 네이비 #1d3b6e 하나다)*
+- 카드 모서리는 8px, 버튼은 6px, 배지·체크박스는 4px. 그라디언트와 장식 아이콘은 쓰지 않는다. *(MATERIAL_PICKER.md로 대체됨, §10 — 버튼도 8px)*
 - 숫자, 지표 ID, 파일 예시는 고정폭 글꼴에 `tabular-nums`를 적용한다.
 - 다크 모드는 범위 밖이다(imports `colors.md`).
 
@@ -50,6 +50,8 @@ Oct 3, 2026 · @인용
 
 ## 색
 
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 값은 인증 네이비로 바뀌었다(`docs/imports/colors.md`). `--color-foreground-secondary` 는 본문색(#1f2a3a)이 됐고, 보조 글자는 어느 배경에서나 `--muted-foreground`(#4a5568)를 쓴다. 아래는 종전 기록.
+
 모두 imports `colors.md`의 토큰이다. 오른쪽 열은 그 토큰이 지금 `theme.css`에 구현돼 있는지다. 구현되지 않은 토큰은 imports 값 그대로 `theme.css`에 추가한다.
 
 | 토큰 | 값 | 이 화면에서 쓰는 곳 | theme.css |
@@ -73,6 +75,8 @@ Oct 3, 2026 · @인용
 색만으로 상태를 전달하지 않는다. 켜짐과 꺼짐은 체크박스 모양으로도, 필수 카드는 자물쇠 아이콘으로도, "보고 있음"은 상세 영역 제목으로도 구분된다.
 
 ## 타이포그래피
+
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 제목 22px/500, 이름·버튼 16px/500, 설명 14px/400. 아래는 종전 기록.
 
 글꼴과 크기는 imports `typography.md`의 토큰을 그대로 쓴다. 본문은 `--font-sans`(Pretendard Variable 우선), 숫자·지표 ID·파일 예시는 `--font-mono`(JetBrains Mono 우선)다.
 

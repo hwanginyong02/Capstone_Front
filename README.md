@@ -33,6 +33,8 @@ src/
 ## 디자인 시스템
 
 ### 영감
+
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 톤은 "인증 네이비"이고 단일 강조색은 #1d3b6e 다. 아래는 종전 기록.
 Linear, Vercel, Supabase 대시보드에서 영감을 받은 정밀하고 깔끔한 디자인:
 - 크리스프한 흰색 카드 + 밝은 중립 배경
 - 샤프한 타이포그래피 + 넉넉한 line-height
@@ -40,11 +42,15 @@ Linear, Vercel, Supabase 대시보드에서 영감을 받은 정밀하고 깔끔
 - 단일 액센트 컬러 (Blue #2563EB)
 
 ### 컬러 시스템
+
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 배경 #ffffff, 글자 #0d1420(제목)·#1f2a3a(본문)·#4a5568(보조), 강조 #1d3b6e, 오류 #aa0808. 토큰은 `docs/imports/colors.md`. 아래는 종전 기록.
 - **Neutrals**: #FAFAFA (background) → #FFFFFF (card) → #09090B (text)
 - **Primary**: #2563EB (액션 컬러)
 - **Status**: Green(success), Amber(warning), Red(danger)
 
 ### 타이포그래피
+
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 글꼴은 Pretendard Variable 이다(Inter 는 불러오지 않는다). 22px/500 제목, 16px/500 이름·버튼, 14px/400 설명. 아래는 종전 기록.
 - **Sans**: Pretendard Variable (한글), Inter (영문)
 - **Mono**: JetBrains Mono (숫자, 코드, 지표 ID)
 - 모든 숫자에 `tabular-nums` 적용 필수
@@ -108,7 +114,7 @@ pnpm build            # 프로덕션 빌드
 - ✅ Card로 모든 그룹핑
 - ✅ 모든 숫자에 font-mono + tabular-nums
 - ❌ 그라디언트, 그림자, 장식 아이콘 금지
-- ❌ 8px 이상의 border-radius 금지
+- ❌ 8px 초과 border-radius 금지 (버튼·카드는 8px — MATERIAL_PICKER.md §10)
 
 ### 데이터 처리 (자세한 규칙은 `SPEC.md`)
 - Binary: positive_class 필수, score 사용 시 threshold 필요

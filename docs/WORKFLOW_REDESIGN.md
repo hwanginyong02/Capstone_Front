@@ -600,7 +600,7 @@ const LEGACY_STEP_IDS = ["upload","metrics","mapping","validation","summary","re
 `shape="square"` 를 더해 체크박스와 같은 모양으로 만들고(역할은 그대로 `radio`), 선택지 한
 줄을 `<label>` 로 감쌌다. 고른 줄은 구성 화면의 카드와 같은 규칙 — 굵은 파란 테두리 + 연한
 파랑 바탕, 여백 1px 보정으로 줄 높이 유지. `Unknown` 도 같은 모양의 토글이다. 새 색은 만들지
-않았다(`--primary`·`--primary-subtle`·`--border-strong`).
+않았다(`--primary`·`--primary-subtle`·`--border-strong`). *(MATERIAL_PICKER.md로 대체됨, §10 — 토큰은 같고 값이 인증 네이비로 바뀌었다)*
 
 ### 10.6 아직 하지 않은 것
 
