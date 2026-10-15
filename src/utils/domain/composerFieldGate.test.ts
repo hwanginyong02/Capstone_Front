@@ -114,7 +114,7 @@ describe('"알려진 것 없음"은 "모름"과 다르다', () => {
       {
         cardId: "trainingData",
         fieldId: "channelEffects",
-        label: "Collection differences",
+        label: "수집 환경 차이",
         reason: "exclusive",
         // 이 필드의 탈출구는 "모름" 이 아니라 "알려진 것 없음" 이다.
         allowsUnknown: false,
@@ -472,7 +472,7 @@ describe("라벨 일치도 종류와 범위", () => {
   it("라벨러가 2명이면 Fleiss의 카파를 고를 수 없다", () => {
     const issues = getCardIssues(정답라벨, "binary", withKind("Fleiss' kappa", "0.6", "2"), true);
     expect(issues.map((i) => [i.fieldId, i.reason])).toEqual([["labelAgreementKind", "incompatible"]]);
-    expect(issues[0].message).toMatch(/three or more/);
+    expect(issues[0].message).toMatch(/세 명 이상/);
   });
 
   it("라벨러가 3명 이상이면 Cohen의 카파를 고를 수 없다", () => {

@@ -23,7 +23,7 @@ import { Input } from "../ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import {
   getRequiredColumnsForTaskType,
-  TASK_TYPE_LABELS,
+  TASK_TYPE_LABELS_KO,
   type TaskType,
 } from "../../data/evaluationData";
 import type { UploadedFileInfo } from "../../types/workflow.types";
@@ -136,36 +136,35 @@ export function DataUpload({
   return (
     <main className="px-8 pt-12 pb-24 max-w-[1344px] mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground mb-2">Evaluation file</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-2">평가 데이터</h1>
         <p className="text-sm text-muted-foreground">
-          Name the model you are evaluating and upload the file that holds its predictions. You will
-          map its columns next.
+          평가할 모델의 이름을 적고 예측 결과가 담긴 파일을 올리세요. 다음 단계에서 컬럼을
+          매핑합니다.
         </p>
       </div>
 
       {/* 모델명·버전은 평가 결과의 이름표다 — 워크스페이스 목록과 성적서 2절에 이 이름으로 찍힌다. */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold">Model</CardTitle>
+          <CardTitle className="text-lg font-semibold">모델</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            The model name and version identify this evaluation in your workspace and appear on the
-            test report.
+            모델 이름과 버전은 워크스페이스에서 이 평가를 가리키는 이름이고, 성적서에도 적힙니다.
           </p>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <Field label="Model name" required>
+            <Field label="모델 이름" required>
               <Input
                 value={modelName}
                 onChange={(event) => onModelNameChange(event.target.value)}
-                placeholder="e.g. Surface defect detector"
+                placeholder="예: 표면 결함 검출기"
               />
             </Field>
-            <Field label="Version" required>
+            <Field label="버전" required>
               <Input
                 value={versionName}
                 onChange={(event) => onVersionNameChange(event.target.value)}
-                placeholder="e.g. v1.0.0"
+                placeholder="예: v1.0.0"
               />
             </Field>
           </div>
@@ -193,9 +192,8 @@ export function DataUpload({
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Your previous inputs were restored, but the data file itself must be uploaded again —
-            browsers cannot keep the file.
-            {uploadedFile ? ` Previous file: ${uploadedFile.name}` : ""}
+            앞서 적은 내용은 되살렸지만, 데이터 파일은 브라우저가 보관하지 못해 다시 올려야 합니다.
+            {uploadedFile ? ` 이전 파일: ${uploadedFile.name}` : ""}
           </AlertDescription>
         </Alert>
       )}
@@ -203,8 +201,8 @@ export function DataUpload({
       {!uploadedFile || needsReupload ? (
         <UploadDropzone
           icon={<Upload className="h-12 w-12 text-muted-foreground mb-4" />}
-          title={needsReupload ? "Upload the evaluation data again" : "Click to choose evaluation data"}
-          description={`CSV or JSON, up to ${MAX_UPLOAD_LABEL}`}
+          title={needsReupload ? "평가 데이터를 다시 올리세요" : "눌러서 평가 데이터 고르기"}
+          description={`CSV 또는 JSON, ${MAX_UPLOAD_LABEL} 이하`}
           onClick={openFilePicker}
           onFileDrop={handleFileDrop}
         />
@@ -219,11 +217,11 @@ export function DataUpload({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold">Template examples</CardTitle>
+          <CardTitle className="text-lg font-semibold">파일 예시</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <Badge variant="secondary">{TASK_TYPE_LABELS[resolvedTaskType]}</Badge>
+            <Badge variant="secondary">{TASK_TYPE_LABELS_KO[resolvedTaskType]}</Badge>
           </div>
           <Tabs defaultValue="csv" className="w-full">
             <TabsList className="mb-4">
@@ -249,13 +247,12 @@ export function DataUpload({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold">Columns you can map</CardTitle>
+          <CardTitle className="text-lg font-semibold">매핑할 수 있는 컬럼</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            These are every column the {TASK_TYPE_LABELS[resolvedTaskType]} workflow can use. You do not
-            need all of them — which metrics you can compute depends on what your file contains, and you
-            will choose the metrics after mapping.
+            {TASK_TYPE_LABELS_KO[resolvedTaskType]}에서 쓸 수 있는 컬럼 전부입니다. 모두 있어야 하는 것은
+            아닙니다. 계산할 수 있는 지표는 파일에 어떤 컬럼이 있는지에 따라 달라집니다.
           </p>
 
           <div className="space-y-3">
@@ -275,11 +272,11 @@ export function DataUpload({
           <div className="rounded-lg border border-primary/30 bg-primary-subtle p-4">
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="outline">inference_time_ms</Badge>
-              <span className="text-sm font-semibold text-foreground">Inference latency</span>
+              <span className="text-sm font-semibold text-foreground">추론 응답시간</span>
             </div>
             <p className="text-sm text-foreground-secondary">
-              Optional. Add one latency value per sample in milliseconds to include mean, P95, P99, max,
-              and min latency in the report.
+              선택. 샘플마다 응답시간을 밀리초로 하나씩 넣으면 성적서에 평균·P95·P99·최대·최소
+              응답시간이 들어갑니다.
             </p>
           </div>
         </CardContent>
@@ -290,22 +287,22 @@ export function DataUpload({
 
 function getColumnHelpText(code: string, fallback: string) {
   if (code === "id") {
-    return "Use this column to uniquely identify each evaluation sample. Every row should have a stable, non-duplicated identifier.";
+    return "평가 샘플마다 고유하게 가리키는 컬럼입니다. 모든 행에 겹치지 않는 식별자가 있어야 합니다.";
   }
   if (code === "y_true") {
-    return "This column contains the ground-truth answer for each sample. For multi-label data, put the full true label set in a consistent format such as sports|news.";
+    return "샘플마다 정답이 들어 있는 컬럼입니다. 멀티레이블이면 정답 레이블 묶음을 sports|news 처럼 한 가지 형식으로 적습니다.";
   }
   if (code === "y_pred") {
-    return "This column contains the model prediction for each sample. For multi-label data, put the full predicted label set in the same format as y_true.";
+    return "샘플마다 모델의 예측이 들어 있는 컬럼입니다. 멀티레이블이면 예측 레이블 묶음을 y_true 와 같은 형식으로 적습니다.";
   }
   if (code === "score") {
-    return "This column stores a confidence score, usually for the positive class in binary classification.";
+    return "확신 점수를 담는 컬럼입니다. 이진 분류에서는 보통 양성 클래스의 점수입니다.";
   }
   if (code === "prob_class_*") {
-    return "Provide one probability column per class, such as prob_cat, prob_dog, and prob_bird.";
+    return "클래스마다 확률 컬럼을 하나씩 둡니다. 예: prob_cat, prob_dog, prob_bird";
   }
   if (code === "prob_label_*") {
-    return "Provide one probability column per label in the multi-label setting.";
+    return "멀티레이블에서는 레이블마다 확률 컬럼을 하나씩 둡니다.";
   }
   return fallback;
 }

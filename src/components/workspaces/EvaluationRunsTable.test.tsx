@@ -32,7 +32,7 @@ describe("평가 목록", () => {
       makeRun({ id: "b", modelName: "Defect detector" }),
     ]);
 
-    expect(screen.getByRole("columnheader", { name: "Model Name" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "모델 이름" })).toBeInTheDocument();
     expect(screen.getByText("Face recognizer")).toBeInTheDocument();
     expect(screen.getByText("Defect detector")).toBeInTheDocument();
   });
@@ -47,8 +47,8 @@ describe("평가 목록", () => {
     const issued = rows.find((row) => within(row).queryByText("v1.0.0"));
     const draft = rows.find((row) => within(row).queryByText("v1.1.0"));
 
-    expect(within(issued!).getByText("Report issued")).toBeInTheDocument();
-    expect(within(draft!).getByText("Draft")).toBeInTheDocument();
+    expect(within(issued!).getByText("발급됨")).toBeInTheDocument();
+    expect(within(draft!).getByText("초안")).toBeInTheDocument();
   });
 
   it("초안도 성적서로 간다 — 평가 결과 화면은 폐지됐다", () => {
@@ -57,7 +57,7 @@ describe("평가 목록", () => {
       makeRun({ id: "b", reportId: "", versionName: "v1.1.0" }),
     ]);
 
-    const links = screen.getAllByRole("link", { name: /Report/ });
+    const links = screen.getAllByRole("link", { name: /성적서/ });
     expect(links.map((link) => link.getAttribute("href"))).toEqual(["/report/a", "/report/b"]);
   });
 });

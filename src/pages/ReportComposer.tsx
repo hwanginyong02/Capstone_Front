@@ -42,8 +42,8 @@ export function ReportComposer() {
       showActionBar
       showPrevious
       showNext
-      previousLabel="Back"
-      nextLabel="Next step"
+      previousLabel="이전"
+      nextLabel="다음"
       buttonSize="lg"
       onPrevious={() => navigate("/app")}
       onNext={handleNext}

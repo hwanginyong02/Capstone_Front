@@ -150,12 +150,12 @@ export function SelectedFileCard({
                 onClick={onChooseAnother}
                 className="text-xs text-muted-foreground hover:text-foreground underline"
               >
-                Choose another file
+                다른 파일 고르기
               </button>
             )}
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={onRemove} className="h-8 w-8">
+        <Button variant="ghost" size="icon" onClick={onRemove} className="h-8 w-8" aria-label="파일 지우기">
           <X className="h-4 w-4" />
         </Button>
       </CardContent>
@@ -208,7 +208,7 @@ export function ExampleUploadSlot({
         <div>
           <div className="flex items-center gap-2">
             <div className="text-sm font-semibold text-foreground">{title}</div>
-            {optional && <Badge variant="outline">Optional</Badge>}
+            {optional && <Badge variant="outline">선택</Badge>}
           </div>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
         </div>
@@ -227,8 +227,8 @@ export function ExampleUploadSlot({
           }`}
         >
           <FileImage className="mb-3 h-9 w-9 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">Choose example file</span>
-          <span className="mt-1 text-xs text-muted-foreground">Image, CSV, or JSON sample</span>
+          <span className="text-sm font-medium text-foreground">예시 파일 고르기</span>
+          <span className="mt-1 text-xs text-muted-foreground">이미지, CSV, JSON 샘플</span>
         </button>
       ) : (
         <div className="space-y-3">
@@ -243,7 +243,7 @@ export function ExampleUploadSlot({
           ))}
           <Button variant="outline" size="sm" onClick={onChoose}>
             <Upload className="mr-2 h-4 w-4" />
-            Add another file
+            파일 더 올리기
           </Button>
         </div>
       )}

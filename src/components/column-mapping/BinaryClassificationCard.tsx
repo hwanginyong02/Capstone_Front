@@ -33,31 +33,31 @@ export function BinaryClassificationCard({
       <CardHeader>
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
-          Binary classification settings
+          이진 분류 설정
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Which value is the positive class? The evaluation metrics will treat this value as "Positive" (1) and all others as "Negative" (0).
+            어느 값이 양성 클래스인가요? 평가 지표는 이 값을 양성(1)으로, 나머지를 모두 음성(0)으로 봅니다.
           </p>
 
           {yTrueRow && positiveClassAmbiguous && (
             <Alert className="border-warning-border bg-warning-subtle">
               <AlertTriangle className="h-4 w-4 text-warning" />
               <AlertDescription className="text-warning-strong">
-                The positive class could not be determined automatically. Check that the value below
-                is correct — picking the wrong one skews Precision, Recall, FPR, and AUROC.
+                양성 클래스를 자동으로 정하지 못했습니다. 아래 값이 맞는지 확인하세요. 잘못 고르면
+                Precision, Recall, FPR, AUROC 가 모두 틀어집니다.
               </AlertDescription>
             </Alert>
           )}
 
           {yTrueRow ? (
             <div className="flex items-center gap-4">
-              <div className="text-sm font-medium">Positive class value:</div>
+              <div className="text-sm font-medium">양성 클래스 값:</div>
               <Select value={positiveClass} onValueChange={setPositiveClass}>
                 <SelectTrigger className={cn("w-[200px]", positiveClass === "" && "border-destructive")}>
-                  <SelectValue placeholder="Select positive class" />
+                  <SelectValue placeholder="양성 클래스 선택" />
                 </SelectTrigger>
                 <SelectContent>
                   {yTrueValues.map((val) => (
@@ -72,7 +72,7 @@ export function BinaryClassificationCard({
             <Alert className="bg-muted border-border">
               <Info className="h-4 w-4 text-muted-foreground" />
               <AlertDescription className="text-muted-foreground">
-                Assign a column to the <strong>y_true</strong> role first to see available class values.
+                먼저 <strong>y_true</strong> 역할에 컬럼을 지정하면 고를 수 있는 클래스 값이 보입니다.
               </AlertDescription>
             </Alert>
           )}

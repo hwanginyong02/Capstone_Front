@@ -8,7 +8,7 @@ interface ActionBarProps {
   onNext?: () => void;
   nextDisabled?: boolean;
   nextLabel?: string;
-  /** 이전 버튼 문구. 기본값은 기존 화면이 쓰는 영문이다. */
+  /** 이전 버튼 문구. 기본값은 "이전"이다(docs/MATERIAL_PICKER.md §8). */
   previousLabel?: string;
   leftAction?: React.ReactNode;
   /**
@@ -26,8 +26,8 @@ export function ActionBar({
   onPrevious,
   onNext,
   nextDisabled = false,
-  nextLabel = "Next",
-  previousLabel = "Previous",
+  nextLabel = "다음",
+  previousLabel = "이전",
   leftAction,
   rightAction,
   buttonSize = "default",

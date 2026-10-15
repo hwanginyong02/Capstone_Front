@@ -31,9 +31,9 @@ export function MappingResolutionView({
     <div className="rounded-2xl border-2 border-destructive/30 bg-white p-8 shadow-xl animate-in fade-in zoom-in duration-300">
       <div className="flex items-start justify-between mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Resolve missing column requirements</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-2">빠진 필수 컬럼 해결</h2>
           <p className="text-foreground-secondary">
-            The following columns are missing from your dataset. You can resolve this by excluding the metrics that require them.
+            아래 컬럼이 데이터에 없습니다. 이 컬럼이 필요한 지표를 빼면 해결됩니다.
           </p>
         </div>
         <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
@@ -57,7 +57,7 @@ export function MappingResolutionView({
               </div>
 
               <div className="space-y-3 flex-grow">
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Required by metrics:</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">필요로 하는 지표:</p>
                 <div className="flex flex-col gap-2">
                   {metricsRequiringThis.map((metric) => (
                     <div
@@ -71,7 +71,7 @@ export function MappingResolutionView({
                         className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8"
                         onClick={() => onRemoveMetric(metric.id)}
                       >
-                        Exclude
+                        빼기
                       </Button>
                     </div>
                   ))}
@@ -84,14 +84,14 @@ export function MappingResolutionView({
 
       <div className="flex flex-col sm:flex-row items-center justify-between pt-6 border-t border-border gap-4">
         <Button variant="ghost" className="text-muted-foreground hover:text-foreground-secondary" onClick={onClose}>
-          Cancel and go back
+          취소하고 돌아가기
         </Button>
         <div className="flex gap-3">
           <Button variant="outline" className="border-border text-foreground-secondary" onClick={onGoBackToUpload}>
-            I'll re-upload data instead
+            데이터를 다시 올리기
           </Button>
           <Button className="bg-destructive hover:bg-destructive/90 text-destructive-foreground px-6" onClick={onExcludeAllAffected}>
-            Exclude all affected metrics
+            해당 지표 모두 빼기
           </Button>
         </div>
       </div>

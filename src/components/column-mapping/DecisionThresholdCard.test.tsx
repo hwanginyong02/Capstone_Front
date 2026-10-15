@@ -35,7 +35,7 @@ describe("DecisionThresholdCard — 언제 나타나는가", () => {
         onDecisionThresholdChange={noop}
       />,
     );
-    expect(screen.getByLabelText("decision threshold")).toBeInTheDocument();
+    expect(screen.getByLabelText("결정 임계값")).toBeInTheDocument();
   });
 
   it("binary: 하드 예측이 있으면 나타나지 않는다(파생이 일어나지 않으므로)", () => {
@@ -83,8 +83,8 @@ describe("DecisionThresholdCard — 언제 나타나는가", () => {
         onDecisionThresholdChange={noop}
       />,
     );
-    expect(screen.getByLabelText("s_a decision threshold")).toBeInTheDocument();
-    expect(screen.getByLabelText("s_b decision threshold")).toBeInTheDocument();
+    expect(screen.getByLabelText("s_a 결정 임계값")).toBeInTheDocument();
+    expect(screen.getByLabelText("s_b 결정 임계값")).toBeInTheDocument();
   });
 });
 
@@ -98,7 +98,7 @@ describe("DecisionThresholdCard — 값 편집", () => {
         onDecisionThresholdChange={noop}
       />,
     );
-    expect((screen.getByLabelText("decision threshold") as HTMLInputElement).value).toBe("0.5");
+    expect((screen.getByLabelText("결정 임계값") as HTMLInputElement).value).toBe("0.5");
   });
 
   it("binary 는 스칼라를 올려보낸다", () => {
@@ -111,7 +111,7 @@ describe("DecisionThresholdCard — 값 편집", () => {
         onDecisionThresholdChange={onChange}
       />,
     );
-    fireEvent.change(screen.getByLabelText("decision threshold"), { target: { value: "0.8" } });
+    fireEvent.change(screen.getByLabelText("결정 임계값"), { target: { value: "0.8" } });
     expect(onChange).toHaveBeenCalledWith(0.8);
   });
 
@@ -125,7 +125,7 @@ describe("DecisionThresholdCard — 값 편집", () => {
         onDecisionThresholdChange={onChange}
       />,
     );
-    fireEvent.change(screen.getByLabelText("s_a decision threshold"), { target: { value: "0.8" } });
+    fireEvent.change(screen.getByLabelText("s_a 결정 임계값"), { target: { value: "0.8" } });
     expect(onChange).toHaveBeenCalledWith({ s_a: 0.8, s_b: 0.5 });
   });
 
@@ -138,7 +138,7 @@ describe("DecisionThresholdCard — 값 편집", () => {
         onDecisionThresholdChange={noop}
       />,
     );
-    expect(screen.getByText(/between 0 and 1/i)).toBeInTheDocument();
+    expect(screen.getByText(/0과 1 사이/)).toBeInTheDocument();
   });
 });
 

@@ -17,7 +17,7 @@ import {
   getRecommendedMetricIds,
   getRequiredColumnsForMetric,
   getRequiredColumnsForTaskType,
-  TASK_TYPE_LABELS,
+  TASK_TYPE_LABELS_KO,
   type RequiredColumnCode,
   type TaskType,
 } from "../../data/evaluationData";
@@ -159,9 +159,9 @@ export function TestItems({
     <>
       <main className="px-8 pt-12 pb-24 max-w-[1344px] mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Metric selection</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">지표와 합격 기준</h1>
           <p className="text-sm text-muted-foreground">
-            Tell us what matters for this model, then choose the metrics for the report.
+            이 모델에서 무엇이 중요한지 답한 뒤, 성적서에 넣을 지표를 고르세요.
           </p>
         </div>
 
@@ -178,24 +178,24 @@ export function TestItems({
 
         <div className="flex items-center justify-between">
           <div className="text-sm">
-            <span className="font-semibold">{selectedMetrics.length}</span> selected
+            <span className="font-semibold">{selectedMetrics.length}</span>개 선택
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleRecommended} disabled={!taskType}>
-              Recommended
+              추천 지표
             </Button>
             <Button variant="outline" size="sm" onClick={handleSelectAll} disabled={!taskType}>
-              Select all
+              전체 선택
             </Button>
             <Button variant="outline" size="sm" onClick={handleClear}>
-              Clear
+              선택 해제
             </Button>
           </div>
         </div>
 
         <div>
-          <span className="text-sm text-muted-foreground">Class: </span>
-          <Badge variant="secondary">{taskType ? TASK_TYPE_LABELS[taskType] : "Not chosen"}</Badge>
+          <span className="text-sm text-muted-foreground">분류 유형: </span>
+          <Badge variant="secondary">{taskType ? TASK_TYPE_LABELS_KO[taskType] : "정하지 않음"}</Badge>
         </div>
 
         {/* β 는 M5 를 골랐을 때만 물어본다. 목표값과 달리 **평가에 쓰이는 값**이라
@@ -203,7 +203,7 @@ export function TestItems({
         {selectedMetrics.includes("M5") && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold">F-beta weight (β)</CardTitle>
+              <CardTitle className="text-lg font-semibold">F-beta 가중치 (β)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <Input
@@ -211,16 +211,16 @@ export function TestItems({
                 inputMode="decimal"
                 value={beta}
                 onChange={(event) => onBetaChange?.(event.target.value)}
-                aria-label="Beta"
+                aria-label="β"
               />
               <p className="text-xs text-muted-foreground">
-                β &gt; 1 weights recall more heavily; β &lt; 1 weights precision. β = 1 equals F1.
+                β &gt; 1 이면 재현율을, β &lt; 1 이면 정밀도를 더 무겁게 봅니다. β = 1 은 F1 과 같습니다.
               </p>
               {(() => {
                 const parsed = Number(beta);
                 const invalid = beta.trim() === "" || !Number.isFinite(parsed) || parsed <= 0;
                 return invalid ? (
-                  <p className="text-xs text-destructive">Beta must be a number greater than 0.</p>
+                  <p className="text-xs text-destructive">β는 0보다 큰 숫자여야 합니다.</p>
                 ) : null;
               })()}
             </CardContent>
@@ -230,12 +230,12 @@ export function TestItems({
         {taskType && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold">Available columns</CardTitle>
+              <CardTitle className="text-lg font-semibold">쓸 수 있는 컬럼</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                 <div className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                  These columns can participate in metric calculation for the selected classifier type.
+                  고른 분류 유형에서 지표 계산에 쓸 수 있는 컬럼입니다.
                 </div>
               </div>
 
@@ -267,7 +267,7 @@ export function TestItems({
                   <Input
                     value={metricQuery}
                     onChange={(event) => setMetricQuery(event.target.value)}
-                    placeholder="Search metrics"
+                    placeholder="지표 검색"
                     className="pl-9"
                   />
                 </div>
@@ -294,9 +294,9 @@ export function TestItems({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">{filteredMetrics.length} matching metrics</Badge>
+                <Badge variant="secondary">맞는 지표 {filteredMetrics.length}개</Badge>
                 <Button variant="outline" size="sm" onClick={handleClearColumns} disabled={selectedColumns.length === 0}>
-                  Reset columns
+                  컬럼 선택 해제
                 </Button>
               </div>
             </CardContent>
@@ -306,7 +306,7 @@ export function TestItems({
         {!taskType ? (
           <Card>
             <CardContent className="py-10 text-sm text-muted-foreground">
-              Choose a classifier type before selecting metrics.
+              지표를 고르기 전에 분류 유형을 정하세요.
             </CardContent>
           </Card>
         ) : (
@@ -352,7 +352,7 @@ export function TestItems({
             {filteredMetrics.length === 0 && (
               <Card className="md:col-span-2 lg:col-span-3 xl:col-span-4">
                   <CardContent className="py-10 text-sm text-muted-foreground">
-                  No metrics use the selected column combination.
+                  고른 컬럼 조합을 쓰는 지표가 없습니다.
                 </CardContent>
               </Card>
             )}
@@ -376,7 +376,7 @@ export function TestItems({
                       invalid={showMissing}
                     />
                     {showMissing && (
-                      <p className="mt-1 text-body-small text-destructive">Required.</p>
+                      <p className="mt-1 text-body-small text-destructive">필수 항목입니다.</p>
                     )}
                   </div>
                 );
@@ -388,12 +388,12 @@ export function TestItems({
         {selectedMetrics.includes("M5") && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">F-beta note</CardTitle>
+              <CardTitle className="text-lg font-semibold">F-beta 안내</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
               <div className="flex gap-3 p-4 bg-primary-subtle rounded-lg border border-primary/30">
                 <Info className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                <p>`M5` requires a beta value in the next step.</p>
+                <p>M5 를 고르면 위의 β 값이 필요합니다.</p>
               </div>
             </CardContent>
           </Card>
@@ -401,12 +401,12 @@ export function TestItems({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Selection rules</CardTitle>
+            <CardTitle className="text-lg font-semibold">고르는 규칙</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <div>`M5` (F-beta Score) requires beta input.</div>
-            <div>Some binary metrics also require a positive class selection.</div>
-            <div>Probability columns become required automatically for probability-based metrics.</div>
+            <div>M5 (F-beta Score)는 β 값이 필요합니다.</div>
+            <div>이진 분류의 일부 지표는 양성 클래스도 정해야 합니다.</div>
+            <div>확률 기반 지표를 고르면 확률 컬럼이 저절로 필수가 됩니다.</div>
           </CardContent>
         </Card>
       </main>

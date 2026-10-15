@@ -37,7 +37,7 @@ export function DataUpload() {
 
   const handleNext = () => {
     if (!store.rawFile) {
-      setFileError("Evaluation file is missing. Please re-upload it in this step.");
+      setFileError("평가 데이터 파일이 없습니다. 이 단계에서 다시 올려 주세요.");
       return;
     }
 
@@ -59,7 +59,7 @@ export function DataUpload() {
           store.basicInfo.versionName,
         )
       }
-      nextLabel="Next step"
+      nextLabel="다음"
     >
       {fileError && (
         <Alert variant="destructive" className="mb-6">

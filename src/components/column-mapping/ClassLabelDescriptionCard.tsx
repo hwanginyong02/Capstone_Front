@@ -34,14 +34,14 @@ export function ClassLabelDescriptionCard({
       <CardHeader>
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <Tags className="h-5 w-5 text-primary" />
-          Class label descriptions
+          클래스 레이블 설명
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Describe what each class means (e.g. <strong>cat</strong> = photos of domestic cats).
-            These descriptions appear in the evaluation dataset section of the final report. This is optional.
+            클래스마다 무엇을 뜻하는지 적습니다(예: <strong>cat</strong> = 집고양이 사진).
+            이 설명은 성적서의 평가 데이터셋 절에 들어갑니다. 적지 않아도 됩니다.
           </p>
 
           {yTrueRow && yTrueValues.length > 0 ? (
@@ -54,7 +54,7 @@ export function ClassLabelDescriptionCard({
                   <Input
                     value={classLabelDescriptions[value] ?? ""}
                     onChange={(event) => handleChange(value, event.target.value)}
-                    placeholder="Describe this class label"
+                    placeholder="이 클래스 레이블 설명"
                   />
                 </div>
               ))}
@@ -63,7 +63,7 @@ export function ClassLabelDescriptionCard({
             <Alert className="bg-muted border-border">
               <Info className="h-4 w-4 text-muted-foreground" />
               <AlertDescription className="text-muted-foreground">
-                Assign a column to the <strong>y_true</strong> role first to list the detected class labels.
+                먼저 <strong>y_true</strong> 역할에 컬럼을 지정하면 찾은 클래스 레이블이 나옵니다.
               </AlertDescription>
             </Alert>
           )}

@@ -72,7 +72,7 @@ export function ColumnMapping() {
       onPrevious={handlePrevious}
       onNext={handleNext}
       nextDisabled={!isValid || isConfirming}
-      nextLabel={isConfirming ? "Confirming..." : "Confirm mapping"}
+      nextLabel={isConfirming ? "확정하는 중…" : "매핑 확정"}
     >
       <FileReuploadNotice />
       <ColumnMappingContent

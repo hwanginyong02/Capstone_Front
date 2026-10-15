@@ -26,11 +26,7 @@ import type { StepId } from "../types/workflow.types";
 export interface StepDefinition {
   id: StepId;
   /**
-   * 단계 탭에 보이는 이름.
-   *
-   * 새로 만드는 화면만 한국어다. 기존 화면의 라벨은 영어 그대로 둔다 — 문구 한국어화는
-   * 기존 테스트가 영문 문자열을 찾고 있어 단독 작업으로 미뤄둔 항목이다
-   * (docs/WORKFLOW_REDESIGN.md §6.3).
+   * 단계 탭에 보이는 이름. 그 단계가 받는 카드의 이름을 따른다(docs/MATERIAL_PICKER.md §8).
    */
   label: string;
   Icon: LucideIcon;
@@ -60,23 +56,23 @@ export interface StepDefinition {
  */
 export const STEP_CATALOG: StepDefinition[] = [
   // ─── 평가 입력 — 파일·지표·매핑을 받고 검증에서 run 을 만든다 ────────────────
-  { id: "upload", label: "Evaluation File", Icon: Upload, path: "/app/data-upload" },
+  { id: "upload", label: "평가 데이터", Icon: Upload, path: "/app/data-upload" },
   // ⑤ 평가 관점은 지표를 고르는 근거라 Metrics 화면 맨 위에 있다 — 단계를 따로 두지 않는다.
-  { id: "metrics", label: "Metrics", Icon: ListChecks, path: "/app/metrics" },
-  { id: "mapping", label: "Column mapping", Icon: Columns3, path: "/app/column-mapping" },
-  { id: "validation", label: "Validation", Icon: ShieldCheck, path: "/app/data-validation" },
+  { id: "metrics", label: "지표와 합격 기준", Icon: ListChecks, path: "/app/metrics" },
+  { id: "mapping", label: "컬럼 매핑", Icon: Columns3, path: "/app/column-mapping" },
+  { id: "validation", label: "검증", Icon: ShieldCheck, path: "/app/data-validation" },
 
   // ─── 성적서 입력 — 카드 순서대로. run 이 생긴 뒤라 경로가 run 에 매인다 ────────
   {
     id: "clientInfo",
-    label: "Details",
+    label: "의뢰자 정보",
     Icon: Building2,
     runScoped: true,
     runSegment: "issue-info",
   },
   {
     id: "dataInfo",
-    label: "Data info",
+    label: "데이터 정보",
     Icon: Database,
     runScoped: true,
     runSegment: "data-info",
@@ -84,14 +80,14 @@ export const STEP_CATALOG: StepDefinition[] = [
   },
   {
     id: "modelEnv",
-    label: "Model info",
+    label: "모델 설정과 실행 환경",
     Icon: Server,
     runScoped: true,
     runSegment: "model-env",
     requiresCards: ["modelEnv"],
   },
   // 성적서는 `/report/<runId>` 자체다 — 뒤에 붙는 조각이 없다. 평가 API 도 여기서 처음 불린다.
-  { id: "report", label: "Result", Icon: FileBarChart, runScoped: true },
+  { id: "report", label: "확인과 생성", Icon: FileBarChart, runScoped: true },
 ];
 
 /** 카탈로그에서 단계 하나를 찾는다. */

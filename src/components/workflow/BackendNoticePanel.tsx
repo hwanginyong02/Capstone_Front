@@ -4,9 +4,9 @@ import { Alert, AlertDescription } from "../ui/alert";
 import { collectBackendNotices, type BackendNotices } from "../../lib/report/backendNotices";
 
 const SOURCE_LABEL: Record<string, string> = {
-  columns: "Column analysis",
-  mapping: "Mapping",
-  evaluation: "Preprocessing",
+  columns: "컬럼 분석",
+  mapping: "매핑",
+  evaluation: "전처리",
 };
 
 type BackendNoticePanelProps = BackendNotices;

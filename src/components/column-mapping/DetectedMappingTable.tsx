@@ -28,9 +28,9 @@ export function DetectedMappingTable({
       <CardHeader className="gap-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <CardTitle className="text-lg font-semibold">Detected mapping</CardTitle>
+            <CardTitle className="text-lg font-semibold">찾은 매핑</CardTitle>
             <CardDescription className="text-sm text-muted-foreground">
-              Check whether each uploaded column was mapped to the right role, then edit only the ones that need correction.
+              올린 컬럼마다 맞는 역할에 매핑됐는지 확인하고, 고쳐야 할 것만 바꾸세요.
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -39,21 +39,21 @@ export function DetectedMappingTable({
               size="sm"
               onClick={() => setFilterMode("all")}
             >
-              All rows
+              전체
             </Button>
             <Button
               variant={filterMode === "issues" ? "default" : "outline"}
               size="sm"
               onClick={() => setFilterMode("issues")}
             >
-              Issues only
+              문제만
             </Button>
             <Button
               variant={filterMode === "edited" ? "default" : "outline"}
               size="sm"
               onClick={() => setFilterMode("edited")}
             >
-              Edited only
+              고친 것만
             </Button>
           </div>
         </div>
@@ -63,9 +63,9 @@ export function DetectedMappingTable({
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40">
-                <TableHead className="text-xs uppercase text-muted-foreground">Uploaded column</TableHead>
-                <TableHead className="text-xs uppercase text-muted-foreground">Sample values</TableHead>
-                <TableHead className="text-xs uppercase text-muted-foreground">Role</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground">올린 컬럼</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground">값 예시</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground">역할</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -100,7 +100,7 @@ export function DetectedMappingTable({
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="unassigned">unassigned</SelectItem>
+                            <SelectItem value="unassigned">지정 안 함</SelectItem>
                             {roleOptions.map((option) => (
                               <SelectItem key={option.value} value={option.value}>
                                 {option.label}
@@ -110,7 +110,7 @@ export function DetectedMappingTable({
                         </Select>
                         {row.inferredRole && row.confirmedRole !== row.inferredRole && (
                           <div className="text-xs text-muted-foreground">
-                            Auto-mapped as: <span className="font-medium text-foreground">{row.inferredRole}</span>
+                            자동 매핑: <span className="font-medium text-foreground">{row.inferredRole}</span>
                           </div>
                         )}
                       </div>

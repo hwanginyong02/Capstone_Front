@@ -76,11 +76,11 @@ describe("매핑 진행 판정", () => {
 
 describe("차단 사유 문구", () => {
   it("차단 사유마다 안내가 있고, 통과 시에는 없다", () => {
-    expect(describeMappingValidity("no_task_type")).toContain("classifier type");
-    expect(describeMappingValidity("no_metrics")).toContain("metrics");
-    expect(describeMappingValidity("no_mapped_rows")).toContain("role assigned");
-    expect(describeMappingValidity("duplicate_roles")).toContain("more than one column");
-    expect(describeMappingValidity("no_positive_class")).toContain("positive class");
+    expect(describeMappingValidity("no_task_type")).toContain("분류 유형");
+    expect(describeMappingValidity("no_metrics")).toContain("지표");
+    expect(describeMappingValidity("no_mapped_rows")).toContain("역할이 지정된 컬럼");
+    expect(describeMappingValidity("duplicate_roles")).toContain("여러 컬럼");
+    expect(describeMappingValidity("no_positive_class")).toContain("양성 클래스");
 
     // 단계를 번호로 가리키지 않는다 — 번호는 개편 때마다 바뀌는데 문구는 안 바뀌어
     // 조용히 거짓말이 된다(업로드는 4단계였다가 1단계가 됐다).

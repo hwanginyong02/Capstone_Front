@@ -35,8 +35,8 @@ interface CardDetailPanelProps {
 }
 
 const VIEWER_LABEL = {
-  csvExample: "View an example file",
-  metricList: "View the metrics",
+  csvExample: "예시 파일 보기",
+  metricList: "고를 수 있는 지표 보기",
 } as const;
 
 export function CardDetailPanel({
@@ -73,7 +73,7 @@ export function CardDetailPanel({
             variant="outline"
             className="rounded-sm border-primary bg-primary-subtle text-body-xs font-medium text-primary"
           >
-            Required
+            필수
           </Badge>
         ) : (
           /**
@@ -90,12 +90,12 @@ export function CardDetailPanel({
             {included ? (
               <>
                 <Minus className="h-4 w-4" />
-                Remove from report
+                성적서에서 빼기
               </>
             ) : (
               <>
                 <Plus className="h-4 w-4" />
-                Add to report
+                성적서에 넣기
               </>
             )}
           </Button>

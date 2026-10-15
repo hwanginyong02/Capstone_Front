@@ -20,7 +20,7 @@ import { buildStepList } from "../../utils/domain/workflowSteps";
 import { presetSelection } from "../../data/reportComposer";
 
 /** 평가 결과 탭의 접근성 이름. StepTabs 의 라벨과 같아야 한다. */
-const RESULT_TAB = /Result/;
+const RESULT_TAB = /확인과 생성/;
 
 function renderTabs() {
   render(
@@ -91,8 +91,8 @@ describe("칸 수는 고른 카드에서 나온다", () => {
     renderTabs();
 
     expect(screen.getAllByRole("button")).toHaveLength(8);
-    expect(screen.getByRole("button", { name: /Data info/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Model info/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /데이터 정보/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /모델 설정과 실행 환경/ })).toBeInTheDocument();
   });
 
   it("평가 관점은 칸을 차지하지 않는다 — 지표 선택 화면 안에 있다", () => {
@@ -100,7 +100,7 @@ describe("칸 수는 고른 카드에서 나온다", () => {
 
     renderTabs();
 
-    expect(screen.queryByRole("button", { name: /Perspective/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /평가 관점/ })).not.toBeInTheDocument();
   });
 
   it("⑥ 하나만 넣으면 데이터 정보가 생긴다", () => {
@@ -109,7 +109,7 @@ describe("칸 수는 고른 카드에서 나온다", () => {
     renderTabs();
 
     expect(screen.getAllByRole("button")).toHaveLength(7);
-    expect(screen.getByRole("button", { name: /Data info/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /데이터 정보/ })).toBeInTheDocument();
   });
 
   it("발급 단계도 처음부터 보이되 비활성이다", () => {
@@ -119,8 +119,8 @@ describe("칸 수는 고른 카드에서 나온다", () => {
     renderTabs();
 
     // 평가만 하려는 사용자에게도 앞으로 무엇이 있는지는 보여준다.
-    expect(screen.getByRole("button", { name: /Data info/ })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /Details/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /데이터 정보/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /의뢰자 정보/ })).toBeDisabled();
   });
 });
 
@@ -132,7 +132,7 @@ describe("현재·완료·미래 구분", () => {
 
     renderTabs();
 
-    expect(screen.getByRole("button", { name: /Evaluation File/ })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: /평가 데이터/ })).not.toBeDisabled();
   });
 
   it("아직 안 간 단계는 누를 수 없다", () => {
@@ -142,7 +142,7 @@ describe("현재·완료·미래 구분", () => {
 
     renderTabs();
 
-    expect(screen.getByRole("button", { name: /Column mapping/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /컬럼 매핑/ })).toBeDisabled();
   });
 
   it("카드 선택이 바뀌면 같은 단계의 위치가 당겨진다", () => {
@@ -154,7 +154,7 @@ describe("현재·완료·미래 구분", () => {
     // 최소 구성에서는 성적서가 6번째 칸이다(전체에서는 8번째). 의뢰자 정보는 선택 카드
     // 단계보다 앞이라 어느 구성에서든 5번째다(docs/WORKFLOW_REDESIGN.md §11).
     const labels = screen.getAllByRole("button").map((button) => button.textContent);
-    expect(labels.findIndex((label) => label?.includes("Result"))).toBe(5);
-    expect(labels.findIndex((label) => label?.includes("Details"))).toBe(4);
+    expect(labels.findIndex((label) => label?.includes("확인과 생성"))).toBe(5);
+    expect(labels.findIndex((label) => label?.includes("의뢰자 정보"))).toBe(4);
   });
 });

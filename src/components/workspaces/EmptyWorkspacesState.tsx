@@ -10,9 +10,9 @@ export function EmptyWorkspacesState() {
         <FolderKanban className="h-6 w-6" />
       </div>
       <div className="space-y-1">
-        <h2 className="text-base font-semibold">No workspaces yet</h2>
+        <h2 className="text-base font-semibold">아직 워크스페이스가 없습니다</h2>
         <p className="text-sm text-muted-foreground">
-          Create your first workspace to organize evaluation results.
+          첫 워크스페이스를 만들어 평가 결과를 정리하세요.
         </p>
       </div>
     </div>

@@ -54,13 +54,13 @@ export function ComposerCard({ card, included, viewing, onView }: ComposerCardPr
         type="button"
         aria-pressed={viewing}
         onClick={onView}
-        aria-label={fullName + " details"}
+        aria-label={fullName + " 자세히"}
         className="absolute inset-0 h-full w-full rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       />
 
       <div className="pointer-events-none relative flex gap-2">
         <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-          {card.locked && <Lock aria-label="Always included" className="h-4 w-4 text-primary" />}
+          {card.locked && <Lock aria-label="항상 포함" className="h-4 w-4 text-primary" />}
         </span>
 
         <div className="min-w-0">

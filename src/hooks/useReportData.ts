@@ -121,7 +121,7 @@ export function useReportData(id: string): UseReportDataResult {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          const errorMessage = errorData.detail || `Server error: ${response.status}`;
+          const errorMessage = errorData.detail || `서버 오류: ${response.status}`;
           throw new Error(errorMessage);
         }
 

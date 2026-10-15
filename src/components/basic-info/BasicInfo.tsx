@@ -54,37 +54,37 @@ export function BasicInfo({
         <div className="space-y-10">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">Organization</CardTitle>
+              <CardTitle className="text-lg font-semibold">회사 정보</CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <Field label="Company name" required>
+                <Field label="회사명" required>
                   <Input value={formData.companyName} onChange={(e) => update("companyName", e.target.value)} />
                 </Field>
-                <Field label="Representative" required>
+                <Field label="대표자" required>
                   <Input value={formData.representative} onChange={(e) => update("representative", e.target.value)} />
                 </Field>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <Field label="Business number" required>
+                <Field label="사업자등록번호" required>
                   <Input value={formData.businessNumber} onChange={(e) => update("businessNumber", e.target.value)} />
                 </Field>
-                <Field label="Website">
+                <Field label="홈페이지">
                   <Input value={formData.website} onChange={(e) => update("website", e.target.value)} />
                 </Field>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <Field label="Phone" required>
+                <Field label="전화번호" required>
                   <Input value={formData.phone} onChange={(e) => update("phone", e.target.value)} />
                 </Field>
-                <Field label="Fax">
+                <Field label="팩스">
                   <Input value={formData.fax} onChange={(e) => update("fax", e.target.value)} />
                 </Field>
               </div>
 
-              <Field label="Address" required>
+              <Field label="주소" required>
                 <Input value={formData.address} onChange={(e) => update("address", e.target.value)} />
               </Field>
 
@@ -92,7 +92,7 @@ export function BasicInfo({
                 {/* 스토어는 ISO 날짜 문자열을 들고, Date 변환은 이 UI 경계에서만 한다
                     (ISSUES.md E-09 — 상태가 localStorage 를 왕복해도 타입이 붕괴하지 않게). */}
                 <DateField
-                  label="Evaluation request date"
+                  label="평가 의뢰일"
                   required
                   value={fromIsoDate(formData.contractDate) ?? new Date()}
                   onChange={(value) => update("contractDate", toIsoDate(value ?? new Date()))}
@@ -104,39 +104,39 @@ export function BasicInfo({
           <Card>
             <CardHeader>
               <CardTitle className="text-lg font-semibold">
-                Report purpose <span className="text-destructive">*</span>
+                성적서 용도 <span className="text-destructive">*</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
               <RadioGroup value={formData.reportPurpose} onValueChange={(value) => update("reportPurpose", value)}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <ChoiceCard id="internal" title="Internal validation" description="Use for internal QA or model monitoring" selected={formData.reportPurpose === "internal"} />
-                  <ChoiceCard id="external" title="External submission" description="Use for customers or review organizations" selected={formData.reportPurpose === "external"} />
-                  <ChoiceCard id="project" title="Project deliverable" description="Use for funded project evidence" selected={formData.reportPurpose === "project"} />
+                  <ChoiceCard id="internal" title="내부 검증" description="사내 품질 확인이나 모델 모니터링에 씁니다" selected={formData.reportPurpose === "internal"} />
+                  <ChoiceCard id="external" title="외부 제출" description="고객사나 심사 기관에 냅니다" selected={formData.reportPurpose === "external"} />
+                  <ChoiceCard id="project" title="과제 제출" description="지원 과제의 증빙으로 냅니다" selected={formData.reportPurpose === "project"} />
                 </div>
               </RadioGroup>
 
               {/* 덧붙이는 글(서술 설계 D26). 성적서 1.3 개요 칸에 "의뢰자 제공"으로 실린다. */}
-              <Field label="Note on the purpose">
+              <Field label="용도에 덧붙이는 글">
                 <textarea
                   className={TEXTAREA_CLASS}
                   rows={2}
                   value={formData.reportPurposeNote ?? ""}
                   onChange={(e) => update("reportPurposeNote", e.target.value)}
-                  placeholder="Anything the reader should know about why this report is issued (optional)"
+                  placeholder="이 성적서를 왜 발급하는지 읽는 사람이 알아야 할 것 (선택)"
                 />
               </Field>
 
               {formData.reportPurpose === "project" && (
                 <div className="space-y-5">
-                  <Field label="Project name" required>
+                  <Field label="과제명" required>
                     <Input value={formData.projectName} onChange={(e) => update("projectName", e.target.value)} />
                   </Field>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <Field label="Project agency" required>
+                    <Field label="과제 기관" required>
                       <Input value={formData.projectAgency} onChange={(e) => update("projectAgency", e.target.value)} />
                     </Field>
-                    <Field label="Project number">
+                    <Field label="과제 번호">
                       <Input value={formData.projectNumber} onChange={(e) => update("projectNumber", e.target.value)} />
                     </Field>
                   </div>
@@ -147,7 +147,7 @@ export function BasicInfo({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">Model information</CardTitle>
+              <CardTitle className="text-lg font-semibold">모델 정보</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* 모델명·버전은 업로드 단계에서 받는다 — 성적서를 내지 않는 run 도 이름이
@@ -156,18 +156,18 @@ export function BasicInfo({
               <ReadOnlyModelIdentity modelName={formData.modelName} versionName={formData.versionName} />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Field label="Model purpose" required>
+                <Field label="모델 용도" required>
                   <Input
                     value={formData.modelPurpose}
                     onChange={(e) => update("modelPurpose", e.target.value)}
-                    placeholder="e.g. Vision-based surface defect prediction"
+                    placeholder="예: 영상 기반 표면 결함 예측"
                   />
                 </Field>
-                <Field label="Model category" required>
+                <Field label="모델 분류" required>
                   <Input
                     value={formData.modelCategory}
                     onChange={(e) => update("modelCategory", e.target.value)}
-                    placeholder="e.g. Classification model (Neural Network)"
+                    placeholder="예: 분류 모델 (신경망)"
                   />
                 </Field>
               </div>
@@ -180,7 +180,7 @@ export function BasicInfo({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">Test environment</CardTitle>
+              <CardTitle className="text-lg font-semibold">시험 환경</CardTitle>
             </CardHeader>
             <CardContent>
               <ExpandableEnvironment
@@ -211,16 +211,16 @@ function ReadOnlyModelIdentity({
     <div className="rounded-lg border border-border bg-muted/30 p-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <div className="text-xs text-muted-foreground">Model name</div>
+          <div className="text-xs text-muted-foreground">모델 이름</div>
           <div className="mt-1 text-sm font-medium text-foreground">{modelName || "—"}</div>
         </div>
         <div>
-          <div className="text-xs text-muted-foreground">Version</div>
+          <div className="text-xs text-muted-foreground">버전</div>
           <div className="mt-1 text-sm font-medium text-foreground">{versionName || "—"}</div>
         </div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Set in the evaluation file step. Start a new version from the workspace to change it.
+        평가 데이터 단계에서 정합니다. 바꾸려면 그 단계로 돌아가세요.
       </p>
     </div>
   );
@@ -268,7 +268,7 @@ function DateField({
             className={cn("w-full justify-start text-left font-normal", !value && "text-muted-foreground")}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {value ? format(value, "yyyy-MM-dd") : "Select date"}
+            {value ? format(value, "yyyy-MM-dd") : "날짜 선택"}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0">
@@ -326,13 +326,13 @@ function ExpandableEnvironment({
         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-0"
       >
         {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        {expanded ? "Hide environment fields" : "Add environment fields"}
+        {expanded ? "환경 항목 접기" : "환경 항목 추가"}
       </button>
 
       {expanded && (
         <div className="mt-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="OS">
+            <Field label="운영체제">
               <Input value={data.envOS} onChange={(e) => onChange("envOS", e.target.value)} />
             </Field>
             <Field label="CPU">
@@ -341,11 +341,11 @@ function ExpandableEnvironment({
             <Field label="GPU">
               <Input value={data.envGPU} onChange={(e) => onChange("envGPU", e.target.value)} />
             </Field>
-            <Field label="Memory">
+            <Field label="메모리">
               <Input value={data.envMemory} onChange={(e) => onChange("envMemory", e.target.value)} />
             </Field>
           </div>
-          <Field label="Software stack">
+          <Field label="소프트웨어">
             <Input value={data.envSoftware} onChange={(e) => onChange("envSoftware", e.target.value)} />
           </Field>
         </div>

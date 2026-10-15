@@ -52,6 +52,9 @@ export type FieldInput =
 /** `monthRange` 의 두 칸. 저장소에 들어가는 키라 화면 문구와 따로 둔다. */
 export const MONTH_RANGE_KEYS = { from: "From", to: "To" } as const;
 
+/** `monthRange` 두 칸의 화면 이름. 키는 위 `MONTH_RANGE_KEYS` 의 값이다. */
+export const MONTH_RANGE_LABELS: Record<string, string> = { From: "시작 월", To: "끝 월" };
+
 /**
  * 조건부 필드의 조건 하나 — 같은 카드의 다른 필드가 이 값일 때 성립한다.
  * `equals` 는 값 하나, `in` 은 여러 값 중 하나.
@@ -128,12 +131,22 @@ export interface ComposerField {
    */
   allowsNote?: boolean;
   /**
-   * 성적서에 찍을 선택지 이름. 화면은 영어인데 성적서는 한국어이고, 재료 목록이 정한 이름이
-   * 있다(예: "Missed (FN)" → "FN이 더 위험"). 저장값은 화면 선택지 그대로다.
+   * 화면에 보이는 선택지 이름. 키는 `choices` 의 값이다.
+   *
+   * `choices` 는 **저장값**이라 영어로 둔다 — 화면 문구를 바꿀 때마다 저장값이 바뀌면 이미
+   * 저장된 답이 어느 선택지와도 맞지 않게 된다(docs/MATERIAL_PICKER.md §8). 화면은 이 이름을,
+   * 성적서는 `reportLabels` 를 쓴다. 없는 키는 저장값을 그대로 보인다(`choiceLabel`).
+   */
+  choiceLabels?: Record<string, string>;
+  /**
+   * 성적서에 찍을 선택지 이름. 재료 목록이 정한 이름이 있어 화면 이름과 다를 수 있다
+   * (예: "Missed (FN)" → 화면 "놓침(FN)", 성적서 "FN이 더 위험"). 키는 `choices` 의 값이다.
    */
   reportLabels?: Record<string, string>;
-  /** `entries` 의 고정 행 키(⑥ 데이터 양의 학습·검증, ⑨ GPU 사용 여부의 학습·추론). */
+  /** `entries` 의 고정 행 키(⑥ 데이터 양의 학습·검증, ⑨ GPU 사용 여부의 학습·추론). 저장값이다. */
   entryKeys?: string[];
+  /** `entryKeys` 행의 화면 이름. 키는 `entryKeys` 의 값이다(`entryLabel`). */
+  entryLabels?: Record<string, string>;
   /**
    * `entries` 의 행을 다른 곳에서 만든다 — 사용자가 줄을 추가하지 않는다.
    * `"classes"`: 업로드한 클래스 목록(⑥ 클래스별 데이터 양)

@@ -12,7 +12,7 @@ import { ChevronDown, ChevronUp, Info } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { ComposerFieldInput } from "./ComposerFieldInput";
-import { countAdvancedFields, getCardFields } from "../../data/reportComposer";
+import { choiceLabel, countAdvancedFields, getCardFields } from "../../data/reportComposer";
 import type { TaskType } from "../../data/evaluationData";
 import type {
   ComposerCard,
@@ -24,9 +24,9 @@ import { isFieldVisible, rangeFor, type FieldIssue } from "../../utils/domain/co
 
 /** 숫자 칸의 허용 범위를 문장으로. 무엇이 틀렸는지가 아니라 무엇을 넣으면 되는지를 말한다. */
 function describeRange(range: NumberRange): string {
-  const kind = range.integer ? "a whole number" : "a number";
-  if (range.max === undefined) return `Enter ${kind} of at least ${range.min}.`;
-  return `Enter ${kind} from ${range.min} to ${range.max}.`;
+  const kind = range.integer ? "정수" : "숫자";
+  if (range.max === undefined) return `${range.min} 이상의 ${kind}를 넣으세요.`;
+  return `${range.min}~${range.max} 사이의 ${kind}를 넣으세요.`;
 }
 
 interface ComposerCardFormProps {
@@ -100,7 +100,7 @@ export function ComposerCardForm({
               />
               {issue?.reason === "exclusive" && (
                 <p className="mt-1 text-body-small text-destructive">
-                  {field.exclusiveChoice} cannot be combined with the others.
+                  다른 선택지와 함께 고를 수 없는 답입니다: {choiceLabel(field, field.exclusiveChoice ?? "")}
                 </p>
               )}
               {issue?.reason === "outOfRange" && rangeFor(field, values) && (
@@ -113,12 +113,12 @@ export function ComposerCardForm({
               )}
               {issue?.reason === "invalidPeriod" && (
                 <p className="mt-1 text-body-small text-destructive">
-                  Enter both months, with From no later than To.
+                  시작 월과 끝 월을 모두 넣고, 시작 월이 끝 월보다 늦지 않게 하세요.
                 </p>
               )}
               {showErrors && issue?.reason === "missing" && (
                 <p className="mt-1 text-body-small text-destructive">
-                  Required.{issue.allowsUnknown && " Choose Unknown if you do not know."}
+                  필수 항목입니다.{issue.allowsUnknown && " 모르면 모름을 고르세요."}
                 </p>
               )}
             </div>
@@ -132,7 +132,7 @@ export function ComposerCardForm({
             onClick={() => setShowAdvanced((prev) => !prev)}
             className="text-body-medium font-medium"
           >
-            {showAdvanced ? "Hide optional fields" : "Show " + advancedCount + (advancedCount === 1 ? " optional field" : " optional fields")}
+            {showAdvanced ? "선택 항목 접기" : "선택 항목 " + advancedCount + "개 더 보기"}
             {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
         )}

@@ -41,8 +41,8 @@ export function ModelEnv() {
         }
         flow.goNext({ runId: id });
       }}
-      previousLabel="Back"
-      nextLabel={flow.next === "report" ? "View report" : "Next step"}
+      previousLabel="이전"
+      nextLabel={flow.next === "report" ? "성적서 보기" : "다음"}
       rightAction={<RemainingNotice issues={issues} />}
     >
       <ModelEnvContent

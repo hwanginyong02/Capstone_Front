@@ -29,8 +29,8 @@ export const VISUAL_ONLY_METRIC_IDS = new Set(["M21", "M22"]);
 
 /** 스칼라 값이 없는 지표가 어디에 그려지는지 알려주는 한 줄. */
 export const VISUAL_ONLY_HINT: Record<string, string> = {
-  M21: "Rendered as the confusion matrix below.",
-  M22: "Adds a per-class breakdown to Precision, Recall, and F1.",
+  M21: "아래 혼동행렬로 보입니다.",
+  M22: "Precision, Recall, F1 을 클래스별로 나눠 보입니다.",
 };
 
 /** 소수 표기(항상 3자리). 지표 종류와 무관하게 쓸 수 있는 원값. */

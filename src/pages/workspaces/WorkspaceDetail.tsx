@@ -44,7 +44,7 @@ export function WorkspaceDetail() {
   };
 
   const handleDeleteRun = (runId: string) => {
-    if (confirm("Delete this evaluation? This cannot be undone.")) {
+    if (confirm("이 평가를 지울까요? 되돌릴 수 없습니다.")) {
       deleteEvaluationRun(runId);
     }
   };
@@ -56,7 +56,7 @@ export function WorkspaceDetail() {
           <Button asChild variant="ghost" size="sm" className="-ml-3">
             <Link to="/workspaces">
               <ArrowLeft className="h-4 w-4" />
-              Workspaces
+              워크스페이스
             </Link>
           </Button>
           <div className="space-y-2">
@@ -71,7 +71,7 @@ export function WorkspaceDetail() {
 
         <Button onClick={handleStartEvaluation}>
           <Plus className="h-4 w-4" />
-          Start Evaluation
+          평가 시작
         </Button>
       </section>
 
@@ -79,8 +79,8 @@ export function WorkspaceDetail() {
           같은 모델의 버전끼리 견주지 않는다(docs/WORKFLOW_REDESIGN.md §11). */}
       <Card className="rounded-lg">
         <CardHeader>
-          <CardTitle>Evaluation Results</CardTitle>
-          <CardDescription>Review the model name, version, and created date.</CardDescription>
+          <CardTitle>평가 결과</CardTitle>
+          <CardDescription>모델 이름, 버전, 만든 날을 확인하세요.</CardDescription>
         </CardHeader>
         <CardContent>
           {runs.length === 0 ? (

@@ -25,8 +25,8 @@ function describeSubmitError(err: unknown): string {
 
   if (isQuota) {
     return (
-      "Browser storage is full, so the evaluation result could not be saved. " +
-      "Delete older evaluations from the workspace page and try again."
+      "브라우저 저장 공간이 가득 차 평가 결과를 저장하지 못했습니다. " +
+      "워크스페이스 화면에서 오래된 평가를 지우고 다시 시도하세요."
     );
   }
 
@@ -100,7 +100,7 @@ export function DataValidation() {
       onPrevious={handlePrevious}
       onNext={handleNext}
       nextDisabled={gateReason !== "ok"}
-      nextLabel="Next step"
+      nextLabel="다음"
     >
       {submitError && (
         <Alert variant="destructive" className="mb-6">

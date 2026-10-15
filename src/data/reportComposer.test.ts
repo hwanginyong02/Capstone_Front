@@ -14,7 +14,9 @@ import {
   COMPOSER_CARDS,
   OPTIONAL_CARD_IDS,
   REQUIRED_CARD_IDS,
+  choiceLabel,
   countAdvancedFields,
+  entryLabel,
   countOptionalOn,
   getCard,
   getCardFields,
@@ -177,7 +179,7 @@ describe("② 지표와 합격 기준", () => {
   it("β 는 Fβ 를 고를 때만 받는 조건부 필드다", () => {
     const beta = getCard("metrics").fields.find((field) => field.id === "beta");
     expect(beta?.kind).toBe("conditional");
-    expect(beta?.conditionLabel).toBe("When Fβ is chosen");
+    expect(beta?.conditionLabel).toBe("Fβ를 골랐을 때");
   });
 
   it("고를 수 있는 지표 수가 SPEC 과 같다 (이진 15 · 다중 클래스 13 · 멀티레이블 11)", () => {
@@ -451,5 +453,29 @@ describe("재료 목록과 맞춘 형태", () => {
         expect(field.reportLabels[choice], `${field.id}: ${choice}`).toBeTruthy();
       }
     }
+  });
+
+  /**
+   * 저장값은 영어로 두고 화면 이름만 한국어다(docs/MATERIAL_PICKER.md §8). 이름표가 빠지면
+   * 그 선택지만 영어 저장값이 화면에 그대로 드러난다.
+   */
+  it("화면 이름(choiceLabels·entryLabels)은 모든 선택지와 고정 칸을 덮는다", () => {
+    for (const field of COMPOSER_CARDS.flatMap((card) => card.fields)) {
+      for (const choice of field.choices ?? []) {
+        expect(field.choiceLabels?.[choice], `${field.id}: ${choice}`).toBeTruthy();
+      }
+      for (const key of field.entryKeys ?? []) {
+        expect(field.entryLabels?.[key], `${field.id}: ${key}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("화면 이름은 저장값을 바꾸지 않는다 — 선택지는 영어 그대로다", () => {
+    const usage = fieldOf("perspective", "usageMode");
+    expect(usage?.choices).toEqual(["Real-time", "Batch"]);
+    expect(choiceLabel(usage!, "Batch")).toBe("일괄 처리");
+    expect(entryLabel(fieldOf("modelEnv", "runtimeEnv")!, "Operating system")).toBe("운영체제");
+    // 이름표가 없는 칸(클래스 이름 등)은 키를 그대로 보인다.
+    expect(entryLabel(fieldOf("trainingData", "trainingClassVolume")!, "cat")).toBe("cat");
   });
 });

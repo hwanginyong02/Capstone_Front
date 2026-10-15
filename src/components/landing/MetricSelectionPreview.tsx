@@ -9,14 +9,14 @@ import { cn } from "../../utils/styling/styles";
  * (MetricSelectionPreview.test.ts — 과거 M6 가 옛 정보를 계속 보여준 적 있음).
  */
 export const PREVIEW_METRICS = [
-  ["M1", "Accuracy", "Overall correctness", ["y_true", "y_pred"]],
-  ["M2", "Precision", "Positive predictive value", ["y_true", "y_pred"]],
-  ["M3", "Recall", "Sensitivity", ["y_true", "y_pred"]],
-  ["M4", "F1 Score", "Harmonic mean", ["y_true", "y_pred"]],
-  ["M5", "F-beta Score", "Weighted F score", ["y_true", "y_pred", "beta"]],
-  ["M6", "KL Divergence", "Distribution divergence", ["y_true", "y_pred"]],
-  ["M7", "Specificity", "True negative rate", ["y_true", "y_pred"]],
-  ["M8", "FPR", "False positive rate", ["y_true", "y_pred"]],
+  ["M1", "Accuracy", "전체 정확도", ["y_true", "y_pred"]],
+  ["M2", "Precision", "양성 예측의 정밀도", ["y_true", "y_pred"]],
+  ["M3", "Recall", "재현율", ["y_true", "y_pred"]],
+  ["M4", "F1 Score", "조화 평균", ["y_true", "y_pred"]],
+  ["M5", "F-beta Score", "가중 F 점수", ["y_true", "y_pred", "beta"]],
+  ["M6", "KL Divergence", "분포 차이", ["y_true", "y_pred"]],
+  ["M7", "Specificity", "특이도", ["y_true", "y_pred"]],
+  ["M8", "FPR", "위양성률", ["y_true", "y_pred"]],
 ] as const;
 
 /**

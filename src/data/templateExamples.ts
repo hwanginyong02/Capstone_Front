@@ -55,12 +55,12 @@ export function getComposerJsonExample(taskType: TaskType): string {
 /** 예시 아래 한 줄 안내. 유형마다 필수 컬럼 규칙이 다르다. */
 export function getComposerColumnNote(taskType: TaskType): string {
   if (taskType === "binary") {
-    return "The answer (y_true) is required, and you need either the prediction (y_pred) or the positive probability (score). Curve metrics such as AUROC need the probability. Latency (latency_ms) is optional.";
+    return "정답(y_true)은 필수이고, 예측(y_pred)과 양성 확률(score) 중 하나가 있어야 합니다. AUROC 같은 곡선 지표는 확률이 있어야 합니다. 응답시간(latency_ms)은 선택입니다.";
   }
 
   if (taskType === "multilabel") {
-    return "Separate labels with |, and leave the cell empty for no label. The answer (true_labels) is required, and you need either the prediction (pred_labels) or a per-label score (score_<label>).";
+    return "레이블은 | 로 구분하고, 레이블이 없으면 칸을 비웁니다. 정답(true_labels)은 필수이고, 예측(pred_labels)과 레이블별 점수(score_<레이블>) 중 하나가 있어야 합니다.";
   }
 
-  return "The answer (y_true) is required, and you need either the prediction (y_pred) or per-class probabilities (prob_<class>). With probabilities alone, the highest class is used as the prediction.";
+  return "정답(y_true)은 필수이고, 예측(y_pred)과 클래스별 확률(prob_<클래스>) 중 하나가 있어야 합니다. 확률만 있으면 가장 높은 클래스를 예측으로 씁니다.";
 }

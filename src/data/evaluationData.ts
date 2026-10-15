@@ -46,9 +46,9 @@ export const TASK_TYPE_LABELS: Record<TaskType, string> = {
  * 표기는 `docs/UI_DESIGN.md` §3·§4 를 따른다 — 그 문서가 유형을 **사용자에게 보여주는 방식**을
  * 정하는 쪽이고, `docs/COMPOSER_DESIGN.md` 의 유형 배지도 거기를 가리킨다.
  *
- * 위 `TASK_TYPE_LABELS`(영문)를 지우지 않는다. 기존 화면과 그 테스트가 영문을 쓰고 있고,
- * 문구 한국어화는 단독 작업으로 미뤄둔 항목이다(docs/WORKFLOW_REDESIGN.md §6.3).
- * 지금은 성적서 구성 화면과 그 뒤의 새 입력 화면만 이 표를 쓴다.
+ * 앱 화면은 모두 이 표를 쓴다(docs/MATERIAL_PICKER.md §8). 위 `TASK_TYPE_LABELS`(영문)는
+ * 성적서와 AI 서술에 넘기는 유형 이름이라 그대로 둔다 — 화면 문구를 바꾸면서 출력까지
+ * 바꾸지 않는다.
  */
 export const TASK_TYPE_LABELS_KO: Record<TaskType, string> = {
   binary: "이진 분류",
@@ -57,29 +57,29 @@ export const TASK_TYPE_LABELS_KO: Record<TaskType, string> = {
 };
 
 export const METRICS: MetricDefinition[] = [
-  { id: "M1", name: "Accuracy", subtitle: "Overall correctness", description: "Measures how often the classifier predicts the correct result.", supportedTaskTypes: ["binary", "multiclass"], formula: "(TP + TN) / Total", isCommon: true },
-  { id: "M2", name: "Precision", subtitle: "Positive predictive value", description: "Among predicted positives, measures how many are actually positive.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "binary: TP/(TP+FP) · 그 외: 클래스별 TP/(TP+FP) 의 macro 평균", isCommon: true },
-  { id: "M3", name: "Recall", subtitle: "Sensitivity", description: "Measures how many true positives are successfully detected.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "binary: TP/(TP+FN) · 그 외: 클래스별 TP/(TP+FN) 의 macro 평균", isCommon: true },
-  { id: "M4", name: "F1 Score", subtitle: "Harmonic mean", description: "Balances precision and recall in a single metric.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "binary: 2PR/(P+R) · 그 외: 클래스별 F1 의 macro 평균(macro-P·macro-R 의 조화평균이 아님)", isCommon: true },
-  { id: "M5", name: "F-beta Score", subtitle: "Weighted F score", description: "Adjusts the balance between precision and recall using beta.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["beta", "positiveClass"], formula: "binary: (1+β²)PR/(β²P+R) · 그 외: 클래스별 Fβ 의 macro 평균", isCommon: true },
-  { id: "M6", higherIsBetter: false, name: "KL Divergence", subtitle: "Distribution divergence", description: "정답 레이블의 분포와 모델이 예측한 클래스 레이블의 분포 간의 차이(Target Drift)를 계산합니다.", supportedTaskTypes: ["binary", "multiclass"], formula: "∑ P(x) * log(P(x) / Q(x))", isCommon: true },
-  { id: "M7", name: "Specificity", subtitle: "True negative rate", description: "Measures how many true negatives are correctly predicted.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], formula: "TN / (TN + FP)" },
-  { id: "M8", higherIsBetter: false, name: "FPR", subtitle: "False positive rate", description: "Measures how often negatives are incorrectly marked positive.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], formula: "FP / (FP + TN)" },
-  { id: "M9", name: "AUROC", subtitle: "ROC area", description: "Measures ranking quality across classification thresholds.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], probabilityRequiredFor: ["binary"], formula: "Area under ROC Curve" },
-  { id: "M10", name: "AUPRC", subtitle: "PR area", description: "Measures precision-recall tradeoff across thresholds.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], probabilityRequiredFor: ["binary"], formula: "Area under PR Curve" },
-  { id: "M11", name: "Macro Average", subtitle: "Unweighted class average", description: "Averages class metrics equally across classes.", supportedTaskTypes: ["multiclass"], formula: "클래스별 P·R·F1 의 macro 평균 — (Class1 + … + ClassN) / N" },
-  { id: "M12", name: "Micro Average", subtitle: "Global average", description: "Computes metrics over the full set of samples.", supportedTaskTypes: ["multiclass"], formula: "micro 평균 — 전 클래스의 TP·FP·FN 을 합산해 P·R·F1 을 계산" },
-  { id: "M13", name: "Weighted Average", subtitle: "Support-weighted average", description: "Averages class metrics using class support as weights.", supportedTaskTypes: ["multiclass"], formula: "weighted 평균 — 클래스별 지표를 support 로 가중 평균" },
-  { id: "M14", higherIsBetter: false, name: "Distribution Diff (MC)", subtitle: "Class distribution gap", description: "Compares actual and predicted class distributions.", supportedTaskTypes: ["multiclass"], formula: "0.5 * ∑ |P(x) - Q(x)|" },
-  { id: "M15", higherIsBetter: false, name: "Hamming Loss", subtitle: "Label mismatch ratio", description: "Measures label-wise disagreement in multi-label classification.", supportedTaskTypes: ["multilabel"], formula: "∑ (y_true ≠ y_pred) / (Samples * Labels)" },
-  { id: "M16", name: "Exact Match Ratio", subtitle: "Strict set match", description: "Counts samples where all labels exactly match.", supportedTaskTypes: ["multilabel"], formula: "∑ (All_labels_match) / Samples" },
-  { id: "M17", name: "Jaccard Index", subtitle: "Set overlap score", description: "Measures intersection over union of predicted and actual labels.", supportedTaskTypes: ["multilabel"], formula: "|y_true ∩ y_pred| / |y_true ∪ y_pred|" },
-  { id: "M18", higherIsBetter: false, name: "Distribution Diff (ML)", subtitle: "Label distribution gap", description: "Compares actual and predicted label distributions.", supportedTaskTypes: ["multilabel"], formula: "1 - cos(freq(y_true), freq(y_pred))" },
-  { id: "M19", higherIsBetter: false, name: "Log Loss", subtitle: "Probabilistic error", description: "Penalizes confident but wrong probabilistic predictions.", supportedTaskTypes: ["binary"], probabilityRequiredFor: ["binary"], formula: "- (y * log(p) + (1-y) * log(1-p))" },
-  { id: "M20", name: "MCC", subtitle: "Balanced correlation", description: "A robust binary metric that considers all confusion matrix cells.", supportedTaskTypes: ["binary"], formula: "(TP*TN - FP*FN) / √((TP+FP)(TP+FN)(TN+FP)(TN+FN))" },
-  { id: "M21", name: "Confusion Matrix", subtitle: "Prediction matrix", description: "Shows actual versus predicted counts by class or label.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], formula: "실제/예측 클래스의 교차 분포를 행렬로 산출", isCommon: true },
-  { id: "M22", name: "Class-wise Metric", subtitle: "Per-class detail", description: "Breaks down metrics for each class or label.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "개별 클래스별 P/R/F1 산출", isCommon: true },
-  { id: "M23", higherIsBetter: false, name: "Imbalance Ratio", subtitle: "Class balance check", description: "Measures the balance of the evaluation dataset itself.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], formula: "max(class count) / min(class count)", isCommon: true },
+  { id: "M1", name: "Accuracy", subtitle: "전체 정확도", description: "모델이 맞게 예측한 비율입니다.", supportedTaskTypes: ["binary", "multiclass"], formula: "(TP + TN) / Total", isCommon: true },
+  { id: "M2", name: "Precision", subtitle: "양성 예측의 정밀도", description: "양성으로 예측한 것 중 실제 양성인 비율입니다.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "binary: TP/(TP+FP) · 그 외: 클래스별 TP/(TP+FP) 의 macro 평균", isCommon: true },
+  { id: "M3", name: "Recall", subtitle: "재현율", description: "실제 양성 중 모델이 찾아낸 비율입니다.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "binary: TP/(TP+FN) · 그 외: 클래스별 TP/(TP+FN) 의 macro 평균", isCommon: true },
+  { id: "M4", name: "F1 Score", subtitle: "조화 평균", description: "정밀도와 재현율을 하나로 묶어 균형을 봅니다.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "binary: 2PR/(P+R) · 그 외: 클래스별 F1 의 macro 평균(macro-P·macro-R 의 조화평균이 아님)", isCommon: true },
+  { id: "M5", name: "F-beta Score", subtitle: "가중 F 점수", description: "β로 정밀도와 재현율의 비중을 조정합니다.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["beta", "positiveClass"], formula: "binary: (1+β²)PR/(β²P+R) · 그 외: 클래스별 Fβ 의 macro 평균", isCommon: true },
+  { id: "M6", higherIsBetter: false, name: "KL Divergence", subtitle: "분포 차이", description: "정답 레이블의 분포와 모델이 예측한 클래스 레이블의 분포 간의 차이(Target Drift)를 계산합니다.", supportedTaskTypes: ["binary", "multiclass"], formula: "∑ P(x) * log(P(x) / Q(x))", isCommon: true },
+  { id: "M7", name: "Specificity", subtitle: "특이도", description: "실제 음성 중 음성으로 맞게 예측한 비율입니다.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], formula: "TN / (TN + FP)" },
+  { id: "M8", higherIsBetter: false, name: "FPR", subtitle: "위양성률", description: "실제 음성을 양성으로 잘못 예측한 비율입니다.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], formula: "FP / (FP + TN)" },
+  { id: "M9", name: "AUROC", subtitle: "ROC 곡선 아래 면적", description: "모든 임계값에서 양성과 음성을 얼마나 잘 가르는지 봅니다.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], probabilityRequiredFor: ["binary"], formula: "Area under ROC Curve" },
+  { id: "M10", name: "AUPRC", subtitle: "PR 곡선 아래 면적", description: "모든 임계값에서 정밀도와 재현율이 맞바뀌는 정도를 봅니다.", supportedTaskTypes: ["binary"], additionalFields: ["positiveClass"], probabilityRequiredFor: ["binary"], formula: "Area under PR Curve" },
+  { id: "M11", name: "Macro Average", subtitle: "클래스 단순 평균", description: "클래스별 지표를 같은 비중으로 평균합니다.", supportedTaskTypes: ["multiclass"], formula: "클래스별 P·R·F1 의 macro 평균 — (Class1 + … + ClassN) / N" },
+  { id: "M12", name: "Micro Average", subtitle: "전체 표본 평균", description: "모든 표본을 한데 모아 지표를 계산합니다.", supportedTaskTypes: ["multiclass"], formula: "micro 평균 — 전 클래스의 TP·FP·FN 을 합산해 P·R·F1 을 계산" },
+  { id: "M13", name: "Weighted Average", subtitle: "표본 수 가중 평균", description: "클래스별 지표를 클래스 표본 수로 가중 평균합니다.", supportedTaskTypes: ["multiclass"], formula: "weighted 평균 — 클래스별 지표를 support 로 가중 평균" },
+  { id: "M14", higherIsBetter: false, name: "Distribution Diff (MC)", subtitle: "클래스 분포 차이", description: "실제 클래스 분포와 예측 클래스 분포를 비교합니다.", supportedTaskTypes: ["multiclass"], formula: "0.5 * ∑ |P(x) - Q(x)|" },
+  { id: "M15", higherIsBetter: false, name: "Hamming Loss", subtitle: "레이블 불일치 비율", description: "멀티레이블에서 레이블 단위로 틀린 비율입니다.", supportedTaskTypes: ["multilabel"], formula: "∑ (y_true ≠ y_pred) / (Samples * Labels)" },
+  { id: "M16", name: "Exact Match Ratio", subtitle: "완전 일치 비율", description: "모든 레이블이 정확히 맞은 표본의 비율입니다.", supportedTaskTypes: ["multilabel"], formula: "∑ (All_labels_match) / Samples" },
+  { id: "M17", name: "Jaccard Index", subtitle: "집합 겹침 정도", description: "예측 레이블과 실제 레이블의 교집합을 합집합으로 나눈 값입니다.", supportedTaskTypes: ["multilabel"], formula: "|y_true ∩ y_pred| / |y_true ∪ y_pred|" },
+  { id: "M18", higherIsBetter: false, name: "Distribution Diff (ML)", subtitle: "레이블 분포 차이", description: "실제 레이블 분포와 예측 레이블 분포를 비교합니다.", supportedTaskTypes: ["multilabel"], formula: "1 - cos(freq(y_true), freq(y_pred))" },
+  { id: "M19", higherIsBetter: false, name: "Log Loss", subtitle: "확률 오차", description: "확신했지만 틀린 확률 예측에 큰 벌점을 줍니다.", supportedTaskTypes: ["binary"], probabilityRequiredFor: ["binary"], formula: "- (y * log(p) + (1-y) * log(1-p))" },
+  { id: "M20", name: "MCC", subtitle: "균형 상관계수", description: "혼동행렬의 네 칸을 모두 반영하는 이진 분류 지표입니다.", supportedTaskTypes: ["binary"], formula: "(TP*TN - FP*FN) / √((TP+FP)(TP+FN)(TN+FP)(TN+FN))" },
+  { id: "M21", name: "Confusion Matrix", subtitle: "예측 행렬", description: "클래스·레이블별로 실제와 예측의 개수를 교차해 보입니다.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], formula: "실제/예측 클래스의 교차 분포를 행렬로 산출", isCommon: true },
+  { id: "M22", name: "Class-wise Metric", subtitle: "클래스별 상세", description: "지표를 클래스·레이블마다 나눠 보입니다.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "개별 클래스별 P/R/F1 산출", isCommon: true },
+  { id: "M23", higherIsBetter: false, name: "Imbalance Ratio", subtitle: "클래스 균형 점검", description: "평가 데이터 자체의 클래스 균형을 봅니다.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], formula: "max(class count) / min(class count)", isCommon: true },
 ];
 
 const RECOMMENDED_METRICS: Record<TaskType, string[]> = {
@@ -216,38 +216,38 @@ const COLUMN_ORDER: RequiredColumnCode[] = [
 const COLUMN_DISPLAY: Record<RequiredColumnCode, RequiredColumnDisplay> = {
   id: {
     code: "id",
-    label: "Sample ID",
-    description: "A unique identifier for each sample.",
+    label: "샘플 ID",
+    description: "샘플마다 붙는 고유 식별자입니다.",
   },
   y_true: {
     code: "y_true",
-    label: "Ground truth label",
-    description: "The actual target value. For multi-label data, store the full set of true labels in one consistent format.",
+    label: "정답 레이블",
+    description: "실제 정답 값입니다. 멀티레이블이면 정답 레이블 묶음을 한 가지 형식으로 적습니다.",
   },
   y_pred: {
     code: "y_pred",
-    label: "Predicted label",
-    description: "The label predicted by the model. For multi-label data, store the full set of predicted labels in the same format as y_true.",
+    label: "예측 레이블",
+    description: "모델이 예측한 값입니다. 멀티레이블이면 y_true 와 같은 형식으로 예측 레이블 묶음을 적습니다.",
   },
   score: {
     code: "score",
-    label: "Positive class score",
-    description: "A model confidence score between 0 and 1.",
+    label: "양성 클래스 점수",
+    description: "0과 1 사이의 모델 확신 점수입니다.",
   },
   "prob_class_*": {
     code: "prob_class_*",
-    label: "Per-class probabilities",
-    description: "One probability column per class, for example prob_cat or prob_dog.",
+    label: "클래스별 확률",
+    description: "클래스마다 확률 컬럼이 하나씩 있습니다. 예: prob_cat, prob_dog",
   },
   "prob_label_*": {
     code: "prob_label_*",
-    label: "Per-label probabilities",
-    description: "One probability column per label.",
+    label: "레이블별 확률",
+    description: "레이블마다 확률 컬럼이 하나씩 있습니다.",
   },
   latency: {
     code: "latency",
-    label: "Inference latency (ms)",
-    description: "Optional. Per-sample inference time in milliseconds; used to report latency statistics (mean/p50/p95/p99).",
+    label: "추론 응답시간(ms)",
+    description: "선택. 샘플마다 걸린 추론 시간(밀리초)이며, 응답시간 통계(평균·p50·p95·p99)에 씁니다.",
   },
 };
 

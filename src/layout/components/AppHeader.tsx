@@ -3,7 +3,7 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Link, useNavigate } from "react-router";
 import { TaskTypeIcon } from "../../components/task-type/TaskTypeIcon";
-import { TASK_TYPE_LABELS } from "../../data/evaluationData";
+import { TASK_TYPE_LABELS_KO } from "../../data/evaluationData";
 import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
 
 /**
@@ -32,8 +32,8 @@ export function AppHeader({ showTaskType = false }: { showTaskType?: boolean }) 
             </svg>
           </div>
           <div className="flex flex-col">
-            <span className="text-base font-semibold leading-none">ML Evaluation</span>
-            <span className="text-xs text-muted-foreground">ISO/IEC 4213 based</span>
+            <span className="text-base font-semibold leading-none">ML 성능평가</span>
+            <span className="text-xs text-muted-foreground">ISO/IEC 4213 기반</span>
           </div>
         </Link>
 
@@ -70,7 +70,7 @@ function TaskTypeBadge() {
     const hasWorkToLose = completedStepIds.length > 0;
     if (hasWorkToLose) {
       const ok = window.confirm(
-        "Changing the classifier type clears the metrics, uploaded data, and column mapping you have entered. Continue?",
+        "분류 유형을 바꾸면 고른 지표, 올린 데이터, 컬럼 매핑이 모두 지워집니다. 계속할까요?",
       );
       if (!ok) return;
     }
@@ -83,9 +83,9 @@ function TaskTypeBadge() {
       asChild
       className="cursor-pointer gap-1.5 py-1 pl-2 pr-2.5 hover:bg-secondary/80"
     >
-      <button type="button" onClick={handleClick} title="Change classifier type">
+      <button type="button" onClick={handleClick} title="분류 유형 바꾸기">
         <TaskTypeIcon type={taskType} size={16} />
-        {TASK_TYPE_LABELS[taskType]}
+        {TASK_TYPE_LABELS_KO[taskType]}
       </button>
     </Badge>
   );

@@ -53,10 +53,9 @@ export function DataInfo({
   return (
     <main className="mx-auto max-w-[1344px] space-y-6 px-8 pt-12 pb-24">
       <div>
-        <h1 className="text-heading-large font-bold text-foreground">Data info</h1>
+        <h1 className="text-heading-large font-bold text-foreground">데이터 정보</h1>
         <p className="mt-1 text-body-medium text-muted-foreground">
-          The cards you added to the report ask for these. Choose Unknown for anything you do
-          not know.
+          성적서에 넣기로 한 카드가 이 항목들을 받습니다. 모르는 것은 모름을 고르세요.
         </p>
       </div>
 

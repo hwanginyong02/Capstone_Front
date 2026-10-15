@@ -27,9 +27,9 @@ export function RequiredColumnsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg font-semibold">Required Columns</CardTitle>
+        <CardTitle className="text-lg font-semibold">필수 컬럼</CardTitle>
         <CardDescription className="text-sm text-muted-foreground">
-          These are the columns required by your selected evaluation metrics. You must map a column from your dataset to each of these roles.
+          고른 평가 지표에 필요한 컬럼입니다. 이 역할마다 데이터의 컬럼을 하나씩 지정해야 합니다.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -37,7 +37,7 @@ export function RequiredColumnsCard({
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              No metric selection was passed into this screen, so the UI is falling back to the current task type only.
+              아직 고른 지표가 없어 분류 유형 기준으로만 보여 줍니다.
             </AlertDescription>
           </Alert>
         )}
@@ -70,7 +70,7 @@ export function RequiredColumnsCard({
                   {metricsRequiringThis.length > 0 && (
                     <div className="mt-auto pt-4 border-t border-border">
                       <div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
-                        Required by
+                        필요로 하는 지표
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {metricsRequiringThis.map((metric) => (

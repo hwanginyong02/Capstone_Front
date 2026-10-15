@@ -69,16 +69,16 @@ export function DecisionThresholdCard({
       <CardHeader>
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <SlidersHorizontal className="h-5 w-5 text-primary" />
-          Decision threshold
+          결정 임계값
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
-            No predicted-label column was mapped, so predictions are derived from the probability or
-            score column. The threshold you set here, and the fact that predictions were derived, are
-            both recorded in the report. This is <em>not</em> the pass target you set later.
+            예측 레이블 컬럼을 지정하지 않아 확률·점수 컬럼에서 예측을 만듭니다. 여기서 정한
+            임계값과, 예측을 만들어 냈다는 사실이 모두 성적서에 적힙니다. 나중에 정하는 합격
+            목표값과는 <em>다른</em> 값입니다.
           </AlertDescription>
         </Alert>
 
@@ -92,7 +92,7 @@ export function DecisionThresholdCard({
                   min={0}
                   max={1}
                   step={0.01}
-                  aria-label={`${row.originalName} decision threshold`}
+                  aria-label={`${row.originalName} 결정 임계값`}
                   value={thresholdFor(row.originalName)}
                   onChange={(e) => setForColumn(row.originalName, e.target.value)}
                   className="w-28 rounded border border-border-strong px-2 py-1 text-right"
@@ -100,13 +100,13 @@ export function DecisionThresholdCard({
               </label>
             ))}
             <p className="text-xs text-muted-foreground">
-              Each label can take its own threshold and is decided independently.
+              레이블마다 임계값을 따로 정하고, 각각 따로 판정합니다.
             </p>
           </div>
         ) : (
           <label className="flex items-center justify-between gap-4 text-sm">
             <span className="text-foreground-secondary">
-              Scores at or above this value count as positive
+              이 값 이상인 점수를 양성으로 봅니다
               <span className="ml-1 font-mono text-muted-foreground">
                 ({probabilityRows.map((r) => r.originalName).join(", ")})
               </span>
@@ -116,7 +116,7 @@ export function DecisionThresholdCard({
               min={0}
               max={1}
               step={0.01}
-              aria-label="decision threshold"
+              aria-label="결정 임계값"
               value={scalarValue}
               onChange={(e) => setScalar(e.target.value)}
               className="w-28 rounded border border-border-strong px-2 py-1 text-right"
@@ -126,7 +126,7 @@ export function DecisionThresholdCard({
 
         {!withinUnitInterval(decisionThreshold) && (
           <Alert variant="destructive">
-            <AlertDescription>Thresholds must be between 0 and 1.</AlertDescription>
+            <AlertDescription>임계값은 0과 1 사이여야 합니다.</AlertDescription>
           </Alert>
         )}
       </CardContent>

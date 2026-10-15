@@ -20,7 +20,7 @@ describe("BackendNoticePanel", () => {
 
     expect(screen.getByText(/memo 를 제외했습니다/)).toBeInTheDocument();
     // 출처 라벨은 화면 문구(영문). 메시지 본문은 백엔드가 준 그대로 싣는다.
-    expect(screen.getByText("[Column analysis]")).toBeInTheDocument();
+    expect(screen.getByText("[컬럼 분석]")).toBeInTheDocument();
   });
 
   it("[B-04] 매핑 확정 경고를 보여준다", () => {

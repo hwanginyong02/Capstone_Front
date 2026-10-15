@@ -14,7 +14,7 @@
  */
 import { Card } from "../ui/card";
 import { cn } from "../../utils/styling/styles";
-import { TASK_TYPE_LABELS, type TaskType } from "../../data/evaluationData";
+import { TASK_TYPE_LABELS_KO, type TaskType } from "../../data/evaluationData";
 import { TaskTypeIcon } from "./TaskTypeIcon";
 
 interface TaskTypeOption {
@@ -28,18 +28,18 @@ interface TaskTypeOption {
 const OPTIONS: TaskTypeOption[] = [
   {
     type: "binary",
-    description: "Assign one of two categories to each sample.",
-    example: "Pass / Fail",
+    description: "샘플 하나를 두 범주 중 하나로 나눕니다.",
+    example: "합격 / 불합격",
   },
   {
     type: "multiclass",
-    description: "Assign one of many categories to each sample.",
-    example: "Cat · Dog · Bird",
+    description: "샘플 하나를 여러 범주 중 하나로 나눕니다.",
+    example: "고양이 · 개 · 새",
   },
   {
     type: "multilabel",
-    description: "Assign any number of relevant categories to each sample.",
-    example: "Cat + Outdoor + Night",
+    description: "샘플 하나에 맞는 범주를 여러 개 붙입니다.",
+    example: "고양이 + 실외 + 밤",
   },
 ];
 
@@ -55,10 +55,10 @@ export function TaskTypeSelect({ selected, onSelect }: TaskTypeSelectProps) {
     <div className="pt-4">
       <div className="mb-10">
         <h1 className="text-2xl font-bold text-foreground mb-2">
-          What kind of classifier are you evaluating?
+          어떤 분류 모델을 평가하나요?
         </h1>
         <p className="text-sm text-muted-foreground">
-          Metrics, required columns, and validation rules all depend on this choice.
+          고른 유형에 따라 지표, 필요한 컬럼, 검증 규칙이 달라집니다.
         </p>
       </div>
 
@@ -91,7 +91,7 @@ export function TaskTypeSelect({ selected, onSelect }: TaskTypeSelectProps) {
 
               <div className="space-y-1.5">
                 <div className="text-base font-semibold text-foreground">
-                  {TASK_TYPE_LABELS[option.type]}
+                  {TASK_TYPE_LABELS_KO[option.type]}
                 </div>
                 <p className="text-sm text-muted-foreground">{option.description}</p>
               </div>

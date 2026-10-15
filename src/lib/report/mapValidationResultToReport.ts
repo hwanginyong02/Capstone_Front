@@ -28,6 +28,11 @@ const CHECK_NAME_KO: Record<string, string> = {
   "Latency statistics (ms)": "지연시간 통계 (ms)",
 };
 
+/** 검증 항목명의 한글 이름. 표에 없는 이름은 그대로 돌려준다. 검증 화면도 이 표를 쓴다. */
+export function checkNameKo(name: string): string {
+  return CHECK_NAME_KO[name] ?? name;
+}
+
 /** 백엔드 결과 문자열(영문) → 한글 표기 정규화 */
 function normalizeResult(result: string): string {
   if (!result || result === "None") return "없음";

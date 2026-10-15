@@ -97,14 +97,14 @@ export function ReportInfo() {
       onPrevious={() => flow.goPrevious({ runId: id })}
       onNext={() => flow.goNext({ runId: id })}
       nextDisabled={!canContinue}
-      nextLabel={flow.next === "report" ? "View report" : "Next step"}
+      nextLabel={flow.next === "report" ? "성적서 보기" : "다음"}
     >
       <main className="mx-auto max-w-[1344px] space-y-6 px-8 pt-12 pb-24">
         <div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Details</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">의뢰자 정보</h1>
           <p className="text-sm text-muted-foreground">
-            Who the report is for, and the target each metric must reach. These details appear on the
-            test report and do not change the measured results.
+            성적서를 받는 곳과 지표마다 넘어야 할 목표값입니다. 이 내용은 성적서에 적히고, 측정
+            결과는 바꾸지 않습니다.
           </p>
         </div>
 
@@ -112,18 +112,18 @@ export function ReportInfo() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Pass criteria</CardTitle>
+            <CardTitle className="text-lg font-semibold">합격 기준</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Set the target each metric must reach for the report to mark it as passing. These values
-              do not change the measured results. Choose at least one core metric: if a core metric
-              misses its target the verdict is FAIL, and any other miss makes it a conditional pass.
+              지표마다 넘어야 할 목표값을 정하세요. 이 값은 측정 결과를 바꾸지 않습니다. 핵심 지표를
+              하나 이상 고르세요. 핵심 지표가 목표에 못 미치면 불합격, 그 밖의 지표가 못 미치면
+              조건부 합격입니다.
             </p>
 
             {targetMetrics.length === 0 ? (
               <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-                None of the selected metrics take a pass target.
+                고른 지표 중 목표값을 받는 지표가 없습니다.
               </div>
             ) : (
               <div className="space-y-4">
@@ -133,9 +133,9 @@ export function ReportInfo() {
                   const rule = getTargetValueRule(metric.id);
                   const error =
                     raw.trim() === ""
-                      ? "Target value is required."
+                      ? "목표값을 넣으세요."
                       : parsed === null
-                        ? "Target value must be a valid number."
+                        ? "목표값은 숫자여야 합니다."
                         : rule.validate(parsed);
 
                   return (
@@ -157,7 +157,7 @@ export function ReportInfo() {
                           value={raw}
                           onChange={(event) => updateTarget(metric.id, metric.name, event.target.value)}
                           aria-invalid={Boolean(error)}
-                          aria-label={`${metric.id} target value`}
+                          aria-label={`${metric.id} 목표값`}
                         />
                         {error && <p className="text-xs text-destructive">{error}</p>}
                       </div>
@@ -165,9 +165,9 @@ export function ReportInfo() {
                         <Checkbox
                           checked={coreMetricIds.includes(metric.id)}
                           onCheckedChange={(next) => toggleCore(metric.id, next === true)}
-                          aria-label={`${metric.id} core metric`}
+                          aria-label={`${metric.id} 핵심 지표`}
                         />
-                        Core
+                        핵심
                       </label>
                     </div>
                   );
@@ -176,7 +176,7 @@ export function ReportInfo() {
             )}
 
             {!coreValid && (
-              <p className="text-sm text-destructive">Choose at least one core metric.</p>
+              <p className="text-sm text-destructive">핵심 지표를 하나 이상 고르세요.</p>
             )}
           </CardContent>
         </Card>

@@ -54,7 +54,7 @@ export async function confirmMapping(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Server error: ${response.status}`);
+    throw new Error(errorData.detail || `서버 오류: ${response.status}`);
   }
 
   return response.json();

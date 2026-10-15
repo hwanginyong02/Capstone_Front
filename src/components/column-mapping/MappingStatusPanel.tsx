@@ -61,8 +61,8 @@ export function MappingStatusPanel({
       <Alert className="bg-success-subtle border-success-border text-success-strong">
         <CheckCircle2 className="h-4 w-4 text-success" />
         <AlertDescription>
-          <div className="font-semibold text-success-strong">All required settings are satisfied.</div>
-          <p className="text-success-strong">You can confirm this mapping and continue to validation.</p>
+          <div className="font-semibold text-success-strong">필요한 설정을 모두 마쳤습니다.</div>
+          <p className="text-success-strong">이 매핑을 확정하고 다음으로 넘어갈 수 있습니다.</p>
         </AlertDescription>
       </Alert>
     );
@@ -77,10 +77,10 @@ export function MappingStatusPanel({
               <AlertCircle className="h-5 w-5 text-destructive mt-1" />
               <AlertDescription className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-1">
-                  <div className="font-bold text-lg text-destructive">Missing required columns</div>
+                  <div className="font-bold text-lg text-destructive">필수 컬럼이 빠졌습니다</div>
                   <p className="text-destructive">
-                    {mappingSummary.missingRoles.length} required roles are not assigned yet.
-                    You cannot proceed to the next step.
+                    필수 역할 {mappingSummary.missingRoles.length}개가 아직 지정되지 않았습니다.
+                    다음 단계로 넘어갈 수 없습니다.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-3 shrink-0">
@@ -89,7 +89,7 @@ export function MappingStatusPanel({
                     className="bg-white hover:bg-destructive/10 border-destructive/30 text-destructive font-semibold px-5"
                     onClick={() => setIsResolutionMode(true)}
                   >
-                    Adjust Metrics to Resolve
+                    지표를 조정해 해결
                   </Button>
                   <Button
                     variant="outline"
@@ -97,7 +97,7 @@ export function MappingStatusPanel({
                     onClick={onGoBackToUpload}
                   >
                     <Undo2 className="mr-2 h-4 w-4" />
-                    Go back to Upload
+                    업로드로 돌아가기
                   </Button>
                 </div>
               </AlertDescription>
@@ -120,9 +120,9 @@ export function MappingStatusPanel({
         <Alert variant="destructive" className="bg-warning-subtle border-warning-border text-warning-strong">
           <ShieldAlert className="h-4 w-4 text-warning" />
           <AlertDescription>
-            <div className="font-semibold mb-1 text-warning-strong">Role conflict detected</div>
+            <div className="font-semibold mb-1 text-warning-strong">역할이 겹칩니다</div>
             <p className="text-warning-strong">
-              Some single-use roles are assigned to multiple columns. Each single-use role must be assigned to exactly one column.
+              한 컬럼에만 줄 수 있는 역할이 여러 컬럼에 지정됐습니다. 이런 역할은 정확히 한 컬럼에만 지정해야 합니다.
             </p>
           </AlertDescription>
         </Alert>
@@ -135,9 +135,9 @@ export function MappingStatusPanel({
           <Alert variant="destructive" className="bg-warning-subtle border-warning-border text-warning-strong">
             <AlertCircle className="h-4 w-4 text-warning" />
             <AlertDescription>
-              <div className="font-semibold mb-1 text-warning-strong">Missing positive class</div>
+              <div className="font-semibold mb-1 text-warning-strong">양성 클래스가 없습니다</div>
               <p className="text-warning-strong">
-                Please select the positive class value for the binary classification task.
+                이진 분류의 양성 클래스 값을 고르세요.
               </p>
             </AlertDescription>
           </Alert>

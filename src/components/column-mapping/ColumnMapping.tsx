@@ -3,7 +3,7 @@ import { AlertTriangle, Sparkles } from "lucide-react";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import {
-  TASK_TYPE_LABELS,
+  TASK_TYPE_LABELS_KO,
   METRICS,
   MAPPABLE_ROLES_BY_TASK,
   PREDICTION_ROLE_ALTERNATIVES,
@@ -222,20 +222,20 @@ export function ColumnMapping({
       <main className="px-8 pt-12 pb-24 max-w-[1344px] mx-auto space-y-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">Column mapping review</h1>
+            <h1 className="text-2xl font-bold text-foreground mb-2">컬럼 매핑 확인</h1>
             <p className="text-sm text-muted-foreground">
-              Review and adjust the mapped roles to ensure your dataset is correctly interpreted for evaluation.
+              데이터가 평가에 맞게 읽히도록 매핑된 역할을 확인하고 고치세요.
             </p>
           </div>
           <Badge variant="outline" className="w-fit px-3 py-1 text-sm">
-            {TASK_TYPE_LABELS[resolvedTaskType]} workflow
+            {TASK_TYPE_LABELS_KO[resolvedTaskType]}
           </Badge>
         </div>
 
         <Alert>
           <Sparkles className="h-4 w-4" />
           <AlertDescription>
-            The system has automatically mapped your columns based on their contents. Please review and confirm the assignments before proceeding.
+            컬럼 내용을 보고 역할을 자동으로 매핑했습니다. 넘어가기 전에 확인하고 확정하세요.
           </AlertDescription>
         </Alert>
 

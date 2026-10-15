@@ -68,24 +68,21 @@ export function TrainingExamplesSection({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold">Training data example</CardTitle>
+          <CardTitle className="text-lg font-semibold">학습 데이터 예시</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="rounded-md border border-border bg-muted/60 p-3 flex items-start gap-2">
             <Lightbulb className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
             <div className="space-y-1 text-sm text-muted-foreground">
-              <p>Upload a representative valid training sample that matches the dataset definition.</p>
-              <p>
-                You can also add an edge or unsuitable example to document what should be excluded or
-                reviewed.
-              </p>
+              <p>데이터셋 정의에 맞는 대표 학습 샘플을 올리세요.</p>
+              <p>빼거나 검토해야 할 경계·부적합 예시도 함께 올려 기록할 수 있습니다.</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <ExampleUploadSlot
-              title="Representative valid example"
-              description="A clear sample that should be included in the training dataset."
+              title="적합 예시"
+              description="학습 데이터셋에 들어가야 할 분명한 샘플입니다."
               files={trainingExampleFiles}
               onChoose={() => exampleInputRef.current?.click()}
               onRemove={(index) =>
@@ -94,8 +91,8 @@ export function TrainingExamplesSection({
               onFileDrop={(file) => void addExample(file, onTrainingExampleFilesChange)}
             />
             <ExampleUploadSlot
-              title="Edge or unsuitable example"
-              description="Optional sample that should be excluded, reviewed, or treated with caution."
+              title="부적합 예시"
+              description="빼거나, 검토하거나, 조심해서 다뤄야 할 샘플입니다(선택)."
               files={trainingUnsuitableExampleFiles}
               onChoose={() => unsuitableInputRef.current?.click()}
               onRemove={(index) =>

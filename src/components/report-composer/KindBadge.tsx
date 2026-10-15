@@ -22,7 +22,7 @@ export function KindBadge({ field }: { field: ComposerField }) {
         variant="outline"
         className="rounded-sm border-border text-body-xs font-medium text-muted-foreground"
       >
-        Optional
+        선택
       </Badge>
     );
   }
@@ -36,7 +36,7 @@ export function KindBadge({ field }: { field: ComposerField }) {
       variant="outline"
       className="rounded-sm border-primary bg-primary-subtle text-body-xs font-medium text-primary"
     >
-      Required
+      필수
     </Badge>
   );
 }

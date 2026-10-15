@@ -35,15 +35,15 @@ describe("핵심 지표", () => {
   it("고르지 않았으면 유형별 기본값이 체크돼 있다 — 멀티레이블은 F1·Jaccard", () => {
     renderPage();
 
-    expect(screen.getByRole("checkbox", { name: "M4 core metric" })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "M17 core metric" })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "M2 core metric" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "M4 핵심 지표" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "M17 핵심 지표" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "M2 핵심 지표" })).not.toBeChecked();
   });
 
   it("하나를 켜면 보이는 목록 전체를 사용자의 선택으로 저장한다", async () => {
     renderPage();
 
-    await userEvent.click(screen.getByRole("checkbox", { name: "M2 core metric" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "M2 핵심 지표" }));
 
     expect(useWorkflowStore.getState().composerMetrics.coreMetrics?.choices).toEqual([
       "M4",
@@ -76,14 +76,14 @@ describe("핵심 지표", () => {
       ),
     });
     renderPage();
-    const next = screen.getByRole("button", { name: /View report|Next step/ });
+    const next = screen.getByRole("button", { name: /성적서 보기|다음/ });
     expect(next).toBeEnabled();
 
-    await userEvent.click(screen.getByRole("checkbox", { name: "M4 core metric" }));
-    await userEvent.click(screen.getByRole("checkbox", { name: "M17 core metric" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "M4 핵심 지표" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "M17 핵심 지표" }));
 
     expect(useWorkflowStore.getState().composerMetrics.coreMetrics?.choices).toEqual([]);
-    expect(screen.getByText("Choose at least one core metric.")).toBeInTheDocument();
+    expect(screen.getByText("핵심 지표를 하나 이상 고르세요.")).toBeInTheDocument();
     expect(next).toBeDisabled();
   });
 });
@@ -92,7 +92,7 @@ describe("성적서 용도에 덧붙이는 글 (서술 설계 D26)", () => {
   it("선택지 아래에 글칸이 있고, 적은 글을 저장한다", async () => {
     renderPage();
 
-    await userEvent.type(screen.getByPlaceholderText(/why this report is issued/), "For the Q3 audit");
+    await userEvent.type(screen.getByPlaceholderText(/왜 발급하는지/), "For the Q3 audit");
 
     expect(useWorkflowStore.getState().basicInfo.reportPurposeNote).toBe("For the Q3 audit");
   });

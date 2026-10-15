@@ -36,7 +36,7 @@ function renderPage(hookResult: Record<string, unknown>) {
       <DataValidation />
     </MemoryRouter>
   );
-  return screen.getByRole("button", { name: /Next step/i });
+  return screen.getByRole("button", { name: /^다음$/ });
 }
 
 beforeEach(() => {
@@ -72,7 +72,7 @@ describe("Step 6 평가 실행 게이트", () => {
 
   it("[E-04] 차단된 이유가 화면에 표시된다", () => {
     renderPage({ validationData: null, error: "Failed to fetch" });
-    expect(screen.getByText(/the evaluation cannot run/i)).toBeInTheDocument();
+    expect(screen.getByText(/평가를 실행할 수 없습니다/)).toBeInTheDocument();
   });
 });
 
@@ -102,7 +102,7 @@ describe("6단계 상단 안내 (ISSUES.md B-03·B-04·A-12)", () => {
     renderPage({});
 
     expect(
-      screen.queryByText(/\[Column analysis\]|\[Mapping\]|\[Preprocessing\]/),
+      screen.queryByText(/\[컬럼 분석\]|\[매핑\]|\[전처리\]/),
     ).not.toBeInTheDocument();
   });
 });

@@ -93,7 +93,7 @@ export function TestItems() {
     }
 
     if (!store.rawFile) {
-      setAnalysisError("Evaluation file is missing. Please re-upload it in the evaluation file step.");
+      setAnalysisError("평가 데이터 파일이 없습니다. 평가 데이터 단계에서 다시 올려 주세요.");
       return;
     }
 
@@ -128,12 +128,12 @@ export function TestItems() {
       // ⑤ 는 잠그지 않는다 — 누르면 어느 칸이 비었는지 말해 준다. 지표는 격자가 눈앞에
       // 있어 무엇을 해야 할지 보이므로 종전대로 잠근다.
       nextDisabled={store.selectedMetricIds.length === 0 || betaInvalid || isAnalyzing}
-      nextLabel={isAnalyzing ? "Analyzing columns..." : "Next step"}
+      nextLabel={isAnalyzing ? "컬럼 분석 중…" : "다음"}
       rightAction={<RemainingNotice issues={inputIssues} />}
       leftAction={
         isAnalyzing ? (
           <Button variant="outline" onClick={cancel}>
-            Cancel analysis
+            분석 취소
           </Button>
         ) : undefined
       }

@@ -29,20 +29,21 @@ describe("지표 선택 이유", () => {
   it("멀티레이블에서 묻는다", () => {
     renderScreen("multilabel");
 
-    expect(screen.getByText("Reason for this choice")).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Degree of overlap" })).toBeInTheDocument();
+    expect(screen.getByText("지표 선택 이유")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "겹치는 정도" })).toBeInTheDocument();
   });
 
   it.each(["binary", "multiclass"] as TaskType[])("%s 에서는 묻지 않는다", (taskType) => {
     renderScreen(taskType);
 
-    expect(screen.queryByText("Reason for this choice")).not.toBeInTheDocument();
+    expect(screen.queryByText("지표 선택 이유")).not.toBeInTheDocument();
   });
 
   it("고른 답을 ② 카드 값으로 보고한다", async () => {
     const { onMetricCardChange } = renderScreen("multilabel");
 
-    await userEvent.click(screen.getByRole("radio", { name: "Every label must match" }));
+    // 화면 이름은 한국어지만 저장값은 영어 그대로다(docs/MATERIAL_PICKER.md §8).
+    await userEvent.click(screen.getByRole("radio", { name: "모든 레이블 일치" }));
 
     expect(onMetricCardChange).toHaveBeenCalledWith("metricRationale", {
       text: "Every label must match",
@@ -53,6 +54,6 @@ describe("지표 선택 이유", () => {
   it("Other 를 고르면 직접 적을 칸이 나타난다", () => {
     renderScreen("multilabel", { metricRationale: { text: "Other (own words)" } });
 
-    expect(screen.getByRole("textbox", { name: "Reason for this choice other" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "지표 선택 이유 기타 내용" })).toBeInTheDocument();
   });
 });
