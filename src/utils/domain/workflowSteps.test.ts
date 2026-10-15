@@ -18,12 +18,14 @@ import {
   stepNumberOf,
 } from "./workflowSteps";
 import { DEFAULT_COMPOSER_SELECTION } from "../../types/reportComposer.types";
-import { COMPOSER_CARDS, OPTIONAL_CARD_IDS, presetSelection } from "../../data/reportComposer";
+import { COMPOSER_CARDS, OPTIONAL_CARD_IDS } from "../../data/reportComposer";
 import type { ComposerSelection } from "../../types/reportComposer.types";
 import type { StepId } from "../../types/workflow.types";
 
-const MINIMAL = presetSelection("minimal");
-const FULL = presetSelection("full");
+/** 필수 카드만 — 선택 카드를 하나도 저장하지 않은 상태. */
+const MINIMAL: ComposerSelection = DEFAULT_COMPOSER_SELECTION;
+/** 선택 카드 넷을 모두 넣은 상태. */
+const FULL = Object.fromEntries(OPTIONAL_CARD_IDS.map((id) => [id, true])) as ComposerSelection;
 
 describe("단계 목록", () => {
   it("최소 구성은 6단계다 — 데이터 정보·모델 정보가 빠진다", () => {

@@ -12,8 +12,8 @@ interface ActionBarProps {
   previousLabel?: string;
   leftAction?: React.ReactNode;
   /**
-   * 다음 버튼 **왼쪽**에 놓는 요소. 성적서 구성 화면의 요약 한 줄이 여기 들어간다
-   * (docs/COMPOSER_DESIGN.md "Action Bar").
+   * 다음 버튼 **왼쪽**에 놓는 요소. 입력 화면의 "비어 있는 칸" 한 줄(`RemainingNotice`)이
+   * 여기 들어간다. 배치는 docs/COMPOSER_DESIGN.md "Action Bar" 를 따른다.
    */
   rightAction?: React.ReactNode;
   /** 버튼 높이. 기본 36px, `lg` 는 40px. */

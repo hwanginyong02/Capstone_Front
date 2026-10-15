@@ -17,7 +17,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { StepTabs } from "./StepTabs";
 import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
 import { buildStepList } from "../../utils/domain/workflowSteps";
-import { presetSelection } from "../../data/reportComposer";
+import { DEFAULT_COMPOSER_SELECTION } from "../../types/reportComposer.types";
+
+/** 선택 카드 넷을 모두 넣은 상태 — 재료 고르기에서 넷 다 항목을 골라 저장한 것과 같다. */
+const ALL_OPTIONAL_ON = { trainingData: true, testData: true, groundTruth: true, modelEnv: true };
 
 /** 평가 결과 탭의 접근성 이름. StepTabs 의 라벨과 같아야 한다. */
 const RESULT_TAB = /확인과 생성/;
@@ -86,7 +89,7 @@ describe("칸 수는 고른 카드에서 나온다", () => {
   });
 
   it("전체를 넣으면 8칸이 된다", () => {
-    useWorkflowStore.getState().applyComposerPreset("full");
+    useWorkflowStore.setState({ composerCards: ALL_OPTIONAL_ON });
 
     renderTabs();
 
@@ -96,7 +99,7 @@ describe("칸 수는 고른 카드에서 나온다", () => {
   });
 
   it("평가 관점은 칸을 차지하지 않는다 — 지표 선택 화면 안에 있다", () => {
-    useWorkflowStore.getState().applyComposerPreset("full");
+    useWorkflowStore.setState({ composerCards: ALL_OPTIONAL_ON });
 
     renderTabs();
 
@@ -104,7 +107,7 @@ describe("칸 수는 고른 카드에서 나온다", () => {
   });
 
   it("⑥ 하나만 넣으면 데이터 정보가 생긴다", () => {
-    useWorkflowStore.getState().setComposerCard("trainingData", true);
+    useWorkflowStore.getState().saveMaterialPick("trainingData", ["trainingDatasetName"]);
 
     renderTabs();
 
@@ -113,7 +116,7 @@ describe("칸 수는 고른 카드에서 나온다", () => {
   });
 
   it("발급 단계도 처음부터 보이되 비활성이다", () => {
-    useWorkflowStore.getState().applyComposerPreset("full");
+    useWorkflowStore.setState({ composerCards: ALL_OPTIONAL_ON });
     useWorkflowStore.getState().setCurrentStepId("upload");
 
     renderTabs();
@@ -146,8 +149,7 @@ describe("현재·완료·미래 구분", () => {
   });
 
   it("카드 선택이 바뀌면 같은 단계의 위치가 당겨진다", () => {
-    const store = useWorkflowStore.getState();
-    store.applyComposerPreset("minimal");
+    useWorkflowStore.setState({ composerCards: DEFAULT_COMPOSER_SELECTION });
 
     renderTabs();
 

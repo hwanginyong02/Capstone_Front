@@ -5,7 +5,7 @@ import { todayIsoDate } from "../utils/domain/isoDate";
  * 단계의 안정적인 식별자.
  *
  * 종전에는 단계를 번호(`STEP` 상수 + `STEP_PATHS` 배열 위치)로 가리켰다. 이제 단계 목록이
- * 성적서 구성 화면의 카드 선택에서 **계산되므로**(docs/COMPOSER_COMPONENTS.md "카드별 입력
+ * 재료 고르기에서 고른 카드에서 **계산되므로**(docs/COMPOSER_COMPONENTS.md "카드별 입력
  * 단계"), 번호는 선택이 바뀔 때마다 뜻이 달라진다 — 저장된 진행 표시가 조용히 어긋나는
  * 바로 그 상황이다(docs/WORKFLOW_REDESIGN.md §3.3). 그래서 번호가 아니라 이름으로 가리킨다.
  *

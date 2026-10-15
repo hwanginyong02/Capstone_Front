@@ -26,8 +26,8 @@ import {
 } from "../../types/reportComposer.types";
 
 /**
- * 선택지 한 줄의 모양. 구성 화면의 카드와 같은 규칙이다
- * (`report-composer/ComposerCard.tsx`): 고른 것은 굵은 강조색 테두리 + 강조 배경.
+ * 선택지 한 줄의 모양. 고른 것은 굵은 강조색 테두리 + 강조 배경 — 재료 고르기의 저장 표시와
+ * 같은 색이다(docs/MATERIAL_PICKER.md §10).
  *
  * 줄 전체가 `<label>` 이라 글자를 눌러도 골라진다 — 16px 짜리 표식 하나만 누를 수 있으면
  * 과녁이 너무 작다. 고른 줄은 테두리가 1px 두꺼워지므로 여백을 1px 줄여 줄 높이를 지킨다.

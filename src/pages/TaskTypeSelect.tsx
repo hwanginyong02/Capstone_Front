@@ -27,8 +27,8 @@ export function TaskTypeSelect() {
       store.setBasicInfo((prev) => ({ ...prev, taskType: type }));
     }
 
-    // 유형을 고르면 성적서 구성 화면으로 간다 — 무엇을 넣을지 먼저 정하고 나서야 걸을
-    // 단계가 정해진다(docs/COMPOSER_COMPONENTS.md "카드별 입력 단계").
+    // 유형을 고르면 재료 고르기로 간다 — 무엇을 넣을지 먼저 정하고 나서야 걸을 단계가
+    // 정해진다(docs/MATERIAL_PICKER.md §1).
     navigate("/app/composer");
   };
 

@@ -28,14 +28,20 @@ interface WorkflowShellProps {
   rightAction?: ReactNode;
   buttonSize?: "default" | "lg";
   /**
-   * 단계 탭을 띄울지. 성적서 구성 화면은 **입력 단계에 들어가기 전**이고, 단계 수가 바로 그
-   * 화면의 선택으로 정해지므로 탭을 두지 않는다(docs/COMPOSER_DESIGN.md).
+   * 단계 탭을 띄울지. 재료 고르기 화면은 **입력 단계에 들어가기 전**이고, 단계 수가 바로 그
+   * 화면의 선택으로 정해지므로 탭을 두지 않는다(docs/MATERIAL_PICKER.md §4).
    */
   showStepTabs?: boolean;
   /**
+   * 본문 오른쪽에 붙는 패널(재료 고르기의 "입력 순서", docs/MATERIAL_PICKER.md §4). 이전·다음
+   * 버튼을 이 패널에 두는 화면은 하단 ActionBar 를 끈다. 버튼은 페이지가 조립해 넘긴다 —
+   * 도메인 컴포넌트가 버튼을 직접 들지 않는다(FRONTEND_DEVELOPMENT_GUIDELINE §2).
+   */
+  aside?: ReactNode;
+  /**
    * 이 화면이 워크플로우의 단계인지.
    *
-   * 거짓이면 URL→단계 유도와 진입 가드를 건너뛴다. 구성 화면은 걸을 단계를 **정하는**
+   * 거짓이면 URL→단계 유도와 진입 가드를 건너뛴다. 재료 고르기 화면은 걸을 단계를 **정하는**
    * 화면이라 아직 어느 단계에도 있지 않다.
    */
   isStepPage?: boolean;
@@ -60,14 +66,15 @@ export function WorkflowShell({
   rightAction,
   buttonSize,
   showStepTabs = true,
-  isStepPage = true
+  isStepPage = true,
+  aside,
 }: WorkflowShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const isShowcaseMode = new URLSearchParams(location.search).get("showcase") === "1";
 
   useEffect(() => {
-    // 단계가 아닌 화면(성적서 구성)은 단계 표시를 건드리지 않는다.
+    // 단계가 아닌 화면(재료 고르기)은 단계 표시를 건드리지 않는다.
     if (!isStepPage) return;
 
     const stepId = pathToStepId(location.pathname);
@@ -120,9 +127,18 @@ export function WorkflowShell({
       {/* 워크플로우 안에서는 현재 분류 유형을 계속 보여준다(docs/UI_DESIGN.md §4). */}
       <AppHeader showTaskType />
       {showStepTabs && <StepTabs />}
-      <div className="flex-1 pb-8">
-        {children}
-      </div>
+      {aside ? (
+        <div className="flex flex-1 flex-col lg:flex-row lg:items-stretch">
+          <div className="min-w-0 flex-1 pb-8">{children}</div>
+          <aside className="w-full border-t border-border bg-muted lg:w-80 lg:shrink-0 lg:border-t-0">
+            {aside}
+          </aside>
+        </div>
+      ) : (
+        <div className="flex-1 pb-8">
+          {children}
+        </div>
+      )}
       {showActionBar && !isShowcaseMode && (
         <ActionBar
           showPrevious={showPrevious}

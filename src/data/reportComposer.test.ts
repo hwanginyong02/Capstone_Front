@@ -13,20 +13,22 @@ import { describe, expect, it } from "vitest";
 import {
   COMPOSER_CARDS,
   OPTIONAL_CARD_IDS,
+  MATERIAL_CATEGORIES,
   REQUIRED_CARD_IDS,
+  catalogCards,
   choiceLabel,
   countAdvancedFields,
   entryLabel,
-  countOptionalOn,
+  fieldFormat,
+  fieldParts,
   getCard,
   getCardFields,
   getSelectableMetrics,
   getVisibleCards,
   isStandardReportingField,
-  matchPreset,
-  presetSelection,
+  pickKind,
+  pickableIds,
 } from "./reportComposer";
-import { DEFAULT_COMPOSER_SELECTION } from "../types/reportComposer.types";
 import type { TaskType } from "./evaluationData";
 
 const TASK_TYPES: TaskType[] = ["binary", "multiclass", "multilabel"];
@@ -79,13 +81,6 @@ describe("카드 구성", () => {
     }
   });
 
-  it("보기 버튼은 ① 예시 파일과 ② 지표 목록 둘뿐이다", () => {
-    const withViewer = COMPOSER_CARDS.filter((card) => card.viewer);
-    expect(withViewer.map((card) => [card.id, card.viewer])).toEqual([
-      ["evalData", "csvExample"],
-      ["metrics", "metricList"],
-    ]);
-  });
 });
 
 describe("필드 스키마", () => {
@@ -322,29 +317,94 @@ describe("필수 (표준 보고) 유도", () => {
   });
 });
 
-describe("프리셋과 요약", () => {
-  it("기본값은 프리셋 \"최소 구성\" 이다", () => {
-    // 보지도 않은 카드의 필수 입력을 떠안은 채 시작하지 않는다.
-    expect(matchPreset(DEFAULT_COMPOSER_SELECTION)).toBe("minimal");
-    expect(countOptionalOn(DEFAULT_COMPOSER_SELECTION)).toBe(0);
+describe("재료 고르기 — 대분류와 필드 구분 (docs/MATERIAL_PICKER.md §2·§6)", () => {
+  const fieldOf = (cardId: Parameters<typeof getCard>[0], fieldId: string) => {
+    const field = getCard(cardId).fields.find((item) => item.id === fieldId);
+    if (!field) throw new Error(fieldId);
+    return field;
+  };
+
+  it("대분류 4개가 카드 9장을 빠짐없이 한 번씩 담는다", () => {
+    const ids = MATERIAL_CATEGORIES.flatMap((category) => category.cardIds);
+    expect(MATERIAL_CATEGORIES.map((category) => category.name)).toEqual([
+      "의뢰 정보",
+      "모델",
+      "데이터",
+      "평가 기준",
+    ]);
+    expect([...ids].sort()).toEqual(COMPOSER_CARDS.map((card) => card.id).sort());
   });
 
-  it("최소 구성은 선택 카드를 모두 끈다", () => {
-    const selection = presetSelection("minimal");
-    expect(countOptionalOn(selection)).toBe(0);
-    expect(matchPreset(selection)).toBe("minimal");
+  it("카탈로그 순서가 입력 순서다 — 의뢰자 정보부터 지표와 합격 기준까지", () => {
+    expect(catalogCards("binary").map((card) => card.id)).toEqual([
+      "clientInfo",
+      "model",
+      "modelEnv",
+      "evalData",
+      "trainingData",
+      "testData",
+      "groundTruth",
+      "perspective",
+      "metrics",
+    ]);
   });
 
-  it("전체는 선택 카드를 모두 켠다", () => {
-    const selection = presetSelection("full");
-    expect(countOptionalOn(selection)).toBe(4);
-    expect(matchPreset(selection)).toBe("full");
+  it("선택 카드의 필수 필드는 권장, 필수 카드의 필수 필드는 필수다", () => {
+    expect(pickKind(getCard("trainingData"), fieldOf("trainingData", "trainingDatasetName"))).toBe(
+      "recommended",
+    );
+    expect(pickKind(getCard("clientInfo"), fieldOf("clientInfo", "companyInfo"))).toBe("required");
+    expect(pickKind(getCard("clientInfo"), fieldOf("clientInfo", "projectNumber"))).toBe("optional");
+    expect(pickKind(getCard("groundTruth"), fieldOf("groundTruth", "labelReviewerCount"))).toBe(
+      "conditional",
+    );
   });
 
-  it("일부만 켜면 어느 프리셋과도 같지 않다", () => {
-    const selection = { ...presetSelection("full"), modelEnv: false };
-    expect(countOptionalOn(selection)).toBe(3);
-    expect(matchPreset(selection)).toBeNull();
+  it("권장은 필드 한 줄 단위, 선택은 쪼갠 항목마다 체크한다 — 필수·조건부는 체크하지 않는다", () => {
+    expect(pickableIds("modelEnv", "binary")).toEqual([
+      "algorithm",
+      "hyperparameters",
+      "runtimeEnv",
+      "gpuUsage",
+    ]);
+    expect(pickableIds("clientInfo", "binary")).toEqual([
+      "contactExtra:website",
+      "contactExtra:fax",
+      "projectNumber",
+      "requestDate",
+    ]);
+    expect(pickableIds("perspective", "binary")).toEqual([]);
+  });
+
+  it("모든 필드에 재료 고르기용 설명과 형식이 있다", () => {
+    for (const field of COMPOSER_CARDS.flatMap((card) => card.fields)) {
+      expect(field.description, field.id).toBeTruthy();
+      expect(fieldFormat(field), field.id).toBeTruthy();
+    }
+  });
+
+  it("형식은 선택지의 화면 이름으로 만든다 — 저장값이 드러나지 않는다", () => {
+    expect(fieldFormat(fieldOf("perspective", "usageMode"))).toBe("하나 선택: 실시간 응답 / 일괄 처리");
+    expect(fieldFormat(fieldOf("testData", "preprocessingMatch"))).toBe(
+      "하나 선택: 같음 / 다름 / 모름. 덧붙이는 글 가능",
+    );
+  });
+
+  it("칸이 정해진 필드는 그 칸으로 쪼개 보인다", () => {
+    expect(fieldParts(fieldOf("modelEnv", "runtimeEnv")).map((part) => part.label)).toEqual([
+      "운영체제",
+      "CPU",
+      "GPU",
+      "메모리",
+      "소프트웨어",
+    ]);
+    expect(fieldParts(fieldOf("clientInfo", "companyInfo")).map((part) => part.label)).toEqual([
+      "회사명",
+      "대표자",
+      "사업자등록번호",
+      "전화번호",
+      "주소",
+    ]);
   });
 });
 

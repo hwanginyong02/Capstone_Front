@@ -27,17 +27,24 @@ import {
 } from "../../types/workflow.types";
 import {
   DEFAULT_COMPOSER_SELECTION,
-  type ComposerPreset,
+  type ComposerCardId,
+  type ComposerFieldValue,
   type ComposerSelection,
   type ComposerValueMap,
+  type MaterialPicks,
   type OptionalCardId,
 } from "../../types/reportComposer.types";
-import { presetSelection } from "../../data/reportComposer";
+import {
+  COMPOSER_CARDS,
+  OPTIONAL_CARD_IDS,
+  pickKind,
+  pickableIds,
+} from "../../data/reportComposer";
 
 /**
  * 단계 번호·경로 상수는 이 파일을 떠났다.
  *
- * 단계 목록이 성적서 구성 화면의 카드 선택에서 **계산되므로**, 고정 번호(`STEP`)와 고정
+ * 단계 목록이 재료 고르기에서 고른 카드에서 **계산되므로**, 고정 번호(`STEP`)와 고정
  * 경로 배열(`STEP_PATHS`)이 성립하지 않는다. 카탈로그는 `data/workflowSteps.ts`, 목록 계산과
  * 이동은 `utils/domain/workflowSteps.ts` 에 있다.
  *
@@ -46,7 +53,7 @@ import { presetSelection } from "../../data/reportComposer";
  */
 
 /** persist 스키마 버전. 저장된 상태의 의미가 바뀔 때만 올린다. */
-export const WORKFLOW_PERSIST_VERSION = 11;
+export const WORKFLOW_PERSIST_VERSION = 12;
 
 /**
  * 구 번호 체계(v4 까지)의 1~6 이 가리켰던 단계.
@@ -73,6 +80,7 @@ const LEGACY_STEP_IDS: readonly string[] = [
  */
 const INITIAL_COMPOSER_STATE = {
   composerCards: DEFAULT_COMPOSER_SELECTION,
+  materialPicks: {} as MaterialPicks,
   composerMetrics: {} as ComposerValueMap,
   composerPerspective: {} as ComposerValueMap,
   composerTrainingData: {} as ComposerValueMap,
@@ -270,6 +278,61 @@ function migrateDecisionsV11(next: any): any {
   };
 }
 
+/** 값이 하나라도 들어 있는지. 마이그레이션이 "이미 적은 선택 항목"을 체크해 둘 때 쓴다. */
+function hasAnyValue(value: ComposerFieldValue | undefined): boolean {
+  if (!value) return false;
+  return Boolean(
+    value.unknown ||
+      value.text?.trim() ||
+      value.note?.trim() ||
+      value.otherText?.trim() ||
+      value.choices?.length ||
+      value.entries?.some((entry) => entry.value?.trim()),
+  );
+}
+
+/**
+ * v11 → v12 — 재료 고르기(docs/MATERIAL_PICKER.md §7). 카드마다 무엇을 받을지 저장한 체크
+ * (`materialPicks`)가 생겼다.
+ *
+ * 이미 진행 중인 사용자를 재료 고르기에서 다시 막지 않도록 **지금 상태를 저장된 것으로 옮긴다.**
+ * - 필수 카드는 모두 저장된 것으로 본다. 이미 값을 적은 선택 항목을 체크한다.
+ * - 켜져 있던 선택 카드는 저장된 것으로 보고 권장 항목을 모두 체크한다 — 종전 규칙("카드를 켜면
+ *   표준 보고 항목은 모두 입력")과 같은 뜻이다. 이미 값을 적은 선택 항목도 체크한다.
+ * - 꺼져 있던 선택 카드는 저장하지 않은 것으로 둔다.
+ */
+function migrateMaterialPicksV12(next: any): any {
+  const cards: ComposerSelection = { ...DEFAULT_COMPOSER_SELECTION, ...(next.composerCards ?? {}) };
+  const groups: Partial<Record<ComposerCardId, ComposerValueMap | undefined>> = {
+    metrics: next.composerMetrics,
+    perspective: next.composerPerspective,
+    trainingData: next.composerTrainingData,
+    testData: next.composerTestData,
+    groundTruth: next.composerGroundTruth,
+    modelEnv: next.composerModelEnv,
+  };
+  // ③ 의 선택 항목은 아직 카드 그룹이 아니라 기존 폼(`basicInfo`)에 적힌다.
+  const basicInfo = next.basicInfo ?? {};
+  const filledInBasicInfo: Record<string, boolean> = {
+    "contactExtra:website": Boolean(basicInfo.website?.trim?.()),
+    "contactExtra:fax": Boolean(basicInfo.fax?.trim?.()),
+    projectNumber: Boolean(basicInfo.projectNumber?.trim?.()),
+  };
+
+  const picks: MaterialPicks = {};
+  for (const card of COMPOSER_CARDS) {
+    if (!card.locked && !cards[card.id as OptionalCardId]) continue;
+    const values = groups[card.id] ?? {};
+    picks[card.id] = pickableIds(card.id, next.taskType ?? "").filter((id) => {
+      const field = card.fields.find((item) => item.id === id.split(":")[0]);
+      if (!field) return false;
+      if (pickKind(card, field) === "recommended") return true;
+      return filledInBasicInfo[id] ?? hasAnyValue(values[field.id]);
+    });
+  }
+  return { ...next, materialPicks: picks };
+}
+
 /**
  * 저장된 워크플로우 상태를 현재 규칙으로 옮긴다(순수 함수 — 테스트가 직접 호출한다).
  *
@@ -326,6 +389,9 @@ function migrateDecisionsV11(next: any): any {
  *
  * **v10 → v11**: 전처리 세 칸을 ⑦ 한 칸으로, ⑧ 라벨 일치도를 종류 + 값으로 바꾸고, 성적서 용도에
  * 덧붙이는 글을 더했다(`migrateDecisionsV11`).
+ *
+ * **v11 → v12**: 성적서 구성 화면이 재료 고르기가 됐다. 카드마다 저장한 체크(`materialPicks`)를
+ * 지금 상태에서 만든다(`migrateMaterialPicksV12`).
  */
 export function migrateWorkflowState(persisted: any, version: number): any {
   if (!persisted || version >= WORKFLOW_PERSIST_VERSION) return persisted;
@@ -432,6 +498,11 @@ export function migrateWorkflowState(persisted: any, version: number): any {
     next = migrateDecisionsV11(next);
   }
 
+  // v11 → v12 — 재료 고르기. 지금 상태를 저장된 체크로 옮긴다.
+  if (version < 12) {
+    next = migrateMaterialPicksV12(next);
+  }
+
   return next;
 }
 
@@ -503,12 +574,19 @@ interface WorkflowState {
   lastRunId: string | null;
 
   /**
-   * 성적서 구성 — 선택 카드(⑥~⑨)의 켜짐/꺼짐.
+   * 선택 카드(⑥~⑨)가 성적서에 들어가는지.
    *
-   * 필수 카드(①~⑤)는 끌 수 없어 상태로 들지 않는다. 이 값이 **걸을 단계 목록을 정한다**
-   * (`utils/domain/workflowSteps.ts` 의 `buildStepList`).
+   * 필수 카드(①~⑤)는 늘 들어가 상태로 들지 않는다. 이 값이 **걸을 단계 목록을 정한다**
+   * (`utils/domain/workflowSteps.ts` 의 `buildStepList`). 재료 고르기에서 선택 카드를 저장할 때
+   * 함께 맞춘다(`saveMaterialPick`) — 항목을 하나 이상 골라 저장하면 켜진다.
    */
   composerCards: ComposerSelection;
+
+  /**
+   * 재료 고르기에서 카드마다 저장한 체크(docs/MATERIAL_PICKER.md §7). 키가 없으면 그 카드를
+   * 저장하지 않은 것이다. 저장하지 않은 체크는 화면에만 있고 여기 들지 않는다.
+   */
+  materialPicks: MaterialPicks;
 
   /**
    * 카드별 입력값. 키는 재료 레지스트리의 `field.id` 다(`data/reportComposer.ts`).
@@ -574,9 +652,12 @@ interface WorkflowState {
   setValidationResult: (result: ValidateDataResponseData | null) => void;
   setLastRunId: (runId: string | null) => void;
 
-  // Actions — 성적서 구성
-  setComposerCard: (id: OptionalCardId, on: boolean) => void;
-  applyComposerPreset: (preset: ComposerPreset) => void;
+  // Actions — 재료 고르기
+  /**
+   * 카드 하나의 체크를 저장한다. 선택 카드면 항목이 하나 이상일 때 켜고, 비어 있으면 끈다 —
+   * 아무것도 고르지 않고 저장한 선택 카드는 "넣지 않기로 확정"이다(§7).
+   */
+  saveMaterialPick: (cardId: ComposerCardId, ids: string[]) => void;
   setComposerMetrics: (
     value: ComposerValueMap | ((prev: ComposerValueMap) => ComposerValueMap),
   ) => void;
@@ -695,7 +776,7 @@ export const useWorkflowStore = create<WorkflowState>()(
            * 지표 선택 이유는 멀티레이블에서만 묻는다. 유형이 바뀌면 모두 근거가 사라진다.
            *
            * 카드 선택을 남기는 이유: "어떤 정보를 성적서에 넣을지"는 분류 유형과 무관한
-           * 결정이고, 9개 카드 모두 전 유형에 적용된다. 어차피 유형을 바꾸면 구성 화면을
+           * 결정이고, 9개 카드 모두 전 유형에 적용된다. 어차피 유형을 바꾸면 재료 고르기를
            * 다시 지나가므로 거기서 고칠 수 있다.
            */
           ...EMPTY_COMPOSER_INPUTS,
@@ -754,11 +835,14 @@ export const useWorkflowStore = create<WorkflowState>()(
 
       setLastRunId: (runId) => set({ lastRunId: runId }),
 
-      // 성적서 구성
-      setComposerCard: (id, on) =>
-        set((state) => ({ composerCards: { ...state.composerCards, [id]: on } })),
-
-      applyComposerPreset: (preset) => set({ composerCards: presetSelection(preset) }),
+      // 재료 고르기
+      saveMaterialPick: (cardId, ids) =>
+        set((state) => ({
+          materialPicks: { ...state.materialPicks, [cardId]: ids },
+          ...((OPTIONAL_CARD_IDS as string[]).includes(cardId)
+            ? { composerCards: { ...state.composerCards, [cardId]: ids.length > 0 } }
+            : {}),
+        })),
 
       setComposerMetrics: (value) =>
         set((state) => ({

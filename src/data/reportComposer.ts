@@ -1,12 +1,12 @@
 /**
- * 재료 레지스트리 — 성적서 구성 화면의 단일 출처.
+ * 재료 레지스트리 — 재료 고르기 화면과 입력 화면의 단일 출처.
  *
  * `docs/COMPOSER_COMPONENTS.md` 의 카드 9개(필수 5개, 선택 4개)와 그 안의 필드를 코드가 읽는
- * 설정으로 옮긴 것이다. 구성 화면의 카드·상세 영역·하단 요약, 단계 목록 계산, 필수 입력
- * 점검이 전부 이 파일 하나를 읽는다 — 같은 표를 여러 군데 베껴 두면 문서와 화면이 조용히
- * 어긋난다.
+ * 설정으로 옮긴 것이다. 재료 고르기 화면(docs/MATERIAL_PICKER.md §4)의 대분류·카드·필드, 단계
+ * 목록 계산, 필수 입력 점검이 전부 이 파일 하나를 읽는다 — 같은 표를 여러 군데 베껴 두면
+ * 문서와 화면이 조용히 어긋난다.
  *
- * 쓰는 곳: `components/report-composer/*`(구성 화면), `data/workflowSteps.ts`·
+ * 쓰는 곳: `components/material-picker/*`(재료 고르기), `data/workflowSteps.ts`·
  * `utils/domain/workflowSteps.ts`(단계 목록), `utils/domain/composerFieldGate.ts`(필수 점검).
  *
  * **지표 목록은 여기 두지 않는다.** ② 의 "고를 수 있는 지표"는 `getAvailableMetrics` 가
@@ -18,13 +18,14 @@ import {
   type ComposerCard,
   type ComposerCardId,
   type ComposerField,
-  type ComposerPreset,
-  type ComposerSelection,
+  type FieldPart,
+  type MaterialCategory,
   type OptionalCardId,
+  type PickKind,
 } from "../types/reportComposer.types";
 
 /**
- * 카드 9개. 배열 순서가 화면 순서다(필수 ①~⑤ 한 줄, 선택 ⑥~⑨ 한 줄).
+ * 카드 9개. 배열 순서는 카드 번호 순(①~⑨)이다. 화면과 입력 순서는 `MATERIAL_CATEGORIES` 가 정한다.
  *
  * 카드와 필드를 나눈 기준(COMPOSER_COMPONENTS "카드를 나눈 기준"):
  * 성적서의 절이나 표가 생기고 사라지면 **카드**, 같은 칸의 내용만 바뀌면 **필드**다.
@@ -37,7 +38,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     name: "평가 데이터",
     description: "모델의 예측 결과 파일입니다. 모든 지표를 이 파일로 계산합니다.",
     locked: true,
-    viewer: "csvExample",
     // 파일은 Evaluation File 에서 받고, 컬럼 매핑·양성 클래스·결정 임계값은 Column mapping 에서 확인한다.
     steps: ["upload", "mapping"],
     fields: [
@@ -47,6 +47,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "predictions.csv (CSV 또는 JSON, 20 MiB 이하)",
         kind: "required",
         input: "file",
+        description: "모델이 테스트 데이터에 낸 예측 결과가 담긴 파일입니다.",
+        format: "CSV 또는 JSON 파일 1개, 20 MiB 이하",
         mono: true,
         step: "upload",
         reportSection: "4절",
@@ -59,7 +61,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     name: "지표와 합격 기준",
     description: "어떤 지표로 몇 점이면 합격인지 정합니다.",
     locked: true,
-    viewer: "metricList",
     // 합격 기준과 핵심 지표는 Details 에서 받는다(docs/WORKFLOW_REDESIGN.md §11.2).
     steps: ["metrics", "clientInfo"],
     fields: [
@@ -69,6 +70,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "아래 지표 목록에서 고름 (최소 1개)",
         kind: "required",
         input: "metricSelect",
+        description: "성적서에 넣을 지표입니다. 고른 분류 유형에서 쓸 수 있는 지표 중에 고릅니다.",
+        format: "체크, 최소 1개",
         reportSection: "3절",
         sentToAi: true,
       },
@@ -78,6 +81,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "Accuracy ≥ 0.85",
         kind: "required",
         input: "entries",
+        description: "계산한 지표 값과 비교해 합격을 판정합니다.",
+        format: "지표마다 목표값. 혼동행렬은 면제",
         entryKeysFrom: "metrics",
         mono: true,
         reportSection: "6절",
@@ -90,6 +95,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "conditional",
         conditionLabel: "Fβ를 골랐을 때",
         input: "number",
+        description: "Fβ에서 재현율과 정밀도의 비중을 정합니다. 5절 지표명에 적힙니다.",
         mono: true,
         reportSection: "6절",
       },
@@ -101,6 +107,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "required",
         taskTypes: ["multilabel"],
         input: "single",
+        description: "멀티레이블에서 이 지표들을 고른 이유입니다. 5절 선택 기준 문장이 됩니다.",
         choiceLabels: {
           "Errors weighted evenly": "오차를 고르게 봄",
           "Every label must match": "모든 레이블 일치",
@@ -140,6 +147,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "유형별 기본값: Accuracy · F1 (이진). 최소 1개",
         kind: "required",
         input: "metricSelect",
+        description: "종합 판정에 쓰는 지표입니다. 목표값이 있는 지표 중 최소 1개를 고릅니다.",
+        format: "지표마다 체크. 유형별 기본값이 체크돼 있음",
         step: "clientInfo",
         reportSection: "6절",
         sentToAi: true,
@@ -162,6 +171,14 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           "사업자등록번호: 123-45-67890 · 전화번호: 02-1234-5678 · 주소: 서울시 …",
         kind: "required",
         input: "text",
+        description: "성적서 1절에 들어갑니다. 회사 정보는 AI에 넘기지 않습니다.",
+        parts: [
+          { key: "companyName", label: "회사명", format: "텍스트", description: "의뢰하는 회사의 정식 명칭입니다." },
+          { key: "representative", label: "대표자", format: "텍스트", description: "회사 대표자 이름입니다." },
+          { key: "businessNumber", label: "사업자등록번호", format: "텍스트", description: "회사의 사업자등록번호입니다." },
+          { key: "phone", label: "전화번호", format: "텍스트", description: "회사 연락처입니다." },
+          { key: "address", label: "주소", format: "텍스트", description: "회사 소재지입니다." },
+        ],
         reportSection: "1절",
       },
       {
@@ -170,6 +187,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "내부 검증 / 외부 제출 / 과제 제출 (덧붙이는 글 가능)",
         kind: "required",
         input: "single",
+        description: "1절의 용도 문장이 되고, AI가 서술할 때도 참고합니다.",
         choiceLabels: {
           "Internal review": "내부 검증",
           "External submission": "외부 제출",
@@ -186,6 +204,11 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         conditionLabel: "과제 제출일 때",
         requiredWhen: { field: "reportPurpose", equals: "Project submission" },
         input: "text",
+        description: "1절에 들어갑니다.",
+        parts: [
+          { key: "projectName", label: "과제명", format: "텍스트", description: "1절에 들어갑니다." },
+          { key: "projectAgency", label: "과제 기관", format: "텍스트", description: "과제를 맡긴 기관입니다. 1절에 들어갑니다." },
+        ],
         reportSection: "1절",
       },
       {
@@ -194,6 +217,11 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "https://example.com · 02-1234-5679",
         kind: "optional",
         input: "text",
+        description: "1절 의뢰자 정보에 함께 적힙니다.",
+        parts: [
+          { key: "website", label: "홈페이지", format: "텍스트", description: "회사 웹사이트 주소입니다." },
+          { key: "fax", label: "팩스", format: "텍스트", description: "회사 팩스 번호입니다." },
+        ],
         advanced: true,
         reportSection: "1절",
       },
@@ -203,6 +231,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "2026-PRJ-001",
         kind: "optional",
         input: "text",
+        description: "과제의 관리 번호입니다.",
         advanced: true,
         mono: true,
         reportSection: "1절",
@@ -213,6 +242,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "기본값 오늘",
         kind: "optional",
         input: "date",
+        description: "표지의 시험기간 시작일이 됩니다. 고르지 않으면 오늘 날짜로 들어갑니다.",
         advanced: true,
         reportSection: "1절",
       },
@@ -233,6 +263,11 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "이름: ChurnPredictor · 버전: v1.0.0 (버전 기본값 v1.0.0)",
         kind: "required",
         input: "text",
+        description: "1절, 2절, 4절에 적힙니다.",
+        parts: [
+          { key: "modelName", label: "모델 이름", format: "텍스트", description: "1절, 2절, 4절에 적힙니다." },
+          { key: "versionName", label: "버전", format: "텍스트. 기본값 v1.0.0", description: "모델 이름과 함께 적힙니다." },
+        ],
         mono: true,
         step: "upload",
         reportSection: "2절",
@@ -244,6 +279,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "통신사 고객 이탈 예측",
         kind: "required",
         input: "text",
+        description: "모델이 하는 일입니다. 1절 대상 모델 문장이 됩니다.",
         step: "clientInfo",
         reportSection: "2절",
         sentToAi: true,
@@ -270,6 +306,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "required",
         taskTypes: ["binary"],
         input: "single",
+        description: "놓치는 오류와 잘못 잡는 오류 중 무엇이 더 치명적인지입니다.",
         choiceLabels: {
           "Missed (FN)": "놓침(FN)",
           "False alarm (FP)": "잘못 잡음(FP)",
@@ -295,6 +332,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "required",
         taskTypes: ["multiclass", "multilabel"],
         input: "single",
+        description: "클래스를 어떤 기준으로 중요하게 볼지입니다.",
         choiceLabels: {
           "All equal": "모두 동등",
           "Larger classes first": "큰 클래스 우선",
@@ -317,6 +355,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "실시간 응답 / 일괄 처리",
         kind: "required",
         input: "single",
+        description: "실시간으로 쓰는지, 모아서 한꺼번에 처리하는지입니다.",
         choiceLabels: {
           "Real-time": "실시간 응답",
           Batch: "일괄 처리",
@@ -331,7 +370,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     ],
   },
 
-  // ─── 선택 카드 ⑥~⑨ — 끄면 안의 필수 항목이 "제공되지 않음"으로 찍힌다 ─────────
+  // ─── 선택 카드 ⑥~⑨ — 안의 필수 항목은 재료 고르기에서 "권장"이다. 고르지 않으면 성적서에
+//     "제공되지 않음"으로 찍힌다(docs/MATERIAL_PICKER.md §6) ─────────────────────
   {
     id: "trainingData",
     number: "⑥",
@@ -350,6 +390,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "고객 로그 2024",
         kind: "required",
         input: "text",
+        description: "학습 데이터셋의 이름입니다.",
         allowsUnknown: true,
         reportSection: "7절",
         sentToAi: true,
@@ -365,6 +406,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "사내 CRM 로그 (직접 입력)",
         kind: "required",
         input: "text",
+        description: "학습 데이터를 어디서 얻었는지입니다.",
         allowsUnknown: true,
         reportSection: "7절",
         sentToAi: true,
@@ -375,6 +417,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "학습 12,000건 · 검증 3,000건",
         kind: "required",
         input: "entries",
+        description: "학습과 검증에 쓴 샘플 수입니다.",
         entryLabels: {
           Training: "학습",
           Validation: "검증",
@@ -392,6 +435,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "정상 8,400 / 이탈 3,600 (파일에서 찾은 클래스마다 한 칸)",
         kind: "required",
         input: "entries",
+        description: "클래스별 학습 샘플 수입니다. 평가 데이터의 클래스 목록으로 칸이 만들어집니다.",
         entryKeysFrom: "classes",
         mono: true,
         numeric: true,
@@ -406,6 +450,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           "알려진 것 없음 / 장비 차이 / 전처리 차이 / 수집자 차이 / 수집 환경 차이 / 기타 (복수 선택)",
         kind: "required",
         input: "multi",
+        description: "같은 클래스의 데이터가 서로 다른 장비, 처리 방식, 사람, 환경에서 모였는지입니다.",
         choiceLabels: {
           "None known": "알려진 것 없음",
           "Different equipment": "장비 차이",
@@ -450,6 +495,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "클래스 수 맞춤 / 출처 다양화 / 보정 안 함 / 기타 (복수 선택)",
         kind: "required",
         input: "multi",
+        description: "한쪽 클래스에 몰린 데이터를 보정했는지입니다.",
         choiceLabels: {
           "Balanced the counts": "클래스 수 맞춤",
           "Widened the sources": "출처 다양화",
@@ -477,6 +523,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "2023-01 ~ 2024-12",
         kind: "optional",
         input: "monthRange",
+        description: "학습 데이터를 모은 기간입니다.",
         advanced: true,
         mono: true,
         reportSection: "7절",
@@ -494,6 +541,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "데이터에 무엇이 들었고 어떻게 모았는지 (직접 입력)",
         kind: "optional",
         input: "textarea",
+        description: "학습 데이터에 대한 설명입니다.",
         reportSection: "7절",
       },
       {
@@ -503,6 +551,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "정형 CSV, 이미지(JPG/PNG), 텍스트",
         kind: "optional",
         input: "text",
+        description: "파일 형식이나 구조입니다.",
         advanced: true,
         reportSection: "7절",
       },
@@ -512,6 +561,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "학습 데이터에 대해 그 밖에 알릴 것 (직접 입력)",
         kind: "optional",
         input: "textarea",
+        description: "그 밖에 남길 내용입니다.",
         advanced: true,
         reportSection: "7절",
       },
@@ -535,6 +585,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "2025년 1분기 고객 로그 (직접 입력)",
         kind: "required",
         input: "text",
+        description: "테스트 데이터를 어디서 얻었는지입니다. 3절 평가 데이터셋 표에 들어갑니다.",
         allowsUnknown: true,
         reportSection: "4절",
         sentToAi: true,
@@ -545,6 +596,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "같음 / 다름",
         kind: "required",
         input: "single",
+        description: "출처가 같으면 점수가 실제보다 좋게 나올 수 있어 성적서에 함께 적습니다.",
         choiceLabels: {
           "Same source": "같음",
           "Different source": "다름",
@@ -562,6 +614,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "2025-01 ~ 2025-03",
         kind: "optional",
         input: "monthRange",
+        description: "테스트 데이터를 모은 기간입니다.",
         advanced: true,
         mono: true,
         reportSection: "4절",
@@ -581,6 +634,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "같음 / 다름 / 모름 (덧붙이는 글 가능)",
         kind: "optional",
         input: "single",
+        description: "전처리 내용이 아니라 학습 때와 같은지만 묻습니다.",
         choiceLabels: {
           Same: "같음",
           Different: "다름",
@@ -612,6 +666,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "전문가 / 외부 작업자 / 프로그램·규칙 / 실제 결과 기록 / 기타",
         kind: "required",
         input: "single",
+        description: "정답을 붙인 주체입니다. 실제 결과 기록은 사후에 확인된 결과를 정답으로 쓴 경우입니다.",
         choiceLabels: {
           "Domain experts": "전문가",
           "Outside workers": "외부 작업자",
@@ -644,6 +699,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "복수 교차 검수 / 1인 검수 / 검수 없음",
         kind: "required",
         input: "single",
+        description: "정답을 검토한 방식입니다.",
         choiceLabels: {
           "Several reviewers": "복수 교차 검수",
           "One reviewer": "1인 검수",
@@ -671,6 +727,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         conditionLabel: "복수 교차 검수일 때",
         requiredWhen: { field: "labelReview", equals: "Several reviewers" },
         input: "number",
+        description: "정답을 붙인 사람 수입니다.",
         numberRange: { min: 1, integer: true },
         mono: true,
         reportSection: "4절",
@@ -693,6 +750,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         conditionLabel: "복수 교차 검수일 때",
         requiredWhen: { field: "labelReview", equals: "Several reviewers" },
         input: "single",
+        description: "라벨러가 2명이면 Fleiss의 카파, 3명 이상이면 Cohen의 카파를 고를 수 없습니다.",
         choiceLabels: {
           "Percent agreement": "단순 일치율",
           "Cohen's kappa": "Cohen의 카파",
@@ -748,6 +806,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           },
         ],
         input: "number",
+        description: "라벨러끼리 답이 얼마나 일치했는지입니다.",
+        format: "숫자. 단순 일치율 0~100(%), 카파·알파 −1~1",
         help: "단순 일치율은 0~100(%), 카파와 알파는 −1~1 입니다.",
         numberRangeBy: {
           field: "labelAgreementKind",
@@ -779,6 +839,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "XGBoost",
         kind: "required",
         input: "text",
+        description: "학습에 쓴 알고리즘입니다.",
         mono: true,
         allowsUnknown: true,
         reportSection: "2절",
@@ -790,6 +851,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "max_depth = 6, n_estimators = 300 (한 줄에 하나)",
         kind: "required",
         input: "entries",
+        description: "학습에 쓴 설정값입니다. 4절 환경 표 아래에 들어갑니다.",
         mono: true,
         allowsUnknown: true,
         reportSection: "2절",
@@ -810,6 +872,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "Ubuntu 22.04 · A100 · 64GB · Python 3.11",
         kind: "required",
         input: "entries",
+        description: "모델을 돌린 장비와 소프트웨어입니다. 4절 환경 표에 들어갑니다.",
         entryLabels: {
           "Operating system": "운영체제",
           CPU: "CPU",
@@ -839,6 +902,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "학습 예 / 아니오 · 추론 예 / 아니오",
         kind: "required",
         input: "entries",
+        description: "GPU 같은 가속 장치를 썼는지입니다.",
         entryLabels: {
           Training: "학습",
           Inference: "추론",
@@ -864,7 +928,7 @@ export const REQUIRED_CARD_IDS: ComposerCardId[] = COMPOSER_CARDS.filter((card) 
   (card) => card.id,
 );
 
-/** 선택 카드 — 켜고 끌 수 있다. 배열 순서가 화면 순서다. */
+/** 선택 카드 — 재료 고르기에서 항목을 골라 저장하면 들어간다. 배열 순서는 카드 번호 순이다. */
 export const OPTIONAL_CARD_IDS: OptionalCardId[] = COMPOSER_CARDS.filter(
   (card) => !card.locked,
 ).map((card) => card.id as OptionalCardId);
@@ -920,40 +984,127 @@ export function countAdvancedFields(id: ComposerCardId, taskType: TaskType | "")
 }
 
 /**
- * "필수 (표준 보고)" 인지 — TS 4213 이 성적서에 적으라고 요구하는 항목.
+ * 표준 보고 항목인지 — TS 4213 이 성적서에 적으라고 요구하는 항목.
  *
- * 문서가 네 번째 구분으로 적지만 어느 필드가 그것인지는 **카드가 선택 카드인지로 정해진다**:
- * 선택 카드를 켜면 그 안의 필수 필드는 반드시 입력해야 하고, 모르면 "모름"을 고른다. 카드를
- * 끄거나 "모름"을 고르면 성적서에 "제공되지 않음"으로 찍힌다
- * (COMPOSER_COMPONENTS "구분 규칙" + 열린 결정).
+ * 어느 필드가 그것인지는 **카드가 선택 카드인지로 정해진다**: 선택 카드 안의 필수 필드다.
+ * 재료 고르기에서는 "권장"으로 보이고 항목마다 체크하며 기본은 꺼짐이다. 끈 항목은 성적서에
+ * "제공되지 않음"으로 찍힌다(docs/MATERIAL_PICKER.md §6).
  */
 export function isStandardReportingField(card: ComposerCard, field: ComposerField): boolean {
   return !card.locked && field.kind === "required";
 }
 
-/** 켜져 있는 선택 카드 수. 하단 요약의 "선택 카드 n/4" 에 쓴다. */
-export function countOptionalOn(selection: ComposerSelection): number {
-  return OPTIONAL_CARD_IDS.filter((id) => selection[id]).length;
+/**
+ * 재료 고르기 화면의 대분류 4개와 그 안의 카드(docs/MATERIAL_PICKER.md §2).
+ *
+ * 이 순서가 **카탈로그 순서이자 입력 순서**다(§1). 위 `COMPOSER_CARDS` 는 카드 번호 순(①~⑨)이라
+ * 순서가 다르다 — 번호는 문서와 코드를 잇는 고리로만 남는다.
+ */
+export const MATERIAL_CATEGORIES: MaterialCategory[] = [
+  { id: "info", name: "의뢰 정보", cardIds: ["clientInfo"] },
+  { id: "model", name: "모델", cardIds: ["model", "modelEnv"] },
+  { id: "data", name: "데이터", cardIds: ["evalData", "trainingData", "testData", "groundTruth"] },
+  { id: "criteria", name: "평가 기준", cardIds: ["perspective", "metrics"] },
+];
+
+/** 카드가 속한 대분류. */
+export function categoryOf(cardId: ComposerCardId): MaterialCategory {
+  const category = MATERIAL_CATEGORIES.find((item) => item.cardIds.includes(cardId));
+  if (!category) throw new Error(`Card without a category: ${cardId}`);
+  return category;
 }
 
-/** 프리셋이 만드는 선택 상태. 최소 구성은 필수 5개만, 전체는 선택 4개까지 켠다. */
-export function presetSelection(preset: ComposerPreset): ComposerSelection {
-  const on = preset === "full";
-  return OPTIONAL_CARD_IDS.reduce(
-    (acc, id) => ({ ...acc, [id]: on }),
-    {} as ComposerSelection,
-  );
+/** 카탈로그 순서로 늘어놓은 카드. 이 분류 유형에서 보이는 카드만. */
+export function catalogCards(taskType: TaskType | ""): ComposerCard[] {
+  const visible = new Set(getVisibleCards(taskType).map((card) => card.id));
+  return MATERIAL_CATEGORIES.flatMap((category) => category.cardIds)
+    .filter((id) => visible.has(id))
+    .map(getCard);
+}
+
+/** 재료 고르기 화면에서 이 필드가 속하는 구분(docs/MATERIAL_PICKER.md §4·§6). */
+export function pickKind(card: ComposerCard, field: ComposerField): PickKind {
+  if (field.kind === "conditional") return "conditional";
+  if (field.kind === "optional") return "optional";
+  return isStandardReportingField(card, field) ? "recommended" : "required";
+}
+
+/** 쪼갠 항목 하나의 체크 id. */
+export function partPickId(field: ComposerField, key: string): string {
+  return `${field.id}:${key}`;
+}
+
+/** 선택지 화면 이름을 " / " 로 잇는다. */
+function choiceList(field: ComposerField): string {
+  return (field.choices ?? []).map((choice) => choiceLabel(field, choice)).join(" / ");
 }
 
 /**
- * 현재 상태가 어느 프리셋과 같은지. 어느 쪽도 아니면 `null` —
- * 그때 프리셋 토글은 두 칸 모두 선택 해제로 보인다(COMPOSER_DESIGN "프리셋").
+ * 재료 고르기 화면에서 여러 줄로 쪼개 보일 항목. `parts` 가 없으면 `entryKeys` 에서 만든다
+ * (⑥ 데이터 양의 학습·검증, ⑨ 실행 환경의 운영체제·CPU·…).
  */
-export function matchPreset(selection: ComposerSelection): ComposerPreset | null {
-  const onCount = countOptionalOn(selection);
-  if (onCount === 0) return "minimal";
-  if (onCount === OPTIONAL_CARD_IDS.length) return "full";
-  return null;
+export function fieldParts(field: ComposerField): FieldPart[] {
+  if (field.parts) return field.parts;
+  if (!field.entryKeys) return [];
+  const format = field.choices
+    ? "하나 선택: " + choiceList(field)
+    : field.numeric
+      ? "숫자"
+      : "텍스트";
+  return field.entryKeys.map((key) => ({ key, label: entryLabel(field, key), format }));
+}
+
+/**
+ * 이름 오른쪽에 회색으로 보일 형식(docs/MATERIAL_PICKER.md §8). 레지스트리에 적은 `format` 이
+ * 있으면 그것을, 없으면 입력 방식과 선택지에서 만든다 — 선택지를 고칠 때 형식 문구가 따로
+ * 낡지 않게 한다.
+ */
+export function fieldFormat(field: ComposerField): string {
+  if (field.format) return field.format;
+  const withNote = (base: string) => (field.allowsNote ? base + ". 덧붙이는 글 가능" : base);
+  switch (field.input) {
+    case "file":
+      return "파일";
+    case "text":
+      return "텍스트";
+    case "textarea":
+      return "자유서술";
+    case "date":
+      return "날짜";
+    case "monthRange":
+      return "시작 월과 끝 월";
+    case "number":
+      return field.numberRange?.integer ? `숫자. ${field.numberRange.min} 이상의 정수` : "숫자";
+    case "single":
+      return withNote("하나 선택: " + choiceList(field));
+    case "multi":
+      return withNote("여러 개 선택: " + choiceList(field));
+    case "entries":
+      if (field.entryKeysFrom === "classes") return "클래스마다 숫자";
+      if (field.entryKeysFrom === "metrics") return "지표마다 값";
+      if (field.entryKeys) return fieldParts(field).map((part) => part.label).join(" · ");
+      return "\"이름 = 값\" 줄 추가";
+    case "metricSelect":
+      return "지표 선택";
+  }
+}
+
+/**
+ * 이 카드에서 체크할 수 있는 항목 id 를 화면 순서로(docs/MATERIAL_PICKER.md §6).
+ *
+ * 권장 필드는 필드 한 줄 단위로 체크한다(쪼갠 항목은 나열만 한다). 선택 필드는 하나씩 체크하고,
+ * 쪼갠 항목이 있으면 항목마다 체크한다(③ 홈페이지·팩스). 필수·조건부는 체크하지 않는다.
+ */
+export function pickableIds(cardId: ComposerCardId, taskType: TaskType | ""): string[] {
+  const card = getCard(cardId);
+  return getCardFields(cardId, taskType).flatMap((field) => {
+    const kind = pickKind(card, field);
+    if (kind === "recommended") return [field.id];
+    if (kind === "optional") {
+      return field.parts ? field.parts.map((part) => partPickId(field, part.key)) : [field.id];
+    }
+    return [];
+  });
 }
 
 /**

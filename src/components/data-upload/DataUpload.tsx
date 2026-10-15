@@ -229,9 +229,8 @@ export function DataUpload({
               <TabsTrigger value="json">JSON</TabsTrigger>
             </TabsList>
             <TabsContent value="csv">
-              {/* 성적서 구성 화면 ① 의 "예시 파일 보기"와 **같은 표**다. 같은 파일을 설명하는
-                  자리라 모양도 같아야 한다 — 줄글 덩어리로 두면 쉼표를 세어야 어느 칸이
-                  비었는지 알 수 있다. 안내는 아래에 한 번만 쓰므로 여기서는 끈다. */}
+              {/* 표로 그린다 — 줄글 덩어리로 두면 쉼표를 세어야 어느 칸이 비었는지 알 수 있다.
+                  안내는 아래에 한 번만 쓰므로 여기서는 끈다. */}
               <CsvExampleViewer taskType={resolvedTaskType} showNote={false} />
             </TabsContent>
             <TabsContent value="json">
@@ -240,7 +239,6 @@ export function DataUpload({
               </div>
             </TabsContent>
           </Tabs>
-          {/* 성적서 구성 화면의 "예시 파일 보기" 와 같은 안내다 — 두 화면이 같은 말을 해야 한다. */}
           <p className="text-sm text-muted-foreground">{getComposerColumnNote(resolvedTaskType)}</p>
         </CardContent>
       </Card>

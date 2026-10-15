@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { Navigate, useParams, type Params } from "react-router";
 import { Home } from "./pages/Home";
 import { TaskTypeSelect } from "./pages/TaskTypeSelect";
-import { ReportComposer } from "./pages/ReportComposer";
+import { MaterialPicker } from "./pages/MaterialPicker";
 import { DataInfo } from "./pages/report/DataInfo";
 import { ModelEnv } from "./pages/report/ModelEnv";
 import { ReportInfo } from "./pages/report/ReportInfo";
@@ -35,9 +35,9 @@ export const routes = [
   // 워크플로우 진입점 = 분류 유형 선택(docs/UI_DESIGN.md §3).
   // 종전에는 /app/basic-info 로 바로 리다이렉트해, 유형 선택이 1단계 폼 안에 묻혀 있었다.
   { path: "/app", Component: TaskTypeSelect },
-  // 성적서 구성 — 분류 유형 선택 다음, 입력 단계 시작 전. 단계 번호가 없는 화면이라
-  // STEP_CATALOG 에 넣지 않는다(docs/COMPOSER_DESIGN.md: 이 화면에는 Step Tabs 가 없다).
-  { path: "/app/composer", Component: ReportComposer },
+  // 재료 고르기 — 작업 유형 다음, 입력 단계 시작 전(docs/MATERIAL_PICKER.md §1·§4). 단계가 아닌
+  // 화면이라 STEP_CATALOG 에 넣지 않는다. 경로는 종전 성적서 구성 화면의 것을 그대로 쓴다.
+  { path: "/app/composer", Component: MaterialPicker },
   { path: "/workspaces", Component: WorkspaceList },
   { path: "/workspaces/:workspaceId", Component: WorkspaceDetail },
   // 모델 버전 비교는 폐지됐다(docs/WORKFLOW_REDESIGN.md §11). 저장된 링크가 죽지 않도록
