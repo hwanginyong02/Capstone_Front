@@ -33,6 +33,8 @@ Before generating any UI, read these files in order:
 
 ## Core Layout — Full-width with Top Tab Navigation
 
+> **MATERIAL_PICKER.md로 대체됨** (§4) — 재료 고르기 화면은 3단이다(왼쪽 카탈로그, 가운데 필드, 오른쪽 입력 순서). 이전·다음 버튼도 하단 Action Bar 가 아니라 오른쪽 패널에 있다. 아래는 종전 규칙.
+
 Every main screen uses this single-column, full-width structure:
 
 ```
@@ -121,5 +123,5 @@ Never use casual language, emoji in production copy, or exclamation marks outsid
 - ❌ Do NOT use shadows on default card states. Borders only.
 - ❌ Do NOT use more than ONE accent color per screen. The primary blue is the only accent. *(MATERIAL_PICKER.md로 대체됨, §10 — 유일한 강조색은 네이비다)*
 - ❌ Do NOT use icons decoratively next to text labels. Icons appear only for actions or status.
-- ❌ Do NOT use a left sidebar anywhere in the main workflow.
+- ❌ Do NOT use a left sidebar anywhere in the main workflow. *(MATERIAL_PICKER.md로 대체됨, §4 — 재료 고르기는 왼쪽에 카탈로그를 둔다)*
 - ❌ Do NOT stack more than 3 nested containers.
