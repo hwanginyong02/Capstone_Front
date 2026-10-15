@@ -25,7 +25,7 @@ import { metricNeedsTargetValue } from "../../utils/domain/validation";
  *  multiclass: Accuracy(M1), F1-macro(M4)
  *  multilabel: F1(M4), Jaccard(M17)
  *
- * 사용자는 Details 의 합격 기준 표에서 이것을 바꿀 수 있다(② `coreMetrics`). 고르지 않으면
+ * 사용자는 지표와 합격 기준 화면의 합격 기준 표에서 이것을 바꿀 수 있다(② `coreMetrics`). 고르지 않으면
  * 이 값을 쓴다 — 문서의 기본값과 같다.
  */
 export const DEFAULT_CORE_METRIC_IDS: Record<TaskType, string[]> = {

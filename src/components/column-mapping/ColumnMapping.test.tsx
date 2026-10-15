@@ -57,12 +57,22 @@ describe("Step 5 진행 판정", () => {
     ).toBe(false);
   });
 
-  it("[E-13] 지표가 하나도 선택되지 않았으면 유효하지 않다 — 평가할 대상이 없다", () => {
+  it("지표를 고르기 전에도 정답과 예측이 있으면 유효하다 — 매핑은 지표 선택보다 앞이다", () => {
     expect(
       validityOf({
         taskType: "multiclass",
         selectedMetricIds: [],
         rows: [row("id", "id"), row("t", "y_true"), row("p", "y_pred")],
+      })
+    ).toBe(true);
+  });
+
+  it("지표를 고르기 전에는 정답·예측이 빠지면 유효하지 않다 — 요구 역할이 0개가 되지 않는다", () => {
+    expect(
+      validityOf({
+        taskType: "multiclass",
+        selectedMetricIds: [],
+        rows: [row("id", "id"), row("t", "y_true")],
       })
     ).toBe(false);
   });

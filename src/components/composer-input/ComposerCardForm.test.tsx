@@ -17,7 +17,7 @@ import type { TaskType } from "../../data/evaluationData";
 
 function renderForm(
   cardId: ComposerCardId,
-  options: { taskType?: TaskType; values?: ComposerValueMap } = {},
+  options: { taskType?: TaskType; values?: ComposerValueMap; picks?: string[] } = {},
 ) {
   const taskType = options.taskType ?? "binary";
   const values = options.values ?? {};
@@ -30,7 +30,8 @@ function renderForm(
       taskType={taskType}
       values={values}
       onChange={onChange}
-      issues={getCardIssues(card, taskType, values, true)}
+      issues={getCardIssues(card, taskType, values, true, options.picks)}
+      picks={options.picks}
       // 클래스 이름은 사용자가 올린 파일에서 온다 — 화면 문구와 달리 번역 대상이 아니다.
       classNames={["정상", "이탈"]}
     />,
@@ -164,14 +165,27 @@ describe("칸이 정해진 입력", () => {
 });
 
 describe("더보기", () => {
-  it("선택 항목은 접혀 있다", async () => {
-    renderForm("trainingData");
+  it("재료 고르기에서 체크하지 않은 권장·선택 필드는 그리지 않는다 (MATERIAL_PICKER §5)", () => {
+    renderForm("trainingData", { picks: ["trainingDatasetName"] });
 
+    expect(screen.getByText("데이터 이름")).toBeInTheDocument();
+    expect(screen.queryByText("데이터 출처")).not.toBeInTheDocument();
     expect(screen.queryByText("데이터 형식")).not.toBeInTheDocument();
+  });
 
-    await userEvent.click(screen.getByRole("button", { name: /선택 항목 3개 더 보기/ }));
+  it("체크한 선택 필드는 접지 않고 바로 보인다 — 고른 것 자체가 쓰겠다는 뜻이다", () => {
+    renderForm("trainingData", { picks: ["trainingDataFormat"] });
 
     expect(screen.getByText("데이터 형식")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /더 보기/ })).not.toBeInTheDocument();
+  });
+
+  it("받지 않기로 한 권장 필드는 비어 있어도 막지 않는다 — 성적서에 제공되지 않음으로 찍힌다", () => {
+    const card = getCard("trainingData");
+    expect(getCardIssues(card, "binary", {}, true, [])).toEqual([]);
+    expect(getCardIssues(card, "binary", {}, true, ["trainingDatasetName"]).map((i) => i.fieldId)).toEqual([
+      "trainingDatasetName",
+    ]);
   });
 });
 
@@ -410,16 +424,14 @@ describe("숫자 칸", () => {
 });
 
 describe("수집 기간", () => {
-  it("시작 월·끝 월 두 칸이다", async () => {
+  it("시작 월·끝 월 두 칸이다", () => {
     renderForm("testData");
-
-    await userEvent.click(screen.getByRole("button", { name: /선택 항목 1개 더 보기/ }));
 
     expect(screen.getByLabelText("시작 월")).toHaveAttribute("type", "month");
     expect(screen.getByLabelText("끝 월")).toHaveAttribute("type", "month");
   });
 
-  it("틀린 기간이 더보기 안에 있으면 펼쳐서 보여준다 — 접힌 채로 막히면 찾을 수 없다", () => {
+  it("틀린 기간은 다음을 누르기 전에 바로 알린다", () => {
     renderForm("testData", {
       values: {
         testPeriod: {

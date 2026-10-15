@@ -54,7 +54,7 @@ export function AppHeader({ showTaskType = false }: { showTaskType?: boolean }) 
  * 종전에는 유형을 고르고 나면 화면 어디에도 표시가 없어, 2단계부터는 자기가 무슨 평가를
  * 하는 중인지 알 방법이 없었다.
  *
- * 클릭하면 진입 화면으로 돌아가 유형을 바꿀 수 있는데, `setTaskType` 이 2~6단계 입력을
+ * 클릭하면 진입 화면으로 돌아가 유형을 바꿀 수 있는데, `setTaskType` 이 이후 단계 입력을
  * **전부 리셋**하므로 경고 없이 보내지 않는다. 전용 Dialog 프리미티브가 아직 없어
  * `window.confirm` 을 쓴다 — 되돌릴 수 없는 작업이라 확인 자체가 없는 것보다 낫다.
  */

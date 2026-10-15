@@ -307,6 +307,18 @@ export function getRequiredColumnsForMetric(taskType: TaskType, metricId: string
   return COLUMN_ORDER.filter((code) => columns.has(code)).map((code) => COLUMN_DISPLAY[code]);
 }
 
+/**
+ * 지표를 고르기 전에 매핑에 꼭 필요한 역할 — 정답과 예측. 예측은 확률 컬럼이 있으면 충족된 것으로
+ * 본다(`resolveMissingRoleCodes`). 백엔드 `/api/confirm-mapping` 도 지표 목록이 비면 같은 기준으로
+ * 판정한다(정답은 늘 필수, 예측 또는 확률 중 하나).
+ *
+ * 컬럼 매핑이 지표 선택보다 앞이라(docs/MATERIAL_PICKER.md §3) 매핑 화면은 처음에 이 기준을 쓴다.
+ */
+export function getBaseRequiredColumns(taskType: TaskType): RequiredColumnDisplay[] {
+  void taskType;
+  return [COLUMN_DISPLAY.y_true, COLUMN_DISPLAY.y_pred];
+}
+
 export function getRequiredColumnsForTaskType(taskType: TaskType): RequiredColumnDisplay[] {
   const columns = new Set<RequiredColumnCode>();
   const mapping = REQUIRED_COLUMNS_BY_METRIC[taskType];

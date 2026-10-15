@@ -17,7 +17,7 @@ function renderPage() {
     <MemoryRouter initialEntries={["/app/composer"]}>
       <Routes>
         <Route path="/app/composer" element={<MaterialPicker />} />
-        <Route path="/app/data-upload" element={<div data-testid="upload-step" />} />
+        <Route path="/app/client-info" element={<div data-testid="first-step" />} />
         <Route path="/app" element={<div data-testid="task-type" />} />
       </Routes>
     </MemoryRouter>,
@@ -132,10 +132,10 @@ describe("저장 규칙 (§7)", () => {
     expect(alert).toHaveTextContent("저장하지 않은 필수 카드가 있어요");
     expect(alert).toHaveTextContent("평가 대상 모델, 평가 데이터, 평가 관점, 지표와 합격 기준");
     expect(alert).not.toHaveTextContent("의뢰자 정보");
-    expect(screen.queryByTestId("upload-step")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("first-step")).not.toBeInTheDocument();
   });
 
-  it("필수 카드를 모두 저장하면 오류가 사라지고 첫 입력 단계로 간다", async () => {
+  it("필수 카드를 모두 저장하면 오류가 사라지고 첫 입력 단계(의뢰자 정보)로 간다", async () => {
     renderPage();
     await userEvent.click(screen.getByRole("button", { name: "다음" }));
     expect(screen.getByRole("alert")).toBeInTheDocument();
@@ -147,7 +147,7 @@ describe("저장 규칙 (§7)", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "다음" }));
-    expect(screen.getByTestId("upload-step")).toBeInTheDocument();
+    expect(screen.getByTestId("first-step")).toBeInTheDocument();
   });
 
   it("항목을 골라 저장한 선택 카드는 입력 순서에 들어가고 단계가 생긴다", async () => {

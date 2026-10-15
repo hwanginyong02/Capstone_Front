@@ -8,6 +8,8 @@
  *   ① `getRequiredColumnsForSelection` 은 selectedMetricIds 를 순회해 요구 역할을 모은다.
  *      지표가 하나도 없으면 요구 역할이 **0개**가 되고, 그러면 missingRoles 도 [] 라
  *      "빠진 역할 없음 = 유효"로 통과한다. '행이 있는가'를 보는 조건이 없다.
+ *      (지금은 매핑이 지표 선택보다 앞이라, 지표가 없으면 정답·예측을 요구 역할로 본다 —
+ *      `getBaseRequiredColumns`. 지표가 없다는 것만으로는 막지 않는다. docs/MATERIAL_PICKER.md §3)
  *   ② `taskType` 이 "" 이면 `resolvedTaskType` 이 "multiclass" 로 둔갑해
  *      **binary 전용 검사(positiveClass)까지 건너뛴다.**
  *
@@ -22,7 +24,6 @@ import type { TaskType } from "../../data/evaluationData";
 export type MappingValidityReason =
   | "ok"
   | "no_task_type"
-  | "no_metrics"
   | "no_mapped_rows"
   | "duplicate_roles"
   | "missing_roles"
@@ -31,7 +32,6 @@ export type MappingValidityReason =
 export interface MappingValidityInput {
   /** 원본 taskType. "" 를 다른 값으로 둔갑시켜 넘기면 안 된다. */
   taskType: TaskType | "";
-  selectedMetricIds: string[];
   /** confirmedRole 이 있고 'ignore' 가 아닌 행의 수. */
   assignedRoleCount: number;
   /** 요구되지만 배정되지 않은 역할 코드. */
@@ -45,12 +45,10 @@ export interface MappingValidityInput {
 /**
  * 진행 차단 사유. "ok" 이외는 전부 '다음'을 막는다.
  *
- * 순서가 의미를 갖는다 — 작업 유형이 없으면 요구 역할 자체를 계산할 수 없고,
- * 지표가 없으면 무엇을 매핑해야 하는지도 정해지지 않는다.
+ * 순서가 의미를 갖는다 — 작업 유형이 없으면 요구 역할 자체를 계산할 수 없다.
  */
 export function getMappingValidityReason(input: MappingValidityInput): MappingValidityReason {
   if (!input.taskType) return "no_task_type";
-  if (input.selectedMetricIds.length === 0) return "no_metrics";
   if (input.assignedRoleCount === 0) return "no_mapped_rows";
   if (input.duplicateRoleCount > 0) return "duplicate_roles";
   if (input.missingRoleCodes.length > 0) return "missing_roles";
@@ -72,8 +70,6 @@ export function describeMappingValidity(
     // (업로드는 4단계였다가 1단계가 됐다) 문자열은 같이 안 바뀌어 조용히 거짓말이 된다.
     case "no_task_type":
       return "분류 유형이 정해지지 않았습니다. 작업 유형 화면에서 다시 시작하세요.";
-    case "no_metrics":
-      return "고른 지표가 없습니다. 지표와 합격 기준 단계에서 고르세요.";
     case "no_mapped_rows":
       return "역할이 지정된 컬럼이 없습니다. 평가 데이터 단계에서 파일을 다시 올리세요.";
     case "duplicate_roles":

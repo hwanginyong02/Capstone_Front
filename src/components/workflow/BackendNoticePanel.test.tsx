@@ -40,7 +40,7 @@ describe("BackendNoticePanel", () => {
 });
 
 describe("배선 — 만들어 두고 붙이지 않는 실수 차단", () => {
-  it("6단계 화면에 마운트돼 있다", () => {
+  it("검증 화면에 마운트돼 있다", () => {
     const source = read("pages/DataValidation.tsx");
     expect(source).toContain("<BackendNoticePanel");
     expect(source).toContain("store.columnNotes");
@@ -55,9 +55,9 @@ describe("배선 — 만들어 두고 붙이지 않는 실수 차단", () => {
 
   it("컬럼 분석 응답의 column_notes 를 store 로 나른다", () => {
     expect(read("hooks/useColumnAnalysis.ts")).toContain("result.column_notes");
-    // 분석은 매핑 **직전** 단계에서 돈다(2026-09-19 재배치). 업로드에서 돌리면 결과가
-    // 필요 없는 지표 선택 화면으로 가려고 최대 150초를 기다리게 된다.
-    expect(read("pages/TestItems.tsx")).toContain("setColumnNotes");
+    // 분석은 매핑 **직전** 단계에서 돈다. 매핑이 업로드 바로 다음이라 업로드의 '다음'이다
+    // (docs/MATERIAL_PICKER.md §3).
+    expect(read("pages/DataUpload.tsx")).toContain("setColumnNotes");
   });
 
   it("매핑 확정 응답의 warnings·available_metric_ids 를 store 로 나른다", () => {

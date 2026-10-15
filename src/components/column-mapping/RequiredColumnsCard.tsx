@@ -29,7 +29,7 @@ export function RequiredColumnsCard({
       <CardHeader>
         <CardTitle className="text-lg font-semibold">필수 컬럼</CardTitle>
         <CardDescription className="text-sm text-muted-foreground">
-          고른 평가 지표에 필요한 컬럼입니다. 이 역할마다 데이터의 컬럼을 하나씩 지정해야 합니다.
+          이 역할마다 데이터의 컬럼을 하나씩 지정해야 합니다.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -37,7 +37,8 @@ export function RequiredColumnsCard({
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              아직 고른 지표가 없어 분류 유형 기준으로만 보여 줍니다.
+              지표는 뒤의 "지표와 합격 기준" 단계에서 고릅니다. 지금은 평가에 꼭 필요한 정답과
+              예측(또는 확률) 컬럼만 확인합니다. 확률 컬럼이 있어야 AUROC 같은 곡선 지표를 고를 수 있습니다.
             </AlertDescription>
           </Alert>
         )}

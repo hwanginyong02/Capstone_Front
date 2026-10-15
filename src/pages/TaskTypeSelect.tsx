@@ -23,7 +23,7 @@ export function TaskTypeSelect() {
 
     if (store.taskType !== type) {
       store.setTaskType(type);
-      // basicInfo.taskType 도 함께 맞춘다 — 성적서 렌더와 1단계 유효성 판정이 이 값을 본다.
+      // basicInfo.taskType 도 함께 맞춘다 — 성적서 렌더와 입력 단계 유효성 판정이 이 값을 본다.
       store.setBasicInfo((prev) => ({ ...prev, taskType: type }));
     }
 

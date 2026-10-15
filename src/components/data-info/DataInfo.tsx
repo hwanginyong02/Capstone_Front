@@ -1,8 +1,8 @@
 /**
- * ⑥ 학습 데이터 · ⑦ 테스트 데이터 · ⑧ 정답 라벨 — 켠 카드만.
+ * ⑥ 학습 데이터 · ⑦ 테스트 데이터 · ⑧ 정답 라벨 — 넣은 카드만.
  *
- * 셋 중 하나라도 켜면 이 단계가 생기고, 켠 카드의 폼만 그린다
- * (docs/COMPOSER_COMPONENTS.md "카드별 입력 단계"). 셋을 한 화면에 묶은 이유는 같은
+ * 셋 중 하나라도 넣으면 이 단계가 생기고, 넣은 카드의 폼만 카드 순서대로 그린다
+ * (docs/MATERIAL_PICKER.md §5). 셋을 한 화면에 묶은 이유는 같은
  * 데이터 이야기이고, 각각을 단계로 쪼개면 성적서까지 가는 길이 두 화면 더 길어지기 때문이다.
  *
  * ⑥ 의 클래스별 데이터 양은 **업로드한 파일의 클래스 목록으로 칸을 만든다** — 그래서 이
@@ -24,8 +24,10 @@ export const DATA_INFO_CARDS: ComposerCardId[] = ["trainingData", "testData", "g
 
 interface DataInfoProps {
   taskType: TaskType | "";
-  /** 켜져 있어 그릴 카드. 하나도 없으면 이 단계 자체가 목록에 없다. */
+  /** 넣어서 그릴 카드. 하나도 없으면 이 단계 자체가 목록에 없다. */
   includedCards: ComposerCardId[];
+  /** 재료 고르기에서 카드마다 저장한 체크. 체크하지 않은 권장·선택 필드는 그리지 않는다. */
+  picksOf?: (cardId: ComposerCardId) => readonly string[] | undefined;
   valuesOf: (cardId: ComposerCardId) => ComposerValueMap;
   onChange: (cardId: ComposerCardId, fieldId: string, next: ComposerFieldValue) => void;
   issues: FieldIssue[];
@@ -43,6 +45,7 @@ interface DataInfoProps {
 export function DataInfo({
   taskType,
   includedCards,
+  picksOf = () => undefined,
   valuesOf,
   onChange,
   issues,
@@ -69,6 +72,7 @@ export function DataInfo({
             issues={issues.filter((issue) => issue.cardId === id)}
             classNames={classNames}
             showErrors={showErrors}
+            picks={picksOf(id)}
           />
           {afterCard[id]}
         </div>

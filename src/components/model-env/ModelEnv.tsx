@@ -1,11 +1,11 @@
 /**
  * ⑨ 모델 설정과 실행 환경.
  *
- * 선택 카드라 켰을 때만 이 단계가 생긴다. 켰으면 안의 필수 항목은 반드시 입력하고, 모르면
- * "모름"을 고른다(docs/COMPOSER_COMPONENTS.md 열린 결정).
+ * 선택 카드라 재료 고르기에서 항목을 골라 저장했을 때만 이 단계가 생긴다. 고른 항목만 받고,
+ * 받기로 한 항목은 비울 수 없으며 모르면 "모름"을 고른다(docs/MATERIAL_PICKER.md §6).
  *
- * 기존 `basicInfo.env*` 와 내용이 겹치지만 그쪽은 성적서를 그리는 데 쓰이므로 건드리지 않았다.
- * 중복 정리는 별도 작업이다.
+ * 실행 환경 다섯 칸은 성적서가 `basicInfo.env*` 로 옮겨 읽는다(`buildReportInput`). 종전의
+ * Details "시험 환경" 폼은 없앴다 — 같은 값을 두 곳에서 받던 중복이다.
  */
 import { ComposerCardForm } from "../composer-input/ComposerCardForm";
 import { getCard } from "../../data/reportComposer";
@@ -20,6 +20,8 @@ interface ModelEnvProps {
   issues: FieldIssue[];
   /** 빈 필수 칸을 빨갛게 칠할지. 페이지가 다음을 누른 뒤에 켠다. */
   showErrors?: boolean;
+  /** 재료 고르기에서 ⑨ 에 저장한 체크. */
+  picks?: readonly string[];
 }
 
 export function ModelEnv({
@@ -28,6 +30,7 @@ export function ModelEnv({
   onChange,
   issues,
   showErrors = false,
+  picks,
 }: ModelEnvProps) {
   return (
     <main className="mx-auto max-w-[1344px] space-y-6 px-8 pt-12 pb-24">
@@ -45,6 +48,7 @@ export function ModelEnv({
         onChange={onChange}
         issues={issues}
         showErrors={showErrors}
+        picks={picks}
       />
     </main>
   );

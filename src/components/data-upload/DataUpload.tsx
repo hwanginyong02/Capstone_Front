@@ -1,25 +1,19 @@
 /**
- * 평가 데이터 업로드 (평가 구간 1단계).
+ * ① 평가 데이터 — 결과 파일 업로드. 다음 단계가 컬럼 매핑이다.
  *
  * **지표 선택보다 앞선다.** 그래서 "선택한 지표가 요구하는 컬럼"을 보여줄 수 없고,
  * `getRequiredColumnsForTaskType` 로 **분류 유형이 쓸 수 있는 컬럼 전체**를 안내한다.
  * 확률 컬럼을 포함한 예시를 기본으로 보여주는 것도 같은 이유다 — 나중에 "확률이 없어서
  * AUROC 를 못 쓴다"를 알게 되는 것보다, 처음에 넣을 수 있게 알려주는 편이 낫다.
  *
- * 학습 데이터셋 정보는 이 화면에 없다. 평가에 쓰이지 않고 성적서 3절을 채우는 값이라
- * 성적서 구간으로 옮겼다(docs/WORKFLOW_REDESIGN.md).
- *
- * **모델명·버전만은 예외적으로 여기 남는다.** 나머지 기관 정보와 함께 성적서 구간으로
- * 보냈더니, 평가만 하고 끝낸 run 이 전부 `"Untitled model"` 로 저장됐다. 그러면
- * 워크스페이스에서 모델별로 묶을 수도, 버전 간 성능을 비교할 수도 없다 — 이 둘은
- * 성적서 서식용 값이 아니라 **평가 결과를 식별하는 이름표**다.
+ * 모델 이름·버전은 이 화면에 없다 — ④ 평가 대상 모델 단계가 먼저 받는다(docs/MATERIAL_PICKER.md
+ * §5). 종전에는 run 을 식별하는 이름표라 여기서 받았는데, 이제 그 단계가 이 화면보다 앞이다.
  */
 import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import { AlertTriangle, FileText, Upload } from "lucide-react";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Input } from "../ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import {
   getRequiredColumnsForTaskType,
@@ -34,7 +28,6 @@ import {
 import { CsvExampleViewer } from "./CsvExampleViewer";
 import { MAX_UPLOAD_LABEL, checkUploadSize } from "../../lib/upload/uploadLimits";
 import {
-  Field,
   SelectedFileCard,
   UploadDropzone,
   toUploadedFileInfo,
@@ -45,10 +38,6 @@ interface DataUploadProps {
   taskType: TaskType | "";
   uploadedFile: UploadedFileInfo | null;
   onUploadedFileChange: (value: UploadedFileInfo | null, rawFile?: File) => void;
-  modelName: string;
-  versionName: string;
-  onModelNameChange: (value: string) => void;
-  onVersionNameChange: (value: string) => void;
   /**
    * 파일 **메타**는 복원됐지만 원본(File 객체)이 없는 상태.
    * 과거 평가를 편집하거나 새로고침한 뒤에 생긴다(ISSUES.md E-01·E-09).
@@ -61,33 +50,19 @@ interface DataUploadProps {
  *
  * **원본 File 객체가 있어야 한다.** 메타(`uploadedFile`)만 보면 안 된다 — 과거 평가를
  * 편집해 들어오면 메타는 복원되지만 원본은 복원할 수 없어서, 화면은 "파일 있음"으로
- * 보이는데 '다음'에서 "Evaluation file is missing" 이 뜬다(사용자 보고, 2026-09-19).
- *
- * 모델명·버전도 여기서 막는다. 빈 채로 통과하면 run 이 `"Untitled model"` 로 저장돼
- * 워크스페이스에서 다른 모델들과 한 덩어리로 묶인다 — 나중에 고칠 수단도 없다.
+ * 보이는데 '다음'에서 "파일이 없습니다"가 뜬다(사용자 보고, 2026-09-19).
  */
 export function isEvaluationDataUploadValid(
   uploadedFile: UploadedFileInfo | null,
   hasRawFile: boolean,
-  modelName: string,
-  versionName: string,
 ) {
-  return (
-    uploadedFile !== null &&
-    hasRawFile &&
-    modelName.trim() !== "" &&
-    versionName.trim() !== ""
-  );
+  return uploadedFile !== null && hasRawFile;
 }
 
 export function DataUpload({
   taskType,
   uploadedFile,
   onUploadedFileChange,
-  modelName,
-  versionName,
-  onModelNameChange,
-  onVersionNameChange,
   needsReupload = false,
 }: DataUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -138,38 +113,9 @@ export function DataUpload({
       <div>
         <h1 className="text-2xl font-bold text-foreground mb-2">평가 데이터</h1>
         <p className="text-sm text-muted-foreground">
-          평가할 모델의 이름을 적고 예측 결과가 담긴 파일을 올리세요. 다음 단계에서 컬럼을
-          매핑합니다.
+          모델이 낸 예측 결과 파일을 올리세요. 다음 단계에서 컬럼을 매핑합니다.
         </p>
       </div>
-
-      {/* 모델명·버전은 평가 결과의 이름표다 — 워크스페이스 목록과 성적서 2절에 이 이름으로 찍힌다. */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-semibold">모델</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            모델 이름과 버전은 워크스페이스에서 이 평가를 가리키는 이름이고, 성적서에도 적힙니다.
-          </p>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <Field label="모델 이름" required>
-              <Input
-                value={modelName}
-                onChange={(event) => onModelNameChange(event.target.value)}
-                placeholder="예: 표면 결함 검출기"
-              />
-            </Field>
-            <Field label="버전" required>
-              <Input
-                value={versionName}
-                onChange={(event) => onVersionNameChange(event.target.value)}
-                placeholder="예: v1.0.0"
-              />
-            </Field>
-          </div>
-        </CardContent>
-      </Card>
 
       {sizeError && (
         <Alert variant="destructive">

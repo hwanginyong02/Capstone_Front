@@ -82,28 +82,29 @@ describe("평가 결과 탭", () => {
 });
 
 describe("칸 수는 고른 카드에서 나온다", () => {
-  it("기본(필수 카드만)이면 6칸이다", () => {
+  it("기본(필수 카드만)이면 8칸이다", () => {
     renderTabs();
 
-    expect(screen.getAllByRole("button")).toHaveLength(6);
+    expect(screen.getAllByRole("button")).toHaveLength(8);
   });
 
-  it("전체를 넣으면 8칸이 된다", () => {
+  it("전체를 넣으면 10칸이 된다", () => {
     useWorkflowStore.setState({ composerCards: ALL_OPTIONAL_ON });
 
     renderTabs();
 
-    expect(screen.getAllByRole("button")).toHaveLength(8);
+    expect(screen.getAllByRole("button")).toHaveLength(10);
     expect(screen.getByRole("button", { name: /데이터 정보/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /모델 설정과 실행 환경/ })).toBeInTheDocument();
   });
 
-  it("평가 관점은 칸을 차지하지 않는다 — 지표 선택 화면 안에 있다", () => {
-    useWorkflowStore.setState({ composerCards: ALL_OPTIONAL_ON });
-
+  it("평가 관점은 지표와 합격 기준 바로 앞 칸이다 (docs/MATERIAL_PICKER.md §3)", () => {
     renderTabs();
 
-    expect(screen.queryByRole("button", { name: /평가 관점/ })).not.toBeInTheDocument();
+    const labels = screen.getAllByRole("button").map((button) => button.textContent);
+    const perspective = labels.findIndex((label) => label?.includes("평가 관점"));
+    expect(perspective).toBeGreaterThan(-1);
+    expect(labels[perspective + 1]).toContain("지표와 합격 기준");
   });
 
   it("⑥ 하나만 넣으면 데이터 정보가 생긴다", () => {
@@ -111,37 +112,38 @@ describe("칸 수는 고른 카드에서 나온다", () => {
 
     renderTabs();
 
-    expect(screen.getAllByRole("button")).toHaveLength(7);
+    expect(screen.getAllByRole("button")).toHaveLength(9);
     expect(screen.getByRole("button", { name: /데이터 정보/ })).toBeInTheDocument();
   });
 
-  it("발급 단계도 처음부터 보이되 비활성이다", () => {
+  it("뒤 단계도 처음부터 보이되 비활성이다", () => {
     useWorkflowStore.setState({ composerCards: ALL_OPTIONAL_ON });
     useWorkflowStore.getState().setCurrentStepId("upload");
 
     renderTabs();
 
-    // 평가만 하려는 사용자에게도 앞으로 무엇이 있는지는 보여준다.
+    // 앞으로 무엇이 있는지는 보여준다.
     expect(screen.getByRole("button", { name: /데이터 정보/ })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /의뢰자 정보/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /지표와 합격 기준/ })).toBeDisabled();
   });
 });
 
 describe("현재·완료·미래 구분", () => {
-  it("마친 단계는 누를 수 있다", async () => {
+  it("마친 단계는 누를 수 있다", () => {
     const store = useWorkflowStore.getState();
-    store.markStepIdCompleted("upload");
-    store.setCurrentStepId("metrics");
+    store.markStepIdCompleted("clientInfo");
+    store.setCurrentStepId("model");
 
     renderTabs();
 
-    expect(screen.getByRole("button", { name: /평가 데이터/ })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: /의뢰자 정보/ })).not.toBeDisabled();
   });
 
   it("아직 안 간 단계는 누를 수 없다", () => {
     const store = useWorkflowStore.getState();
-    store.markStepIdCompleted("upload");
-    store.setCurrentStepId("metrics");
+    store.markStepIdCompleted("clientInfo");
+    store.markStepIdCompleted("model");
+    store.setCurrentStepId("upload");
 
     renderTabs();
 
@@ -149,14 +151,23 @@ describe("현재·완료·미래 구분", () => {
   });
 
   it("카드 선택이 바뀌면 같은 단계의 위치가 당겨진다", () => {
+    const position = (name: string) =>
+      screen.getAllByRole("button").findIndex((button) => button.textContent?.includes(name));
+
+    useWorkflowStore.setState({ composerCards: ALL_OPTIONAL_ON });
+    const { unmount } = render(
+      <MemoryRouter initialEntries={["/app/data-upload"]}>
+        <StepTabs />
+      </MemoryRouter>,
+    );
+    // 전체에서는 ⑨ 모델 설정이 평가 데이터 앞에 있다.
+    expect(position("평가 데이터")).toBe(3);
+    unmount();
+
     useWorkflowStore.setState({ composerCards: DEFAULT_COMPOSER_SELECTION });
-
     renderTabs();
-
-    // 최소 구성에서는 성적서가 6번째 칸이다(전체에서는 8번째). 의뢰자 정보는 선택 카드
-    // 단계보다 앞이라 어느 구성에서든 5번째다(docs/WORKFLOW_REDESIGN.md §11).
-    const labels = screen.getAllByRole("button").map((button) => button.textContent);
-    expect(labels.findIndex((label) => label?.includes("확인과 생성"))).toBe(5);
-    expect(labels.findIndex((label) => label?.includes("의뢰자 정보"))).toBe(4);
+    // 최소 구성에서는 한 칸 당겨진다. 성적서는 8번째 칸이다.
+    expect(position("평가 데이터")).toBe(2);
+    expect(position("확인과 생성")).toBe(7);
   });
 });

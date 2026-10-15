@@ -3,9 +3,11 @@ import { Navigate, useParams, type Params } from "react-router";
 import { Home } from "./pages/Home";
 import { TaskTypeSelect } from "./pages/TaskTypeSelect";
 import { MaterialPicker } from "./pages/MaterialPicker";
-import { DataInfo } from "./pages/report/DataInfo";
-import { ModelEnv } from "./pages/report/ModelEnv";
-import { ReportInfo } from "./pages/report/ReportInfo";
+import { ClientInfo } from "./pages/ClientInfo";
+import { ModelInfo } from "./pages/ModelInfo";
+import { ModelEnv } from "./pages/ModelEnv";
+import { DataInfo } from "./pages/DataInfo";
+import { Perspective } from "./pages/Perspective";
 import { TestItems } from "./pages/TestItems";
 import { DataUpload } from "./pages/DataUpload";
 import { ColumnMapping } from "./pages/ColumnMapping";
@@ -46,26 +48,28 @@ export const routes = [
     path: "/workspaces/:workspaceId/models/:modelName",
     Component: redirectWithParams(({ workspaceId }) => "/workspaces/" + (workspaceId ?? "")),
   },
-  // 평가 구간. **이 배열의 순서는 단계 순서가 아니다** — 걸을 순서는 고른 카드에서
-  // 계산되고, 정본 순서는 `data/workflowSteps.ts` 의 STEP_CATALOG 에 있다.
-  // (종전 주석은 "배열 순서 = 단계 번호"라고 적었는데 그때도 사실이 아니었다.)
+  // 재료 입력. **이 배열의 순서는 단계 순서가 아니다** — 걸을 순서는 고른 카드에서
+  // 계산되고, 정본 순서는 `data/workflowSteps.ts` 의 STEP_CATALOG 에 있다(카드 순서,
+  // docs/MATERIAL_PICKER.md §3). run 은 검증에서 생기므로 그 앞의 화면은 모두 `/app/*` 다.
+  { path: "/app/client-info", Component: ClientInfo },
+  { path: "/app/model", Component: ModelInfo },
+  { path: "/app/model-env", Component: ModelEnv },
   { path: "/app/data-upload", Component: DataUpload },
   { path: "/app/column-mapping", Component: ColumnMapping },
+  { path: "/app/data-info", Component: DataInfo },
+  { path: "/app/perspective", Component: Perspective },
   { path: "/app/metrics", Component: TestItems },
   { path: "/app/data-validation", Component: DataValidation },
-  // 성적서 입력 — 검증에서 run 이 생긴 뒤라 run id 경로에 둔다. Details 는 항상,
-  // Data info·Model info 는 켠 카드에 따라 나타난다.
-  { path: "/report/:id/issue-info", Component: ReportInfo },
-  { path: "/report/:id/data-info", Component: DataInfo },
-  { path: "/report/:id/model-env", Component: ModelEnv },
+  // 의뢰자 정보·데이터 정보·모델 설정은 종전에 run 에 매인 경로(`/report/:id/*`)였다. 검증보다
+  // 앞으로 오면서 `/app/*` 로 옮겼다(§5). 저장된 링크·북마크가 죽지 않도록 그쪽으로 보낸다.
+  { path: "/report/:id/issue-info", Component: redirectTo("/app/client-info") },
+  { path: "/report/:id/data-info", Component: redirectTo("/app/data-info") },
+  { path: "/report/:id/model-env", Component: redirectTo("/app/model-env") },
   // 평가 결과 화면은 폐지됐다(docs/WORKFLOW_REDESIGN.md §11) — 같은 run 의 성적서로 보낸다.
   {
     path: "/report/:id/summary",
     Component: redirectWithParams(({ id }) => "/report/" + (id ?? "")),
   },
-  // 평가 관점은 단계에서 빠지고 지표 선택 화면 맨 위로 들어갔다. 저장된 링크·북마크가
-  // 죽지 않도록 그쪽으로 보낸다.
-  { path: "/app/perspective", Component: redirectTo("/app/metrics") },
   // 지표 상세(구 3단계)는 폐지됐다 — β 는 지표 선택으로, 목표값은 성적서 구간으로 갔다.
   { path: "/app/metric-detail", Component: redirectTo("/app/metrics") },
   // 기본 정보는 더 이상 평가 구간의 단계가 아니다(ISSUES.md 없음 — 2026-09-19 재배치).

@@ -1,0 +1,103 @@
+/**
+ * 지표와 합격 기준 화면 — 합격 기준 표와 핵심 지표(docs/MATERIAL_PICKER.md §3·§5).
+ *
+ * 합격 목표값과 핵심 지표는 종전에 Details(의뢰자 정보) 화면이 받았다. 레지스트리상 ② 소속이라
+ * 지표 화면으로 합쳤다. 핵심 지표는 미달하면 최종 불합격(FAIL)이 되는 지표다. 고르지 않으면
+ * 유형별 기본값이 체크돼 보인다.
+ */
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
+import { beforeEach, describe, expect, it } from "vitest";
+
+import { TestItems } from "./TestItems";
+import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
+
+function renderPage() {
+  render(
+    <MemoryRouter initialEntries={["/app/metrics"]}>
+      <TestItems />
+    </MemoryRouter>,
+  );
+}
+
+const withTargets = (ids: string[], value = "0.5") =>
+  Object.fromEntries(
+    ids.map((id) => [
+      id,
+      { id, name: id, description: "", targetValue: value, beta: "", positiveClass: "", completed: false },
+    ]),
+  );
+
+beforeEach(() => {
+  localStorage.clear();
+  useWorkflowStore.getState().resetWorkflow();
+  useWorkflowStore.setState({
+    taskType: "multilabel",
+    selectedMetricIds: ["M2", "M4", "M17"],
+    // 지표 선택 이유(멀티레이블)를 채워, 막히는 이유가 합격 기준뿐이게 한다.
+    composerMetrics: { metricRationale: { text: "Degree of overlap" } },
+  });
+});
+
+describe("고른 지표", () => {
+  it("다시 들어와도 고른 지표가 남는다 — 검증에서 돌아오는 동선이 생겼다", () => {
+    renderPage();
+
+    expect(useWorkflowStore.getState().selectedMetricIds).toEqual(["M2", "M4", "M17"]);
+    expect(screen.getByText("개 선택", { exact: false })).toHaveTextContent("3개 선택");
+  });
+});
+
+describe("핵심 지표", () => {
+  it("고르지 않았으면 유형별 기본값이 체크돼 있다 — 멀티레이블은 F1·Jaccard", () => {
+    renderPage();
+
+    expect(screen.getByRole("checkbox", { name: "M4 핵심 지표" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "M17 핵심 지표" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "M2 핵심 지표" })).not.toBeChecked();
+  });
+
+  it("하나를 켜면 보이는 목록 전체를 사용자의 선택으로 저장한다", async () => {
+    renderPage();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "M2 핵심 지표" }));
+
+    expect(useWorkflowStore.getState().composerMetrics.coreMetrics?.choices).toEqual([
+      "M4",
+      "M17",
+      "M2",
+    ]);
+  });
+
+  it("모두 끄면 넘어갈 수 없다 — 핵심 지표는 최소 1개다 (재료 목록 7절)", async () => {
+    useWorkflowStore.setState({ metricDetails: withTargets(["M2", "M4", "M17"]) });
+    renderPage();
+    const next = screen.getByRole("button", { name: "다음" });
+    expect(next).toBeEnabled();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "M4 핵심 지표" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "M17 핵심 지표" }));
+
+    expect(useWorkflowStore.getState().composerMetrics.coreMetrics?.choices).toEqual([]);
+    expect(screen.getByText("핵심 지표를 하나 이상 고르세요.")).toBeInTheDocument();
+    expect(next).toBeDisabled();
+  });
+});
+
+describe("합격 목표값 — 평가 전에 받는다", () => {
+  it("목표값이 비면 넘어갈 수 없다", () => {
+    renderPage();
+
+    expect(screen.getAllByText("목표값을 넣으세요.").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "다음" })).toBeDisabled();
+  });
+
+  it("목표값을 적으면 그 지표의 목표로 저장한다", async () => {
+    renderPage();
+
+    await userEvent.type(screen.getByRole("textbox", { name: "M4 목표값" }), "0.8");
+
+    expect(useWorkflowStore.getState().metricDetails.M4?.targetValue).toBe("0.8");
+  });
+});

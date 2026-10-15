@@ -1,18 +1,21 @@
 /**
- * 켠 카드의 필수 입력 점검.
+ * 넣은 카드의 필수 입력 점검.
  *
- * 규칙은 `docs/COMPOSER_COMPONENTS.md` "구분 규칙"과 그 문서의 열린 결정에서 온다.
+ * 규칙은 `docs/MATERIAL_PICKER.md` §5·§6 에서 온다(종전 규칙은 `docs/COMPOSER_COMPONENTS.md`
+ * "구분 규칙").
  *
- * - **카드를 끄면 아무것도 검사하지 않는다.** 끄는 것은 허용된 선택이고, 그때 그 카드의
- *   표준 보고 항목은 성적서에 "제공되지 않음"으로 찍힌다.
- * - **카드를 켰으면 그 안의 필수 필드는 비운 채 진행할 수 없다.** 모르면 "모름"을 고른다.
+ * - **넣지 않은 카드는 아무것도 검사하지 않는다.** 그 카드의 표준 보고 항목은 성적서에
+ *   "제공되지 않음"으로 찍힌다.
+ * - **재료 고르기에서 체크하지 않은 권장·선택 필드는 그리지도 검사하지도 않는다**(`picks`).
+ *   체크하지 않은 권장 항목은 성적서에 "제공되지 않음"으로 찍힌다.
+ * - **받기로 한 필수·권장 필드는 비운 채 진행할 수 없다.** 모르면 "모름"을 고른다.
  * - **"알려진 것 없음"은 "모름"과 다르다.** 원문이 요구하는 답이라 **제공된 것으로 센다**.
  *   그래서 ⑥ 수집 환경 차이에는 "모름"이 없고, 대신 다른 선택지와 함께 고를 수 없다.
  *
  * 순수 함수다 — 스토어를 읽지 않고 값을 인자로 받는다. 화면은 결과로 `nextDisabled` 를
  * 만들어 `WorkflowShell` 에 넘긴다(가이드라인 §2 규칙 3).
  */
-import { getCardFields } from "../../data/reportComposer";
+import { getCardFields, isFieldPicked } from "../../data/reportComposer";
 import type { TaskType } from "../../data/evaluationData";
 import {
   MONTH_RANGE_KEYS,
@@ -192,13 +195,19 @@ export function isFieldRequired(field: ComposerField, values: ComposerValueMap):
  * 이 필드를 지금 화면에 그릴 것인가.
  *
  * 조건부 필드는 "특정 조건에서만 **나타나고**, 나타나면 필수"다
- * (docs/COMPOSER_COMPONENTS.md "구분 규칙"). 조건이 성립하기 전에 보여주면 사용자가 왜 비어
- * 있는 칸이 있는지 알 수 없다.
+ * (docs/MATERIAL_PICKER.md §6, 종전 docs/COMPOSER_COMPONENTS.md "구분 규칙"). 조건이 성립하기
+ * 전에 보여주면 사용자가 왜 비어 있는 칸이 있는지 알 수 없다.
  *
  * 조건을 기계가 읽을 수 없는 필드(② 의 β 는 지표 선택에 달려 있다)는 늘 그린다 — 그 조건을
  * 아는 화면이 따로 다룬다.
  */
-export function isFieldVisible(field: ComposerField, values: ComposerValueMap): boolean {
+export function isFieldVisible(
+  field: ComposerField,
+  values: ComposerValueMap,
+  picked = true,
+): boolean {
+  // 재료 고르기에서 받지 않기로 한 필드는 그리지 않는다(docs/MATERIAL_PICKER.md §5).
+  if (!picked) return false;
   if (field.kind !== "conditional" || !field.requiredWhen) return true;
   return isConditionalRequired(field, values);
 }
@@ -214,9 +223,11 @@ export function getFieldIssue(
   card: ComposerCard,
   field: ComposerField,
   values: ComposerValueMap,
+  picks?: readonly string[],
 ): FieldIssue | null {
-  // 조건이 성립하지 않아 그려지지 않은 필드에 남은 값은 따지지 않는다 — 사용자가 고칠 수 없다.
-  if (!isFieldVisible(field, values)) return null;
+  // 그려지지 않은 필드(받지 않기로 했거나 조건이 성립하지 않음)에 남은 값은 따지지 않는다 —
+  // 사용자가 고칠 수 없다.
+  if (!isFieldVisible(field, values, isFieldPicked(card, field, picks))) return null;
 
   const value = values[field.id];
   const issue = (reason: FieldIssue["reason"]): FieldIssue => ({
@@ -244,31 +255,33 @@ export function getFieldIssue(
 }
 
 /**
- * 카드 하나의 문제 목록. 카드를 끄면 빈 배열이다.
+ * 카드 하나의 문제 목록. 넣지 않은 카드면 빈 배열이다.
  *
- * 더보기로 접히는 필드도 검사 대상이다 — 접혀 있다고 면제되면 사용자가 그 필드의 존재를
- * 모른 채 막히게 된다. 다만 더보기 필드는 전부 `optional` 이라 비어 있다고 걸리지는 않는다.
- * 값을 **틀리게** 적은 것(범위 밖 숫자, 뒤집힌 기간)은 더보기 안에서도 걸린다.
+ * `picks` 는 재료 고르기에서 이 카드에 저장한 체크다. 없으면 모든 필드를 받는 것으로 본다.
+ * 받기로 한 선택 필드는 비어 있어도 걸리지 않지만, 값을 **틀리게** 적은 것(범위 밖 숫자,
+ * 뒤집힌 기간)은 걸린다.
  */
 export function getCardIssues(
   card: ComposerCard,
   taskType: TaskType | "",
   values: ComposerValueMap,
   included: boolean,
+  picks?: readonly string[],
 ): FieldIssue[] {
   if (!included) return [];
 
   return getCardFields(card.id, taskType)
-    .map((field) => getFieldIssue(card, field, values))
+    .map((field) => getFieldIssue(card, field, values, picks))
     .filter((issue): issue is FieldIssue => issue !== null);
 }
 
-/** 켠 카드의 필수 입력이 모두 채워졌는가. */
+/** 넣은 카드의 필수 입력이 모두 채워졌는가. */
 export function isCardComplete(
   card: ComposerCard,
   taskType: TaskType | "",
   values: ComposerValueMap,
   included: boolean,
+  picks?: readonly string[],
 ): boolean {
-  return getCardIssues(card, taskType, values, included).length === 0;
+  return getCardIssues(card, taskType, values, included, picks).length === 0;
 }

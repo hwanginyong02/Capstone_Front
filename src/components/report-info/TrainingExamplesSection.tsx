@@ -2,8 +2,8 @@
  * ⑥ 학습 데이터의 예시 파일 — 대표 예시와 경계·부적합 예시.
  *
  * 종전에는 Details 의 학습 데이터셋 폼 아래에 있었다. 그 폼의 이름·건수·클래스 분포·형식이
- * ⑥ 카드와 겹쳐 폼을 ⑥ 으로 합쳤고(persist v10), 예시 파일도 따라 Data info 의 ⑥ 카드 아래로
- * 왔다. 레지스트리에 파일 칸이 없어 카드 폼과 따로 그린다.
+ * ⑥ 카드와 겹쳐 폼을 ⑥ 으로 합쳤고(persist v10), 예시 파일도 따라 데이터 정보 단계의 ⑥ 카드
+ * 아래로 왔다. 레지스트리에 파일 칸이 없어 카드 폼과 따로 그린다.
  */
 import { useRef, type ChangeEvent } from "react";
 import { Lightbulb } from "lucide-react";

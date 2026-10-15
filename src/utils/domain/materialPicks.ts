@@ -8,10 +8,18 @@
  * 쓰는 곳: `pages/MaterialPicker.tsx`, `components/material-picker/*`.
  */
 import type { TaskType } from "../../data/evaluationData";
-import { catalogCards, getCard, pickableIds } from "../../data/reportComposer";
+import {
+  catalogCards,
+  getCard,
+  getCardFields,
+  isFieldPicked,
+  pickKind,
+  pickableIds,
+} from "../../data/reportComposer";
 import type {
   ComposerCard,
   ComposerCardId,
+  ComposerField,
   MaterialCategory,
   MaterialPicks,
 } from "../../types/reportComposer.types";
@@ -77,4 +85,29 @@ export function requiredProgress(
 export function isCategoryComplete(category: MaterialCategory, picks: MaterialPicks): boolean {
   const required = category.cardIds.filter((id) => getCard(id).locked);
   return required.length > 0 && required.every((id) => isCardSaved(picks, id));
+}
+
+/** 카드 하나에서 고르지 않은 권장 항목. */
+export interface MissingRecommended {
+  card: ComposerCard;
+  fields: ComposerField[];
+}
+
+/**
+ * 고르지 않은 권장 항목을 카드별로, 카탈로그 순서로(docs/MATERIAL_PICKER.md §5·§6).
+ *
+ * 권장 항목은 선택 카드 안의 표준 보고 항목이다. 고르지 않으면 성적서에 "제공되지 않음"으로 찍히므로
+ * 확인과 생성 단계에서 앞에 알린다. 저장하지 않은 선택 카드는 아무것도 고르지 않은 것으로 본다.
+ */
+export function missingRecommended(taskType: TaskType | "", picks: MaterialPicks): MissingRecommended[] {
+  return catalogCards(taskType)
+    .filter((card) => !card.locked)
+    .map((card) => ({
+      card,
+      fields: getCardFields(card.id, taskType).filter(
+        (field) =>
+          pickKind(card, field) === "recommended" && !isFieldPicked(card, field, picks[card.id] ?? []),
+      ),
+    }))
+    .filter((item) => item.fields.length > 0);
 }

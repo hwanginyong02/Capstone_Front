@@ -9,6 +9,7 @@ import {
   PREDICTION_ROLE_ALTERNATIVES,
   resolveMissingRoleCodes,
   type TaskType,
+  getBaseRequiredColumns,
   getRequiredColumnsForSelection,
 } from "../../data/evaluationData";
 import type { MappingRole, MappingRow, FilterMode } from "../../types/mapping.types";
@@ -95,8 +96,15 @@ export function ColumnMapping({
     () => METRICS.filter((m) => selectedMetricIds.includes(m.id) && m.supportedTaskTypes.includes(resolvedTaskType)),
     [resolvedTaskType, selectedMetricIds],
   );
+  /**
+   * 매핑해야 할 역할. 매핑은 지표 선택보다 앞이라(docs/MATERIAL_PICKER.md §3) 처음에는 정답과
+   * 예측(또는 확률)만 본다. 지표를 고른 뒤 돌아왔다면 그 지표가 요구하는 역할을 본다.
+   */
   const requiredRoles = useMemo(
-    () => getRequiredColumnsForSelection(resolvedTaskType, selectedMetricIds),
+    () =>
+      selectedMetricIds.length > 0
+        ? getRequiredColumnsForSelection(resolvedTaskType, selectedMetricIds)
+        : getBaseRequiredColumns(resolvedTaskType),
     [resolvedTaskType, selectedMetricIds],
   );
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
@@ -191,7 +199,6 @@ export function ColumnMapping({
     const missingRoleCodes = missingRoles.map((role) => role.code);
     const validityReason = getMappingValidityReason({
       taskType,
-      selectedMetricIds,
       assignedRoleCount,
       missingRoleCodes,
       duplicateRoleCount: duplicateCount,

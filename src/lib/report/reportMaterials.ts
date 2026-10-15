@@ -268,8 +268,9 @@ export interface ClientInputsSource {
   coreMetrics: string[];
   classLabelDescriptions: Record<string, string>;
   /**
-   * 실행 환경 다섯 칸(운영체제·CPU·GPU·메모리·소프트웨어). 성적서 4절이 찍는 값과 같은 출처
-   * (Details 의 Test environment)다. 빈 칸은 제공되지 않음으로 넘긴다.
+   * 실행 환경 다섯 칸(운영체제·CPU·GPU·메모리·소프트웨어). 성적서 4절이 찍는 값과 같은 출처다 —
+   * ⑨ 실행 환경을 넣었으면 그 값, 아니면 옛 시험 환경 폼에 적었던 값(`buildReportInput`).
+   * 빈 칸은 제공되지 않음으로 넘긴다.
    */
   runtime: Record<string, string>;
 }

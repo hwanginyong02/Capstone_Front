@@ -17,7 +17,6 @@ import {
   REQUIRED_CARD_IDS,
   catalogCards,
   choiceLabel,
-  countAdvancedFields,
   entryLabel,
   fieldFormat,
   fieldParts,
@@ -191,17 +190,24 @@ describe("② 지표와 합격 기준", () => {
 });
 
 describe("⑥ 학습 데이터", () => {
-  it("더보기로 접히는 필드가 3개다 (수집 기간 · 데이터 형식 · 비고)", () => {
-    expect(countAdvancedFields("trainingData", "binary")).toBe(3);
-    const advanced = getCard("trainingData")
-      .fields.filter((field) => field.advanced)
-      .map((field) => field.id);
-    expect(advanced).toEqual(["trainingPeriod", "trainingDataFormat", "trainingNotes"]);
-  });
-
-  it("학습 데이터 설명은 접지 않는다 — 접어 두었더니 칸이 없는 것으로 보였다", () => {
-    const shown = getCardFields("trainingData", "binary", { includeAdvanced: false });
-    expect(shown.map((field) => field.id)).toContain("trainingDescription");
+  it("재료 고르기에서 권장 6개와 선택 4개로 나뉜다 (docs/MATERIAL_PICKER.md §6)", () => {
+    const card = getCard("trainingData");
+    const of = (kind: string) =>
+      card.fields.filter((field) => pickKind(card, field) === kind).map((field) => field.id);
+    expect(of("recommended")).toEqual([
+      "trainingDatasetName",
+      "trainingDataSource",
+      "trainingVolume",
+      "trainingClassVolume",
+      "channelEffects",
+      "imbalanceHandling",
+    ]);
+    expect(of("optional")).toEqual([
+      "trainingPeriod",
+      "trainingDescription",
+      "trainingDataFormat",
+      "trainingNotes",
+    ]);
   });
 
   it("Details 의 학습 데이터 폼을 흡수했다 — 이름·건수·클래스별 양·형식이 모두 여기 있다", () => {
@@ -216,13 +222,6 @@ describe("⑥ 학습 데이터", () => {
     }
     // 기존 저장소로 흘려보내지 않는다 — 성적서가 카드 값을 직접 읽는다.
     expect(getCard("trainingData").fields.some((field) => field.legacy)).toBe(false);
-  });
-
-  it("더보기를 접으면 보이는 필드에서 빠진다", () => {
-    const shown = getCardFields("trainingData", "binary", { includeAdvanced: false });
-    const all = getCardFields("trainingData", "binary");
-    expect(all.length - shown.length).toBe(3);
-    expect(shown.every((field) => !field.advanced)).toBe(true);
   });
 
   it("수집 환경 차이는 복수 선택이고 \"알려진 것 없음\"이 배타 선택지다", () => {
@@ -243,12 +242,16 @@ describe("⑥ 학습 데이터", () => {
 });
 
 describe("⑦ 테스트 데이터", () => {
-  it("더보기로 접히는 필드는 수집 기간 하나다", () => {
-    expect(countAdvancedFields("testData", "binary")).toBe(1);
-    const advanced = getCard("testData")
-      .fields.filter((field) => field.advanced)
-      .map((field) => field.id);
-    expect(advanced).toEqual(["testPeriod"]);
+  it("선택 항목은 수집 기간과 학습과 같은 전처리다", () => {
+    expect(pickableIds("testData", "binary")).toEqual([
+      "testDataSource",
+      "testSourceRelation",
+      "testPeriod",
+      "preprocessingMatch",
+    ]);
+    const card = getCard("testData");
+    const optional = card.fields.filter((field) => pickKind(card, field) === "optional");
+    expect(optional.map((field) => field.id)).toEqual(["testPeriod", "preprocessingMatch"]);
   });
 
   /**
@@ -430,10 +433,12 @@ describe("재료 목록과 맞춘 형태", () => {
     expect(field?.step).toBe("metrics");
   });
 
-  it("② 핵심 지표는 Details 에서 고르고, 최소 1개가 필수다 (재료 목록 7절)", () => {
+  it("② 핵심 지표는 지표와 합격 기준 화면에서 고르고, 최소 1개가 필수다 (재료 목록 7절)", () => {
     const field = fieldOf("metrics", "coreMetrics");
     expect(field?.kind).toBe("required");
-    expect(field?.step).toBe("clientInfo");
+    // ② 카드 전체가 한 단계다(docs/MATERIAL_PICKER.md §5). 필드 단위로 나눌 단계가 없다.
+    expect(getCard("metrics").steps).toEqual(["metrics"]);
+    expect(field?.step).toBeUndefined();
   });
 
   it("⑥ 편향 감소 노력은 여럿 고르고, 'Did nothing' 은 배타, Other 는 직접 적는다", () => {

@@ -4,9 +4,9 @@
  * 이 스토어는 전체 평가 워크플로우의 상태(각 스텝의 입력 데이터, 현재 단계, 완료 여부 등)를
  * 관리하며, 최종 평가 리포트 데이터를 생성하는 로직을 포함합니다.
  *
- * ISSUES.md E-01 — 종전에는 persist 가 없어 **새로고침 한 번으로 1~5단계 입력이 전부
+ * ISSUES.md E-01 — 종전에는 persist 가 없어 **새로고침 한 번으로 검증 앞 단계 입력이 전부
  * 사라졌다.** 수십 분간 입력한 기업정보·모델정보·지표·매핑이 날아가고, 그것을 알리는
- * 신호는 6단계의 "업로드된 파일이 없습니다" 문구뿐이었다.
+ * 신호는 검증 단계의 "업로드된 파일이 없습니다" 문구뿐이었다.
  *
  * `rawFile` 은 File 객체라 JSON 직렬화가 원리적으로 불가능하므로 persist 대상에서 뺀다.
  * 대신 `uploadedFile`(파일 메타)은 저장해, 재수화 후 **"파일이 있었는데 지금은 없다"** 를
@@ -532,7 +532,7 @@ interface WorkflowState {
   uploadedFile: UploadedFileInfo | null;
   rawFile: File | null;
   metadata: any | null;
-  /** ⑥ 학습 데이터의 예시 파일. ⑥ 을 켰을 때 Data info 에서 받는다. */
+  /** ⑥ 학습 데이터의 예시 파일. ⑥ 을 넣었을 때 데이터 정보 단계에서 받는다. */
   trainingExampleFiles: UploadedFileInfo[];
   trainingUnsuitableExampleFiles: UploadedFileInfo[];
 
@@ -548,8 +548,8 @@ interface WorkflowState {
 
   /**
    * 백엔드가 '사용자 안내용'으로 내려보낸 값들(ISSUES.md B-03·B-04·D-16·A-12).
-   * 각각 4단계·5단계에서 도착하지만 **6단계 상단에 합쳐서** 보여준다 —
-   * 5단계는 안내가 도착하는 순간 이미 다음 화면으로 넘어가 있다.
+   * 각각 평가 데이터·매핑 단계에서 도착하지만 **검증 단계 상단에 합쳐서** 보여준다 —
+   * 매핑 단계는 안내가 도착하는 순간 이미 다음 화면으로 넘어가 있다.
    */
   columnNotes: ColumnNote[];
   mappingWarnings: MappingWarning[];
@@ -682,7 +682,7 @@ interface WorkflowState {
 }
 
 const INITIAL_STATE = {
-  currentStepId: "upload" as StepId,
+  currentStepId: "clientInfo" as StepId,
   completedStepIds: [] as StepId[],
   basicInfo: DEFAULT_BASIC_INFO,
   taskType: "" as TaskType | "",
@@ -905,7 +905,7 @@ export const useWorkflowStore = create<WorkflowState>()(
             window.localStorage.setItem(name, value);
           } catch {
             // 용량 초과 등으로 저장에 실패해도 진행 중인 입력을 잃게 하지 않는다.
-            // (저장소가 가득 찬 상황의 안내는 6단계 저장 경로가 담당한다 — ISSUES.md E-11)
+            // (저장소가 가득 찬 상황의 안내는 검증 단계의 저장 경로가 담당한다 — ISSUES.md E-11)
           }
         },
         removeItem: (name) => window.localStorage.removeItem(name),
@@ -914,9 +914,9 @@ export const useWorkflowStore = create<WorkflowState>()(
        * 저장 대상 선별.
        * - `rawFile` 제외: File 객체는 JSON 직렬화가 원리적으로 불가능하다. 대신
        *   `uploadedFile`(메타)은 저장해 "파일이 있었는데 지금은 없다"를 감지한다.
-       * - `validationResult` 제외: 응답 전문이라 용량 기여가 크고 6단계 재진입 시
+       * - `validationResult` 제외: 응답 전문이라 용량 기여가 크고 검증 단계 재진입 시
        *   다시 받으면 된다(ISSUES.md E-11).
-       * - `metadata` 포함: 5단계의 양성 클래스·감지 클래스·컬럼 고유값이 여기 있어,
+       * - `metadata` 포함: 매핑 단계의 양성 클래스·감지 클래스·컬럼 고유값이 여기 있어,
        *   빼면 새로고침 후 매핑 화면이 무너져 persist 의 효용이 절반이 된다.
        *   백엔드가 컬럼당 고유값을 200개로 상한하므로 용량은 감당 가능하다.
        */

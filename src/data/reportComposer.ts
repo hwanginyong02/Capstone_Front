@@ -38,7 +38,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     name: "평가 데이터",
     description: "모델의 예측 결과 파일입니다. 모든 지표를 이 파일로 계산합니다.",
     locked: true,
-    // 파일은 Evaluation File 에서 받고, 컬럼 매핑·양성 클래스·결정 임계값은 Column mapping 에서 확인한다.
+    // 파일은 평가 데이터(업로드)에서 받고, 컬럼 매핑·양성 클래스·결정 임계값은 컬럼 매핑에서 확인한다.
     steps: ["upload", "mapping"],
     fields: [
       {
@@ -61,8 +61,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     name: "지표와 합격 기준",
     description: "어떤 지표로 몇 점이면 합격인지 정합니다.",
     locked: true,
-    // 합격 기준과 핵심 지표는 Details 에서 받는다(docs/WORKFLOW_REDESIGN.md §11.2).
-    steps: ["metrics", "clientInfo"],
+    // 지표·β·지표 선택 이유·합격 기준·핵심 지표를 한 화면에서 받는다(docs/MATERIAL_PICKER.md §5).
+    steps: ["metrics"],
     fields: [
       {
         id: "selectedMetrics",
@@ -128,7 +128,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         },
         otherChoice: "Other (own words)",
         help: "멀티레이블 지표는 저마다 다른 것을 묻기 때문에, 이 지표를 고른 이유를 성적서에 적습니다.",
-        // 지표 격자 바로 아래에서 받는다. 카드의 나머지 필드는 다른 화면이 맡아 따로 검사한다.
+        // 지표 격자 바로 아래에서 레지스트리로 그린다. 카드의 나머지 필드(지표·β·합격 기준·핵심
+        // 지표)는 지표 화면이 직접 그리고 검사한다.
         step: "metrics",
         reportSection: "3절",
         sentToAi: true,
@@ -139,8 +140,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
          * (`lib/report/computeVerdict.ts`).
          *
          * 목표값이 있는 지표 중 최소 1개(재료 목록 7절). 유형별 기본값이 미리 체크돼 있다. 판정이
-         * 목표값과 함께 결정되므로 목표값을 적는 Details 의 합격 기준 표에서 고른다
-         * (`pages/report/ReportInfo.tsx`).
+         * 목표값과 함께 결정되므로 목표값을 적는 합격 기준 표에서 고른다 — 지표와 합격 기준 화면
+         * (`components/test-items/PassCriteriaCard.tsx`).
          */
         id: "coreMetrics",
         label: "핵심 지표",
@@ -149,7 +150,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         input: "metricSelect",
         description: "종합 판정에 쓰는 지표입니다. 목표값이 있는 지표 중 최소 1개를 고릅니다.",
         format: "지표마다 체크. 유형별 기본값이 체크돼 있음",
-        step: "clientInfo",
         reportSection: "6절",
         sentToAi: true,
       },
@@ -222,7 +222,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           { key: "website", label: "홈페이지", format: "텍스트", description: "회사 웹사이트 주소입니다." },
           { key: "fax", label: "팩스", format: "텍스트", description: "회사 팩스 번호입니다." },
         ],
-        advanced: true,
         reportSection: "1절",
       },
       {
@@ -232,7 +231,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "optional",
         input: "text",
         description: "과제의 관리 번호입니다.",
-        advanced: true,
         mono: true,
         reportSection: "1절",
       },
@@ -243,7 +241,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "optional",
         input: "date",
         description: "표지의 시험기간 시작일이 됩니다. 고르지 않으면 오늘 날짜로 들어갑니다.",
-        advanced: true,
         reportSection: "1절",
       },
     ],
@@ -254,8 +251,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     name: "평가 대상 모델",
     description: "시험 대상 모델의 이름과 쓰임새입니다.",
     locked: true,
-    // 이름·버전은 run 을 식별하는 이름표라 Evaluation File 에서, 용도는 성적서 서식용이라 Details 에서.
-    steps: ["upload", "clientInfo"],
+    // 이름·버전·용도를 한 화면에서 받는다(docs/MATERIAL_PICKER.md §5). 종전에는 이름·버전을 업로드
+    // 화면이, 용도를 Details 가 따로 받았다.
+    steps: ["model"],
     fields: [
       {
         id: "modelNameVersion",
@@ -269,7 +267,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           { key: "versionName", label: "버전", format: "텍스트. 기본값 v1.0.0", description: "모델 이름과 함께 적힙니다." },
         ],
         mono: true,
-        step: "upload",
         reportSection: "2절",
         sentToAi: true,
       },
@@ -280,7 +277,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "required",
         input: "text",
         description: "모델이 하는 일입니다. 1절 대상 모델 문장이 됩니다.",
-        step: "clientInfo",
         reportSection: "2절",
         sentToAi: true,
       },
@@ -292,8 +288,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     name: "평가 관점",
     description: "이 모델에서 무엇을 중요하게 볼지입니다.",
     locked: true,
-    // 단계가 따로 없다 — 지표 선택 화면 맨 위에서 받는다(docs/WORKFLOW_REDESIGN.md §10).
-    steps: ["metrics"],
+    // 지표와 합격 기준 바로 앞 단계다 — 답이 지표 추천의 근거다(docs/MATERIAL_PICKER.md §3).
+    steps: ["perspective"],
     help:
       "답에 따라 알맞은 지표를 추천하고, 고른 지표가 맞지 않으면 지표 화면에서 알려 줍니다. " +
       "다음으로 넘어가는 것은 막지 않습니다.",
@@ -524,7 +520,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "optional",
         input: "monthRange",
         description: "학습 데이터를 모은 기간입니다.",
-        advanced: true,
         mono: true,
         reportSection: "7절",
         sentToAi: true,
@@ -552,7 +547,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "optional",
         input: "text",
         description: "파일 형식이나 구조입니다.",
-        advanced: true,
         reportSection: "7절",
       },
       {
@@ -562,7 +556,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "optional",
         input: "textarea",
         description: "그 밖에 남길 내용입니다.",
-        advanced: true,
         reportSection: "7절",
       },
     ],
@@ -615,7 +608,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "optional",
         input: "monthRange",
         description: "테스트 데이터를 모은 기간입니다.",
-        advanced: true,
         mono: true,
         reportSection: "4절",
         sentToAi: true,
@@ -946,20 +938,9 @@ export function getVisibleCards(taskType: TaskType | ""): ComposerCard[] {
   return COMPOSER_CARDS.filter((card) => !card.taskTypes || card.taskTypes.includes(taskType));
 }
 
-/**
- * 이 분류 유형에서 보여줄 필드.
- *
- * `includeAdvanced` 가 거짓이면 더보기로 접히는 필드를 뺀다 — 상세 영역이 처음 보여주는
- * 목록이 그것이다.
- */
-export function getCardFields(
-  id: ComposerCardId,
-  taskType: TaskType | "",
-  options: { includeAdvanced?: boolean } = {},
-): ComposerField[] {
-  const { includeAdvanced = true } = options;
+/** 이 분류 유형에서 보여줄 필드. */
+export function getCardFields(id: ComposerCardId, taskType: TaskType | ""): ComposerField[] {
   return getCard(id).fields.filter((field) => {
-    if (!includeAdvanced && field.advanced) return false;
     if (!taskType || !field.taskTypes) return true;
     return field.taskTypes.includes(taskType);
   });
@@ -976,11 +957,6 @@ export function choiceLabel(field: ComposerField, value: string): string {
 /** `entryKeys` 행의 화면 이름. 이름표가 없으면 키를 그대로 보인다(클래스 이름 등). */
 export function entryLabel(field: ComposerField, key: string): string {
   return field.entryLabels?.[key] ?? MONTH_RANGE_LABELS[key] ?? key;
-}
-
-/** 더보기로 접히는 필드 수 — "선택 항목 N개 더 보기" 버튼 문구에 쓴다. */
-export function countAdvancedFields(id: ComposerCardId, taskType: TaskType | ""): number {
-  return getCardFields(id, taskType).filter((field) => field.advanced).length;
 }
 
 /**
@@ -1087,6 +1063,33 @@ export function fieldFormat(field: ComposerField): string {
     case "metricSelect":
       return "지표 선택";
   }
+}
+
+/**
+ * 재료 고르기에서 이 필드를 받기로 했는지(docs/MATERIAL_PICKER.md §5·§6).
+ *
+ * 필수·조건부 필드는 늘 받는다. 권장·선택 필드는 그 필드나 쪼갠 항목 중 하나라도 체크해 저장했을
+ * 때만 받는다. `picks` 가 없으면(재료 고르기 이전의 상태) 모두 받는 것으로 본다 — 종전 화면과 같다.
+ */
+export function isFieldPicked(
+  card: ComposerCard,
+  field: ComposerField,
+  picks: readonly string[] | undefined,
+): boolean {
+  const kind = pickKind(card, field);
+  if (kind === "required" || kind === "conditional") return true;
+  if (!picks) return true;
+  return picks.some((id) => id === field.id || id.startsWith(field.id + ":"));
+}
+
+/** 쪼갠 항목 하나를 받기로 했는지(③ 홈페이지·팩스). `picks` 가 없으면 받는 것으로 본다. */
+export function isPartPicked(
+  field: ComposerField,
+  key: string,
+  picks: readonly string[] | undefined,
+): boolean {
+  if (!picks) return true;
+  return picks.includes(field.id) || picks.includes(partPickId(field, key));
 }
 
 /**

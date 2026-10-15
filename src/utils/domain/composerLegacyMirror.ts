@@ -11,7 +11,9 @@
  * 어느 필드가 어디로 가는지는 레지스트리의 `legacy` 가 들고 있다 — 매핑표를 여기 또 적으면
  * 두 벌이 된다.
  *
- * 순수 함수다. 화면은 돌려받은 patch 를 `setBasicInfo`/`setDatasetInfo` 에 그대로 넘긴다.
+ * 순수 함수다. 성적서 입력을 만들 때 ⑨ 실행 환경을 `basicInfo.env*` 로 옮기는 데 쓴다
+ * (`lib/report/mapWorkflowToFinalReport.ts` 의 `buildReportInput`). 종전의 Details "시험 환경"
+ * 폼은 없앴다(docs/MATERIAL_PICKER.md §5).
  */
 import type {
   ComposerField,

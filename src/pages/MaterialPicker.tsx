@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useNavigate } from "react-router";
+import { Navigate, useLocation, useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
 import { WorkflowShell } from "../layout/WorkflowShell";
 import { MaterialPicker as MaterialPickerContent } from "../components/material-picker/MaterialPicker";
@@ -32,7 +32,11 @@ export function MaterialPicker() {
   const picks = useWorkflowStore((s) => s.materialPicks);
   const saveMaterialPick = useWorkflowStore((s) => s.saveMaterialPick);
 
-  const [cardId, setCardId] = useState<ComposerCardId>("clientInfo");
+  // 확인과 생성의 "재료 고르기에서 넣기"는 그 카드를 열어 둔 채 들어온다.
+  const location = useLocation();
+  const [cardId, setCardId] = useState<ComposerCardId>(
+    (location.state as { cardId?: ComposerCardId } | null)?.cardId ?? "clientInfo",
+  );
   /** 손댄 카드의 화면 체크. 손대지 않은 카드는 저장한 체크를 그대로 보인다. */
   const [drafts, setDrafts] = useState<Partial<Record<ComposerCardId, string[]>>>({});
   const [triedNext, setTriedNext] = useState(false);

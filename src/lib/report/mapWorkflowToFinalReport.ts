@@ -42,7 +42,14 @@ import type {
   UploadedFileInfo,
 } from "../../types/workflow.types";
 import { buildReportMaterials, type ReportComposerInput } from "./reportMaterials";
-import type { ComposerSelection, ComposerValueMap } from "../../types/reportComposer.types";
+import type {
+  ComposerCardId,
+  ComposerSelection,
+  ComposerValueMap,
+  MaterialPicks,
+} from "../../types/reportComposer.types";
+import { getCard, isFieldPicked, isPartPicked } from "../../data/reportComposer";
+import { buildLegacyPatch } from "../../utils/domain/composerLegacyMirror";
 import {
   DEFAULT_EVAL_ENV_CONSTANTS,
   DEFAULT_EVAL_PURPOSE_TEXT,
@@ -96,7 +103,63 @@ export type ReportInputSource = Omit<MapWorkflowToReportInput, "composer"> & {
   composerTestData: ComposerValueMap;
   composerGroundTruth: ComposerValueMap;
   composerModelEnv: ComposerValueMap;
+  /** 재료 고르기에서 카드마다 저장한 체크. 없으면(재료 고르기 이전 상태) 모든 값을 싣는다. */
+  materialPicks?: MaterialPicks;
 };
+
+/**
+ * 재료 고르기에서 받지 않기로 한 권장·선택 필드의 값을 뺀다(docs/MATERIAL_PICKER.md §6).
+ *
+ * 체크를 끄기 전에 적어 둔 값이 저장소에 남아 있을 수 있다. 그 값을 성적서에 찍으면 "끈 항목은
+ * 제공되지 않음"이 깨진다 — 권장 항목은 빠지면 성적서가 "제공되지 않음"으로 찍는다.
+ */
+function pickedValues(
+  cardId: ComposerCardId,
+  values: ComposerValueMap,
+  picks: MaterialPicks | undefined,
+): ComposerValueMap {
+  const saved = picks?.[cardId];
+  if (!saved) return values;
+  const card = getCard(cardId);
+  return Object.fromEntries(
+    Object.entries(values).filter(([fieldId]) => {
+      const field = card.fields.find((item) => item.id === fieldId);
+      return !field || isFieldPicked(card, field, saved);
+    }),
+  );
+}
+
+/** ③ 의 선택 항목은 `basicInfo` 에 담긴다. 받지 않기로 한 것을 비운다. */
+function pickedBasicInfo(basicInfo: BasicInfoFormData, picks: MaterialPicks | undefined): BasicInfoFormData {
+  const saved = picks?.clientInfo;
+  if (!saved) return basicInfo;
+  const card = getCard("clientInfo");
+  const fieldOf = (id: string) => card.fields.find((item) => item.id === id)!;
+  return {
+    ...basicInfo,
+    website: isPartPicked(fieldOf("contactExtra"), "website", saved) ? basicInfo.website : "",
+    fax: isPartPicked(fieldOf("contactExtra"), "fax", saved) ? basicInfo.fax : "",
+    projectNumber: isFieldPicked(card, fieldOf("projectNumber"), saved) ? basicInfo.projectNumber : "",
+  };
+}
+
+/**
+ * ⑨ 실행 환경을 넣었으면 그 값으로 `basicInfo.env*` 를 채운다. 성적서 4절 환경 표와 AI 입력이 그
+ * 칸을 읽는다. 어느 칸이 어디로 가는지는 레지스트리의 `legacy.byKey` 가 정한다.
+ *
+ * 종전에는 Details 의 "시험 환경" 폼이 같은 값을 따로 받았다. 그 폼을 없애고 ⑨ 하나로 받는다
+ * (docs/MATERIAL_PICKER.md §5). ⑨ 를 넣지 않은 옛 run 은 그 폼에 적었던 값을 그대로 쓴다.
+ */
+function withRuntimeFromCard(
+  basicInfo: BasicInfoFormData,
+  cards: ComposerSelection,
+  modelEnv: ComposerValueMap,
+): BasicInfoFormData {
+  const value = modelEnv.runtimeEnv;
+  if (!cards.modelEnv || !value) return basicInfo;
+  const field = getCard("modelEnv").fields.find((item) => item.id === "runtimeEnv")!;
+  return { ...basicInfo, ...(buildLegacyPatch(field, value).basicInfo ?? {}) };
+}
 
 /**
  * 워크플로우 상태에서 성적서 입력을 고른다.
@@ -106,8 +169,14 @@ export type ReportInputSource = Omit<MapWorkflowToReportInput, "composer"> & {
  * 필요한 키만 골라 담는다 — 스냅샷이 run 에 저장되므로 스토어 전체를 싣지 않는다.
  */
 export function buildReportInput(state: ReportInputSource): MapWorkflowToReportInput {
+  const picks = state.materialPicks;
+  const modelEnv = pickedValues("modelEnv", state.composerModelEnv, picks);
   return {
-    basicInfo: state.basicInfo,
+    basicInfo: withRuntimeFromCard(
+      pickedBasicInfo(state.basicInfo, picks),
+      state.composerCards,
+      modelEnv,
+    ),
     taskType: state.taskType,
     selectedMetricIds: state.selectedMetricIds,
     metricDetails: state.metricDetails,
@@ -119,12 +188,12 @@ export function buildReportInput(state: ReportInputSource): MapWorkflowToReportI
     metadata: state.metadata,
     composer: {
       cards: state.composerCards,
-      metrics: state.composerMetrics,
-      perspective: state.composerPerspective,
-      trainingData: state.composerTrainingData,
-      testData: state.composerTestData,
-      groundTruth: state.composerGroundTruth,
-      modelEnv: state.composerModelEnv,
+      metrics: pickedValues("metrics", state.composerMetrics, picks),
+      perspective: pickedValues("perspective", state.composerPerspective, picks),
+      trainingData: pickedValues("trainingData", state.composerTrainingData, picks),
+      testData: pickedValues("testData", state.composerTestData, picks),
+      groundTruth: pickedValues("groundTruth", state.composerGroundTruth, picks),
+      modelEnv,
     },
   };
 }

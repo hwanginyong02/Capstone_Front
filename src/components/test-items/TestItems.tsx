@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Info, Search } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Checkbox } from "../ui/checkbox";
 import { Input } from "../ui/input";
-import { ComposerCardForm } from "../composer-input/ComposerCardForm";
 import { ComposerFieldInput } from "../composer-input/ComposerFieldInput";
-import { getCard, getCardFields } from "../../data/reportComposer";
+import { getCardFields } from "../../data/reportComposer";
 import { cn } from "../../utils/styling/styles";
 import type { ComposerFieldValue, ComposerValueMap } from "../../types/reportComposer.types";
 import type { FieldIssue } from "../../utils/domain/composerFieldGate";
@@ -24,6 +23,11 @@ import {
 
 interface TestItemsProps {
   taskType?: TaskType | "";
+  /**
+   * 고른 지표. 스토어의 값을 그대로 받는다 — 화면이 따로 들고 처음 그릴 때 비우던 종전 방식은
+   * 검증에서 돌아올 때마다 고른 지표를 지웠다. 넘기지 않으면 화면 안에서만 든다(테스트).
+   */
+  selectedMetricIds?: string[];
   onSelectedMetricsChange?: (ids: string[]) => void;
   /**
    * F-beta(M5)의 β. **평가 입력이다** — `/api/evaluate` 페이로드에 실린다.
@@ -32,42 +36,39 @@ interface TestItemsProps {
    */
   beta?: string;
   onBetaChange?: (value: string) => void;
+  /** 빈 필수 칸(지표 선택 이유)을 빨갛게 칠할지. 페이지가 다음을 누른 뒤에 켠다. */
+  showErrors?: boolean;
   /**
-   * ⑤ 평가 관점. 종전에는 자기 단계(`/app/perspective`)였는데, 질문 둘이 **지표를 고르는
-   * 근거**라 고르는 화면과 떨어뜨릴 이유가 없었다. 단계 하나를 지우고 여기 맨 위로 옮겼다.
-   *
-   * 셋 다 넘겨야 그려진다 — 폼만 그리고 값이 안 흐르는 상태를 만들지 않는다.
-   */
-  perspectiveValues?: ComposerValueMap;
-  onPerspectiveChange?: (fieldId: string, next: ComposerFieldValue) => void;
-  perspectiveIssues?: FieldIssue[];
-  /** 빈 필수 칸을 빨갛게 칠할지. 페이지가 다음을 누른 뒤에 켠다. */
-  perspectiveShowErrors?: boolean;
-  /**
-   * ② 지표와 합격 기준 카드 중 **이 화면이 받는 필드**의 값(멀티레이블의 지표 선택 이유).
-   * 카드의 나머지(합격 기준·핵심 지표)는 Details 가 받는다. 값과 setter 를 함께 넘겨야 그려진다.
+   * ② 지표와 합격 기준 카드 중 레지스트리로 그리는 필드의 값(멀티레이블의 지표 선택 이유).
+   * 값과 setter 를 함께 넘겨야 그려진다. ⑤ 평가 관점은 바로 앞 단계가 받는다.
    */
   metricCardValues?: ComposerValueMap;
   onMetricCardChange?: (fieldId: string, next: ComposerFieldValue) => void;
   metricCardIssues?: FieldIssue[];
+  /** 지표 격자와 선택 이유 아래에 붙일 합격 기준 표(`PassCriteriaCard`). */
+  passCriteria?: ReactNode;
 }
 
 export function TestItems({
   taskType,
+  selectedMetricIds,
   onSelectedMetricsChange,
   beta = "1.0",
   onBetaChange,
-  perspectiveValues,
-  onPerspectiveChange,
-  perspectiveIssues = [],
-  perspectiveShowErrors = false,
+  showErrors = false,
   metricCardValues,
   onMetricCardChange,
   metricCardIssues = [],
+  passCriteria,
 }: TestItemsProps) {
   const availableMetrics = useMemo(() => getAvailableMetrics(taskType), [taskType]);
   const resolvedTaskType = taskType || "";
-  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
+  const [localSelected, setLocalSelected] = useState<string[]>([]);
+  const selectedMetrics = selectedMetricIds ?? localSelected;
+  const setSelected = (next: string[]) => {
+    setLocalSelected(next);
+    onSelectedMetricsChange?.(next);
+  };
   const [metricQuery, setMetricQuery] = useState("");
   const [selectedColumns, setSelectedColumns] = useState<RequiredColumnCode[]>([]);
 
@@ -108,37 +109,26 @@ export function TestItems({
     });
   }, [availableMetrics, metricQuery, resolvedTaskType, selectedColumns]);
 
+  // 유형이 바뀌면 검색과 컬럼 거르기만 비운다. 고른 지표는 스토어가 비운다(`setTaskType`) —
+  // 여기서 비우면 화면을 다시 열 때마다 고른 지표가 지워졌다.
   useEffect(() => {
-    setSelectedMetrics([]);
     setMetricQuery("");
     setSelectedColumns([]);
-    onSelectedMetricsChange?.([]);
-  }, [taskType, onSelectedMetricsChange]);
+  }, [taskType]);
 
   const handleToggleMetric = (metricId: string) => {
-    setSelectedMetrics((prev) => {
-      const next = prev.includes(metricId) ? prev.filter((id) => id !== metricId) : [...prev, metricId];
-      onSelectedMetricsChange?.(next);
-      return next;
-    });
+    setSelected(
+      selectedMetrics.includes(metricId)
+        ? selectedMetrics.filter((id) => id !== metricId)
+        : [...selectedMetrics, metricId],
+    );
   };
 
-  const handleRecommended = () => {
-    const recommended = getRecommendedMetricIds(taskType);
-    setSelectedMetrics(recommended);
-    onSelectedMetricsChange?.(recommended);
-  };
+  const handleRecommended = () => setSelected(getRecommendedMetricIds(taskType));
 
-  const handleSelectAll = () => {
-    const next = availableMetrics.map((m) => m.id);
-    setSelectedMetrics(next);
-    onSelectedMetricsChange?.(next);
-  };
+  const handleSelectAll = () => setSelected(availableMetrics.map((m) => m.id));
 
-  const handleClear = () => {
-    setSelectedMetrics([]);
-    onSelectedMetricsChange?.([]);
-  };
+  const handleClear = () => setSelected([]);
 
   // ② 카드에서 이 화면이 받는 필드. 지금은 멀티레이블의 지표 선택 이유 하나뿐이다.
   const metricCardFields = resolvedTaskType
@@ -161,20 +151,9 @@ export function TestItems({
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-2">지표와 합격 기준</h1>
           <p className="text-sm text-muted-foreground">
-            이 모델에서 무엇이 중요한지 답한 뒤, 성적서에 넣을 지표를 고르세요.
+            성적서에 넣을 지표를 고르고, 지표마다 넘어야 할 목표값을 정하세요.
           </p>
         </div>
-
-        {onPerspectiveChange && (
-          <ComposerCardForm
-            card={getCard("perspective")}
-            taskType={resolvedTaskType}
-            values={perspectiveValues ?? {}}
-            onChange={onPerspectiveChange}
-            issues={perspectiveIssues}
-            showErrors={perspectiveShowErrors}
-          />
-        )}
 
         <div className="flex items-center justify-between">
           <div className="text-sm">
@@ -365,7 +344,7 @@ export function TestItems({
             <CardContent className="space-y-5 p-6">
               {metricCardFields.map((field) => {
                 const issue = metricCardIssues.find((item) => item.fieldId === field.id);
-                const showMissing = perspectiveShowErrors && issue?.reason === "missing";
+                const showMissing = showErrors && issue?.reason === "missing";
                 return (
                   <div key={field.id}>
                     <ComposerFieldInput
@@ -384,6 +363,8 @@ export function TestItems({
             </CardContent>
           </Card>
         )}
+
+        {passCriteria}
 
         {selectedMetrics.includes("M5") && (
           <Card>

@@ -3,8 +3,11 @@
  *
  * 컴포넌트 레벨 테스트(`ColumnMapping.test.tsx`)가 실제 화면 동작을 고정하고,
  * 여기서는 판정 **순서**와 사유 문구를 못박는다. 순서가 의미를 갖는다 —
- * 작업 유형이 없으면 요구 역할 자체를 계산할 수 없고, 지표가 없으면 무엇을 매핑해야
- * 하는지도 정해지지 않는다.
+ * 작업 유형이 없으면 요구 역할 자체를 계산할 수 없다.
+ *
+ * 매핑은 지표 선택보다 앞이라(docs/MATERIAL_PICKER.md §3) 지표가 없다는 것만으로 막지 않는다.
+ * 요구 역할이 0개가 되던 구멍은 화면이 지표가 없을 때 정답·예측을 요구 역할로 넘겨 막는다
+ * (`getBaseRequiredColumns`).
  */
 import { describe, expect, it } from "vitest";
 
@@ -17,7 +20,6 @@ import {
 
 const OK: MappingValidityInput = {
   taskType: "multiclass",
-  selectedMetricIds: ["M23"],
   assignedRoleCount: 2,
   missingRoleCodes: [],
   duplicateRoleCount: 0,
@@ -34,8 +36,9 @@ describe("매핑 진행 판정", () => {
     expect(getMappingValidityReason({ ...OK, taskType: "" })).toBe("no_task_type");
   });
 
-  it("[E-13] 지표가 하나도 없으면 막는다 — 요구 역할이 0개가 되어 '빠진 역할 없음'으로 통과하던 구멍", () => {
-    expect(getMappingValidityReason({ ...OK, selectedMetricIds: [] })).toBe("no_metrics");
+  it("지표 없이도 판정한다 — 매핑이 지표 선택보다 앞이다", () => {
+    // 요구 역할이 0개가 되던 구멍은 화면이 정답·예측을 넘겨 막는다. 빠지면 missing_roles 다.
+    expect(getMappingValidityReason({ ...OK, missingRoleCodes: ["y_true"] })).toBe("missing_roles");
   });
 
   it("[E-13] 역할이 배정된 행이 0개면 막는다", () => {
@@ -64,7 +67,6 @@ describe("매핑 진행 판정", () => {
     expect(
       getMappingValidityReason({
         taskType: "",
-        selectedMetricIds: [],
         assignedRoleCount: 0,
         missingRoleCodes: [],
         duplicateRoleCount: 0,
@@ -77,14 +79,13 @@ describe("매핑 진행 판정", () => {
 describe("차단 사유 문구", () => {
   it("차단 사유마다 안내가 있고, 통과 시에는 없다", () => {
     expect(describeMappingValidity("no_task_type")).toContain("분류 유형");
-    expect(describeMappingValidity("no_metrics")).toContain("지표");
     expect(describeMappingValidity("no_mapped_rows")).toContain("역할이 지정된 컬럼");
     expect(describeMappingValidity("duplicate_roles")).toContain("여러 컬럼");
     expect(describeMappingValidity("no_positive_class")).toContain("양성 클래스");
 
     // 단계를 번호로 가리키지 않는다 — 번호는 개편 때마다 바뀌는데 문구는 안 바뀌어
     // 조용히 거짓말이 된다(업로드는 4단계였다가 1단계가 됐다).
-    for (const reason of ["no_task_type", "no_metrics", "no_mapped_rows"] as const) {
+    for (const reason of ["no_task_type", "no_mapped_rows"] as const) {
       expect(describeMappingValidity(reason)).not.toMatch(/step \d|\d단계/i);
     }
     expect(describeMappingValidity("ok")).toBeNull();

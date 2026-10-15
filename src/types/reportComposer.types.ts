@@ -61,7 +61,7 @@ export interface FieldPart {
   description?: string;
 }
 
-/** 입력 방식. 4단계의 입력 화면이 어떤 컨트롤을 그릴지 결정한다. */
+/** 입력 방식. 입력 단계의 화면이 어떤 컨트롤을 그릴지 결정한다. */
 export type FieldInput =
   | "file" // 파일 업로드
   | "text" // 한 줄 텍스트
@@ -180,8 +180,6 @@ export interface ComposerField {
   entryKeysFrom?: "classes" | "metrics";
   /** 한 카드가 두 단계로 나뉘는 경우 그 필드의 단계(①, ④). 없으면 카드의 `steps` 를 따른다. */
   step?: StepId;
-  /** 더보기로 접는다. 기본값이 있거나 있으면 좋은 정도의 항목. */
-  advanced?: boolean;
   /** 예시를 고정폭 글꼴 + `tabular-nums` 로 그린다(파일명·숫자). */
   mono?: boolean;
   /**

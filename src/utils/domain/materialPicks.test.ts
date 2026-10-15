@@ -8,6 +8,7 @@ import {
   isCardSaved,
   isCategoryComplete,
   isDraftDirty,
+  missingRecommended,
   picksToSave,
   requiredProgress,
   unsavedRequiredCards,
@@ -65,5 +66,31 @@ describe("입력 순서와 진행", () => {
     expect(isCategoryComplete(category("data"), { trainingData: ["trainingDatasetName"] })).toBe(false);
     expect(isCategoryComplete(category("criteria"), { perspective: [] })).toBe(false);
     expect(isCategoryComplete(category("criteria"), { perspective: [], metrics: [] })).toBe(true);
+  });
+});
+
+describe("빠진 권장 항목 (§5·§6)", () => {
+  it("고르지 않은 권장 항목을 카드별로, 카탈로그 순서로 돌려준다", () => {
+    const picks: MaterialPicks = {
+      modelEnv: ["algorithm", "hyperparameters", "runtimeEnv"],
+      trainingData: [
+        "trainingDatasetName",
+        "trainingDataSource",
+        "trainingVolume",
+        "trainingClassVolume",
+        "channelEffects",
+        "imbalanceHandling",
+      ],
+    };
+    const missing = missingRecommended("binary", picks);
+
+    expect(missing.map((item) => item.card.id)).toEqual(["modelEnv", "testData", "groundTruth"]);
+    expect(missing[0].fields.map((field) => field.id)).toEqual(["gpuUsage"]);
+  });
+
+  it("선택 항목은 빠져도 알리지 않는다 — 권장 항목만 제공되지 않음으로 찍힌다", () => {
+    const missing = missingRecommended("binary", { testData: ["testDataSource", "testSourceRelation"] });
+
+    expect(missing.find((item) => item.card.id === "testData")).toBeUndefined();
   });
 });
