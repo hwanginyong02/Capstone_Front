@@ -173,7 +173,7 @@ describe("② 지표와 합격 기준", () => {
   it("β 는 Fβ 를 고를 때만 받는 조건부 필드다", () => {
     const beta = getCard("metrics").fields.find((field) => field.id === "beta");
     expect(beta?.kind).toBe("conditional");
-    expect(beta?.conditionLabel).toBe("Fβ를 골랐을 때");
+    expect(beta?.conditionLabel).toBe("지표에서 Fβ 선택 시");
   });
 
   it("고를 수 있는 지표 수가 SPEC 과 같다 (이진 15 · 다중 클래스 13 · 멀티레이블 11)", () => {
@@ -384,6 +384,31 @@ describe("재료 고르기 — 대분류와 필드 구분 (docs/MATERIAL_PICKER.
       expect(field.description, field.id).toBeTruthy();
       expect(fieldFormat(field), field.id).toBeTruthy();
     }
+  });
+
+  /**
+   * 재료 고르기의 설명은 "이 칸이 무엇인가"를 말한다. 종전에는 "1절, 2절, 4절에 적힙니다"처럼
+   * 성적서 위치만 적힌 칸이 있어, 무엇을 넣을지 알 수 없었다. 성적서 위치는 `reportSection` 이
+   * 따로 든다.
+   */
+  it("화면에 보이는 설명은 성적서 위치가 아니라 무엇을 넣는지와 예시다", () => {
+    const shown = COMPOSER_CARDS.flatMap((card) => card.fields).flatMap((field) =>
+      field.parts
+        ? field.parts.map((part) => ({ id: `${field.id}:${part.key}`, text: part.description ?? "" }))
+        : [{ id: field.id, text: field.description }],
+    );
+    for (const { id, text } of shown) {
+      expect(text, id).not.toMatch(/\d절|적힙니다/);
+      expect(text, id).toContain("예:");
+    }
+  });
+
+  it("조건부 필드의 조건은 어느 칸에서 무엇을 고를 때인지로 적는다", () => {
+    const conditions = COMPOSER_CARDS.flatMap((card) => card.fields)
+      .filter((field) => field.kind === "conditional")
+      .map((field) => field.conditionLabel);
+    expect(conditions).toContain("성적서 용도에서 과제 제출 선택 시");
+    for (const label of conditions) expect(label).toMatch(/에서 .+ 선택 시$/);
   });
 
   it("형식은 선택지의 화면 이름으로 만든다 — 저장값이 드러나지 않는다", () => {

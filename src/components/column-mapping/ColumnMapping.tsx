@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { AlertTriangle, Sparkles } from "lucide-react";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
@@ -10,7 +10,7 @@ import {
   type TaskType,
   getBaseRequiredColumns,
 } from "../../data/evaluationData";
-import type { MappingRole, MappingRow, FilterMode } from "../../types/mapping.types";
+import type { MappingRole, MappingRow } from "../../types/mapping.types";
 import { applyRoleChange } from "../../utils/domain/applyRoleChange";
 import {
   describeMappingValidity,
@@ -91,7 +91,6 @@ export function ColumnMapping({
    * 이 매핑으로 판정해, 계산할 수 없는 지표를 비활성으로 둔다(`metricAvailability`).
    */
   const requiredRoles = useMemo(() => getBaseRequiredColumns(resolvedTaskType), [resolvedTaskType]);
-  const [filterMode, setFilterMode] = useState<FilterMode>("all");
 
   const roleOptions = useMemo(
     () =>
@@ -139,24 +138,6 @@ export function ColumnMapping({
     () => new Set<string>(PREDICTION_ROLE_ALTERNATIVES[resolvedTaskType].alternatives),
     [resolvedTaskType],
   );
-
-  const visibleRows = useMemo(() => {
-    if (filterMode === "edited") {
-      return rows.filter((row) => row.modified);
-    }
-    if (filterMode === "issues") {
-      return rows.filter((row) => {
-        const duplicate =
-          row.confirmedRole &&
-          row.confirmedRole !== "ignore" &&
-          !multiColumnRoles.has(row.confirmedRole) &&
-          (roleCounts[row.confirmedRole] ?? 0) > 1;
-        const unassigned = row.confirmedRole === null;
-        return duplicate || unassigned || row.warnings.length > 0;
-      });
-    }
-    return rows;
-  }, [filterMode, multiColumnRoles, roleCounts, rows]);
 
   const mappingSummary = useMemo(() => {
     const editedCount = rows.filter((row) => row.modified).length;
@@ -267,9 +248,7 @@ export function ColumnMapping({
         )}
 
         <DetectedMappingTable
-          filterMode={filterMode}
-          setFilterMode={setFilterMode}
-          visibleRows={visibleRows}
+          rows={rows}
           roleCounts={roleCounts}
           handleRoleChange={handleRoleChange}
           roleOptions={roleOptions}
