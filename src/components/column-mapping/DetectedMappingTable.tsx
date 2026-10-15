@@ -1,75 +1,43 @@
-import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { cn } from "../../utils/styling/styles";
-import type { FilterMode, MappingRole, MappingRow } from "../../types/mapping.types";
+import type { MappingRole, MappingRow } from "../../types/mapping.types";
 import { getRowMatchState } from "../../utils/domain/mappingHelpers";
 
 interface DetectedMappingTableProps {
-  filterMode: FilterMode;
-  setFilterMode: (mode: FilterMode) => void;
-  visibleRows: MappingRow[];
+  rows: MappingRow[];
   roleCounts: Partial<Record<MappingRole, number>>;
   handleRoleChange: (columnName: string, newRole: string) => void;
   roleOptions: Array<{ value: MappingRole; label: string }>;
 }
 
 export function DetectedMappingTable({
-  filterMode,
-  setFilterMode,
-  visibleRows,
+  rows,
   roleCounts,
   handleRoleChange,
   roleOptions,
 }: DetectedMappingTableProps) {
   return (
     <Card>
-      <CardHeader className="gap-4">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <CardTitle className="text-lg font-semibold">Detected mapping</CardTitle>
-            <CardDescription className="text-sm text-muted-foreground">
-              Check whether each uploaded column was mapped to the right role, then edit only the ones that need correction.
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={filterMode === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilterMode("all")}
-            >
-              All rows
-            </Button>
-            <Button
-              variant={filterMode === "issues" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilterMode("issues")}
-            >
-              Issues only
-            </Button>
-            <Button
-              variant={filterMode === "edited" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilterMode("edited")}
-            >
-              Edited only
-            </Button>
-          </div>
-        </div>
+      <CardHeader>
+        <CardTitle className="text-lg font-semibold">찾은 매핑</CardTitle>
+        <CardDescription className="text-sm text-muted-foreground">
+          올린 컬럼마다 맞는 역할에 매핑됐는지 확인하고, 고쳐야 할 것만 바꾸세요.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="rounded-lg border border-border overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40">
-                <TableHead className="text-xs uppercase text-muted-foreground">Uploaded column</TableHead>
-                <TableHead className="text-xs uppercase text-muted-foreground">Sample values</TableHead>
-                <TableHead className="text-xs uppercase text-muted-foreground">Role</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground">올린 컬럼</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground">값 예시</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground">역할</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {visibleRows.map((row) => {
+              {rows.map((row) => {
                 const duplicate = Boolean(
                   row.confirmedRole &&
                   row.confirmedRole !== "ignore" &&
@@ -81,7 +49,7 @@ export function DetectedMappingTable({
                 const matchState = getRowMatchState(row, duplicate);
 
                 return (
-                  <TableRow key={row.originalName} className={cn(needsAttention && "bg-amber-50/40")}>
+                  <TableRow key={row.originalName} className={cn(needsAttention && "bg-warning-subtle/40")}>
                     <TableCell className="align-top">
                       <div className="font-mono text-sm">{row.originalName}</div>
                     </TableCell>
@@ -100,7 +68,7 @@ export function DetectedMappingTable({
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="unassigned">unassigned</SelectItem>
+                            <SelectItem value="unassigned">지정 안 함</SelectItem>
                             {roleOptions.map((option) => (
                               <SelectItem key={option.value} value={option.value}>
                                 {option.label}
@@ -110,7 +78,7 @@ export function DetectedMappingTable({
                         </Select>
                         {row.inferredRole && row.confirmedRole !== row.inferredRole && (
                           <div className="text-xs text-muted-foreground">
-                            Auto-mapped as: <span className="font-medium text-foreground">{row.inferredRole}</span>
+                            자동 매핑: <span className="font-medium text-foreground">{row.inferredRole}</span>
                           </div>
                         )}
                       </div>

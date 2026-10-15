@@ -121,7 +121,7 @@ export function useReportData(id: string): UseReportDataResult {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          const errorMessage = errorData.detail || `Server error: ${response.status}`;
+          const errorMessage = errorData.detail || `서버 오류: ${response.status}`;
           throw new Error(errorMessage);
         }
 
@@ -139,7 +139,7 @@ export function useReportData(id: string): UseReportDataResult {
 
         // 1. KPI 지표 계산값 치환
         const taskTypeForMetrics = workflowState.taskType || "multiclass";
-        // 핵심 지표 — Details 합격 기준 표에서 고른 값, 고르지 않았으면 유형별 기본값이다.
+        // 핵심 지표 — 지표와 합격 기준 화면의 합격 기준 표에서 고른 값, 고르지 않았으면 유형별 기본값이다.
         // 판정(아래 buildConclusion)과 성적서의 "핵심" 표시가 같은 목록을 본다.
         const coreDisplayIds = new Set(
           resolveCoreMetricIds(
@@ -421,12 +421,13 @@ export function useReportData(id: string): UseReportDataResult {
                   .filter((r) => r.isCore)
                   .map((r) => `${r.name}(${r.metricId})`),
                 classLabelDescriptions: workflowState.classLabelDescriptions,
+                // 성적서 4절과 같은 출처 — ⑨ 실행 환경을 넣었으면 그 값이다(`buildReportInput`).
                 runtime: {
-                  운영체제: workflowState.basicInfo.envOS ?? "",
-                  CPU: workflowState.basicInfo.envCPU ?? "",
-                  GPU: workflowState.basicInfo.envGPU ?? "",
-                  메모리: workflowState.basicInfo.envMemory ?? "",
-                  소프트웨어: workflowState.basicInfo.envSoftware ?? "",
+                  운영체제: reportInput.basicInfo.envOS ?? "",
+                  CPU: reportInput.basicInfo.envCPU ?? "",
+                  GPU: reportInput.basicInfo.envGPU ?? "",
+                  메모리: reportInput.basicInfo.envMemory ?? "",
+                  소프트웨어: reportInput.basicInfo.envSoftware ?? "",
                 },
               })
             : undefined;

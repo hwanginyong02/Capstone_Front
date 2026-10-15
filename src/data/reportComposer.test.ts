@@ -13,18 +13,21 @@ import { describe, expect, it } from "vitest";
 import {
   COMPOSER_CARDS,
   OPTIONAL_CARD_IDS,
+  MATERIAL_CATEGORIES,
   REQUIRED_CARD_IDS,
-  countAdvancedFields,
-  countOptionalOn,
+  catalogCards,
+  choiceLabel,
+  entryLabel,
+  fieldFormat,
+  fieldParts,
   getCard,
   getCardFields,
   getSelectableMetrics,
   getVisibleCards,
   isStandardReportingField,
-  matchPreset,
-  presetSelection,
+  pickKind,
+  pickableIds,
 } from "./reportComposer";
-import { DEFAULT_COMPOSER_SELECTION } from "../types/reportComposer.types";
 import type { TaskType } from "./evaluationData";
 
 const TASK_TYPES: TaskType[] = ["binary", "multiclass", "multilabel"];
@@ -77,13 +80,6 @@ describe("카드 구성", () => {
     }
   });
 
-  it("보기 버튼은 ① 예시 파일과 ② 지표 목록 둘뿐이다", () => {
-    const withViewer = COMPOSER_CARDS.filter((card) => card.viewer);
-    expect(withViewer.map((card) => [card.id, card.viewer])).toEqual([
-      ["evalData", "csvExample"],
-      ["metrics", "metricList"],
-    ]);
-  });
 });
 
 describe("필드 스키마", () => {
@@ -177,7 +173,7 @@ describe("② 지표와 합격 기준", () => {
   it("β 는 Fβ 를 고를 때만 받는 조건부 필드다", () => {
     const beta = getCard("metrics").fields.find((field) => field.id === "beta");
     expect(beta?.kind).toBe("conditional");
-    expect(beta?.conditionLabel).toBe("When Fβ is chosen");
+    expect(beta?.conditionLabel).toBe("지표에서 Fβ 선택 시");
   });
 
   it("고를 수 있는 지표 수가 SPEC 과 같다 (이진 15 · 다중 클래스 13 · 멀티레이블 11)", () => {
@@ -194,17 +190,24 @@ describe("② 지표와 합격 기준", () => {
 });
 
 describe("⑥ 학습 데이터", () => {
-  it("더보기로 접히는 필드가 3개다 (수집 기간 · 데이터 형식 · 비고)", () => {
-    expect(countAdvancedFields("trainingData", "binary")).toBe(3);
-    const advanced = getCard("trainingData")
-      .fields.filter((field) => field.advanced)
-      .map((field) => field.id);
-    expect(advanced).toEqual(["trainingPeriod", "trainingDataFormat", "trainingNotes"]);
-  });
-
-  it("학습 데이터 설명은 접지 않는다 — 접어 두었더니 칸이 없는 것으로 보였다", () => {
-    const shown = getCardFields("trainingData", "binary", { includeAdvanced: false });
-    expect(shown.map((field) => field.id)).toContain("trainingDescription");
+  it("재료 고르기에서 권장 6개와 선택 4개로 나뉜다 (docs/MATERIAL_PICKER.md §6)", () => {
+    const card = getCard("trainingData");
+    const of = (kind: string) =>
+      card.fields.filter((field) => pickKind(card, field) === kind).map((field) => field.id);
+    expect(of("recommended")).toEqual([
+      "trainingDatasetName",
+      "trainingDataSource",
+      "trainingVolume",
+      "trainingClassVolume",
+      "channelEffects",
+      "imbalanceHandling",
+    ]);
+    expect(of("optional")).toEqual([
+      "trainingPeriod",
+      "trainingDescription",
+      "trainingDataFormat",
+      "trainingNotes",
+    ]);
   });
 
   it("Details 의 학습 데이터 폼을 흡수했다 — 이름·건수·클래스별 양·형식이 모두 여기 있다", () => {
@@ -219,13 +222,6 @@ describe("⑥ 학습 데이터", () => {
     }
     // 기존 저장소로 흘려보내지 않는다 — 성적서가 카드 값을 직접 읽는다.
     expect(getCard("trainingData").fields.some((field) => field.legacy)).toBe(false);
-  });
-
-  it("더보기를 접으면 보이는 필드에서 빠진다", () => {
-    const shown = getCardFields("trainingData", "binary", { includeAdvanced: false });
-    const all = getCardFields("trainingData", "binary");
-    expect(all.length - shown.length).toBe(3);
-    expect(shown.every((field) => !field.advanced)).toBe(true);
   });
 
   it("수집 환경 차이는 복수 선택이고 \"알려진 것 없음\"이 배타 선택지다", () => {
@@ -246,12 +242,16 @@ describe("⑥ 학습 데이터", () => {
 });
 
 describe("⑦ 테스트 데이터", () => {
-  it("더보기로 접히는 필드는 수집 기간 하나다", () => {
-    expect(countAdvancedFields("testData", "binary")).toBe(1);
-    const advanced = getCard("testData")
-      .fields.filter((field) => field.advanced)
-      .map((field) => field.id);
-    expect(advanced).toEqual(["testPeriod"]);
+  it("선택 항목은 수집 기간과 학습과 같은 전처리다", () => {
+    expect(pickableIds("testData", "binary")).toEqual([
+      "testDataSource",
+      "testSourceRelation",
+      "testPeriod",
+      "preprocessingMatch",
+    ]);
+    const card = getCard("testData");
+    const optional = card.fields.filter((field) => pickKind(card, field) === "optional");
+    expect(optional.map((field) => field.id)).toEqual(["testPeriod", "preprocessingMatch"]);
   });
 
   /**
@@ -320,29 +320,119 @@ describe("필수 (표준 보고) 유도", () => {
   });
 });
 
-describe("프리셋과 요약", () => {
-  it("기본값은 프리셋 \"최소 구성\" 이다", () => {
-    // 보지도 않은 카드의 필수 입력을 떠안은 채 시작하지 않는다.
-    expect(matchPreset(DEFAULT_COMPOSER_SELECTION)).toBe("minimal");
-    expect(countOptionalOn(DEFAULT_COMPOSER_SELECTION)).toBe(0);
+describe("재료 고르기 — 대분류와 필드 구분 (docs/MATERIAL_PICKER.md §2·§6)", () => {
+  const fieldOf = (cardId: Parameters<typeof getCard>[0], fieldId: string) => {
+    const field = getCard(cardId).fields.find((item) => item.id === fieldId);
+    if (!field) throw new Error(fieldId);
+    return field;
+  };
+
+  it("대분류 4개가 카드 9장을 빠짐없이 한 번씩 담는다", () => {
+    const ids = MATERIAL_CATEGORIES.flatMap((category) => category.cardIds);
+    expect(MATERIAL_CATEGORIES.map((category) => category.name)).toEqual([
+      "의뢰 정보",
+      "모델",
+      "데이터",
+      "평가 기준",
+    ]);
+    expect([...ids].sort()).toEqual(COMPOSER_CARDS.map((card) => card.id).sort());
   });
 
-  it("최소 구성은 선택 카드를 모두 끈다", () => {
-    const selection = presetSelection("minimal");
-    expect(countOptionalOn(selection)).toBe(0);
-    expect(matchPreset(selection)).toBe("minimal");
+  it("카탈로그 순서가 입력 순서다 — 의뢰자 정보부터 지표와 합격 기준까지", () => {
+    expect(catalogCards("binary").map((card) => card.id)).toEqual([
+      "clientInfo",
+      "model",
+      "modelEnv",
+      "evalData",
+      "trainingData",
+      "testData",
+      "groundTruth",
+      "perspective",
+      "metrics",
+    ]);
   });
 
-  it("전체는 선택 카드를 모두 켠다", () => {
-    const selection = presetSelection("full");
-    expect(countOptionalOn(selection)).toBe(4);
-    expect(matchPreset(selection)).toBe("full");
+  it("선택 카드의 필수 필드는 권장, 필수 카드의 필수 필드는 필수다", () => {
+    expect(pickKind(getCard("trainingData"), fieldOf("trainingData", "trainingDatasetName"))).toBe(
+      "recommended",
+    );
+    expect(pickKind(getCard("clientInfo"), fieldOf("clientInfo", "companyInfo"))).toBe("required");
+    expect(pickKind(getCard("clientInfo"), fieldOf("clientInfo", "projectNumber"))).toBe("optional");
+    expect(pickKind(getCard("groundTruth"), fieldOf("groundTruth", "labelReviewerCount"))).toBe(
+      "conditional",
+    );
   });
 
-  it("일부만 켜면 어느 프리셋과도 같지 않다", () => {
-    const selection = { ...presetSelection("full"), modelEnv: false };
-    expect(countOptionalOn(selection)).toBe(3);
-    expect(matchPreset(selection)).toBeNull();
+  it("권장은 필드 한 줄 단위, 선택은 쪼갠 항목마다 체크한다 — 필수·조건부는 체크하지 않는다", () => {
+    expect(pickableIds("modelEnv", "binary")).toEqual([
+      "algorithm",
+      "hyperparameters",
+      "runtimeEnv",
+      "gpuUsage",
+    ]);
+    expect(pickableIds("clientInfo", "binary")).toEqual([
+      "contactExtra:website",
+      "contactExtra:fax",
+      "projectNumber",
+      "requestDate",
+    ]);
+    expect(pickableIds("perspective", "binary")).toEqual([]);
+  });
+
+  it("모든 필드에 재료 고르기용 설명과 형식이 있다", () => {
+    for (const field of COMPOSER_CARDS.flatMap((card) => card.fields)) {
+      expect(field.description, field.id).toBeTruthy();
+      expect(fieldFormat(field), field.id).toBeTruthy();
+    }
+  });
+
+  /**
+   * 재료 고르기의 설명은 "이 칸이 무엇인가"를 말한다. 종전에는 "1절, 2절, 4절에 적힙니다"처럼
+   * 성적서 위치만 적힌 칸이 있어, 무엇을 넣을지 알 수 없었다. 성적서 위치는 `reportSection` 이
+   * 따로 든다.
+   */
+  it("화면에 보이는 설명은 성적서 위치가 아니라 무엇을 넣는지와 예시다", () => {
+    const shown = COMPOSER_CARDS.flatMap((card) => card.fields).flatMap((field) =>
+      field.parts
+        ? field.parts.map((part) => ({ id: `${field.id}:${part.key}`, text: part.description ?? "" }))
+        : [{ id: field.id, text: field.description }],
+    );
+    for (const { id, text } of shown) {
+      expect(text, id).not.toMatch(/\d절|적힙니다/);
+      expect(text, id).toContain("예:");
+    }
+  });
+
+  it("조건부 필드의 조건은 어느 칸에서 무엇을 고를 때인지로 적는다", () => {
+    const conditions = COMPOSER_CARDS.flatMap((card) => card.fields)
+      .filter((field) => field.kind === "conditional")
+      .map((field) => field.conditionLabel);
+    expect(conditions).toContain("성적서 용도에서 과제 제출 선택 시");
+    for (const label of conditions) expect(label).toMatch(/에서 .+ 선택 시$/);
+  });
+
+  it("형식은 선택지의 화면 이름으로 만든다 — 저장값이 드러나지 않는다", () => {
+    expect(fieldFormat(fieldOf("perspective", "usageMode"))).toBe("하나 선택: 실시간 응답 / 일괄 처리");
+    expect(fieldFormat(fieldOf("testData", "preprocessingMatch"))).toBe(
+      "하나 선택: 같음 / 다름 / 모름. 덧붙이는 글 가능",
+    );
+  });
+
+  it("칸이 정해진 필드는 그 칸으로 쪼개 보인다", () => {
+    expect(fieldParts(fieldOf("modelEnv", "runtimeEnv")).map((part) => part.label)).toEqual([
+      "운영체제",
+      "CPU",
+      "GPU",
+      "메모리",
+      "소프트웨어",
+    ]);
+    expect(fieldParts(fieldOf("clientInfo", "companyInfo")).map((part) => part.label)).toEqual([
+      "회사명",
+      "대표자",
+      "사업자등록번호",
+      "전화번호",
+      "주소",
+    ]);
   });
 });
 
@@ -368,10 +458,12 @@ describe("재료 목록과 맞춘 형태", () => {
     expect(field?.step).toBe("metrics");
   });
 
-  it("② 핵심 지표는 Details 에서 고르고, 최소 1개가 필수다 (재료 목록 7절)", () => {
+  it("② 핵심 지표는 지표와 합격 기준 화면에서 고르고, 최소 1개가 필수다 (재료 목록 7절)", () => {
     const field = fieldOf("metrics", "coreMetrics");
     expect(field?.kind).toBe("required");
-    expect(field?.step).toBe("clientInfo");
+    // ② 카드 전체가 한 단계다(docs/MATERIAL_PICKER.md §5). 필드 단위로 나눌 단계가 없다.
+    expect(getCard("metrics").steps).toEqual(["metrics"]);
+    expect(field?.step).toBeUndefined();
   });
 
   it("⑥ 편향 감소 노력은 여럿 고르고, 'Did nothing' 은 배타, Other 는 직접 적는다", () => {
@@ -451,5 +543,29 @@ describe("재료 목록과 맞춘 형태", () => {
         expect(field.reportLabels[choice], `${field.id}: ${choice}`).toBeTruthy();
       }
     }
+  });
+
+  /**
+   * 저장값은 영어로 두고 화면 이름만 한국어다(docs/MATERIAL_PICKER.md §8). 이름표가 빠지면
+   * 그 선택지만 영어 저장값이 화면에 그대로 드러난다.
+   */
+  it("화면 이름(choiceLabels·entryLabels)은 모든 선택지와 고정 칸을 덮는다", () => {
+    for (const field of COMPOSER_CARDS.flatMap((card) => card.fields)) {
+      for (const choice of field.choices ?? []) {
+        expect(field.choiceLabels?.[choice], `${field.id}: ${choice}`).toBeTruthy();
+      }
+      for (const key of field.entryKeys ?? []) {
+        expect(field.entryLabels?.[key], `${field.id}: ${key}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("화면 이름은 저장값을 바꾸지 않는다 — 선택지는 영어 그대로다", () => {
+    const usage = fieldOf("perspective", "usageMode");
+    expect(usage?.choices).toEqual(["Real-time", "Batch"]);
+    expect(choiceLabel(usage!, "Batch")).toBe("일괄 처리");
+    expect(entryLabel(fieldOf("modelEnv", "runtimeEnv")!, "Operating system")).toBe("운영체제");
+    // 이름표가 없는 칸(클래스 이름 등)은 키를 그대로 보인다.
+    expect(entryLabel(fieldOf("trainingData", "trainingClassVolume")!, "cat")).toBe("cat");
   });
 });

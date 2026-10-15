@@ -1,7 +1,6 @@
 import type { RequiredColumnCode, TaskType } from "../data/evaluationData";
 
 export type MappingRole = RequiredColumnCode | "ignore";
-export type FilterMode = "all" | "issues" | "edited";
 
 export interface MappingRow {
   originalName: string;

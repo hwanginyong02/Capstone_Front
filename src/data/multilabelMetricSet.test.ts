@@ -623,3 +623,46 @@ describe("persist 마이그레이션 v10 → v11 — 전처리 한 칸, 일치�
     expect(migrated.basicInfo).toEqual({ companyName: "Test Corp", reportPurposeNote: "" });
   });
 });
+
+/**
+ * v11 → v12 — 재료 고르기(docs/MATERIAL_PICKER.md §7). 카드마다 저장한 체크가 생겼다.
+ *
+ * 진행 중이던 사용자가 재료 고르기에서 다시 막히지 않게 지금 상태를 저장된 것으로 옮긴다.
+ */
+describe("persist 마이그레이션 v11 → v12 — 재료 고르기 저장 상태", () => {
+  const migrate = async (state: object) => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+    return migrateWorkflowState(state, 11);
+  };
+
+  it("필수 카드는 모두 저장된 것으로 본다 — 다음에서 막히지 않는다", async () => {
+    const migrated = await migrate({ taskType: "binary", composerCards: {} });
+
+    for (const id of ["clientInfo", "model", "evalData", "perspective", "metrics"]) {
+      expect(migrated.materialPicks[id], id).toEqual([]);
+    }
+  });
+
+  it("켜져 있던 선택 카드는 권장 항목을 모두 고른 채 저장한다 — 종전 규칙과 같은 뜻이다", async () => {
+    const migrated = await migrate({
+      taskType: "binary",
+      composerCards: { trainingData: false, testData: false, groundTruth: false, modelEnv: true },
+    });
+
+    expect(migrated.materialPicks.modelEnv).toEqual(["algorithm", "hyperparameters", "runtimeEnv", "gpuUsage"]);
+    expect(migrated.materialPicks.trainingData).toBeUndefined();
+  });
+
+  it("이미 적어 둔 선택 항목은 고른 것으로 옮긴다", async () => {
+    const migrated = await migrate({
+      taskType: "binary",
+      composerCards: { trainingData: true, testData: false, groundTruth: false, modelEnv: false },
+      composerTrainingData: { trainingNotes: { text: "이틀 뺐음" }, trainingDataFormat: { text: "" } },
+      basicInfo: { website: "https://example.com", fax: "", projectNumber: "P-1" },
+    });
+
+    expect(migrated.materialPicks.trainingData).toContain("trainingNotes");
+    expect(migrated.materialPicks.trainingData).not.toContain("trainingDataFormat");
+    expect(migrated.materialPicks.clientInfo).toEqual(["contactExtra:website", "projectNumber"]);
+  });
+});

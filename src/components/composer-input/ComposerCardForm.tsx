@@ -1,18 +1,17 @@
 /**
  * 카드 하나의 입력 폼.
  *
- * 성적서 구성 화면에서 본 그 카드가 여기서 실제 입력란이 된다. 더보기로 접히는 필드는 같은
- * 규칙으로 접어 두고(선택 항목이라 비워도 진행할 수 있다), 카드의 도움말을 아래에 둔다.
+ * 재료 고르기에서 고른 그 카드가 여기서 실제 입력란이 된다. 필수 필드는 늘 보이고, 권장·선택
+ * 필드는 재료 고르기에서 체크해 저장한 것만 보인다(`picks`, docs/MATERIAL_PICKER.md §5). 받기로
+ * 한 선택 필드는 접지 않고 바로 보인다 — 고른 것 자체가 그 칸을 쓰겠다는 뜻이다. 카드의 도움말은
+ * 아래에 둔다.
  *
- * 켜지 않은 카드는 **아예 그리지 않는다** — 7단계는 ⑥ ⑦ ⑧ 중 켠 카드만 받는다
- * (docs/COMPOSER_COMPONENTS.md "카드별 입력 단계").
+ * 넣지 않은 카드는 **아예 그리지 않는다** — 데이터 정보는 ⑥ ⑦ ⑧ 중 넣은 카드만 받는다.
  */
-import { useState } from "react";
-import { ChevronDown, ChevronUp, Info } from "lucide-react";
-import { Button } from "../ui/button";
+import { Info } from "lucide-react";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { ComposerFieldInput } from "./ComposerFieldInput";
-import { countAdvancedFields, getCardFields } from "../../data/reportComposer";
+import { choiceLabel, getCardFields, isFieldPicked } from "../../data/reportComposer";
 import type { TaskType } from "../../data/evaluationData";
 import type {
   ComposerCard,
@@ -24,9 +23,9 @@ import { isFieldVisible, rangeFor, type FieldIssue } from "../../utils/domain/co
 
 /** 숫자 칸의 허용 범위를 문장으로. 무엇이 틀렸는지가 아니라 무엇을 넣으면 되는지를 말한다. */
 function describeRange(range: NumberRange): string {
-  const kind = range.integer ? "a whole number" : "a number";
-  if (range.max === undefined) return `Enter ${kind} of at least ${range.min}.`;
-  return `Enter ${kind} from ${range.min} to ${range.max}.`;
+  const kind = range.integer ? "정수" : "숫자";
+  if (range.max === undefined) return `${range.min} 이상의 ${kind}를 넣으세요.`;
+  return `${range.min}~${range.max} 사이의 ${kind}를 넣으세요.`;
 }
 
 interface ComposerCardFormProps {
@@ -44,6 +43,8 @@ interface ComposerCardFormProps {
    * 켜지 않으면 막힌 이유가 하단 한 줄에만 남아, 긴 폼에서는 어느 칸인지 못 찾는다.
    */
   showErrors?: boolean;
+  /** 재료 고르기에서 이 카드에 저장한 체크. 없으면 모든 필드를 그린다. */
+  picks?: readonly string[];
 }
 
 export function ComposerCardForm({
@@ -54,21 +55,12 @@ export function ComposerCardForm({
   issues,
   classNames,
   showErrors = false,
+  picks,
 }: ComposerCardFormProps) {
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
-  // 더보기 안의 칸이 틀렸으면(범위 밖 숫자, 뒤집힌 기간) 접어 두지 않는다 — 접힌 채로 막히면
-  // 무엇 때문인지 찾을 수 없다.
-  const advancedHasIssue = getCardFields(card.id, taskType).some(
-    (field) => field.advanced && issues.some((issue) => issue.fieldId === field.id),
+  // 받지 않기로 한 필드와 조건이 성립하지 않은 조건부 필드는 그리지 않는다.
+  const fields = getCardFields(card.id, taskType).filter((field) =>
+    isFieldVisible(field, values, isFieldPicked(card, field, picks)),
   );
-  const expanded = showAdvanced || advancedHasIssue;
-
-  // 조건이 성립하지 않은 조건부 필드는 그리지 않는다 — "특정 조건에서만 나타난다".
-  const fields = getCardFields(card.id, taskType, { includeAdvanced: expanded }).filter(
-    (field) => isFieldVisible(field, values),
-  );
-  const advancedCount = countAdvancedFields(card.id, taskType);
   const issueOf = (fieldId: string) => issues.find((issue) => issue.fieldId === fieldId);
 
   return (
@@ -100,7 +92,7 @@ export function ComposerCardForm({
               />
               {issue?.reason === "exclusive" && (
                 <p className="mt-1 text-body-small text-destructive">
-                  {field.exclusiveChoice} cannot be combined with the others.
+                  다른 선택지와 함께 고를 수 없는 답입니다: {choiceLabel(field, field.exclusiveChoice ?? "")}
                 </p>
               )}
               {issue?.reason === "outOfRange" && rangeFor(field, values) && (
@@ -113,29 +105,17 @@ export function ComposerCardForm({
               )}
               {issue?.reason === "invalidPeriod" && (
                 <p className="mt-1 text-body-small text-destructive">
-                  Enter both months, with From no later than To.
+                  시작 월과 끝 월을 모두 넣고, 시작 월이 끝 월보다 늦지 않게 하세요.
                 </p>
               )}
               {showErrors && issue?.reason === "missing" && (
                 <p className="mt-1 text-body-small text-destructive">
-                  Required.{issue.allowsUnknown && " Choose Unknown if you do not know."}
+                  필수 항목입니다.{issue.allowsUnknown && " 모르면 모름을 고르세요."}
                 </p>
               )}
             </div>
           );
         })}
-
-        {advancedCount > 0 && !advancedHasIssue && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowAdvanced((prev) => !prev)}
-            className="text-body-medium font-medium"
-          >
-            {showAdvanced ? "Hide optional fields" : "Show " + advancedCount + (advancedCount === 1 ? " optional field" : " optional fields")}
-            {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </Button>
-        )}
 
         {card.help && (
           <div className="flex gap-2 border-t border-border pt-5">

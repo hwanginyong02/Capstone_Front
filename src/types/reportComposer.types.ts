@@ -1,8 +1,8 @@
 /**
- * 성적서 구성 화면의 타입 정의 — 재료 레지스트리의 스키마.
+ * 재료 레지스트리의 스키마 — 재료 고르기 화면과 입력 화면이 함께 쓴다.
  *
  * `docs/COMPOSER_COMPONENTS.md` 의 카드 9개와 그 안의 필드를 코드가 읽는 형태로 옮긴 것이다.
- * 구성 화면의 카드·상세 영역·하단 요약, 단계 목록 계산, 필수 입력 점검이 모두 이 스키마를
+ * 재료 고르기의 대분류·카드·필드, 단계 목록 계산, 필수 입력 점검이 모두 이 스키마를
  * 통해 `data/reportComposer.ts` 하나만 읽는다.
  *
  * 레지스트리 **본체**는 `src/data/reportComposer.ts`, 값을 담는 스토어 필드는
@@ -29,14 +29,39 @@ export type OptionalCardId = "trainingData" | "testData" | "groundTruth" | "mode
 /**
  * 필드 구분.
  *
- * `docs/COMPOSER_COMPONENTS.md` 는 "필수 (표준 보고)"를 네 번째 구분으로 적지만, 카드별 상세
- * 표에는 한 번도 나오지 않고 `docs/COMPOSER_DESIGN.md` 의 배지도 세 가지뿐이다. 그래서 값은
- * 세 가지로 두고, 표준 보고 여부는 **선택 카드 안의 `required` 필드**로 유도한다
- * (`isStandardReportingField`). 같은 뜻을 두 벌로 적지 않는다.
+ * 값은 세 가지다. 재료 고르기 화면의 네 번째 구분인 **권장**은 선택 카드 안의 `required`
+ * 필드에서 유도한다 — TS 4213 이 성적서에 적으라고 요구하는 표준 보고 항목이다
+ * (`pickKind`, docs/MATERIAL_PICKER.md §6). 같은 뜻을 두 벌로 적지 않는다.
  */
 export type FieldKind = "required" | "optional" | "conditional";
 
-/** 입력 방식. 4단계의 입력 화면이 어떤 컨트롤을 그릴지 결정한다. */
+/**
+ * 재료 고르기 화면의 필드 구분(docs/MATERIAL_PICKER.md §4·§6).
+ *
+ * - `required` 필수 카드의 필수 필드. 체크박스 없이 보인다.
+ * - `recommended` 선택 카드의 필수 필드(표준 보고 항목). 필드 한 줄 단위로 체크하고 기본은 꺼짐.
+ * - `optional` 선택 필드. 하나씩 체크한다(쪼갠 항목이 있으면 항목마다).
+ * - `conditional` 조건이 맞을 때만 받는 필드. 조건 문구와 함께 보인다.
+ */
+export type PickKind = "required" | "recommended" | "optional" | "conditional";
+
+/**
+ * 한 필드를 재료 고르기 화면에서 여러 줄로 쪼개 보일 때의 한 줄(docs/MATERIAL_PICKER.md §8).
+ * 예: ③ 회사 정보 → 회사명·대표자·사업자등록번호·전화번호·주소.
+ *
+ * 입력 화면과 저장값은 바꾸지 않는다 — 화면에 보이는 단위만 쪼갠다. 선택 필드의 항목은
+ * 항목마다 체크하고, 체크 id 는 `필드id:key` 다.
+ */
+export interface FieldPart {
+  key: string;
+  label: string;
+  /** 이름 오른쪽에 회색으로 보이는 형식(텍스트, 하나 선택 등). */
+  format?: string;
+  /** 이 항목만의 짧은 설명. */
+  description?: string;
+}
+
+/** 입력 방식. 입력 단계의 화면이 어떤 컨트롤을 그릴지 결정한다. */
 export type FieldInput =
   | "file" // 파일 업로드
   | "text" // 한 줄 텍스트
@@ -51,6 +76,9 @@ export type FieldInput =
 
 /** `monthRange` 의 두 칸. 저장소에 들어가는 키라 화면 문구와 따로 둔다. */
 export const MONTH_RANGE_KEYS = { from: "From", to: "To" } as const;
+
+/** `monthRange` 두 칸의 화면 이름. 키는 위 `MONTH_RANGE_KEYS` 의 값이다. */
+export const MONTH_RANGE_LABELS: Record<string, string> = { From: "시작 월", To: "끝 월" };
 
 /**
  * 조건부 필드의 조건 하나 — 같은 카드의 다른 필드가 이 값일 때 성립한다.
@@ -128,12 +156,22 @@ export interface ComposerField {
    */
   allowsNote?: boolean;
   /**
-   * 성적서에 찍을 선택지 이름. 화면은 영어인데 성적서는 한국어이고, 재료 목록이 정한 이름이
-   * 있다(예: "Missed (FN)" → "FN이 더 위험"). 저장값은 화면 선택지 그대로다.
+   * 화면에 보이는 선택지 이름. 키는 `choices` 의 값이다.
+   *
+   * `choices` 는 **저장값**이라 영어로 둔다 — 화면 문구를 바꿀 때마다 저장값이 바뀌면 이미
+   * 저장된 답이 어느 선택지와도 맞지 않게 된다(docs/MATERIAL_PICKER.md §8). 화면은 이 이름을,
+   * 성적서는 `reportLabels` 를 쓴다. 없는 키는 저장값을 그대로 보인다(`choiceLabel`).
+   */
+  choiceLabels?: Record<string, string>;
+  /**
+   * 성적서에 찍을 선택지 이름. 재료 목록이 정한 이름이 있어 화면 이름과 다를 수 있다
+   * (예: "Missed (FN)" → 화면 "놓침(FN)", 성적서 "FN이 더 위험"). 키는 `choices` 의 값이다.
    */
   reportLabels?: Record<string, string>;
-  /** `entries` 의 고정 행 키(⑥ 데이터 양의 학습·검증, ⑨ GPU 사용 여부의 학습·추론). */
+  /** `entries` 의 고정 행 키(⑥ 데이터 양의 학습·검증, ⑨ GPU 사용 여부의 학습·추론). 저장값이다. */
   entryKeys?: string[];
+  /** `entryKeys` 행의 화면 이름. 키는 `entryKeys` 의 값이다(`entryLabel`). */
+  entryLabels?: Record<string, string>;
   /**
    * `entries` 의 행을 다른 곳에서 만든다 — 사용자가 줄을 추가하지 않는다.
    * `"classes"`: 업로드한 클래스 목록(⑥ 클래스별 데이터 양)
@@ -142,8 +180,6 @@ export interface ComposerField {
   entryKeysFrom?: "classes" | "metrics";
   /** 한 카드가 두 단계로 나뉘는 경우 그 필드의 단계(①, ④). 없으면 카드의 `steps` 를 따른다. */
   step?: StepId;
-  /** 더보기로 접는다. 기본값이 있거나 있으면 좋은 정도의 항목. */
-  advanced?: boolean;
   /** 예시를 고정폭 글꼴 + `tabular-nums` 로 그린다(파일명·숫자). */
   mono?: boolean;
   /**
@@ -157,6 +193,18 @@ export interface ComposerField {
   allowsUnknown?: boolean;
   /** 입력 화면에 붙이는 한 줄 도움말. */
   help?: string;
+  /**
+   * 재료 고르기 화면에서 이름 아래 회색으로 보이는 이 필드만의 짧은 설명.
+   * 문구는 초안이다 — 프로토타입 `data()` 의 desc 를 옮겼다(docs/MATERIAL_PICKER.md §8).
+   */
+  description?: string;
+  /**
+   * 이름 오른쪽에 회색으로 보이는 형식. 없으면 `input`·`choices` 에서 만든다(`fieldFormat`).
+   * 유도한 문장이 어색한 필드(파일, 지표 목록)에만 적는다.
+   */
+  format?: string;
+  /** 재료 고르기 화면에서 여러 줄로 쪼개 보일 항목. `entryKeys` 가 있는 필드는 거기서 만든다. */
+  parts?: FieldPart[];
   /** 성적서의 어느 절에 들어가는지 — 개발자용. 카드에 보이지 않는다. */
   reportSection?: string;
   /** AI 서술에 넘기는 값인지 — 개발자용. 카드에 보이지 않는다. */
@@ -197,26 +245,42 @@ export interface ComposerCard {
   fields: ComposerField[];
   /** 이 카드를 보여줄 분류 유형. 없으면 전 유형. */
   taskTypes?: TaskType[];
-  /** 상세 영역 하단 도움말. */
+  /** 입력 화면 하단 도움말. */
   help?: string;
-  /** 상세 영역의 보기 버튼. */
-  viewer?: "csvExample" | "metricList";
   /** 이 카드를 받는 단계. 한 카드가 두 단계로 나뉘기도 한다(①, ④). */
   steps: StepId[];
 }
 
-/** 선택 카드의 켜짐/꺼짐. 스토어에 저장된다. */
+/**
+ * 선택 카드가 성적서에 들어가는지. 스토어에 저장된다.
+ *
+ * 재료 고르기 화면에서는 직접 켜고 끄지 않는다 — 선택 카드를 **항목을 하나 이상 체크해 저장하면**
+ * 켜진다(`saveMaterialPick`). 단계 목록과 필수 점검은 이 값을 그대로 읽는다.
+ */
 export type ComposerSelection = Record<OptionalCardId, boolean>;
 
-/** 프리셋 — 최소 구성(필수 5개만) / 전체(선택 4개까지). */
-export type ComposerPreset = "minimal" | "full";
+/** 재료 고르기 화면의 대분류 4개(docs/MATERIAL_PICKER.md §2). */
+export type MaterialCategoryId = "info" | "model" | "data" | "criteria";
+
+export interface MaterialCategory {
+  id: MaterialCategoryId;
+  name: string;
+  /** 대분류 안의 카드. 배열 순서가 카탈로그 순서다. */
+  cardIds: ComposerCardId[];
+}
 
 /**
- * 처음에는 **필수 카드만** 들어간다(프리셋 "최소 구성").
+ * 카드마다 저장한 체크(docs/MATERIAL_PICKER.md §7). 키가 없으면 그 카드를 **저장하지 않은**
+ * 것이고, 빈 배열이면 "아무것도 넣지 않기로 확정"한 것이다. 값은 체크한 필드 id, 쪼갠 항목이면
+ * `필드id:key` 다.
+ */
+export type MaterialPicks = Partial<Record<ComposerCardId, string[]>>;
+
+/**
+ * 처음에는 **필수 카드만** 들어간다.
  *
- * 기본을 "전체"로 두면 사용자가 보지도 않은 선택 카드 4개의 필수 입력을 떠안은 채 시작한다 —
- * 덜어내려면 먼저 그런 카드가 있다는 것을 알아야 하는데, 그 사실이 막힌 뒤에야 드러난다.
- * 비어 있는 데서 더하는 쪽이 고르는 행위와 맞다.
+ * 선택 카드는 사용자가 재료 고르기에서 항목을 골라 저장해야 들어간다 — 보지도 않은 카드의 입력을
+ * 떠안은 채 시작하지 않는다. 비어 있는 데서 더하는 쪽이 고르는 행위와 맞다.
  */
 export const DEFAULT_COMPOSER_SELECTION: ComposerSelection = {
   trainingData: false,

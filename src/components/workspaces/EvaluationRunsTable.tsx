@@ -31,12 +31,12 @@ export function EvaluationRunsTable({ runs, onDelete }: EvaluationRunsTableProps
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Model Name</TableHead>
-          <TableHead>Version</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Report No.</TableHead>
-          <TableHead>Created</TableHead>
-          <TableHead className="text-right">Action</TableHead>
+          <TableHead>모델 이름</TableHead>
+          <TableHead>버전</TableHead>
+          <TableHead>상태</TableHead>
+          <TableHead>성적서 번호</TableHead>
+          <TableHead>만든 날</TableHead>
+          <TableHead className="text-right">작업</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -49,10 +49,10 @@ export function EvaluationRunsTable({ runs, onDelete }: EvaluationRunsTableProps
               <TableCell>{run.versionName}</TableCell>
               <TableCell>
                 {issued ? (
-                  <Badge variant="secondary">Report issued</Badge>
+                  <Badge variant="secondary">발급됨</Badge>
                 ) : (
-                  <Badge variant="outline" className="border-amber-300 text-amber-700">
-                    Draft
+                  <Badge variant="outline" className="border-warning-border text-warning-strong">
+                    초안
                   </Badge>
                 )}
               </TableCell>
@@ -67,7 +67,7 @@ export function EvaluationRunsTable({ runs, onDelete }: EvaluationRunsTableProps
                   <Button asChild variant="outline" size="sm">
                     <Link to={`/report/${run.id}`}>
                       <FileText className="h-4 w-4" />
-                      Report
+                      성적서
                     </Link>
                   </Button>
                   <Button
@@ -77,7 +77,7 @@ export function EvaluationRunsTable({ runs, onDelete }: EvaluationRunsTableProps
                     onClick={() => onDelete(run.id)}
                   >
                     <Trash2 className="h-4 w-4" />
-                    Delete
+                    지우기
                   </Button>
                 </div>
               </TableCell>

@@ -22,6 +22,8 @@ src/
 
 ## 7단계 워크플로우
 
+> **MATERIAL_PICKER.md로 대체됨** (§1·§3) — 흐름은 작업 유형 → 재료 고르기 → 의뢰자 정보 → 평가 대상 모델 → [모델 설정과 실행 환경] → 평가 데이터 → 컬럼 매핑 → [데이터 정보] → 평가 관점 → 지표와 합격 기준 → 검증 → 확인과 생성이다. 대괄호 단계는 재료 고르기에서 그 카드를 넣었을 때만 나온다. 아래는 종전 기록.
+
 1. **기본 정보** — 회사/모델 정보, 평가 유형(binary/multiclass/multilabel) 선택
 2. **시험항목** — 지표(Metric, M1~M23) 선택
 3. **지표 상세** — 지표별 목표값·추가 입력(M5 선택 시 β값 등)
@@ -33,6 +35,8 @@ src/
 ## 디자인 시스템
 
 ### 영감
+
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 톤은 "인증 네이비"이고 단일 강조색은 #1d3b6e 다. 아래는 종전 기록.
 Linear, Vercel, Supabase 대시보드에서 영감을 받은 정밀하고 깔끔한 디자인:
 - 크리스프한 흰색 카드 + 밝은 중립 배경
 - 샤프한 타이포그래피 + 넉넉한 line-height
@@ -40,18 +44,22 @@ Linear, Vercel, Supabase 대시보드에서 영감을 받은 정밀하고 깔끔
 - 단일 액센트 컬러 (Blue #2563EB)
 
 ### 컬러 시스템
+
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 배경 #ffffff, 글자 #0d1420(제목)·#1f2a3a(본문)·#4a5568(보조), 강조 #1d3b6e, 오류 #aa0808. 토큰은 `docs/imports/colors.md`. 아래는 종전 기록.
 - **Neutrals**: #FAFAFA (background) → #FFFFFF (card) → #09090B (text)
 - **Primary**: #2563EB (액션 컬러)
 - **Status**: Green(success), Amber(warning), Red(danger)
 
 ### 타이포그래피
+
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 글꼴은 Pretendard Variable 이다(Inter 는 불러오지 않는다). 22px/500 제목, 16px/500 이름·버튼, 14px/400 설명. 아래는 종전 기록.
 - **Sans**: Pretendard Variable (한글), Inter (영문)
 - **Mono**: JetBrains Mono (숫자, 코드, 지표 ID)
 - 모든 숫자에 `tabular-nums` 적용 필수
 
 ### 레이아웃
 - Full-width with inner cap (1280px centered, 32px side padding)
-- Sticky top navigation (App Header 56px + Step Tabs 48px)
+- Sticky top navigation (App Header 56px + Step Tabs 48px) *(MATERIAL_PICKER.md로 대체됨, §9 — 단계 표시줄은 입력 화면 오른쪽의 세로 목록이다)*
 - Sticky bottom Action Bar (72px)
 - 카드 간격: 24px (기본), 40px (주요 섹션 구분)
 
@@ -66,7 +74,7 @@ Linear, Vercel, Supabase 대시보드에서 영감을 받은 정밀하고 깔끔
 - 체크박스 + 지표 ID(mono) + 메트릭명 + 설명
 - 그리드: xl=4열, lg=3열, md=2열, sm=1열
 - M5 선택 시 하단에 β값 입력 카드 표시
-- 요구사항 Badge: "score 필요", "prob 필요", "β값 필요"
+- 요구사항 Badge: "score 필요", "prob 필요", "β값 필요" *(MATERIAL_PICKER.md로 대체됨, §3 — 매핑한 컬럼으로 계산할 수 없는 지표는 비활성으로 두고 이유를 한 줄 붙인다)*
 
 ### Metric Block
 - 대형 메트릭 표시 (성적서/결과)
@@ -108,7 +116,7 @@ pnpm build            # 프로덕션 빌드
 - ✅ Card로 모든 그룹핑
 - ✅ 모든 숫자에 font-mono + tabular-nums
 - ❌ 그라디언트, 그림자, 장식 아이콘 금지
-- ❌ 8px 이상의 border-radius 금지
+- ❌ 8px 초과 border-radius 금지 (버튼·카드는 8px — MATERIAL_PICKER.md §10)
 
 ### 데이터 처리 (자세한 규칙은 `SPEC.md`)
 - Binary: positive_class 필수, score 사용 시 threshold 필요

@@ -36,7 +36,7 @@ function renderPage(hookResult: Record<string, unknown>) {
       <DataValidation />
     </MemoryRouter>
   );
-  return screen.getByRole("button", { name: /Next step/i });
+  return screen.getByRole("button", { name: /^다음$/ });
 }
 
 beforeEach(() => {
@@ -72,13 +72,13 @@ describe("Step 6 평가 실행 게이트", () => {
 
   it("[E-04] 차단된 이유가 화면에 표시된다", () => {
     renderPage({ validationData: null, error: "Failed to fetch" });
-    expect(screen.getByText(/the evaluation cannot run/i)).toBeInTheDocument();
+    expect(screen.getByText(/평가를 실행할 수 없습니다/)).toBeInTheDocument();
   });
 });
 
-describe("6단계 상단 안내 (ISSUES.md B-03·B-04·A-12)", () => {
+describe("검증 단계 상단 안내 (ISSUES.md B-03·B-04·A-12)", () => {
   /**
-   * 백엔드가 4·5단계에서 내려보낸 안내를 여기 합쳐 **보여준다**.
+   * 백엔드가 평가 데이터·매핑 단계에서 내려보낸 안내를 여기 합쳐 **보여준다**.
    * 마운트 여부만이 아니라 **실제로 화면에 보이는지**를 확인한다 — 렌더는 하되
    * 숨겨 두는 회귀는 소스 검색으로 잡히지 않는다.
    */
@@ -102,7 +102,7 @@ describe("6단계 상단 안내 (ISSUES.md B-03·B-04·A-12)", () => {
     renderPage({});
 
     expect(
-      screen.queryByText(/\[Column analysis\]|\[Mapping\]|\[Preprocessing\]/),
+      screen.queryByText(/\[컬럼 분석\]|\[매핑\]|\[전처리\]/),
     ).not.toBeInTheDocument();
   });
 });

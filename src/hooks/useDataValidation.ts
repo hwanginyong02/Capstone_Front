@@ -96,7 +96,7 @@ export function useDataValidation(): UseDataValidationResult {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.detail || `Server error: ${response.status}`);
+          throw new Error(errorData.detail || `서버 오류: ${response.status}`);
         }
 
         const result: ValidateDataResponseData = await response.json();

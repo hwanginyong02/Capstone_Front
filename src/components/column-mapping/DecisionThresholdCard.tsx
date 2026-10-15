@@ -17,7 +17,7 @@ interface DecisionThresholdCardProps {
 /**
  * 결정 임계값 입력 — 하드 예측 없이 확률·점수만 매핑했을 때만 나타난다(SPEC §6, ISSUES.md A-01).
  *
- * **성적서 합격 목표값(3단계의 목표값)과 다른 개념이다.** 여기서 정하는 것은
+ * **성적서 합격 목표값(지표와 합격 기준 화면의 목표값)과 다른 개념이다.** 여기서 정하는 것은
  * "확률 몇 이상을 양성으로 볼 것인가"이고, 그 결과로 만들어지는 예측은 모델의 실제
  * 출력이 아니라 파생값이라 성적서에 그 사실이 기재된다.
  *
@@ -68,17 +68,17 @@ export function DecisionThresholdCard({
     <Card>
       <CardHeader>
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          <SlidersHorizontal className="h-5 w-5 text-blue-500" />
-          Decision threshold
+          <SlidersHorizontal className="h-5 w-5 text-primary" />
+          결정 임계값
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
-            No predicted-label column was mapped, so predictions are derived from the probability or
-            score column. The threshold you set here, and the fact that predictions were derived, are
-            both recorded in the report. This is <em>not</em> the pass target you set later.
+            예측 레이블 컬럼을 지정하지 않아 확률·점수 컬럼에서 예측을 만듭니다. 여기서 정한
+            임계값과, 예측을 만들어 냈다는 사실이 모두 성적서에 적힙니다. 나중에 정하는 합격
+            목표값과는 <em>다른</em> 값입니다.
           </AlertDescription>
         </Alert>
 
@@ -86,28 +86,28 @@ export function DecisionThresholdCard({
           <div className="space-y-2">
             {probabilityRows.map((row) => (
               <label key={row.originalName} className="flex items-center justify-between gap-4 text-sm">
-                <span className="font-mono text-slate-700">{row.originalName}</span>
+                <span className="font-mono text-foreground-secondary">{row.originalName}</span>
                 <input
                   type="number"
                   min={0}
                   max={1}
                   step={0.01}
-                  aria-label={`${row.originalName} decision threshold`}
+                  aria-label={`${row.originalName} 결정 임계값`}
                   value={thresholdFor(row.originalName)}
                   onChange={(e) => setForColumn(row.originalName, e.target.value)}
-                  className="w-28 rounded border border-slate-300 px-2 py-1 text-right"
+                  className="w-28 rounded border border-border-strong px-2 py-1 text-right"
                 />
               </label>
             ))}
-            <p className="text-xs text-slate-500">
-              Each label can take its own threshold and is decided independently.
+            <p className="text-xs text-muted-foreground">
+              레이블마다 임계값을 따로 정하고, 각각 따로 판정합니다.
             </p>
           </div>
         ) : (
           <label className="flex items-center justify-between gap-4 text-sm">
-            <span className="text-slate-700">
-              Scores at or above this value count as positive
-              <span className="ml-1 font-mono text-slate-500">
+            <span className="text-foreground-secondary">
+              이 값 이상인 점수를 양성으로 봅니다
+              <span className="ml-1 font-mono text-muted-foreground">
                 ({probabilityRows.map((r) => r.originalName).join(", ")})
               </span>
             </span>
@@ -116,17 +116,17 @@ export function DecisionThresholdCard({
               min={0}
               max={1}
               step={0.01}
-              aria-label="decision threshold"
+              aria-label="결정 임계값"
               value={scalarValue}
               onChange={(e) => setScalar(e.target.value)}
-              className="w-28 rounded border border-slate-300 px-2 py-1 text-right"
+              className="w-28 rounded border border-border-strong px-2 py-1 text-right"
             />
           </label>
         )}
 
         {!withinUnitInterval(decisionThreshold) && (
           <Alert variant="destructive">
-            <AlertDescription>Thresholds must be between 0 and 1.</AlertDescription>
+            <AlertDescription>임계값은 0과 1 사이여야 합니다.</AlertDescription>
           </Alert>
         )}
       </CardContent>

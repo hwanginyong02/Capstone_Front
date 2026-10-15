@@ -9,6 +9,8 @@
 > **2026-10-05 — 평가와 발급의 분리는 끝났다(§11).** 고객이 시험 기관이라 "평가만 하는
 > 사용자"가 없다. 평가 결과 화면(§2·§5 의 7)과 모델 계층·버전 비교(§8)를 걷어냈다.
 
+> **2026-10-15 — 재료 고르기와 입력 흐름 개편은 `docs/MATERIAL_PICKER.md` 를 따른다.** 성적서 구성 화면, 입력 순서, 디자인 시스템, 화면 문구가 거기서 정해진다. 아래 절 중 그와 어긋나는 곳에는 "MATERIAL_PICKER.md로 대체됨" 표시를 달았다.
+
 ---
 
 ## 1. 왜 바꾸나
@@ -92,11 +94,11 @@
 안내한다. 확률 컬럼을 포함한 예시를 기본으로 보여주는 것도 같은 이유다 — 나중에
 "확률이 없어서 AUROC 를 못 쓴다"를 알게 되는 것보다 처음에 알려주는 편이 낫다.
 
-**검증은 매핑 바로 뒤에 둔다.** 검증 결과가 평가에 쓰이므로 매핑과 붙어 있어야 한다.
+**검증은 매핑 바로 뒤에 둔다.** 검증 결과가 평가에 쓰이므로 매핑과 붙어 있어야 한다. *(MATERIAL_PICKER.md로 대체됨, §3 — 검증은 지표 뒤, 확인과 생성 바로 앞이다)*
 
 지표 선택이 매핑보다 **앞**인 것은 백엔드 제약이다. `/api/evaluate` 의
 `selected_metric_ids` 가 `Field(min_length=1)` 이라(`evaluation/schemas.py`) 빈 배열이면
-422 가 난다. 백엔드를 건드리지 않기로 했으므로 순서로 푼다.
+422 가 난다. 백엔드를 건드리지 않기로 했으므로 순서로 푼다. *(MATERIAL_PICKER.md로 대체됨, §3 — 이 제약은 evaluate·validate-data 의 것이다. `/api/confirm-mapping` 은 빈 지표 목록을 받아 지표별 가용성을 돌려주므로, 매핑을 지표 앞에 두고 검증을 지표 뒤에 둔다)*
 
 > 옛 근거(보존): "`DataUpload` 는 선택한 지표에 필요한 컬럼을 계산해 보여주므로
 > (`getRequiredColumnsForSelection`) 순서를 뒤집으면 그 화면의 근거가 사라진다."
@@ -115,7 +117,7 @@
 | Multi-class | ○●○○ (4개 중 1개) | 샘플 하나가 **여럿 중 하나** |
 | Multi-label | ●●○● (4개 중 3개) | 샘플 하나에 **여러 개** |
 
-단계 탭은 lucide 로 충분: `ListChecks` · `Upload` · `Columns3` · `ShieldCheck` · `FileText`.
+단계 탭은 lucide 로 충분: `ListChecks` · `Upload` · `Columns3` · `ShieldCheck` · `FileText`. *(MATERIAL_PICKER.md로 대체됨, §9 — 단계 표시줄은 입력 화면 오른쪽의 세로 목록이고 아이콘 없이 이름과 완료 표시만 둔다)*
 
 ---
 
@@ -146,7 +148,7 @@ export const STEP = {
 
 5·6 은 run 하나에 매인 화면이라 `/app/*` 이 아니라 `/report/:id/*` 아래 있다
 (`RUN_SCOPED_STEPS`). `/app/*` 에 두면 어느 run 을 보는지 URL 이 말하지 못해
-새로고침·공유·뒤로가기가 전부 깨진다.
+새로고침·공유·뒤로가기가 전부 깨진다. *(MATERIAL_PICKER.md로 대체됨, §5 — 지금 run 에 매인 단계는 확인과 생성 하나다. 의뢰자 정보·데이터 정보·모델 설정과 실행 환경은 run 을 만들기 전이라 `/app/*` 다)*
 
 ### 3.1 구 3단계를 흡수하는 이유
 
@@ -259,6 +261,8 @@ M21 Confusion     —         목표값 없음
 
 ### 6.1 ~~업로드 먼저~~ → 했다. 다만 "계산 가능한 지표만 제시"는 여전히 안 한다
 
+> **MATERIAL_PICKER.md로 대체됨** (§3) — 매핑이 지표보다 앞으로 오면서 이 절의 전제("지표 화면에서는 `available_metric_ids` 가 아직 없다")가 사라졌다. 이제 지표 화면은 매핑된 컬럼으로 계산할 수 없는 지표를 처음부터 비활성으로 두고 이유를 한 줄 붙인다(`metricAvailability`). 매핑 확정 응답의 `available_metric_ids` 가 정본이고, 매핑 화면의 "지표 제외"는 없앴다. 아래는 종전 기록.
+
 업로드를 앞으로 옮기는 것은 §2.1 대로 **했다**. 하지만 원래 묶여 있던
 "계산 가능한 지표만 제시"는 **하지 않았고, 하지 않기로 한다.**
 
@@ -288,6 +292,8 @@ M21 Confusion     —         목표값 없음
 3일 범위가 아니다. **교수님 피드백의 "여러 워크플로우"에 대한 답은 이번엔 설계까지다.**
 
 ### 6.3 UI 한국어화
+
+> **MATERIAL_PICKER.md로 대체됨** (§8) — 화면 문구를 한국어로 바꿨고, 영문 문자열을 찾던 테스트도 함께 고쳤다. 저장값은 영어 그대로다. 아래는 종전 기록.
 
 화면이 전부 영어인데 산출물인 성적서는 한국어다. `evaluationData.ts` 는 M6 설명만
 한국어이고 `formula` 필드에도 한국어가 섞여 **일관성이 이미 깨져 있다**.
@@ -447,7 +453,7 @@ Workspaces → 워크스페이스 → 모델 카드의 [Compare]
 
 ### 9.1 왜 바꾸나
 
-성적서 구성 화면이 생겼다(`docs/COMPOSER_COMPONENTS.md`). 사용자가 선택 카드 ⑥~⑨를 켜고 끄면
+성적서 구성 화면이 생겼다(`docs/COMPOSER_COMPONENTS.md`). 사용자가 선택 카드 ⑥~⑨를 켜고 끄면 *(MATERIAL_PICKER.md로 대체됨, §6·§7 — 선택 카드는 켜고 끄지 않고, 권장 항목을 골라 저장하면 들어간다)*
 그 카드의 입력 단계만 만들어지므로, 걸을 단계가 **8개(최소 구성)에서 10개(전체)** 사이로 달라진다.
 
 고정 번호로는 성립하지 않는다. 카드를 끄면 뒤 단계의 번호가 당겨져, 저장된 `completedSteps` 의
@@ -482,7 +488,7 @@ Workspaces → 워크스페이스 → 모델 카드의 [Compare]
 
 ### 9.4 persist 마이그레이션 (v3 → v4 → v5)
 
-**v3 → v4 — 성적서 구성 상태 추가.** `composerCards` 와 입력 그룹 5개가 생겼다.
+**v3 → v4 — 성적서 구성 상태 추가.** `composerCards` 와 입력 그룹 5개가 생겼다. *(MATERIAL_PICKER.md로 대체됨, §7 — v11 → v12 에서 카드마다 저장한 체크(`materialPicks`)가 더해졌다)*
 **버릴 것이 없다** — 기존 키의 뜻이 하나도 바뀌지 않았고 새 키만 생겼으므로 기본값으로 채운다.
 
 채우는 것이 필수인 이유: zustand 의 merge 는 **얕다.** 옛 저장분에 없는 키는 초기 상태의
@@ -526,7 +532,7 @@ const LEGACY_STEP_IDS = ["upload","metrics","mapping","validation","summary","re
 
 ### 9.7 이번에 하지 않은 것
 
-- **`README.md`·`docs/ARCHITECTURE.md`·`SPEC.md` §6·`docs/imports/*` 의 단계 번호 정정.**
+- **`README.md`·`docs/ARCHITECTURE.md`·`SPEC.md` §6·`docs/imports/*` 의 단계 번호 정정.** *(MATERIAL_PICKER.md로 대체됨, §3 — README·ARCHITECTURE·docs/imports 의 단계 목록에는 재료 고르기 개편에서 대체 표시를 달았다. SPEC.md §6 은 아직이다)*
   네 문서 모두 7단계 또는 구 번호를 적고 있다(SPEC §6 은 "실제 앱 라우트 기준"이라 적었지만
   매핑·검증을 5·6단계로 쓴다). 문서 정정은 코드 변경과 섞지 않는다.
 - **랜딩의 낡은 단계 표기**(`LiveProcessDemo.tsx` 7단계 패널, `landingData.ts` 의 `step: "01".."04"`
@@ -540,6 +546,8 @@ const LEGACY_STEP_IDS = ["upload","metrics","mapping","validation","summary","re
 가지가 걸렸다. 모두 화면 쪽 문제고 백엔드 요청 형식은 건드리지 않았다.
 
 ### 10.1 평가 관점을 지표 선택 화면으로 (10 → 9단계)
+
+> **MATERIAL_PICKER.md로 대체됨** (§3·§5) — 평가 관점은 다시 단독 단계다. 지표와 합격 기준 바로 앞에 오므로 "지표를 권하는 근거"라는 이 절의 판단은 그대로 지켜진다. `/app/perspective` 리다이렉트는 없앴다. 아래는 종전 기록.
 
 ⑤ 평가 관점은 질문이 **둘**뿐인데 단계 하나를 차지하고 있었다. 그 둘(중대 오류 유형 또는
 클래스 우선순위, 사용 방식)은 곧 **어떤 지표를 권할지 정하는 근거**라, 고르는 화면과 떨어뜨릴
@@ -556,6 +564,8 @@ const LEGACY_STEP_IDS = ["upload","metrics","mapping","validation","summary","re
 
 ### 10.2 단계 이름을 화면이 받는 것에 맞춤
 
+> **MATERIAL_PICKER.md로 대체됨** (§8) — 단계 이름은 받는 카드의 한국어 이름을 따른다(평가 데이터, 지표와 합격 기준, 컬럼 매핑, 검증, 의뢰자 정보, 데이터 정보, 모델 설정과 실행 환경, 확인과 생성). 아래는 종전 기록.
+
 | 전 | 후 | 이유 |
 |---|---|---|
 | Data upload | **Evaluation File** | 올리는 것은 평가할 결과 파일이다 |
@@ -563,6 +573,8 @@ const LEGACY_STEP_IDS = ["upload","metrics","mapping","validation","summary","re
 | Report details | **Details** | 성적서 구간 안이라 "Report" 가 겹친다 |
 
 ### 10.3 구성·입력 화면을 영어로, 카드 번호는 화면에서 제거
+
+> **MATERIAL_PICKER.md로 대체됨** (§8) — 화면 문구는 다시 한국어다. 다만 아래 "선택지와 칸 이름은 저장되는 값이다" 결정은 그대로 지킨다: 저장값(`choices`·`entryKeys`)은 영어로 두고, 화면 이름은 레지스트리의 `choiceLabels`·`entryLabels` 가 정한다. 카드 번호를 화면에서 뺀 것도 그대로다. 아래는 종전 기록.
 
 카드 제목 앞의 ① ~ ⑨ 는 사용자에게 뜻이 없는 기호다. 화면에서 빼고 레지스트리의 `number`
 필드만 남겼다 — `docs/COMPOSER_COMPONENTS.md` 와 코드를 잇는 유일한 고리다.
@@ -600,7 +612,7 @@ const LEGACY_STEP_IDS = ["upload","metrics","mapping","validation","summary","re
 `shape="square"` 를 더해 체크박스와 같은 모양으로 만들고(역할은 그대로 `radio`), 선택지 한
 줄을 `<label>` 로 감쌌다. 고른 줄은 구성 화면의 카드와 같은 규칙 — 굵은 파란 테두리 + 연한
 파랑 바탕, 여백 1px 보정으로 줄 높이 유지. `Unknown` 도 같은 모양의 토글이다. 새 색은 만들지
-않았다(`--primary`·`--primary-subtle`·`--border-strong`).
+않았다(`--primary`·`--primary-subtle`·`--border-strong`). *(MATERIAL_PICKER.md로 대체됨, §10 — 토큰은 같고 값이 인증 네이비로 바뀌었다)*
 
 ### 10.6 아직 하지 않은 것
 
@@ -610,13 +622,13 @@ const LEGACY_STEP_IDS = ["upload","metrics","mapping","validation","summary","re
   는 다음 결정이다.
   - **→ 정함(2026-10-06): 학습 데이터 폼은 ⑥ 으로 합쳤다.** Details 의 학습 데이터셋 폼을 없애고,
     데이터 형식은 ⑥ 더보기로, 예시 파일은 Data info 의 ⑥ 카드 아래로 옮겼다. 성적서는 ⑥ 값을
-    읽는다(persist v10). 실행 환경(⑨ ↔ Details Test environment)은 아직 둘 다 남아 있다.
+    읽는다(persist v10). 실행 환경(⑨ ↔ Details Test environment)은 아직 둘 다 남아 있다. *(MATERIAL_PICKER.md로 대체됨, §5 — 시험 환경 폼을 없애고 ⑨ 하나로 받는다. 성적서는 ⑨ 값을 쓰고, ⑨ 가 없는 옛 run 만 폼 값을 쓴다)*
   - 겹치는 범위: ⑨ 실행 환경 ↔ `basicInfo.env*` 다섯이 1:1. ⑥ ↔ `datasetInfo` 는 데이터
     이름·학습/검증 건수·클래스 분포가 겹치고 **Training data format 하나만** ⑥ 에 없다.
 - **`composerLegacyMirror` 배선.** 위가 정해지기 전에 카드 값을 기존 저장소로 흘려보내면,
   사용자가 Details 에서 고친 값을 카드 값이 조용히 덮는다. 함수와 테스트만 둔다.
 - 새 카드 필드의 성적서 인쇄 · 합격 기준을 Metrics 로 옮기기 · 평가 표본 수 인쇄 버그
-  (`mapWorkflowToFinalReport.ts:89,191`) · 문서의 단계 번호 정정.
+  (`mapWorkflowToFinalReport.ts:89,191`) · 문서의 단계 번호 정정. *(MATERIAL_PICKER.md로 대체됨, §5 — 합격 기준은 지표와 합격 기준 화면으로 옮겼다)*
 
 ---
 
@@ -638,6 +650,8 @@ Details 가 선택 카드 단계 **뒤**에 있었다. "평가와 무관한 정�
 (§1.2)는 평가만 하는 사용자를 위한 것이라 함께 사라졌다.
 
 ### 11.2 새 순서
+
+> **MATERIAL_PICKER.md로 대체됨** (§3·§5) — 매핑이 지표에 기대지 않게 되면서(유형 기준 필수 역할만 막고 `no_metrics` 를 없앴다. `/api/confirm-mapping` 은 빈 지표 목록을 받는다) 검증 앞도 카드 순서다. 새 순서와 단계 수(최소 8, 전체 10)는 MATERIAL_PICKER.md §3 이다. 의뢰자 정보·데이터 정보·모델 설정과 실행 환경은 `/app/*` 경로로 옮겼고, 합격 기준은 지표와 합격 기준 화면이 받는다. "카드 순서" 테스트는 이제 예외 없이 카탈로그 전체 순서를 확인한다. 아래는 종전 기록.
 
 ```
 Evaluation File → Metrics → Column mapping → Validation
@@ -688,7 +702,7 @@ Evaluation File → Metrics → Column mapping → Validation
 - **검증 뒤 새로고침 위험.** 원본 파일은 메모리에만 있다(`rawFile`, E-01). 검증 뒤
   Details·Data info·Model info 를 적다가 새로고침하면, Result 에서 평가를 돌릴 파일이 없다.
   `UnevaluatedDraftNotice` 가 이 상태를 알리지만 다시 올려야 한다. 종전에는 평가 결과 화면이
-  검증 직후 평가를 돌려 이 구간이 없었다
+  검증 직후 평가를 돌려 이 구간이 없었다 *(MATERIAL_PICKER.md로 대체됨, §3 — 검증이 확인과 생성 바로 앞이라 이 구간이 없어졌다)*
 - **성적서를 본 뒤 Details 로 돌아가 고치면 반영되지 않는다.** §11.3 의 캐시가 그대로라,
   완성본이 한 번 저장되면 입력이 바뀌어도 다시 계산하지 않는다. 입력이 바뀔 때 `isEvaluated`
   를 무효화하는 식으로 따로 다룬다

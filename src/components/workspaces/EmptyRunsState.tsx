@@ -10,9 +10,9 @@ export function EmptyRunsState() {
         <ClipboardList className="h-6 w-6" />
       </div>
       <div className="space-y-1">
-        <h2 className="text-base font-semibold">No evaluation results yet</h2>
+        <h2 className="text-base font-semibold">아직 평가 결과가 없습니다</h2>
         <p className="text-sm text-muted-foreground">
-          Start an evaluation to show results here.
+          평가를 시작하면 결과가 여기에 나옵니다.
         </p>
       </div>
     </div>

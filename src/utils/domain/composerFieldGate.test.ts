@@ -1,8 +1,9 @@
 /**
- * 켠 카드의 필수 입력 점검.
+ * 넣은 카드의 필수 입력 점검.
  *
- * 문서가 못박은 규칙 셋을 고정한다(docs/COMPOSER_COMPONENTS.md "구분 규칙" + 열린 결정):
- * 카드를 끄면 검사하지 않는다 · 켰으면 비운 채 진행할 수 없다 · 모르면 "모름"을 고른다.
+ * 문서가 못박은 규칙을 고정한다(docs/MATERIAL_PICKER.md §5·§6, 종전 docs/COMPOSER_COMPONENTS.md
+ * "구분 규칙" + 열린 결정): 넣지 않은 카드는 검사하지 않는다 · 받기로 한 필드는 비운 채 진행할
+ * 수 없다 · 모르면 "모름"을 고른다.
  * 그리고 "알려진 것 없음"이 "모름"과 **다르게** 다뤄지는지도 본다.
  */
 import { describe, expect, it } from "vitest";
@@ -114,7 +115,7 @@ describe('"알려진 것 없음"은 "모름"과 다르다', () => {
       {
         cardId: "trainingData",
         fieldId: "channelEffects",
-        label: "Collection differences",
+        label: "수집 환경 차이",
         reason: "exclusive",
         // 이 필드의 탈출구는 "모름" 이 아니라 "알려진 것 없음" 이다.
         allowsUnknown: false,
@@ -404,8 +405,8 @@ describe("수집 기간", () => {
 });
 
 /**
- * ② 는 필드마다 받는 화면이 다르다. 지표 화면은 자기가 받는 칸(지표 선택 이유)만 검사해야
- * 한다 — 카드 전체를 검사하면 Details 가 받는 합격 기준까지 여기서 걸린다.
+ * ② 는 필드마다 그리는 방식이 다르다. 지표 화면은 레지스트리로 그리는 칸(지표 선택 이유)만 이
+ * 점검으로 검사한다 — 카드 전체를 검사하면 화면이 직접 그리는 합격 기준까지 여기서 걸린다.
  */
 describe("필드 하나만 검사", () => {
   const 지표 = getCard("metrics");
@@ -472,7 +473,7 @@ describe("라벨 일치도 종류와 범위", () => {
   it("라벨러가 2명이면 Fleiss의 카파를 고를 수 없다", () => {
     const issues = getCardIssues(정답라벨, "binary", withKind("Fleiss' kappa", "0.6", "2"), true);
     expect(issues.map((i) => [i.fieldId, i.reason])).toEqual([["labelAgreementKind", "incompatible"]]);
-    expect(issues[0].message).toMatch(/three or more/);
+    expect(issues[0].message).toMatch(/세 명 이상/);
   });
 
   it("라벨러가 3명 이상이면 Cohen의 카파를 고를 수 없다", () => {

@@ -5,7 +5,7 @@
  * 더하거나 선택지를 고치는 일이 `data/reportComposer.ts` 한 곳에서 끝나야, 문서와 화면이
  * 어긋나지 않는다.
  *
- * "Unknown" 을 고르면 컨트롤을 잠근다 — 값과 모름이 동시에 남아 어느 쪽이 참인지 모르게 되는
+ * "모름"을 고르면 컨트롤을 잠근다 — 값과 모름이 동시에 남아 어느 쪽이 참인지 모르게 되는
  * 상태를 만들지 않는다. 성적서에는 "제공되지 않음"으로 찍힌다(이번 범위에서는 저장까지만).
  */
 import { Plus, X } from "lucide-react";
@@ -17,6 +17,7 @@ import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { TEXTAREA_CLASS } from "../data-upload/shared";
 import { cn } from "../../utils/styling/styles";
 import { isFieldRequired, isOtherChosen } from "../../utils/domain/composerFieldGate";
+import { choiceLabel, entryLabel } from "../../data/reportComposer";
 import {
   MONTH_RANGE_KEYS,
   type ComposerField,
@@ -25,8 +26,8 @@ import {
 } from "../../types/reportComposer.types";
 
 /**
- * 선택지 한 줄의 모양. 구성 화면의 카드와 같은 규칙이다
- * (`report-composer/ComposerCard.tsx`): 고른 것은 굵은 파란 테두리 + 연한 파랑 바탕.
+ * 선택지 한 줄의 모양. 고른 것은 굵은 강조색 테두리 + 강조 배경 — 재료 고르기의 저장 표시와
+ * 같은 색이다(docs/MATERIAL_PICKER.md §10).
  *
  * 줄 전체가 `<label>` 이라 글자를 눌러도 골라진다 — 16px 짜리 표식 하나만 누를 수 있으면
  * 과녁이 너무 작다. 고른 줄은 테두리가 1px 두꺼워지므로 여백을 1px 줄여 줄 높이를 지킨다.
@@ -95,11 +96,11 @@ export function ComposerFieldInput({
         <Label htmlFor={controlId} className="text-body-medium font-medium text-foreground">
           {field.label}
           {/* 기존 폼의 필수 표시와 같은 모양이다(`data-upload/shared.tsx` 의 `Field`). */}
-          {required && <span className="ml-1 text-red-600">*</span>}
+          {required && <span className="ml-1 text-destructive">*</span>}
         </Label>
 
         {field.allowsUnknown && (
-          /* 켜면 다른 선택지와 같은 파란 테두리가 뜬다 — 이것도 하나의 답이다. */
+          /* 켜면 다른 선택지와 같은 강조색 테두리가 뜬다 — 이것도 하나의 답이다. */
           <label
             className={cn(
               "flex shrink-0 cursor-pointer items-center gap-2 rounded-md text-body-small transition-colors",
@@ -111,9 +112,9 @@ export function ComposerFieldInput({
             <Checkbox
               checked={unknown}
               onCheckedChange={(next) => onChange({ ...value, unknown: next === true })}
-              aria-label={field.label + " unknown"}
+              aria-label={field.label + " 모름"}
             />
-            Unknown
+            모름
           </label>
         )}
       </div>
@@ -133,7 +134,7 @@ export function ComposerFieldInput({
                 className={cn(TILE_BASE, value?.text === choice ? TILE_ON : TILE_OFF)}
               >
                 <RadioGroupItem shape="square" value={choice} />
-                <span className="text-body-medium text-foreground">{choice}</span>
+                <span className="text-body-medium text-foreground">{choiceLabel(field, choice)}</span>
               </label>
             ))}
           </RadioGroup>
@@ -150,18 +151,18 @@ export function ComposerFieldInput({
                   checked={chosen.includes(choice)}
                   onCheckedChange={() => toggleChoice(choice)}
                 />
-                <span className="text-body-medium text-foreground">{choice}</span>
+                <span className="text-body-medium text-foreground">{choiceLabel(field, choice)}</span>
               </label>
             ))}
           </div>
         )}
 
-        {/* "Other" 를 고른 순간 무엇인지 적을 칸이 나타난다. 선택지만으로는 내용이 없다. */}
+        {/* "기타"를 고른 순간 무엇인지 적을 칸이 나타난다. 선택지만으로는 내용이 없다. */}
         {otherChosen && (
           <Input
             id={controlId + "-other"}
-            aria-label={field.label + " other"}
-            placeholder="Describe it"
+            aria-label={field.label + " 기타 내용"}
+            placeholder="무엇인지 적어 주세요"
             aria-invalid={(invalid && otherText.trim() === "") || undefined}
             value={otherText}
             onChange={(event) => onChange({ ...value, otherText: event.target.value, unknown: false })}
@@ -174,8 +175,8 @@ export function ComposerFieldInput({
             id={controlId + "-note"}
             className={TEXTAREA_CLASS}
             rows={2}
-            aria-label={field.label + " note"}
-            placeholder="Add a note (optional)"
+            aria-label={field.label + " 덧붙이는 글"}
+            placeholder="덧붙이는 글 (선택)"
             value={value?.note ?? ""}
             onChange={(event) => onChange({ ...value, note: event.target.value, unknown: false })}
           />
@@ -189,7 +190,7 @@ export function ComposerFieldInput({
                   htmlFor={controlId + "-" + key}
                   className="text-body-small font-normal text-muted-foreground"
                 >
-                  {key}
+                  {entryLabel(field, key)}
                 </Label>
                 <Input
                   id={controlId + "-" + key}
@@ -212,14 +213,14 @@ export function ComposerFieldInput({
                   htmlFor={controlId + "-" + key}
                   className="text-body-small font-normal text-muted-foreground"
                 >
-                  {key}
+                  {entryLabel(field, key)}
                 </Label>
                 {/* 칸이 정해진 입력이라도 선택지가 있으면 고르게 한다(⑨ GPU 사용 여부). */}
                 {field.choices ? (
                   <RadioGroup
                     value={entryValue(key)}
                     onValueChange={(next) => setEntry(key, next)}
-                    aria-label={field.label + " " + key}
+                    aria-label={field.label + " " + entryLabel(field, key)}
                     className="flex gap-2"
                   >
                     {field.choices.map((choice) => (
@@ -232,7 +233,7 @@ export function ComposerFieldInput({
                         )}
                       >
                         <RadioGroupItem shape="square" value={choice} />
-                        <span className="text-body-medium text-foreground">{choice}</span>
+                        <span className="text-body-medium text-foreground">{choiceLabel(field, choice)}</span>
                       </label>
                     ))}
                   </RadioGroup>
@@ -255,7 +256,7 @@ export function ComposerFieldInput({
           field.entryKeysFrom === "classes" &&
           (classNames.length === 0 ? (
             <p className="text-body-small text-muted-foreground">
-              No classes were found in the uploaded file. Choose Unknown if you do not know them.
+              올린 파일에서 클래스를 찾지 못했습니다. 모르면 모름을 고르세요.
             </p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
@@ -286,8 +287,8 @@ export function ComposerFieldInput({
               <div key={index} className="flex items-center gap-2">
                 <Input
                   className="font-mono"
-                  placeholder="Name"
-                  aria-label={field.label + " name " + (index + 1)}
+                  placeholder="이름"
+                  aria-label={field.label + " 이름 " + (index + 1)}
                   value={entry.key}
                   onChange={(event) => {
                     const next = [...entries];
@@ -297,8 +298,8 @@ export function ComposerFieldInput({
                 />
                 <Input
                   className="font-mono tabular-nums"
-                  placeholder="Value"
-                  aria-label={field.label + " value " + (index + 1)}
+                  placeholder="값"
+                  aria-label={field.label + " 값 " + (index + 1)}
                   value={entry.value}
                   onChange={(event) => {
                     const next = [...entries];
@@ -309,7 +310,7 @@ export function ComposerFieldInput({
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-label={"Remove row " + (index + 1)}
+                  aria-label={index + 1 + "번째 줄 지우기"}
                   onClick={() =>
                     onChange({ ...value, entries: entries.filter((_, i) => i !== index) })
                   }
@@ -330,7 +331,7 @@ export function ComposerFieldInput({
               }
             >
               <Plus className="h-4 w-4" />
-              Add a row
+              줄 추가
             </Button>
           </div>
         )}

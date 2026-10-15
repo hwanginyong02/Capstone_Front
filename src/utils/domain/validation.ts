@@ -45,34 +45,34 @@ export function getTargetValueRule(metricId: string): { summary: string; validat
 
   if (zeroToOneIds.has(metricId)) {
     return {
-      summary: "Enter a number between 0 and 1.",
-      validate: (value) => (value < 0 || value > 1 ? "Target value must be between 0 and 1 for this metric." : null),
+      summary: "0과 1 사이의 숫자를 넣으세요.",
+      validate: (value) => (value < 0 || value > 1 ? "이 지표의 목표값은 0과 1 사이여야 합니다." : null),
     };
   }
 
   if (nonNegativeIds.has(metricId)) {
     return {
-      summary: "Enter a number greater than or equal to 0.",
-      validate: (value) => (value < 0 ? "Target value must be 0 or greater for this metric." : null),
+      summary: "0 이상의 숫자를 넣으세요.",
+      validate: (value) => (value < 0 ? "이 지표의 목표값은 0 이상이어야 합니다." : null),
     };
   }
 
   if (metricId === "M20") {
     return {
-      summary: "Enter a number between -1 and 1.",
-      validate: (value) => (value < -1 || value > 1 ? "Target value must be between -1 and 1 for MCC." : null),
+      summary: "-1과 1 사이의 숫자를 넣으세요.",
+      validate: (value) => (value < -1 || value > 1 ? "MCC 의 목표값은 -1과 1 사이여야 합니다." : null),
     };
   }
 
   if (metricId === "M23") {
     return {
-      summary: "Enter a number greater than or equal to 1.",
-      validate: (value) => (value < 1 ? "Target value must be 1 or greater for imbalance ratio." : null),
+      summary: "1 이상의 숫자를 넣으세요.",
+      validate: (value) => (value < 1 ? "불균형 비율의 목표값은 1 이상이어야 합니다." : null),
     };
   }
 
   return {
-    summary: "Enter a valid numeric target value.",
+    summary: "목표값을 숫자로 넣으세요.",
     validate: () => null,
   };
 }

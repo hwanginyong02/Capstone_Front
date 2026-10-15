@@ -10,7 +10,7 @@
  * - 선택 항목이 비었으면 줄을 만들지 않는다.
  * - 이 작업 유형에 원래 없는 항목(해당 없음)도 줄을 만들지 않는다.
  *
- * 선택지는 화면에서 영어로 저장되지만 성적서는 한국어다. 찍을 이름은 레지스트리의
+ * 선택지는 영어 저장값으로 남고 화면·성적서는 한국어다. 성적서에 찍을 이름은 레지스트리의
  * `reportLabels` 가 정한다 — 매핑표를 여기 또 적으면 두 벌이 된다.
  */
 import { getCard } from "../../data/reportComposer";
@@ -268,8 +268,9 @@ export interface ClientInputsSource {
   coreMetrics: string[];
   classLabelDescriptions: Record<string, string>;
   /**
-   * 실행 환경 다섯 칸(운영체제·CPU·GPU·메모리·소프트웨어). 성적서 4절이 찍는 값과 같은 출처
-   * (Details 의 Test environment)다. 빈 칸은 제공되지 않음으로 넘긴다.
+   * 실행 환경 다섯 칸(운영체제·CPU·GPU·메모리·소프트웨어). 성적서 4절이 찍는 값과 같은 출처다 —
+   * ⑨ 실행 환경을 넣었으면 그 값, 아니면 옛 시험 환경 폼에 적었던 값(`buildReportInput`).
+   * 빈 칸은 제공되지 않음으로 넘긴다.
    */
   runtime: Record<string, string>;
 }

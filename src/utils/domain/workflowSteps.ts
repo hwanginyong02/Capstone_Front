@@ -1,9 +1,9 @@
 /**
  * 단계 목록 계산과 단계 간 이동 — 고른 카드에서 걸을 길을 유도한다.
  *
- * 종전에는 단계가 고정 6개였고 번호(`STEP` 상수)가 단일 출처였다. 이제 성적서 구성 화면에서
- * 켠 선택 카드에 따라 Data info·Model info 가 생기고 사라지므로, 단계 목록은 **상수가 아니라 계산 결과**다
- * (docs/COMPOSER_COMPONENTS.md "카드별 입력 단계").
+ * 종전에는 단계가 고정 6개였고 번호(`STEP` 상수)가 단일 출처였다. 이제 재료 고르기에서
+ * 넣은 선택 카드에 따라 데이터 정보·모델 설정과 실행 환경이 생기고 사라지므로, 단계 목록은 **상수가 아니라 계산 결과**다
+ * (docs/MATERIAL_PICKER.md §3).
  *
  * 번호를 쓰지 않는 이유: 카드를 토글할 때마다 같은 번호가 다른 단계를 가리키게 된다.
  * 저장된 진행 표시가 조용히 어긋나는 바로 그 상황이다(docs/WORKFLOW_REDESIGN.md §3.3).
@@ -20,12 +20,12 @@ import type { StepId } from "../../types/workflow.types";
 /**
  * 걸을 단계 목록. 카탈로그 순서를 유지하고, 조건이 성립하지 않는 단계만 뺀다.
  *
- * 최소 구성(선택 카드 전부 꺼짐)이면 6개, 전체면 8개다.
+ * 최소 구성(선택 카드를 하나도 넣지 않음)이면 8개, 전체면 10개다.
  */
 export function buildStepList(selection: ComposerSelection): StepId[] {
   return STEP_CATALOG.filter((step) => {
     if (!step.requiresCards) return true;
-    // 하나라도 켜져 있으면 그 단계가 필요하다 — Data info 는 ⑥ ⑦ ⑧ 중 켠 카드만 받는다.
+    // 하나라도 넣었으면 그 단계가 필요하다 — 데이터 정보는 ⑥ ⑦ ⑧ 중 넣은 카드만 받는다.
     return step.requiresCards.some((cardId) => selection[cardId]);
   }).map((step) => step.id);
 }

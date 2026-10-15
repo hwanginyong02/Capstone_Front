@@ -57,9 +57,9 @@ describe("평가 실행 게이트", () => {
   });
 
   it("차단 사유마다 안내 문장이 있고, 진행 가능/로딩 중에는 없다", () => {
-    expect(describeValidationGate("failed")).toContain("validation failed");
-    expect(describeValidationGate("not_run")).toContain("has not run yet");
-    expect(describeValidationGate("blocking_errors")).toContain("found errors");
+    expect(describeValidationGate("failed")).toContain("검증에 실패해");
+    expect(describeValidationGate("not_run")).toContain("아직 하지 않아");
+    expect(describeValidationGate("blocking_errors")).toContain("오류가 나와");
     expect(describeValidationGate("ok")).toBeNull();
     expect(describeValidationGate("loading")).toBeNull();
   });

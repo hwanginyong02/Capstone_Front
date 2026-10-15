@@ -260,7 +260,7 @@ export interface FinalReportData {
   /**
    * 평가 전처리가 만든 경고(백엔드 `EvaluateResponse.warnings`).
    * 종전에는 프론트에 소비처가 없어 그대로 버려졌다(ISSUES.md D-16).
-   * **6단계가 아니라 성적서 화면에서 도착한다** — evaluate 를 호출하는 곳이 여기다.
+   * **검증 단계가 아니라 성적서 화면에서 도착한다** — evaluate 를 호출하는 곳이 여기다.
    */
   evaluationWarnings?: string[];
   /**

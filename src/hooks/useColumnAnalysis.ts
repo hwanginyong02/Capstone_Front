@@ -68,7 +68,7 @@ export function useColumnAnalysis() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.detail || `Server responded with status ${response.status}`,
+          errorData.detail || `서버 응답 오류: ${response.status}`,
         );
       }
 
@@ -92,8 +92,8 @@ export function useColumnAnalysis() {
       if (err instanceof Error && err.name === "AbortError") {
         throw new Error(
           timedOutRef.current
-            ? `Column analysis did not finish within ${Math.round(ANALYSIS_TIMEOUT_MS / 1000)}s and was stopped.`
-            : "Column analysis was cancelled.",
+            ? `컬럼 분석이 ${Math.round(ANALYSIS_TIMEOUT_MS / 1000)}초 안에 끝나지 않아 멈췄습니다.`
+            : "컬럼 분석을 취소했습니다.",
         );
       }
       throw err;

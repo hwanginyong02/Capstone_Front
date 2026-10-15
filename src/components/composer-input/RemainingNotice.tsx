@@ -20,7 +20,7 @@ export function RemainingNotice({ issues }: RemainingNoticeProps) {
   if (exclusive) {
     return (
       <p className="text-body-small text-muted-foreground">
-        Fix the selection for {exclusive.label}.
+        {exclusive.label} 선택을 고치세요.
       </p>
     );
   }
@@ -35,28 +35,27 @@ export function RemainingNotice({ issues }: RemainingNoticeProps) {
   if (wrongValue) {
     return (
       <p className="text-body-small text-muted-foreground">
-        Check the value for {wrongValue.label}.
+        {wrongValue.label} 값을 확인하세요.
       </p>
     );
   }
 
   const [first] = issues;
-  // "Unknown" 이 없는 필드뿐이라면 그 길을 알려주지 않는다 — ⑤ 평가 관점이 그렇다.
+  // "모름"이 없는 필드뿐이라면 그 길을 알려주지 않는다 — ⑤ 평가 관점이 그렇다.
   const canSayUnknown = issues.some((issue) => issue.allowsUnknown);
   const more = issues.length - 1;
 
   return (
     <p className="text-body-small text-muted-foreground">
-      {first.label}
+      비어 있는 칸: {first.label}
       {more > 0 && (
         <>
-          {" and "}
+          {" 외 "}
           <span className="font-mono tabular-nums">{more}</span>
-          {" more"}
+          {"개"}
         </>
-      )}{" "}
-      {more > 0 ? "are" : "is"} empty.
-      {canSayUnknown && " Choose Unknown if you do not know."}
+      )}
+      .{canSayUnknown && " 모르면 모름을 고르세요."}
     </p>
   );
 }

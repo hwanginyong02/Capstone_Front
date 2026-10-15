@@ -11,7 +11,7 @@ import {
  * 프론트에는 셋 다 소비처가 없었다(`column_notes`·`available_metric_ids`·
  * `unavailable_metric_ids` 는 grep 0건, evaluate 의 `warnings` 도 참조 0건).
  *
- * 결정문은 "6단계 상단에 합친다"이다 — 5단계는 안내가 도착하는 순간 이미 다음 화면으로
+ * 결정문은 "6단계(지금의 검증 단계) 상단에 합친다"이다 — 매핑 단계는 안내가 도착하는 순간 이미 다음 화면으로
  * 넘어가기 때문이다.
  */
 

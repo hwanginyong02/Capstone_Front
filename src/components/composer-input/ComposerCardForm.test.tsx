@@ -17,7 +17,7 @@ import type { TaskType } from "../../data/evaluationData";
 
 function renderForm(
   cardId: ComposerCardId,
-  options: { taskType?: TaskType; values?: ComposerValueMap } = {},
+  options: { taskType?: TaskType; values?: ComposerValueMap; picks?: string[] } = {},
 ) {
   const taskType = options.taskType ?? "binary";
   const values = options.values ?? {};
@@ -30,7 +30,8 @@ function renderForm(
       taskType={taskType}
       values={values}
       onChange={onChange}
-      issues={getCardIssues(card, taskType, values, true)}
+      issues={getCardIssues(card, taskType, values, true, options.picks)}
+      picks={options.picks}
       // 클래스 이름은 사용자가 올린 파일에서 온다 — 화면 문구와 달리 번역 대상이 아니다.
       classNames={["정상", "이탈"]}
     />,
@@ -43,22 +44,22 @@ describe("⑤ 평가 관점 — 유형별 질문", () => {
   it("이진은 중요 오류 유형을 묻는다", () => {
     renderForm("perspective", { taskType: "binary" });
 
-    expect(screen.getByText("Critical error type")).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Missed (FN)" })).toBeInTheDocument();
-    expect(screen.queryByText("Class priority")).not.toBeInTheDocument();
+    expect(screen.getByText("중요 오류 유형")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "놓침(FN)" })).toBeInTheDocument();
+    expect(screen.queryByText("클래스 중요도")).not.toBeInTheDocument();
   });
 
   it("다중 클래스는 클래스 중요도를 묻는다", () => {
     renderForm("perspective", { taskType: "multiclass" });
 
-    expect(screen.getByText("Class priority")).toBeInTheDocument();
-    expect(screen.queryByText("Critical error type")).not.toBeInTheDocument();
+    expect(screen.getByText("클래스 중요도")).toBeInTheDocument();
+    expect(screen.queryByText("중요 오류 유형")).not.toBeInTheDocument();
   });
 
   it("고른 답을 보고한다", async () => {
     const { onChange } = renderForm("perspective", { taskType: "binary" });
 
-    await userEvent.click(screen.getByRole("radio", { name: "Batch" }));
+    await userEvent.click(screen.getByRole("radio", { name: "일괄 처리" }));
 
     expect(onChange).toHaveBeenCalledWith("usageMode", { text: "Batch", unknown: false });
   });
@@ -68,7 +69,7 @@ describe("카드 제목에는 번호가 없다", () => {
   it("이름만 적는다 — ⑥ 같은 기호는 사용자에게 뜻이 없다", () => {
     renderForm("trainingData");
 
-    expect(screen.getByRole("heading", { name: "Training data" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "학습 데이터" })).toBeInTheDocument();
     expect(screen.queryByText(/⑥/)).not.toBeInTheDocument();
   });
 });
@@ -77,10 +78,10 @@ describe("Unknown", () => {
   it("Unknown 을 고를 수 있는 필드에만 체크박스가 있다", () => {
     renderForm("groundTruth");
 
-    expect(screen.getByRole("checkbox", { name: "Who labelled it unknown" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "라벨 작성 주체 모름" })).toBeInTheDocument();
     // 조건부 필드인 라벨러 수·일치도에는 없다.
     expect(
-      screen.queryByRole("checkbox", { name: /Number of reviewers unknown/ }),
+      screen.queryByRole("checkbox", { name: /라벨러 수 모름/ }),
     ).not.toBeInTheDocument();
   });
 
@@ -88,13 +89,13 @@ describe("Unknown", () => {
     renderForm("groundTruth", { values: { labelAuthor: { unknown: true } } });
 
     // 값과 Unknown 이 동시에 남아 어느 쪽이 참인지 모르게 되는 상태를 만들지 않는다.
-    expect(screen.getByRole("radio", { name: "Domain experts" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "전문가" })).toBeDisabled();
   });
 
   it("Unknown 을 보고한다", async () => {
     const { onChange } = renderForm("modelEnv");
 
-    await userEvent.click(screen.getByRole("checkbox", { name: "Algorithm unknown" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "알고리즘 모름" }));
 
     expect(onChange).toHaveBeenCalledWith("algorithm", { unknown: true });
   });
@@ -106,7 +107,7 @@ describe("⑥ 배타 선택지", () => {
       values: { channelEffects: { choices: ["Different equipment", "Different collectors"] } },
     });
 
-    await userEvent.click(screen.getByRole("checkbox", { name: "None known" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "알려진 것 없음" }));
 
     expect(onChange).toHaveBeenCalledWith("channelEffects", {
       choices: ["None known"],
@@ -119,7 +120,7 @@ describe("⑥ 배타 선택지", () => {
       values: { channelEffects: { choices: ["None known"] } },
     });
 
-    await userEvent.click(screen.getByRole("checkbox", { name: "Different equipment" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "장비 차이" }));
 
     expect(onChange).toHaveBeenCalledWith("channelEffects", {
       choices: ["Different equipment"],
@@ -132,7 +133,7 @@ describe("⑥ 배타 선택지", () => {
       values: { channelEffects: { choices: ["None known", "Different equipment"] } },
     });
 
-    expect(screen.getByText(/cannot be combined with the others/)).toBeInTheDocument();
+    expect(screen.getByText(/다른 선택지와 함께 고를 수 없는 답입니다/)).toBeInTheDocument();
   });
 });
 
@@ -147,14 +148,14 @@ describe("칸이 정해진 입력", () => {
   it("⑨ GPU 사용 여부는 학습·추론을 따로 고른다", () => {
     renderForm("modelEnv");
 
-    expect(screen.getByRole("radiogroup", { name: "GPU used Training" })).toBeInTheDocument();
-    expect(screen.getByRole("radiogroup", { name: "GPU used Inference" })).toBeInTheDocument();
+    expect(screen.getByRole("radiogroup", { name: "GPU 사용 여부 학습" })).toBeInTheDocument();
+    expect(screen.getByRole("radiogroup", { name: "GPU 사용 여부 추론" })).toBeInTheDocument();
   });
 
   it("⑨ 하이퍼파라미터는 줄을 추가한다", async () => {
     const { onChange } = renderForm("modelEnv");
 
-    await userEvent.click(screen.getByRole("button", { name: "Add a row" }));
+    await userEvent.click(screen.getByRole("button", { name: "줄 추가" }));
 
     expect(onChange).toHaveBeenCalledWith("hyperparameters", {
       entries: [{ key: "", value: "" }],
@@ -164,14 +165,27 @@ describe("칸이 정해진 입력", () => {
 });
 
 describe("더보기", () => {
-  it("선택 항목은 접혀 있다", async () => {
-    renderForm("trainingData");
+  it("재료 고르기에서 체크하지 않은 권장·선택 필드는 그리지 않는다 (MATERIAL_PICKER §5)", () => {
+    renderForm("trainingData", { picks: ["trainingDatasetName"] });
 
-    expect(screen.queryByText("Data format")).not.toBeInTheDocument();
+    expect(screen.getByText("데이터 이름")).toBeInTheDocument();
+    expect(screen.queryByText("데이터 출처")).not.toBeInTheDocument();
+    expect(screen.queryByText("데이터 형식")).not.toBeInTheDocument();
+  });
 
-    await userEvent.click(screen.getByRole("button", { name: /Show 3 optional fields/ }));
+  it("체크한 선택 필드는 접지 않고 바로 보인다 — 고른 것 자체가 쓰겠다는 뜻이다", () => {
+    renderForm("trainingData", { picks: ["trainingDataFormat"] });
 
-    expect(screen.getByText("Data format")).toBeInTheDocument();
+    expect(screen.getByText("데이터 형식")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /더 보기/ })).not.toBeInTheDocument();
+  });
+
+  it("받지 않기로 한 권장 필드는 비어 있어도 막지 않는다 — 성적서에 제공되지 않음으로 찍힌다", () => {
+    const card = getCard("trainingData");
+    expect(getCardIssues(card, "binary", {}, true, [])).toEqual([]);
+    expect(getCardIssues(card, "binary", {}, true, ["trainingDatasetName"]).map((i) => i.fieldId)).toEqual([
+      "trainingDatasetName",
+    ]);
   });
 });
 
@@ -180,7 +194,7 @@ describe("남은 항목 안내", () => {
     const card = getCard("modelEnv");
     render(<RemainingNotice issues={getCardIssues(card, "binary", {}, true)} />);
 
-    expect(screen.getByText(/Choose Unknown if you do not know/)).toBeInTheDocument();
+    expect(screen.getByText(/모르면 모름을 고르세요/)).toBeInTheDocument();
   });
 
   it('Unknown 이 없는 카드에서는 알려주지 않는다', () => {
@@ -188,24 +202,24 @@ describe("남은 항목 안내", () => {
     const card = getCard("perspective");
     render(<RemainingNotice issues={getCardIssues(card, "binary", {}, true)} />);
 
-    expect(screen.getByText(/are empty/)).toBeInTheDocument();
-    expect(screen.queryByText(/Choose Unknown/)).not.toBeInTheDocument();
+    expect(screen.getByText(/비어 있는 칸/)).toBeInTheDocument();
+    expect(screen.queryByText(/모름을 고르세요/)).not.toBeInTheDocument();
   });
 
   it("남은 개수를 적는다", () => {
     const card = getCard("perspective");
     render(<RemainingNotice issues={getCardIssues(card, "binary", {}, true)} />);
 
-    expect(screen.getByText(/Critical error type/)).toBeInTheDocument();
+    expect(screen.getByText(/중요 오류 유형/)).toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument();
   });
 
-  it("하나만 남으면 단수로 적는다", () => {
+  it("하나만 남으면 개수를 붙이지 않는다", () => {
     const card = getCard("perspective");
     const issues = getCardIssues(card, "binary", { usageMode: { text: "Batch" } }, true);
     render(<RemainingNotice issues={issues} />);
 
-    expect(screen.getByText(/is empty/)).toBeInTheDocument();
+    expect(screen.getByText("비어 있는 칸: 중요 오류 유형.")).toBeInTheDocument();
   });
 
   it("다 채우면 아무것도 적지 않는다", () => {
@@ -225,20 +239,20 @@ describe("필수 표시", () => {
   it("필수 필드에만 별표를 단다", () => {
     renderForm("trainingData");
 
-    const required = screen.getByText("Dataset name").querySelector("span");
+    const required = screen.getByText("데이터 이름").querySelector("span");
     expect(required).toHaveTextContent("*");
   });
 
   it("조건부 필드는 조건이 성립해야 별표가 붙는다", () => {
     // 조건이 성립하기 전에는 그려지지도 않는다.
     renderForm("groundTruth");
-    expect(screen.queryByText("Number of reviewers")).not.toBeInTheDocument();
+    expect(screen.queryByText("라벨러 수")).not.toBeInTheDocument();
 
     renderForm("groundTruth", { values: { labelReview: { text: "Several reviewers" } } });
-    expect(screen.getByText("Number of reviewers").querySelector("span")).toHaveTextContent("*");
+    expect(screen.getByText("라벨러 수").querySelector("span")).toHaveTextContent("*");
     // 일치도는 종류를 먼저 묻는다. 값 칸은 종류를 고른 뒤에 나타난다.
-    expect(screen.getByText("Agreement measure").querySelector("span")).toHaveTextContent("*");
-    expect(screen.queryByText("Agreement value")).not.toBeInTheDocument();
+    expect(screen.getByText("일치도 종류").querySelector("span")).toHaveTextContent("*");
+    expect(screen.queryByText("일치도 값")).not.toBeInTheDocument();
   });
 });
 
@@ -246,7 +260,7 @@ describe("차단 표시", () => {
   it("들어오자마자는 빈 칸을 꾸짖지 않는다", () => {
     renderForm("modelEnv");
 
-    expect(screen.queryByText(/^Required\./)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^필수 항목입니다\./)).not.toBeInTheDocument();
   });
 
   it("showErrors 를 켜면 빈 필수 칸마다 이유를 적는다", () => {
@@ -263,9 +277,9 @@ describe("차단 표시", () => {
     );
 
     // ⑨ 의 필수 넷이 모두 비어 있다.
-    expect(screen.getAllByText(/^Required\./)).toHaveLength(4);
+    expect(screen.getAllByText(/^필수 항목입니다\./)).toHaveLength(4);
     // 모름이 있는 칸에는 그 길도 함께 알려준다.
-    expect(screen.getAllByText(/Choose Unknown if you do not know/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/모르면 모름을 고르세요/).length).toBeGreaterThan(0);
   });
 
   it("채운 칸에는 적지 않는다", () => {
@@ -283,7 +297,7 @@ describe("차단 표시", () => {
     );
 
     // ⑤ 이진은 질문 둘 중 하나만 남았다. 모름이 없는 카드라 그 길은 알려주지 않는다.
-    expect(screen.getAllByText(/^Required\.$/)).toHaveLength(1);
+    expect(screen.getAllByText(/^필수 항목입니다\.$/)).toHaveLength(1);
   });
 });
 
@@ -291,13 +305,13 @@ describe("차단 표시", () => {
  * 선택지 타일.
  *
  * 과녁이 16px 짜리 표식 하나뿐이면 누르기 어렵다. 줄 전체가 label 이라 글자를 눌러도
- * 골라지고, 고른 줄은 구성 화면의 카드와 같은 파란 테두리를 단다.
+ * 골라지고, 고른 줄은 구성 화면의 카드와 같은 강조색 테두리를 단다.
  */
 describe("선택지 타일", () => {
   it("글자를 눌러도 골라진다", async () => {
     const { onChange } = renderForm("groundTruth");
 
-    await userEvent.click(screen.getByText("Domain experts"));
+    await userEvent.click(screen.getByText("전문가"));
 
     expect(onChange).toHaveBeenCalledWith("labelAuthor", {
       text: "Domain experts",
@@ -308,7 +322,7 @@ describe("선택지 타일", () => {
   it("여럿 고르는 질문도 글자를 눌러 켜고 끈다 — 두 번 뒤집히지 않는다", async () => {
     const { onChange } = renderForm("trainingData");
 
-    await userEvent.click(screen.getByText("Different equipment"));
+    await userEvent.click(screen.getByText("장비 차이"));
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith("channelEffects", {
@@ -317,11 +331,11 @@ describe("선택지 타일", () => {
     });
   });
 
-  it("고른 줄에 파란 테두리를 단다", () => {
+  it("고른 줄에 강조색 테두리를 단다", () => {
     renderForm("groundTruth", { values: { labelAuthor: { text: "Domain experts" } } });
 
-    const chosen = screen.getByRole("radio", { name: "Domain experts" }).closest("label");
-    const other = screen.getByRole("radio", { name: "Outside workers" }).closest("label");
+    const chosen = screen.getByRole("radio", { name: "전문가" }).closest("label");
+    const other = screen.getByRole("radio", { name: "외부 작업자" }).closest("label");
 
     expect(chosen?.className).toContain("border-primary");
     expect(other?.className).not.toContain("border-primary");
@@ -331,7 +345,7 @@ describe("선택지 타일", () => {
     renderForm("groundTruth");
 
     // 모양은 체크박스를 닮았지만 역할은 radio 다.
-    expect(screen.getByRole("radio", { name: "Domain experts" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "전문가" })).toBeInTheDocument();
   });
 });
 
@@ -339,7 +353,7 @@ describe("Other 직접 입력", () => {
   it("Other 를 고르기 전에는 칸이 없다", () => {
     renderForm("groundTruth", { values: { labelAuthor: { text: "Domain experts" } } });
 
-    expect(screen.queryByRole("textbox", { name: "Who labelled it other" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "라벨 작성 주체 기타 내용" })).not.toBeInTheDocument();
   });
 
   it("Other 를 고르면 칸이 나타나고, 적은 내용을 보고한다", async () => {
@@ -347,7 +361,7 @@ describe("Other 직접 입력", () => {
       values: { labelAuthor: { text: "Other (free text)" } },
     });
 
-    await userEvent.type(screen.getByRole("textbox", { name: "Who labelled it other" }), "X");
+    await userEvent.type(screen.getByRole("textbox", { name: "라벨 작성 주체 기타 내용" }), "X");
 
     expect(onChange).toHaveBeenLastCalledWith("labelAuthor", {
       text: "Other (free text)",
@@ -362,7 +376,7 @@ describe("Other 직접 입력", () => {
     });
 
     expect(
-      screen.getByRole("textbox", { name: "Collection differences other" }),
+      screen.getByRole("textbox", { name: "수집 환경 차이 기타 내용" }),
     ).toBeInTheDocument();
   });
 });
@@ -377,9 +391,9 @@ describe("숫자 칸", () => {
     });
 
     // 필수 표시(*)가 이름 끝에 붙는다.
-    expect(screen.getByRole("textbox", { name: /^Number of reviewers/ })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Krippendorff's alpha" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /^Agreement value/ })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /^라벨러 수/ })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Krippendorff의 알파" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /^일치도 값/ })).toBeInTheDocument();
   });
 
   it("범위 밖이면 다음을 누르기 전에 바로 알린다 — 범위는 고른 종류를 따른다", () => {
@@ -392,8 +406,8 @@ describe("숫자 칸", () => {
       },
     });
 
-    expect(screen.getByText("Enter a whole number of at least 1.")).toBeInTheDocument();
-    expect(screen.getByText("Enter a number from -1 to 1.")).toBeInTheDocument();
+    expect(screen.getByText("1 이상의 정수를 넣으세요.")).toBeInTheDocument();
+    expect(screen.getByText("-1~1 사이의 숫자를 넣으세요.")).toBeInTheDocument();
   });
 
   it("라벨러 수와 맞지 않는 종류를 고르면 이유를 적는다", () => {
@@ -405,21 +419,19 @@ describe("숫자 칸", () => {
       },
     });
 
-    expect(screen.getByText(/Fleiss' kappa is for three or more reviewers/)).toBeInTheDocument();
+    expect(screen.getByText(/Fleiss의 카파는 세 명 이상일 때 씁니다/)).toBeInTheDocument();
   });
 });
 
 describe("수집 기간", () => {
-  it("시작 월·끝 월 두 칸이다", async () => {
+  it("시작 월·끝 월 두 칸이다", () => {
     renderForm("testData");
 
-    await userEvent.click(screen.getByRole("button", { name: /Show 1 optional field/ }));
-
-    expect(screen.getByLabelText("From")).toHaveAttribute("type", "month");
-    expect(screen.getByLabelText("To")).toHaveAttribute("type", "month");
+    expect(screen.getByLabelText("시작 월")).toHaveAttribute("type", "month");
+    expect(screen.getByLabelText("끝 월")).toHaveAttribute("type", "month");
   });
 
-  it("틀린 기간이 더보기 안에 있으면 펼쳐서 보여준다 — 접힌 채로 막히면 찾을 수 없다", () => {
+  it("틀린 기간은 다음을 누르기 전에 바로 알린다", () => {
     renderForm("testData", {
       values: {
         testPeriod: {
@@ -431,8 +443,8 @@ describe("수집 기간", () => {
       },
     });
 
-    expect(screen.getByText("Enter both months, with From no later than To.")).toBeInTheDocument();
-    expect(screen.getByLabelText("From")).toHaveValue("2025-03");
+    expect(screen.getByText("시작 월과 끝 월을 모두 넣고, 시작 월이 끝 월보다 늦지 않게 하세요.")).toBeInTheDocument();
+    expect(screen.getByLabelText("시작 월")).toHaveValue("2025-03");
   });
 });
 
@@ -440,7 +452,7 @@ describe("덧붙이는 글", () => {
   it("전처리 일치 칸은 선택지와 함께 글을 받는다 (서술 설계 D26)", async () => {
     const { onChange } = renderForm("testData", { values: { preprocessingMatch: { text: "Different" } } });
 
-    await userEvent.type(screen.getByRole("textbox", { name: "Same preprocessing as training note" }), "Y");
+    await userEvent.type(screen.getByRole("textbox", { name: "학습과 같은 전처리 덧붙이는 글" }), "Y");
 
     expect(onChange).toHaveBeenLastCalledWith("preprocessingMatch", {
       text: "Different",
@@ -451,6 +463,6 @@ describe("덧붙이는 글", () => {
 
   it("글을 받지 않는 칸에는 글칸이 없다", () => {
     renderForm("testData");
-    expect(screen.queryByRole("textbox", { name: "Relation to the training data note" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "학습 데이터와 출처 관계 덧붙이는 글" })).not.toBeInTheDocument();
   });
 });

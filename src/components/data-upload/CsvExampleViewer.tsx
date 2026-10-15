@@ -1,8 +1,8 @@
 /**
  * 선택한 분류 유형의 예시 파일을 **표로** 보여준다.
  *
- * 두 화면이 함께 쓴다 — 성적서 구성 화면 ① 의 "예시 파일 보기"와 업로드 화면의
- * "Template examples". 같은 파일을 설명하는 자리라 같은 모양이어야 한다.
+ * 업로드 화면의 "파일 예시"가 쓴다. 종전에는 성적서 구성 화면 ① 의 "예시 파일 보기"도 함께
+ * 썼지만, 재료 고르기에는 보기 버튼이 없다(docs/MATERIAL_PICKER.md §4).
  *
  * 표로 그리는 이유: 컬럼이 세로로 맞아야 어느 칸이 비었는지(멀티레이블의 "레이블 없음")
  * 눈에 들어온다. 줄글 덩어리로 두면 쉼표를 세어야 한다.
@@ -34,7 +34,7 @@ export function CsvExampleViewer({ taskType, showNote = true }: CsvExampleViewer
               {header.map((cell) => (
                 <th
                   key={cell}
-                  className="border border-border bg-muted px-2 py-1 text-left font-medium text-foreground-secondary"
+                  className="border border-border bg-muted px-2 py-1 text-left font-medium text-muted-foreground"
                 >
                   {cell}
                 </th>

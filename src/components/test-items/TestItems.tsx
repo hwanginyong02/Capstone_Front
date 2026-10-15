@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Info, Search } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Checkbox } from "../ui/checkbox";
 import { Input } from "../ui/input";
-import { ComposerCardForm } from "../composer-input/ComposerCardForm";
 import { ComposerFieldInput } from "../composer-input/ComposerFieldInput";
-import { getCard, getCardFields } from "../../data/reportComposer";
+import { getCardFields } from "../../data/reportComposer";
 import { cn } from "../../utils/styling/styles";
 import type { ComposerFieldValue, ComposerValueMap } from "../../types/reportComposer.types";
 import type { FieldIssue } from "../../utils/domain/composerFieldGate";
@@ -17,13 +16,18 @@ import {
   getRecommendedMetricIds,
   getRequiredColumnsForMetric,
   getRequiredColumnsForTaskType,
-  TASK_TYPE_LABELS,
+  TASK_TYPE_LABELS_KO,
   type RequiredColumnCode,
   type TaskType,
 } from "../../data/evaluationData";
 
 interface TestItemsProps {
   taskType?: TaskType | "";
+  /**
+   * 고른 지표. 스토어의 값을 그대로 받는다 — 화면이 따로 들고 처음 그릴 때 비우던 종전 방식은
+   * 검증에서 돌아올 때마다 고른 지표를 지웠다. 넘기지 않으면 화면 안에서만 든다(테스트).
+   */
+  selectedMetricIds?: string[];
   onSelectedMetricsChange?: (ids: string[]) => void;
   /**
    * F-beta(M5)의 β. **평가 입력이다** — `/api/evaluate` 페이로드에 실린다.
@@ -32,42 +36,49 @@ interface TestItemsProps {
    */
   beta?: string;
   onBetaChange?: (value: string) => void;
+  /** 빈 필수 칸(지표 선택 이유)을 빨갛게 칠할지. 페이지가 다음을 누른 뒤에 켠다. */
+  showErrors?: boolean;
   /**
-   * ⑤ 평가 관점. 종전에는 자기 단계(`/app/perspective`)였는데, 질문 둘이 **지표를 고르는
-   * 근거**라 고르는 화면과 떨어뜨릴 이유가 없었다. 단계 하나를 지우고 여기 맨 위로 옮겼다.
-   *
-   * 셋 다 넘겨야 그려진다 — 폼만 그리고 값이 안 흐르는 상태를 만들지 않는다.
-   */
-  perspectiveValues?: ComposerValueMap;
-  onPerspectiveChange?: (fieldId: string, next: ComposerFieldValue) => void;
-  perspectiveIssues?: FieldIssue[];
-  /** 빈 필수 칸을 빨갛게 칠할지. 페이지가 다음을 누른 뒤에 켠다. */
-  perspectiveShowErrors?: boolean;
-  /**
-   * ② 지표와 합격 기준 카드 중 **이 화면이 받는 필드**의 값(멀티레이블의 지표 선택 이유).
-   * 카드의 나머지(합격 기준·핵심 지표)는 Details 가 받는다. 값과 setter 를 함께 넘겨야 그려진다.
+   * ② 지표와 합격 기준 카드 중 레지스트리로 그리는 필드의 값(멀티레이블의 지표 선택 이유).
+   * 값과 setter 를 함께 넘겨야 그려진다. ⑤ 평가 관점은 바로 앞 단계가 받는다.
    */
   metricCardValues?: ComposerValueMap;
   onMetricCardChange?: (fieldId: string, next: ComposerFieldValue) => void;
   metricCardIssues?: FieldIssue[];
+  /** 지표 격자와 선택 이유 아래에 붙일 합격 기준 표(`PassCriteriaCard`). */
+  passCriteria?: ReactNode;
+  /**
+   * 지금 매핑으로 계산할 수 없는 지표와 그 이유 한 줄(`unavailableMetricReasons`). 이 지표는
+   * 고를 수 없고, 추천·전체 선택도 건너뛴다(docs/MATERIAL_PICKER.md §3). 넘기지 않으면 모두
+   * 고를 수 있다.
+   */
+  unavailableReasons?: Record<string, string>;
+  /** 제목 아래에 붙일 안내(들어올 때 선택에서 뺀 지표 알림). */
+  notice?: ReactNode;
 }
 
 export function TestItems({
   taskType,
+  selectedMetricIds,
   onSelectedMetricsChange,
   beta = "1.0",
   onBetaChange,
-  perspectiveValues,
-  onPerspectiveChange,
-  perspectiveIssues = [],
-  perspectiveShowErrors = false,
+  showErrors = false,
   metricCardValues,
   onMetricCardChange,
   metricCardIssues = [],
+  passCriteria,
+  unavailableReasons = {},
+  notice,
 }: TestItemsProps) {
   const availableMetrics = useMemo(() => getAvailableMetrics(taskType), [taskType]);
   const resolvedTaskType = taskType || "";
-  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([]);
+  const [localSelected, setLocalSelected] = useState<string[]>([]);
+  const selectedMetrics = selectedMetricIds ?? localSelected;
+  const setSelected = (next: string[]) => {
+    setLocalSelected(next);
+    onSelectedMetricsChange?.(next);
+  };
   const [metricQuery, setMetricQuery] = useState("");
   const [selectedColumns, setSelectedColumns] = useState<RequiredColumnCode[]>([]);
 
@@ -108,37 +119,32 @@ export function TestItems({
     });
   }, [availableMetrics, metricQuery, resolvedTaskType, selectedColumns]);
 
+  // 유형이 바뀌면 검색과 컬럼 거르기만 비운다. 고른 지표는 스토어가 비운다(`setTaskType`) —
+  // 여기서 비우면 화면을 다시 열 때마다 고른 지표가 지워졌다.
   useEffect(() => {
-    setSelectedMetrics([]);
     setMetricQuery("");
     setSelectedColumns([]);
-    onSelectedMetricsChange?.([]);
-  }, [taskType, onSelectedMetricsChange]);
+  }, [taskType]);
+
+  const isUnavailable = (metricId: string) => metricId in unavailableReasons;
 
   const handleToggleMetric = (metricId: string) => {
-    setSelectedMetrics((prev) => {
-      const next = prev.includes(metricId) ? prev.filter((id) => id !== metricId) : [...prev, metricId];
-      onSelectedMetricsChange?.(next);
-      return next;
-    });
+    // 계산할 수 없는 지표는 고를 수 없다. 이미 골라져 있으면 빼는 것만 된다.
+    if (isUnavailable(metricId) && !selectedMetrics.includes(metricId)) return;
+    setSelected(
+      selectedMetrics.includes(metricId)
+        ? selectedMetrics.filter((id) => id !== metricId)
+        : [...selectedMetrics, metricId],
+    );
   };
 
-  const handleRecommended = () => {
-    const recommended = getRecommendedMetricIds(taskType);
-    setSelectedMetrics(recommended);
-    onSelectedMetricsChange?.(recommended);
-  };
+  const handleRecommended = () =>
+    setSelected(getRecommendedMetricIds(taskType).filter((id) => !isUnavailable(id)));
 
-  const handleSelectAll = () => {
-    const next = availableMetrics.map((m) => m.id);
-    setSelectedMetrics(next);
-    onSelectedMetricsChange?.(next);
-  };
+  const handleSelectAll = () =>
+    setSelected(availableMetrics.map((m) => m.id).filter((id) => !isUnavailable(id)));
 
-  const handleClear = () => {
-    setSelectedMetrics([]);
-    onSelectedMetricsChange?.([]);
-  };
+  const handleClear = () => setSelected([]);
 
   // ② 카드에서 이 화면이 받는 필드. 지금은 멀티레이블의 지표 선택 이유 하나뿐이다.
   const metricCardFields = resolvedTaskType
@@ -159,43 +165,34 @@ export function TestItems({
     <>
       <main className="px-8 pt-12 pb-24 max-w-[1344px] mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Metric selection</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">지표와 합격 기준</h1>
           <p className="text-sm text-muted-foreground">
-            Tell us what matters for this model, then choose the metrics for the report.
+            성적서에 넣을 지표를 고르고, 지표마다 넘어야 할 목표값을 정하세요.
           </p>
         </div>
 
-        {onPerspectiveChange && (
-          <ComposerCardForm
-            card={getCard("perspective")}
-            taskType={resolvedTaskType}
-            values={perspectiveValues ?? {}}
-            onChange={onPerspectiveChange}
-            issues={perspectiveIssues}
-            showErrors={perspectiveShowErrors}
-          />
-        )}
+        {notice}
 
         <div className="flex items-center justify-between">
           <div className="text-sm">
-            <span className="font-semibold">{selectedMetrics.length}</span> selected
+            <span className="font-semibold">{selectedMetrics.length}</span>개 선택
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleRecommended} disabled={!taskType}>
-              Recommended
+              추천 지표
             </Button>
             <Button variant="outline" size="sm" onClick={handleSelectAll} disabled={!taskType}>
-              Select all
+              전체 선택
             </Button>
             <Button variant="outline" size="sm" onClick={handleClear}>
-              Clear
+              선택 해제
             </Button>
           </div>
         </div>
 
         <div>
-          <span className="text-sm text-muted-foreground">Class: </span>
-          <Badge variant="secondary">{taskType ? TASK_TYPE_LABELS[taskType] : "Not chosen"}</Badge>
+          <span className="text-sm text-muted-foreground">분류 유형: </span>
+          <Badge variant="secondary">{taskType ? TASK_TYPE_LABELS_KO[taskType] : "정하지 않음"}</Badge>
         </div>
 
         {/* β 는 M5 를 골랐을 때만 물어본다. 목표값과 달리 **평가에 쓰이는 값**이라
@@ -203,7 +200,7 @@ export function TestItems({
         {selectedMetrics.includes("M5") && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold">F-beta weight (β)</CardTitle>
+              <CardTitle className="text-lg font-semibold">F-beta 가중치 (β)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <Input
@@ -211,16 +208,16 @@ export function TestItems({
                 inputMode="decimal"
                 value={beta}
                 onChange={(event) => onBetaChange?.(event.target.value)}
-                aria-label="Beta"
+                aria-label="β"
               />
               <p className="text-xs text-muted-foreground">
-                β &gt; 1 weights recall more heavily; β &lt; 1 weights precision. β = 1 equals F1.
+                β &gt; 1 이면 재현율을, β &lt; 1 이면 정밀도를 더 무겁게 봅니다. β = 1 은 F1 과 같습니다.
               </p>
               {(() => {
                 const parsed = Number(beta);
                 const invalid = beta.trim() === "" || !Number.isFinite(parsed) || parsed <= 0;
                 return invalid ? (
-                  <p className="text-xs text-destructive">Beta must be a number greater than 0.</p>
+                  <p className="text-xs text-destructive">β는 0보다 큰 숫자여야 합니다.</p>
                 ) : null;
               })()}
             </CardContent>
@@ -230,12 +227,12 @@ export function TestItems({
         {taskType && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold">Available columns</CardTitle>
+              <CardTitle className="text-lg font-semibold">쓸 수 있는 컬럼</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                 <div className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                  These columns can participate in metric calculation for the selected classifier type.
+                  고른 분류 유형에서 지표 계산에 쓸 수 있는 컬럼입니다.
                 </div>
               </div>
 
@@ -267,7 +264,7 @@ export function TestItems({
                   <Input
                     value={metricQuery}
                     onChange={(event) => setMetricQuery(event.target.value)}
-                    placeholder="Search metrics"
+                    placeholder="지표 검색"
                     className="pl-9"
                   />
                 </div>
@@ -279,8 +276,8 @@ export function TestItems({
                       className={cn(
                         "flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-md border px-3 text-sm transition-colors",
                         selectedColumns.includes(column.code)
-                          ? "border-primary bg-blue-50 text-foreground"
-                          : "border-border bg-card text-muted-foreground hover:border-gray-400 hover:text-foreground",
+                          ? "border-primary bg-primary-subtle text-foreground"
+                          : "border-border bg-card text-muted-foreground hover:border-border-strong hover:text-foreground",
                       )}
                     >
                       <Checkbox
@@ -294,9 +291,9 @@ export function TestItems({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">{filteredMetrics.length} matching metrics</Badge>
+                <Badge variant="secondary">맞는 지표 {filteredMetrics.length}개</Badge>
                 <Button variant="outline" size="sm" onClick={handleClearColumns} disabled={selectedColumns.length === 0}>
-                  Reset columns
+                  컬럼 선택 해제
                 </Button>
               </div>
             </CardContent>
@@ -306,7 +303,7 @@ export function TestItems({
         {!taskType ? (
           <Card>
             <CardContent className="py-10 text-sm text-muted-foreground">
-              Choose a classifier type before selecting metrics.
+              지표를 고르기 전에 분류 유형을 정하세요.
             </CardContent>
           </Card>
         ) : (
@@ -314,17 +311,32 @@ export function TestItems({
             {filteredMetrics.map((metric) => {
               const isSelected = selectedMetrics.includes(metric.id);
               const requiredColumns = getRequiredColumnsForMetric(taskType, metric.id);
+              const reason = unavailableReasons[metric.id];
+              const disabled = Boolean(reason) && !isSelected;
+              const reasonId = `metric-${metric.id}-reason`;
 
               return (
                 <label
                   key={metric.id}
+                  aria-disabled={disabled || undefined}
                   className={cn(
-                    "relative flex flex-col p-5 rounded-lg border-2 cursor-pointer transition-colors min-h-[180px]",
-                    isSelected ? "border-primary bg-blue-50" : "border-border bg-card hover:border-gray-400",
+                    "relative flex flex-col p-5 rounded-lg border-2 transition-colors min-h-[180px]",
+                    disabled
+                      ? "cursor-not-allowed border-border bg-muted"
+                      : isSelected
+                        ? "cursor-pointer border-primary bg-primary-subtle"
+                        : "cursor-pointer border-border bg-card hover:border-border-strong",
                   )}
                 >
                   <div className="flex items-start gap-2 mb-3">
-                    <Checkbox checked={isSelected} onCheckedChange={() => handleToggleMetric(metric.id)} className="mt-0.5" />
+                    <Checkbox
+                      checked={isSelected}
+                      disabled={disabled}
+                      onCheckedChange={() => handleToggleMetric(metric.id)}
+                      aria-label={metric.name}
+                      aria-describedby={reason ? reasonId : undefined}
+                      className="mt-0.5"
+                    />
                     <div className="ml-auto flex flex-wrap justify-end gap-1">
                       {requiredColumns.map((column) => (
                         <Badge key={column.code} variant="outline" className="font-mono text-[10px] leading-4">
@@ -342,9 +354,18 @@ export function TestItems({
                     <div className="font-mono text-xs uppercase font-medium text-muted-foreground">
                       {getMetricDisplayId(metric.id)}
                     </div>
-                    <h3 className="text-base font-semibold leading-tight">{metric.name}</h3>
-                    <div className="text-sm text-foreground">{metric.subtitle}</div>
-                    <p className="text-xs text-[#6B7280] leading-[1.5]">{metric.description}</p>
+                    <h3 className={cn("text-base font-semibold leading-tight", disabled && "text-muted-foreground")}>
+                      {metric.name}
+                    </h3>
+                    {reason && (
+                      <p id={reasonId} className="text-sm text-muted-foreground">
+                        {reason}
+                      </p>
+                    )}
+                    <div className={cn("text-sm", disabled ? "text-muted-foreground" : "text-foreground")}>
+                      {metric.subtitle}
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-[1.5]">{metric.description}</p>
                   </div>
                 </label>
               );
@@ -352,7 +373,7 @@ export function TestItems({
             {filteredMetrics.length === 0 && (
               <Card className="md:col-span-2 lg:col-span-3 xl:col-span-4">
                   <CardContent className="py-10 text-sm text-muted-foreground">
-                  No metrics use the selected column combination.
+                  고른 컬럼 조합을 쓰는 지표가 없습니다.
                 </CardContent>
               </Card>
             )}
@@ -365,7 +386,7 @@ export function TestItems({
             <CardContent className="space-y-5 p-6">
               {metricCardFields.map((field) => {
                 const issue = metricCardIssues.find((item) => item.fieldId === field.id);
-                const showMissing = perspectiveShowErrors && issue?.reason === "missing";
+                const showMissing = showErrors && issue?.reason === "missing";
                 return (
                   <div key={field.id}>
                     <ComposerFieldInput
@@ -376,7 +397,7 @@ export function TestItems({
                       invalid={showMissing}
                     />
                     {showMissing && (
-                      <p className="mt-1 text-body-small text-destructive">Required.</p>
+                      <p className="mt-1 text-body-small text-destructive">필수 항목입니다.</p>
                     )}
                   </div>
                 );
@@ -385,15 +406,17 @@ export function TestItems({
           </Card>
         )}
 
+        {passCriteria}
+
         {selectedMetrics.includes("M5") && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">F-beta note</CardTitle>
+              <CardTitle className="text-lg font-semibold">F-beta 안내</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
-              <div className="flex gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <p>`M5` requires a beta value in the next step.</p>
+              <div className="flex gap-3 p-4 bg-primary-subtle rounded-lg border border-primary/30">
+                <Info className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <p>M5 를 고르면 위의 β 값이 필요합니다.</p>
               </div>
             </CardContent>
           </Card>
@@ -401,12 +424,12 @@ export function TestItems({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Selection rules</CardTitle>
+            <CardTitle className="text-lg font-semibold">고르는 규칙</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <div>`M5` (F-beta Score) requires beta input.</div>
-            <div>Some binary metrics also require a positive class selection.</div>
-            <div>Probability columns become required automatically for probability-based metrics.</div>
+            <div>M5 (F-beta Score)는 β 값이 필요합니다.</div>
+            <div>이진 분류의 일부 지표는 양성 클래스도 정해야 합니다.</div>
+            <div>매핑한 컬럼으로 계산할 수 없는 지표는 고를 수 없습니다. 이유는 지표 이름 아래에 적혀 있습니다.</div>
           </CardContent>
         </Card>
       </main>

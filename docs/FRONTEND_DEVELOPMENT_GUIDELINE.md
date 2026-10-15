@@ -21,7 +21,7 @@
 *   **규칙 1**: `src/components/` 하위의 화면 컴포넌트(`BasicInfo`, `TestItems`, `DataUpload` 등)는 오로지 **메인 컨텐츠 영역만 순수하게 렌더링(Pure Content Component)** 해야 합니다. 하단 다음/이전 버튼(`ActionBar`)을 컴포넌트 내부에 포함시키지 마세요.
 *   **규칙 2**: 모든 공통 레이아웃과 화면의 뼈대는 `src/layout/WorkflowShell.tsx`가 전담합니다.
 *   **규칙 3**: 하단 바의 다음 버튼 활성화 여부(`nextDisabled`)나 진행 이벤트(`onNext`)는 화면 컴포넌트 내부에 숨겨두지 말고, 상위 페이지(`pages/*.tsx`)로 상태를 끌어올린(Lifting State) 뒤 `WorkflowShell`의 Props로 전달해야 합니다.
-    *   *예시: 도메인 컴포넌트는 `onValidationChange={(isValid) => setIsValid(isValid)}` 형태의 콜백을 통해 페이지에 상태를 보고하고, 페이지는 `<WorkflowShell nextDisabled={!isValid}>`로 레이아웃을 제어합니다.*
+    *   *예시: 도메인 컴포넌트는 `onValidationChange={(isValid) => setIsValid(isValid)}` 형태의 콜백을 통해 페이지에 상태를 보고하고, 페이지는 `<WorkflowShell nextDisabled={!isValid}>`로 레이아웃을 제어합니다.* *(MATERIAL_PICKER.md로 대체됨, §7 — 재료 고르기의 다음은 막지 않고, 누르면 저장하지 않은 필수 카드를 알린다. 버튼은 페이지가 만들어 `WorkflowShell` 의 `aside` 로 넘긴다)*
 
 ---
 
@@ -54,7 +54,7 @@
 ## 5. 레이아웃 내부 구성요소의 분리
 
 *   **규칙 1**: `src/layout/`의 최상위에는 외부(Pages)로 노출되는 **공개 셸(Wrapper)만** 남겨둡니다. 현재는 워크플로우 스텝용 `WorkflowShell.tsx` 와 비-워크플로우(워크스페이스 등) 페이지용 경량 셸 `AppShell.tsx` 두 개가 있습니다. 페이지는 `layout/components/` 내부 부품을 직접 import 하지 말고 반드시 공개 셸을 거쳐야 합니다.
-*   **규칙 2**: 레이아웃을 구성하는 내부 부품(`AppHeader.tsx`, `ActionBar.tsx`, `StepTabs.tsx`)은 `src/layout/components/` 디렉토리 내부에 분리하여 은닉성(Encapsulation)을 유지합니다.
+*   **규칙 2**: 레이아웃을 구성하는 내부 부품(`AppHeader.tsx`, `ActionBar.tsx`, `StepRail.tsx`)은 `src/layout/components/` 디렉토리 내부에 분리하여 은닉성(Encapsulation)을 유지합니다.
 
 ---
 

@@ -2,6 +2,8 @@
 
 ## Spacing Scale
 
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 간격은 8px 단위를 기본으로 한다. 아래는 종전 기록.
+
 Based on a 4px grid. All spacing on the screen snaps to these values. Do NOT use arbitrary pixel values like `7px` or `13px`.
 
 | Token | Value | Usage |
@@ -36,7 +38,7 @@ Based on a 4px grid. All spacing on the screen snaps to these values. Do NOT use
 
 ### Tab bar → page title
 
-- `--space-12` (48px) from bottom of tab bar to the page title.
+- `--space-12` (48px) from bottom of tab bar to the page title. *(MATERIAL_PICKER.md로 대체됨, §9 — 위쪽 탭 바는 없다. 단계 표시줄은 본문 오른쪽이다)*
 
 ### Page title → first card
 
@@ -93,6 +95,8 @@ When two fields sit side-by-side:
 
 ## Border Radius
 
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 버튼·카드·입력은 8px, 체크박스는 4px 이다. `theme.css` 의 `--radius-md` 를 8px 로 바꿨다. 아래는 종전 기록.
+
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--radius-sm` | `4px` | Badge, Checkbox, small inline elements |
@@ -144,7 +148,7 @@ Following Tailwind defaults:
 
 ### Below `md` (mobile)
 
-- Tabs become horizontally scrollable. Do NOT collapse them into a dropdown — scrolling preserves orientation.
+- Tabs become horizontally scrollable. Do NOT collapse them into a dropdown — scrolling preserves orientation. *(MATERIAL_PICKER.md로 대체됨, §9 — 좁은 화면에서는 세로 단계 표시줄이 본문 위로 올라간다)*
 - Action bar buttons remain side-by-side but narrower.
 - Content padding reduces from 32px to 16px.
 - Metric blocks stack single-column.

@@ -41,27 +41,27 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return (
       <div className="mx-auto max-w-2xl px-6 py-20 text-center">
-        <h1 className="text-lg font-semibold text-slate-800">화면을 표시하지 못했습니다</h1>
-        <p className="mt-3 text-sm leading-relaxed text-slate-600">
+        <h1 className="text-lg font-semibold text-foreground">화면을 표시하지 못했습니다</h1>
+        <p className="mt-3 text-sm leading-relaxed text-foreground-secondary">
           예기치 못한 오류가 발생했습니다. 아래 정보를 확인하고 다시 시도해 주세요.
         </p>
-        <pre className="mt-4 overflow-x-auto whitespace-pre-wrap rounded border border-slate-200 bg-slate-50 px-4 py-3 text-left text-xs text-slate-600">
+        <pre className="mt-4 overflow-x-auto whitespace-pre-wrap rounded border border-border bg-muted px-4 py-3 text-left text-xs text-foreground-secondary">
           {error.message}
         </pre>
-        <p className="mt-4 text-xs leading-relaxed text-slate-400">
+        <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
           진행 중이던 입력이 남아 있지 않을 수 있습니다. 워크스페이스에서 평가를 다시 시작해 주세요.
         </p>
         <div className="mt-6 flex justify-center gap-3">
           <button
             type="button"
             onClick={this.handleReset}
-            className="rounded border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            className="rounded border border-border-strong px-4 py-2 text-sm text-foreground-secondary hover:bg-muted"
           >
             다시 시도
           </button>
           <a
             href="/workspaces"
-            className="rounded border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            className="rounded border border-border-strong px-4 py-2 text-sm text-foreground-secondary hover:bg-muted"
           >
             워크스페이스로 이동
           </a>

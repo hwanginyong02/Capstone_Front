@@ -7,33 +7,18 @@
  *
  * 이제 한 배열이 셋을 함께 들고, 번호 대신 `StepId` 로 가리킨다. 배열 순서가 정본 순서이고,
  * 실제로 걷는 목록은 `utils/domain/workflowSteps.ts` 의 `buildStepList` 가 카드 선택에서
- * 계산한다(docs/COMPOSER_COMPONENTS.md "카드별 입력 단계").
+ * 계산한다(docs/MATERIAL_PICKER.md §3).
  */
-import {
-  Building2,
-  Columns3,
-  Database,
-  FileBarChart,
-  ListChecks,
-  Server,
-  ShieldCheck,
-  Upload,
-  type LucideIcon,
-} from "lucide-react";
 import type { OptionalCardId } from "../types/reportComposer.types";
 import type { StepId } from "../types/workflow.types";
 
 export interface StepDefinition {
   id: StepId;
   /**
-   * 단계 탭에 보이는 이름.
-   *
-   * 새로 만드는 화면만 한국어다. 기존 화면의 라벨은 영어 그대로 둔다 — 문구 한국어화는
-   * 기존 테스트가 영문 문자열을 찾고 있어 단독 작업으로 미뤄둔 항목이다
-   * (docs/WORKFLOW_REDESIGN.md §6.3).
+   * 단계 표시줄에 보이는 이름. 그 단계가 받는 카드의 이름을 따른다(docs/MATERIAL_PICKER.md §8).
+   * 아이콘은 없다 — 세로 표시줄은 이름과 완료 표시만 둔다(§9).
    */
   label: string;
-  Icon: LucideIcon;
   /** `/app/*` 고정 경로. run 에 매인 단계에는 없다. */
   path?: string;
   /**
@@ -51,47 +36,43 @@ export interface StepDefinition {
 }
 
 /**
- * 정본 순서. 최소 구성이면 6개, 전체면 8개가 된다.
+ * 정본 순서 — 재료 고르기의 카드 순서다(docs/MATERIAL_PICKER.md §3). 최소 구성이면 8개, 전체면
+ * 10개가 된다.
  *
- * 검증 뒤는 **구성 화면의 카드 순서**를 따른다 — ③ 의뢰자 정보 → ⑥ ⑦ ⑧ 데이터 → ⑨ 모델 설정.
- * 검증 앞은 카드 순서를 그대로 따를 수 없다. 매핑이 고른 지표에 기대고(백엔드도 지표 없이는
- * 검증을 받지 않는다), ⑤ 평가 관점은 지표를 권하는 근거라 지표 화면에 붙어 있어야 한다
- * (docs/WORKFLOW_REDESIGN.md §11). 이 규칙은 `workflowSteps.test.ts` 의 카드 순서 테스트가 지킨다.
+ * 의뢰자 정보 → 평가 대상 모델 → (모델 설정과 실행 환경) → 평가 데이터(업로드, 컬럼 매핑) →
+ * (데이터 정보) → 평가 관점 → 지표와 합격 기준 → 검증 → 확인과 생성.
+ *
+ * 종전에는 지표가 매핑보다 앞이었다 — 매핑이 고른 지표에 기댔기 때문이다. 이제 매핑은 분류
+ * 유형만으로 판정하고(`/api/confirm-mapping` 은 지표 목록 없이도 받는다), 지표 화면이 매핑 뒤라
+ * 검증은 지표와 합격 기준 다음에 둔다. 백엔드의 `selected_metric_ids` 제약은 검증·평가에만
+ * 걸리므로 순서로 지켜진다. 이 규칙은 `workflowSteps.test.ts` 의 카드 순서 테스트가 지킨다.
+ *
+ * run 은 검증에서 만들어지므로 그 앞의 화면은 모두 `/app/*` 다. 성적서만 run 에 매인다.
  */
 export const STEP_CATALOG: StepDefinition[] = [
-  // ─── 평가 입력 — 파일·지표·매핑을 받고 검증에서 run 을 만든다 ────────────────
-  { id: "upload", label: "Evaluation File", Icon: Upload, path: "/app/data-upload" },
-  // ⑤ 평가 관점은 지표를 고르는 근거라 Metrics 화면 맨 위에 있다 — 단계를 따로 두지 않는다.
-  { id: "metrics", label: "Metrics", Icon: ListChecks, path: "/app/metrics" },
-  { id: "mapping", label: "Column mapping", Icon: Columns3, path: "/app/column-mapping" },
-  { id: "validation", label: "Validation", Icon: ShieldCheck, path: "/app/data-validation" },
-
-  // ─── 성적서 입력 — 카드 순서대로. run 이 생긴 뒤라 경로가 run 에 매인다 ────────
-  {
-    id: "clientInfo",
-    label: "Details",
-    Icon: Building2,
-    runScoped: true,
-    runSegment: "issue-info",
-  },
-  {
-    id: "dataInfo",
-    label: "Data info",
-    Icon: Database,
-    runScoped: true,
-    runSegment: "data-info",
-    requiresCards: ["trainingData", "testData", "groundTruth"],
-  },
+  { id: "clientInfo", label: "의뢰자 정보", path: "/app/client-info" },
+  { id: "model", label: "평가 대상 모델", path: "/app/model" },
   {
     id: "modelEnv",
-    label: "Model info",
-    Icon: Server,
-    runScoped: true,
-    runSegment: "model-env",
+    label: "모델 설정과 실행 환경",
+    path: "/app/model-env",
     requiresCards: ["modelEnv"],
   },
+  // ① 평가 데이터는 업로드와 컬럼 매핑 두 화면에서 받는다.
+  { id: "upload", label: "평가 데이터", path: "/app/data-upload" },
+  { id: "mapping", label: "컬럼 매핑", path: "/app/column-mapping" },
+  {
+    id: "dataInfo",
+    label: "데이터 정보",
+    path: "/app/data-info",
+    requiresCards: ["trainingData", "testData", "groundTruth"],
+  },
+  // 평가 관점은 지표 바로 앞이라 지표 추천의 근거가 된다(§3).
+  { id: "perspective", label: "평가 관점", path: "/app/perspective" },
+  { id: "metrics", label: "지표와 합격 기준", path: "/app/metrics" },
+  { id: "validation", label: "검증", path: "/app/data-validation" },
   // 성적서는 `/report/<runId>` 자체다 — 뒤에 붙는 조각이 없다. 평가 API 도 여기서 처음 불린다.
-  { id: "report", label: "Result", Icon: FileBarChart, runScoped: true },
+  { id: "report", label: "확인과 생성", runScoped: true },
 ];
 
 /** 카탈로그에서 단계 하나를 찾는다. */

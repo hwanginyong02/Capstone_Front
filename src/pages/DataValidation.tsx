@@ -25,8 +25,8 @@ function describeSubmitError(err: unknown): string {
 
   if (isQuota) {
     return (
-      "Browser storage is full, so the evaluation result could not be saved. " +
-      "Delete older evaluations from the workspace page and try again."
+      "브라우저 저장 공간이 가득 차 평가 결과를 저장하지 못했습니다. " +
+      "워크스페이스 화면에서 오래된 평가를 지우고 다시 시도하세요."
     );
   }
 
@@ -77,12 +77,12 @@ export function DataValidation() {
       // 저장에 성공한 뒤에만 단계를 넘긴다(실패 시 검증 화면에 머물러 재시도 가능).
       // run id 를 남겨야 성적서를 벗어난 뒤 성적서 탭으로 돌아올 수 있다(ISSUES.md E-16).
       store.setLastRunId(run.id);
-      // 다음은 Details — 성적서 입력이 카드 순서대로 이어진다. 평가 API 는 모든 입력을 마친 뒤
-      // 성적서 화면에서 불리므로, 그 사이에 받은 값까지 성적서와 AI 서술에 들어간다.
-      // 단계 목록이 순서를 들고 있으므로 여기서 목적지를 적지 않는다.
+      // 다음은 확인과 생성 — 검증은 모든 재료 입력 뒤, 성적서 바로 앞이다(docs/MATERIAL_PICKER.md
+      // §3). 평가 API 는 성적서 화면에서 불린다. 단계 목록이 순서를 들고 있으므로 여기서 목적지를
+      // 적지 않는다.
       //
       // run id 를 넘기는 이유: 방금 만든 run 이라 스토어에 아직 반영되지 않았을 수 있는데,
-      // 목적지 경로(`/report/<runId>/issue-info`)에는 이미 그 id 가 필요하다.
+      // 목적지 경로(`/report/<runId>`)에는 이미 그 id 가 필요하다.
       flow.goNext({ runId: run.id });
     } catch (err) {
       console.error("평가 실행(성적서 생성) 실패:", err);
@@ -100,7 +100,8 @@ export function DataValidation() {
       onPrevious={handlePrevious}
       onNext={handleNext}
       nextDisabled={gateReason !== "ok"}
-      nextLabel="Next step"
+      previousLabel="이전"
+      nextLabel="다음"
     >
       {submitError && (
         <Alert variant="destructive" className="mb-6">
@@ -116,7 +117,7 @@ export function DataValidation() {
       )}
       <FileReuploadNotice />
 
-      {/* 백엔드가 4·5단계에서 내려보낸 안내를 여기 합쳐 보여준다(ISSUES.md B-03·B-04·A-12).
+      {/* 백엔드가 평가 데이터·매핑 단계에서 내려보낸 안내를 여기 합쳐 보여준다(ISSUES.md B-03·B-04·A-12).
           그 화면들에서 띄우면 사용자는 이미 다음 단계로 넘어간 뒤라 읽지 못한다. */}
       <BackendNoticePanel
         columnNotes={store.columnNotes}
