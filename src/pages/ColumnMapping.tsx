@@ -9,13 +9,14 @@ import { FileReuploadNotice } from "../components/workflow/FileReuploadNotice";
 /**
  * 컬럼 매핑 — ① 평가 데이터의 두 번째 화면. 업로드 다음이다(docs/MATERIAL_PICKER.md §3).
  *
- * 지표 선택보다 **앞**에 온다. 매핑은 고른 지표에 기대지 않는다 — 지표가 없으면 정답과 예측
- * (또는 확률)만 요구하고(`getBaseRequiredColumns`), `/api/confirm-mapping` 도 지표 목록 없이
- * 받아 지표마다 계산할 수 있는지(`available_metric_ids`)를 돌려준다. 검증(`validate-data`)은
- * 지표 목록이 있어야 하므로 지표 다음에 둔다.
+ * 지표 선택보다 **앞**에 온다. 매핑은 고른 지표에 기대지 않는다 — 정답과 예측(또는 확률)만
+ * 요구하고(`getBaseRequiredColumns`), `/api/confirm-mapping` 에는 지표 목록을 늘 비워 보낸다.
+ * 그러면 백엔드는 지표 때문에 매핑을 거절하지 않고, 지표마다 계산할 수 있는지
+ * (`available_metric_ids`)만 돌려준다. 지표 화면이 그 답으로 계산할 수 없는 지표를 비활성으로
+ * 둔다. 검증(`validate-data`)은 지표 목록이 있어야 하므로 지표 다음에 둔다.
  *
- * 지표를 고른 뒤 이 화면으로 돌아왔다면 고른 지표를 함께 보내, 계산할 수 없게 된 지표를 백엔드가
- * 짚어 준다.
+ * 종전의 "지표 제외"(빠진 컬럼이 필요한 지표를 이 화면에서 빼기)는 없앴다 — 이 화면에서는 아직
+ * 고른 지표가 없다.
  */
 export function ColumnMapping() {
   const store = useWorkflowStore();
@@ -30,7 +31,7 @@ export function ColumnMapping() {
       const result = await confirmMapping({
         columnMapping: store.columnMapping,
         taskType: store.taskType,
-        selectedMetricIds: store.selectedMetricIds,
+        selectedMetricIds: [],
       });
 
       // 경고와 가용 지표는 진행을 막지 않지만 **버려서도 안 된다**(ISSUES.md B-04·A-12).
@@ -78,11 +79,9 @@ export function ColumnMapping() {
       <FileReuploadNotice />
       <ColumnMappingContent
         taskType={store.taskType}
-        selectedMetricIds={store.selectedMetricIds}
         rows={store.columnMapping}
         onRowsChange={store.setColumnMapping}
         onValidationChange={setIsValid}
-        onSelectedMetricIdsChange={store.setSelectedMetricIds}
         onGoBackToUpload={handlePrevious}
         classLabelDescriptions={store.classLabelDescriptions}
         onClassLabelDescriptionsChange={store.setClassLabelDescriptions}

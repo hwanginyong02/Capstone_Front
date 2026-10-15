@@ -2,26 +2,17 @@ import { Info } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Alert, AlertDescription } from "../ui/alert";
-import {
-  type MetricDefinition,
-  type RequiredColumnDisplay,
-  type TaskType,
-  getRequiredColumnsForMetric,
-} from "../../data/evaluationData";
+import type { RequiredColumnDisplay } from "../../data/evaluationData";
 import type { MappingRole } from "../../types/mapping.types";
 import { getRoleStatusLabel } from "../../utils/domain/mappingHelpers";
 
 interface RequiredColumnsCardProps {
-  selectedMetrics: MetricDefinition[];
   requiredRoles: RequiredColumnDisplay[];
-  resolvedTaskType: TaskType;
   roleCounts: Partial<Record<MappingRole, number>>;
 }
 
 export function RequiredColumnsCard({
-  selectedMetrics,
   requiredRoles,
-  resolvedTaskType,
   roleCounts,
 }: RequiredColumnsCardProps) {
   return (
@@ -33,27 +24,20 @@ export function RequiredColumnsCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {selectedMetrics.length === 0 && (
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription>
-              지표는 뒤의 "지표와 합격 기준" 단계에서 고릅니다. 지금은 평가에 꼭 필요한 정답과
-              예측(또는 확률) 컬럼만 확인합니다. 확률 컬럼이 있어야 AUROC 같은 곡선 지표를 고를 수 있습니다.
-            </AlertDescription>
-          </Alert>
-        )}
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            지표는 뒤의 "지표와 합격 기준" 단계에서 고릅니다. 지금은 평가에 꼭 필요한 정답과
+            예측(또는 확률) 컬럼만 확인합니다. 확률 컬럼을 매핑하지 않으면 AUROC 같은 곡선 지표는
+            지표 화면에서 고를 수 없습니다.
+          </AlertDescription>
+        </Alert>
 
         {requiredRoles.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {requiredRoles.map((role) => {
               const count = roleCounts[role.code] ?? 0;
               const status = getRoleStatusLabel(role, count);
-
-              // 어떤 metric이 이 컬럼을 필요로 하는지 찾기
-              const metricsRequiringThis = selectedMetrics.filter((metric) => {
-                const req = getRequiredColumnsForMetric(resolvedTaskType, metric.id);
-                return req.some((r) => r.code === role.code);
-              });
 
               return (
                 <div key={role.code} className="rounded-xl border border-border bg-card p-5 flex flex-col h-full">
@@ -66,26 +50,7 @@ export function RequiredColumnsCard({
                       <div className="text-sm font-medium text-foreground-secondary">{role.label}</div>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground flex-grow mb-4">{role.description}</p>
-
-                  {metricsRequiringThis.length > 0 && (
-                    <div className="mt-auto pt-4 border-t border-border">
-                      <div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
-                        필요로 하는 지표
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {metricsRequiringThis.map((metric) => (
-                          <Badge
-                            key={metric.id}
-                            variant="outline"
-                            className="bg-muted text-foreground-secondary font-normal border-border"
-                          >
-                            {metric.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <p className="text-sm text-muted-foreground flex-grow">{role.description}</p>
                 </div>
               );
             })}

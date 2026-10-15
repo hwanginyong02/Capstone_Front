@@ -57,3 +57,51 @@ describe("지표 선택 이유", () => {
     expect(screen.getByRole("textbox", { name: "지표 선택 이유 기타 내용" })).toBeInTheDocument();
   });
 });
+
+describe("계산할 수 없는 지표 (docs/MATERIAL_PICKER.md §3)", () => {
+  const reasons = { M9: "양성 클래스 점수(score) 컬럼이 매핑되지 않아 계산할 수 없습니다." };
+
+  it("고를 수 없고, 이름 아래에 이유를 한 줄 적는다", () => {
+    render(<TestItems taskType="binary" unavailableReasons={reasons} />);
+
+    const auroc = screen.getByRole("checkbox", { name: "AUROC" });
+    expect(auroc).toBeDisabled();
+    expect(auroc).toHaveAccessibleDescription(reasons.M9);
+    expect(screen.getByRole("checkbox", { name: "Accuracy" })).toBeEnabled();
+  });
+
+  it("추천 지표와 전체 선택은 계산할 수 없는 지표를 건너뛴다", async () => {
+    const onSelectedMetricsChange = vi.fn();
+    render(
+      <TestItems
+        taskType="binary"
+        unavailableReasons={reasons}
+        onSelectedMetricsChange={onSelectedMetricsChange}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "추천 지표" }));
+    expect(onSelectedMetricsChange).toHaveBeenLastCalledWith(
+      expect.not.arrayContaining(["M9"]),
+    );
+    expect(onSelectedMetricsChange.mock.lastCall?.[0]).toContain("M1");
+
+    await userEvent.click(screen.getByRole("button", { name: "전체 선택" }));
+    expect(onSelectedMetricsChange.mock.lastCall?.[0]).not.toContain("M9");
+  });
+
+  it("이미 골라져 있으면 빼는 것은 된다", async () => {
+    const onSelectedMetricsChange = vi.fn();
+    render(
+      <TestItems
+        taskType="binary"
+        selectedMetricIds={["M1", "M9"]}
+        unavailableReasons={reasons}
+        onSelectedMetricsChange={onSelectedMetricsChange}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "AUROC" }));
+    expect(onSelectedMetricsChange).toHaveBeenLastCalledWith(["M1"]);
+  });
+});

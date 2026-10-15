@@ -7,7 +7,7 @@ import type { TaskType } from "../data/evaluationData";
 /**
  * 워크플로우 진입 화면 (`/app`) — 분류 유형 선택.
  *
- * 스텝 워크플로우에 들어가기 **전** 이므로 `WorkflowShell`(StepTabs·ActionBar)이 아니라
+ * 스텝 워크플로우에 들어가기 **전** 이므로 `WorkflowShell`(StepRail·ActionBar)이 아니라
  * 경량 `AppShell` 을 쓴다.
  *
  * `setTaskType` 은 뒤 단계 입력을 전부 리셋한다(선택이 바뀌면 뒤 단계의 근거가 사라지므로).

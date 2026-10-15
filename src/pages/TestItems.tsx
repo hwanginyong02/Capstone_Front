@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Info } from "lucide-react";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { useStepFlow } from "../hooks/useStepFlow";
 import { WorkflowShell } from "../layout/WorkflowShell";
@@ -9,6 +10,9 @@ import { focusFirstIssue } from "../components/composer-input/focusFirstIssue";
 import { getCard, getCardFields } from "../data/reportComposer";
 import { getFieldIssue, type FieldIssue } from "../utils/domain/composerFieldGate";
 import { passCriteriaState } from "../utils/domain/passCriteria";
+import { unavailableMetricReasons } from "../utils/domain/metricAvailability";
+import { METRICS } from "../data/evaluationData";
+import { Alert, AlertDescription } from "../components/ui/alert";
 
 /**
  * 지표와 합격 기준 (`/app/metrics`) — 평가 관점 다음, 검증 앞(docs/MATERIAL_PICKER.md §3).
@@ -17,8 +21,11 @@ import { passCriteriaState } from "../utils/domain/passCriteria";
  * 목표값과 핵심 지표. 목표값은 평가 **전에** 받고, 결과와의 비교는 성적서가 한다(§3). 종전에는
  * 목표값과 핵심 지표를 Details 화면이 받았다(§5).
  *
- * 컬럼 매핑이 이 화면보다 앞이다. 검증(`/api/validate-data`)은 `selected_metric_ids` 가 비면
- * 거절하므로 검증은 이 화면 뒤에 둔다 — 백엔드를 바꾸지 않고 순서로 지킨다.
+ * 컬럼 매핑이 이 화면보다 앞이다. 그래서 매핑된 컬럼으로 계산할 수 없는 지표(예: 확률 컬럼 없이
+ * AUROC)는 처음부터 고를 수 없게 두고 이유를 한 줄 붙인다(§3, `metricAvailability`). 매핑을
+ * 바꾸고 돌아와 계산할 수 없게 된 지표가 이미 골라져 있으면, 들어올 때 선택에서 빼고 알린다.
+ * 검증(`/api/validate-data`)은 `selected_metric_ids` 가 비면 거절하므로 검증은 이 화면 뒤에 둔다 —
+ * 백엔드를 바꾸지 않고 순서로 지킨다.
  *
  * β(M5)는 목표값과 달리 `/api/evaluate` 페이로드에 실리는 **평가 입력**이다.
  */
@@ -27,6 +34,24 @@ export function TestItems() {
   const flow = useStepFlow("metrics");
   // 지표 선택 이유의 빈 칸은 다음을 누른 뒤에만 빨갛게 칠한다(`pages/DataInfo.tsx` 와 같은 규칙).
   const [showErrors, setShowErrors] = useState(false);
+
+  const unavailableReasons = useMemo(
+    () => unavailableMetricReasons(store.taskType, store.columnMapping, store.availableMetricIds),
+    [store.taskType, store.columnMapping, store.availableMetricIds],
+  );
+
+  // 들어올 때 한 번 — 매핑을 바꿔 계산할 수 없게 된 지표를 선택에서 빼고 이름을 알린다.
+  const [droppedMetricIds, setDroppedMetricIds] = useState<string[]>([]);
+  useEffect(() => {
+    const selected = useWorkflowStore.getState().selectedMetricIds;
+    const dropped = selected.filter((id) => id in unavailableReasons);
+    if (dropped.length === 0) return;
+    store.setSelectedMetricIds(selected.filter((id) => !(id in unavailableReasons)));
+    setDroppedMetricIds(dropped);
+  }, []);
+  const droppedNames = droppedMetricIds
+    .map((id) => METRICS.find((metric) => metric.id === id)?.name ?? id)
+    .join(", ");
 
   /** ② 카드 중 레지스트리로 그리는 필드(멀티레이블의 지표 선택 이유)만 검사한다. */
   const metricCard = getCard("metrics");
@@ -128,6 +153,17 @@ export function TestItems() {
           store.setComposerMetrics((prev) => ({ ...prev, [fieldId]: next }))
         }
         metricCardIssues={metricCardIssues}
+        unavailableReasons={unavailableReasons}
+        notice={
+          droppedMetricIds.length > 0 ? (
+            <Alert role="status">
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                매핑한 컬럼으로 계산할 수 없게 된 지표를 선택에서 뺐습니다: {droppedNames}
+              </AlertDescription>
+            </Alert>
+          ) : undefined
+        }
         passCriteria={
           store.selectedMetricIds.length > 0 ? (
             <PassCriteriaCard

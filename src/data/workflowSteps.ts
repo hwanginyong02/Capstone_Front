@@ -9,29 +9,16 @@
  * 실제로 걷는 목록은 `utils/domain/workflowSteps.ts` 의 `buildStepList` 가 카드 선택에서
  * 계산한다(docs/MATERIAL_PICKER.md §3).
  */
-import {
-  Box,
-  Building2,
-  Columns3,
-  Database,
-  FileBarChart,
-  ListChecks,
-  Server,
-  ShieldCheck,
-  Target,
-  Upload,
-  type LucideIcon,
-} from "lucide-react";
 import type { OptionalCardId } from "../types/reportComposer.types";
 import type { StepId } from "../types/workflow.types";
 
 export interface StepDefinition {
   id: StepId;
   /**
-   * 단계 탭에 보이는 이름. 그 단계가 받는 카드의 이름을 따른다(docs/MATERIAL_PICKER.md §8).
+   * 단계 표시줄에 보이는 이름. 그 단계가 받는 카드의 이름을 따른다(docs/MATERIAL_PICKER.md §8).
+   * 아이콘은 없다 — 세로 표시줄은 이름과 완료 표시만 둔다(§9).
    */
   label: string;
-  Icon: LucideIcon;
   /** `/app/*` 고정 경로. run 에 매인 단계에는 없다. */
   path?: string;
   /**
@@ -63,31 +50,29 @@ export interface StepDefinition {
  * run 은 검증에서 만들어지므로 그 앞의 화면은 모두 `/app/*` 다. 성적서만 run 에 매인다.
  */
 export const STEP_CATALOG: StepDefinition[] = [
-  { id: "clientInfo", label: "의뢰자 정보", Icon: Building2, path: "/app/client-info" },
-  { id: "model", label: "평가 대상 모델", Icon: Box, path: "/app/model" },
+  { id: "clientInfo", label: "의뢰자 정보", path: "/app/client-info" },
+  { id: "model", label: "평가 대상 모델", path: "/app/model" },
   {
     id: "modelEnv",
     label: "모델 설정과 실행 환경",
-    Icon: Server,
     path: "/app/model-env",
     requiresCards: ["modelEnv"],
   },
   // ① 평가 데이터는 업로드와 컬럼 매핑 두 화면에서 받는다.
-  { id: "upload", label: "평가 데이터", Icon: Upload, path: "/app/data-upload" },
-  { id: "mapping", label: "컬럼 매핑", Icon: Columns3, path: "/app/column-mapping" },
+  { id: "upload", label: "평가 데이터", path: "/app/data-upload" },
+  { id: "mapping", label: "컬럼 매핑", path: "/app/column-mapping" },
   {
     id: "dataInfo",
     label: "데이터 정보",
-    Icon: Database,
     path: "/app/data-info",
     requiresCards: ["trainingData", "testData", "groundTruth"],
   },
   // 평가 관점은 지표 바로 앞이라 지표 추천의 근거가 된다(§3).
-  { id: "perspective", label: "평가 관점", Icon: Target, path: "/app/perspective" },
-  { id: "metrics", label: "지표와 합격 기준", Icon: ListChecks, path: "/app/metrics" },
-  { id: "validation", label: "검증", Icon: ShieldCheck, path: "/app/data-validation" },
+  { id: "perspective", label: "평가 관점", path: "/app/perspective" },
+  { id: "metrics", label: "지표와 합격 기준", path: "/app/metrics" },
+  { id: "validation", label: "검증", path: "/app/data-validation" },
   // 성적서는 `/report/<runId>` 자체다 — 뒤에 붙는 조각이 없다. 평가 API 도 여기서 처음 불린다.
-  { id: "report", label: "확인과 생성", Icon: FileBarChart, runScoped: true },
+  { id: "report", label: "확인과 생성", runScoped: true },
 ];
 
 /** 카탈로그에서 단계 하나를 찾는다. */

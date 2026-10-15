@@ -8,8 +8,8 @@
  *   ① `getRequiredColumnsForSelection` 은 selectedMetricIds 를 순회해 요구 역할을 모은다.
  *      지표가 하나도 없으면 요구 역할이 **0개**가 되고, 그러면 missingRoles 도 [] 라
  *      "빠진 역할 없음 = 유효"로 통과한다. '행이 있는가'를 보는 조건이 없다.
- *      (지금은 매핑이 지표 선택보다 앞이라, 지표가 없으면 정답·예측을 요구 역할로 본다 —
- *      `getBaseRequiredColumns`. 지표가 없다는 것만으로는 막지 않는다. docs/MATERIAL_PICKER.md §3)
+ *      (지금은 매핑이 지표 선택보다 앞이고 지표에 기대지 않는다. 요구 역할은 늘 정답·예측이다 —
+ *      `getBaseRequiredColumns`. 지표마다 더 필요한 컬럼은 지표 화면이 판정한다. docs/MATERIAL_PICKER.md §3)
  *   ② `taskType` 이 "" 이면 `resolvedTaskType` 이 "multiclass" 로 둔갑해
  *      **binary 전용 검사(positiveClass)까지 건너뛴다.**
  *

@@ -22,7 +22,7 @@ import type { ComposerCardId } from "../types/reportComposer.types";
  *   잠그지 않는다 — 누르면 무엇이 남았는지 알려 준다.
  * - 선택 카드를 저장하지 않거나 아무것도 체크하지 않고 저장하면 그 카드는 빼고 진행한다.
  *
- * 입력 단계에 들어가기 **전** 화면이라 단계 탭을 두지 않고(`showStepTabs={false}`), 단계도
+ * 입력 단계에 들어가기 **전** 화면이라 단계 표시줄을 두지 않고(`showStepRail={false}`), 단계도
  * 아니다(`isStepPage={false}` — URL→단계 유도와 진입 가드를 끈다). 유형을 고르지 않고 URL 로
  * 바로 들어오면 고를 것이 없으므로 작업 유형 화면으로 보낸다.
  */
@@ -80,7 +80,7 @@ export function MaterialPicker() {
 
   return (
     <WorkflowShell
-      showStepTabs={false}
+      showStepRail={false}
       isStepPage={false}
       aside={
         <InputOrderPanel

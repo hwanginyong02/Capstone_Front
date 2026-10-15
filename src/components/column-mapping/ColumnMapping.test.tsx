@@ -11,8 +11,11 @@
  *   ② `taskType` 이 "" 면 `resolvedTaskType` 이 "multiclass" 로 둔갑해 **binary 전용 검사(positiveClass)까지
  *      건너뛴다**.
  * 둘이 겹쳐야 isValid=true 가 되고, 그 상태는 정확히 E-01(비영속)이 만들어낸다.
+ *
+ * 지금은 매핑이 지표 선택보다 앞이고 지표에 기대지 않는다 — 요구 역할은 늘 정답과 예측(또는
+ * 확률)이다(docs/MATERIAL_PICKER.md §3). ① 의 기전은 그래서 사라졌다.
  */
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ColumnMapping } from "./ColumnMapping";
@@ -40,38 +43,35 @@ function validityOf(props: Partial<React.ComponentProps<typeof ColumnMapping>>):
 
 describe("Step 5 진행 판정", () => {
   it("[E-13] 상태가 전부 비었으면 유효하지 않다 — 새로고침 직후의 실제 상태", () => {
-    expect(validityOf({ taskType: "", selectedMetricIds: [], rows: [] })).toBe(false);
+    expect(validityOf({ taskType: "", rows: [] })).toBe(false);
   });
 
-  it("[E-13] 매핑 행이 0개면 유효하지 않다(지표가 선택돼 있어도)", () => {
-    expect(validityOf({ taskType: "multiclass", selectedMetricIds: ["M23"], rows: [] })).toBe(false);
+  it("[E-13] 매핑 행이 0개면 유효하지 않다", () => {
+    expect(validityOf({ taskType: "multiclass", rows: [] })).toBe(false);
   });
 
   it("[E-13] 어떤 행에도 역할이 배정되지 않았으면 유효하지 않다", () => {
     expect(
       validityOf({
         taskType: "multiclass",
-        selectedMetricIds: ["M23"],
         rows: [row("col_a", "ignore"), row("col_b", null)],
       })
     ).toBe(false);
   });
 
-  it("지표를 고르기 전에도 정답과 예측이 있으면 유효하다 — 매핑은 지표 선택보다 앞이다", () => {
+  it("정답과 예측이 있으면 유효하다 — 매핑은 지표에 기대지 않는다", () => {
     expect(
       validityOf({
         taskType: "multiclass",
-        selectedMetricIds: [],
         rows: [row("id", "id"), row("t", "y_true"), row("p", "y_pred")],
       })
     ).toBe(true);
   });
 
-  it("지표를 고르기 전에는 정답·예측이 빠지면 유효하지 않다 — 요구 역할이 0개가 되지 않는다", () => {
+  it("정답·예측이 빠지면 유효하지 않다 — 요구 역할이 0개가 되지 않는다", () => {
     expect(
       validityOf({
         taskType: "multiclass",
-        selectedMetricIds: [],
         rows: [row("id", "id"), row("t", "y_true")],
       })
     ).toBe(false);
@@ -81,7 +81,6 @@ describe("Step 5 진행 판정", () => {
     expect(
       validityOf({
         taskType: "",
-        selectedMetricIds: ["M23"],
         rows: [row("id", "id"), row("t", "y_true"), row("p", "y_pred")],
       })
     ).toBe(false);
@@ -91,7 +90,6 @@ describe("Step 5 진행 판정", () => {
     expect(
       validityOf({
         taskType: "multiclass",
-        selectedMetricIds: ["M23"],
         rows: [row("id", "id"), row("t", "y_true"), row("p", "y_pred")],
       })
     ).toBe(true);
@@ -100,11 +98,26 @@ describe("Step 5 진행 판정", () => {
   it("[E-13] binary 는 positiveClass 가 있어야 유효하다(기존 동작 보존)", () => {
     const base = {
       taskType: "binary" as const,
-      selectedMetricIds: ["M1"],
       rows: [row("id", "id"), row("t", "y_true"), row("p", "y_pred")],
       detectedClasses: ["0", "1"],
     };
     expect(validityOf({ ...base, positiveClass: "" })).toBe(false);
     expect(validityOf({ ...base, positiveClass: "1" })).toBe(true);
+  });
+});
+
+describe("지표 제외는 없다 (docs/MATERIAL_PICKER.md §3)", () => {
+  it("필수 컬럼이 빠지면 업로드로 돌아가라고만 한다 — 지표를 빼서 풀 수 없다", () => {
+    render(
+      <ColumnMapping
+        taskType="multiclass"
+        rows={[row("id", "id"), row("t", "y_true")]}
+        onRowsChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("필수 컬럼이 빠졌습니다")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /업로드로 돌아가기/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /지표/ })).not.toBeInTheDocument();
   });
 });

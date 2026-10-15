@@ -101,3 +101,53 @@ describe("합격 목표값 — 평가 전에 받는다", () => {
     expect(useWorkflowStore.getState().metricDetails.M4?.targetValue).toBe("0.8");
   });
 });
+
+describe("매핑으로 계산할 수 없는 지표 (docs/MATERIAL_PICKER.md §3)", () => {
+  const mapped = (...roles: ("y_true" | "y_pred" | "score")[]) =>
+    roles.map((role) => ({
+      originalName: role,
+      sampleValues: [],
+      inferredRole: role,
+      confirmedRole: role,
+      modified: false,
+      warnings: [],
+    }));
+
+  it("확률 컬럼 없이 매핑했으면 AUROC 를 고를 수 없다", () => {
+    useWorkflowStore.setState({
+      taskType: "binary",
+      selectedMetricIds: ["M1"],
+      columnMapping: mapped("y_true", "y_pred"),
+    });
+    renderPage();
+
+    expect(screen.getByRole("checkbox", { name: "AUROC" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Accuracy" })).toBeEnabled();
+  });
+
+  it("매핑을 바꿔 계산할 수 없게 된 지표는 들어올 때 선택에서 빼고 알린다", () => {
+    useWorkflowStore.setState({
+      taskType: "binary",
+      selectedMetricIds: ["M1", "M9"],
+      columnMapping: mapped("y_true", "y_pred"),
+    });
+    renderPage();
+
+    expect(useWorkflowStore.getState().selectedMetricIds).toEqual(["M1"]);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "매핑한 컬럼으로 계산할 수 없게 된 지표를 선택에서 뺐습니다: AUROC",
+    );
+  });
+
+  it("확률 컬럼이 있으면 그대로 둔다", () => {
+    useWorkflowStore.setState({
+      taskType: "binary",
+      selectedMetricIds: ["M1", "M9"],
+      columnMapping: mapped("y_true", "y_pred", "score"),
+    });
+    renderPage();
+
+    expect(useWorkflowStore.getState().selectedMetricIds).toEqual(["M1", "M9"]);
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+});

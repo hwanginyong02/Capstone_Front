@@ -1,15 +1,16 @@
-import { useState } from "react";
 import { AlertCircle, CheckCircle2, ShieldAlert, Undo2 } from "lucide-react";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
-import {
-  type MetricDefinition,
-  type RequiredColumnDisplay,
-  type TaskType,
-  getRequiredColumnsForMetric,
-} from "../../data/evaluationData";
+import type { RequiredColumnDisplay, TaskType } from "../../data/evaluationData";
 import type { MappingRow } from "../../types/mapping.types";
-import { MappingResolutionView } from "./MappingResolutionView";
+
+/**
+ * 매핑 상태 — 다 됐는지, 무엇이 막는지.
+ *
+ * 빠진 필수 컬럼은 정답과 예측(또는 확률)뿐이다. 매핑이 지표보다 앞이라(docs/MATERIAL_PICKER.md
+ * §3) 종전의 "지표를 조정해 해결"(그 컬럼이 필요한 지표 빼기)은 없앴다. 이 컬럼들은 어떤 지표에도
+ * 필요하므로 데이터를 다시 올리는 것 말고는 풀 길이 없다.
+ */
 
 interface MappingStatusPanelProps {
   mappingSummary: {
@@ -18,12 +19,8 @@ interface MappingStatusPanelProps {
     duplicateCount: number;
   };
   resolvedTaskType: TaskType;
-  selectedMetrics: MetricDefinition[];
-  selectedMetricIds: string[];
   positiveClass: string;
   yTrueRow: MappingRow | undefined;
-  /** 지표 선택 변경(지표 제외). 페이지에서 store.setSelectedMetricIds 를 주입한다. */
-  onSelectedMetricIdsChange: (ids: string[]) => void;
   /** 데이터 업로드 단계로 복귀. 페이지의 handlePrevious 를 주입한다(스텝 상태 일관성 유지). */
   onGoBackToUpload: () => void;
 }
@@ -31,31 +28,10 @@ interface MappingStatusPanelProps {
 export function MappingStatusPanel({
   mappingSummary,
   resolvedTaskType,
-  selectedMetrics,
-  selectedMetricIds,
   positiveClass,
   yTrueRow,
-  onSelectedMetricIdsChange,
   onGoBackToUpload,
 }: MappingStatusPanelProps) {
-  const [isResolutionMode, setIsResolutionMode] = useState(false);
-
-  const handleRemoveMetric = (id: string) => {
-    onSelectedMetricIdsChange(selectedMetricIds.filter((mId) => mId !== id));
-  };
-
-  const handleExcludeAllAffected = () => {
-    const affectedMetricIds = new Set<string>();
-    mappingSummary.missingRoles.forEach((role) => {
-      selectedMetrics.forEach((m) => {
-        if (getRequiredColumnsForMetric(resolvedTaskType, m.id).some((r) => r.code === role.code)) {
-          affectedMetricIds.add(m.id);
-        }
-      });
-    });
-    onSelectedMetricIdsChange(selectedMetricIds.filter((id) => !affectedMetricIds.has(id)));
-    setIsResolutionMode(false);
-  };
   if (mappingSummary.isValid) {
     return (
       <Alert className="bg-success-subtle border-success-border text-success-strong">
@@ -71,49 +47,28 @@ export function MappingStatusPanel({
   return (
     <div className="space-y-4">
       {mappingSummary.missingRoles.length > 0 && (
-        <>
-          {!isResolutionMode ? (
-            <Alert variant="destructive" className="bg-destructive/5 border-destructive/30 text-destructive p-6">
-              <AlertCircle className="h-5 w-5 text-destructive mt-1" />
-              <AlertDescription className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="space-y-1">
-                  <div className="font-bold text-lg text-destructive">필수 컬럼이 빠졌습니다</div>
-                  <p className="text-destructive">
-                    필수 역할 {mappingSummary.missingRoles.length}개가 아직 지정되지 않았습니다.
-                    다음 단계로 넘어갈 수 없습니다.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-3 shrink-0">
-                  <Button
-                    variant="outline"
-                    className="bg-white hover:bg-destructive/10 border-destructive/30 text-destructive font-semibold px-5"
-                    onClick={() => setIsResolutionMode(true)}
-                  >
-                    지표를 조정해 해결
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="bg-white hover:bg-muted border-border text-foreground-secondary px-5"
-                    onClick={onGoBackToUpload}
-                  >
-                    <Undo2 className="mr-2 h-4 w-4" />
-                    업로드로 돌아가기
-                  </Button>
-                </div>
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <MappingResolutionView
-              missingRoles={mappingSummary.missingRoles}
-              selectedMetrics={selectedMetrics}
-              resolvedTaskType={resolvedTaskType}
-              onClose={() => setIsResolutionMode(false)}
-              onRemoveMetric={handleRemoveMetric}
-              onExcludeAllAffected={handleExcludeAllAffected}
-              onGoBackToUpload={onGoBackToUpload}
-            />
-          )}
-        </>
+        <Alert variant="destructive" className="bg-destructive/5 border-destructive/30 text-destructive p-6">
+          <AlertCircle className="h-5 w-5 text-destructive mt-1" />
+          <AlertDescription className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-1">
+              <div className="font-bold text-lg text-destructive">필수 컬럼이 빠졌습니다</div>
+              <p className="text-destructive">
+                필수 역할 {mappingSummary.missingRoles.length}개가 아직 지정되지 않았습니다.
+                다음 단계로 넘어갈 수 없습니다.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3 shrink-0">
+              <Button
+                variant="outline"
+                className="bg-white hover:bg-muted border-border text-foreground-secondary px-5"
+                onClick={onGoBackToUpload}
+              >
+                <Undo2 className="mr-2 h-4 w-4" />
+                업로드로 돌아가기
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
       )}
 
       {mappingSummary.duplicateCount > 0 && (

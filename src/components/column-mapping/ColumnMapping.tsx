@@ -4,13 +4,11 @@ import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import {
   TASK_TYPE_LABELS_KO,
-  METRICS,
   MAPPABLE_ROLES_BY_TASK,
   PREDICTION_ROLE_ALTERNATIVES,
   resolveMissingRoleCodes,
   type TaskType,
   getBaseRequiredColumns,
-  getRequiredColumnsForSelection,
 } from "../../data/evaluationData";
 import type { MappingRole, MappingRow, FilterMode } from "../../types/mapping.types";
 import { applyRoleChange } from "../../utils/domain/applyRoleChange";
@@ -28,7 +26,6 @@ import { MappingStatusPanel } from "./MappingStatusPanel";
 
 interface ColumnMappingProps {
   taskType?: TaskType | "";
-  selectedMetricIds?: string[];
   rows: MappingRow[];
   onRowsChange: (value: MappingRow[] | ((prev: MappingRow[]) => MappingRow[])) => void;
   onValidationChange?: (isValid: boolean) => void;
@@ -44,8 +41,6 @@ interface ColumnMappingProps {
   positiveClassAmbiguous?: boolean;
   detectedClasses?: string[];
   columnUniqueValues?: Record<string, string[]>;
-  /** 지표 선택 변경(매핑 해결 과정에서 지표 제외). 페이지에서 store.setSelectedMetricIds 주입. */
-  onSelectedMetricIdsChange?: (ids: string[]) => void;
   /** 데이터 업로드 단계로 복귀. 페이지의 handlePrevious 주입. */
   onGoBackToUpload?: () => void;
   /** 결정 임계값(확률→예측 파생 기준). 성적서 합격 목표값과 다른 개념이다(A-01). */
@@ -75,7 +70,6 @@ function buildRoleOptions(
 
 export function ColumnMapping({
   taskType = "multiclass",
-  selectedMetricIds = [],
   rows,
   onRowsChange,
   onValidationChange,
@@ -86,27 +80,17 @@ export function ColumnMapping({
   positiveClassAmbiguous = false,
   detectedClasses = [],
   columnUniqueValues = {},
-  onSelectedMetricIdsChange = () => {},
   onGoBackToUpload = () => {},
   decisionThreshold = null,
   onDecisionThresholdChange = () => {},
 }: ColumnMappingProps) {
   const resolvedTaskType: TaskType = taskType || "multiclass";
-  const selectedMetrics = useMemo(
-    () => METRICS.filter((m) => selectedMetricIds.includes(m.id) && m.supportedTaskTypes.includes(resolvedTaskType)),
-    [resolvedTaskType, selectedMetricIds],
-  );
   /**
-   * 매핑해야 할 역할. 매핑은 지표 선택보다 앞이라(docs/MATERIAL_PICKER.md §3) 처음에는 정답과
-   * 예측(또는 확률)만 본다. 지표를 고른 뒤 돌아왔다면 그 지표가 요구하는 역할을 본다.
+   * 매핑해야 할 역할 — 정답과 예측(또는 확률). 매핑은 지표 선택보다 앞이고 고른 지표에 기대지
+   * 않는다(docs/MATERIAL_PICKER.md §3). 지표마다 더 필요한 컬럼(예: AUROC 의 확률)은 지표 화면이
+   * 이 매핑으로 판정해, 계산할 수 없는 지표를 비활성으로 둔다(`metricAvailability`).
    */
-  const requiredRoles = useMemo(
-    () =>
-      selectedMetricIds.length > 0
-        ? getRequiredColumnsForSelection(resolvedTaskType, selectedMetricIds)
-        : getBaseRequiredColumns(resolvedTaskType),
-    [resolvedTaskType, selectedMetricIds],
-  );
+  const requiredRoles = useMemo(() => getBaseRequiredColumns(resolvedTaskType), [resolvedTaskType]);
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
 
   const roleOptions = useMemo(
@@ -213,7 +197,7 @@ export function ColumnMapping({
       validityMessage: describeMappingValidity(validityReason, missingRoleCodes),
       isValid: validityReason === "ok",
     };
-  }, [requiredRoles, roleCounts, rows, taskType, resolvedTaskType, multiColumnRoles, selectedMetricIds, positiveClass]);
+  }, [requiredRoles, roleCounts, rows, taskType, resolvedTaskType, multiColumnRoles, positiveClass]);
 
   useEffect(() => {
     onValidationChange?.(mappingSummary.isValid);
@@ -255,12 +239,7 @@ export function ColumnMapping({
           </Alert>
         )}
 
-        <RequiredColumnsCard
-          selectedMetrics={selectedMetrics}
-          requiredRoles={requiredRoles}
-          resolvedTaskType={resolvedTaskType}
-          roleCounts={roleCounts}
-        />
+        <RequiredColumnsCard requiredRoles={requiredRoles} roleCounts={roleCounts} />
 
         <BinaryClassificationCard
           resolvedTaskType={resolvedTaskType}
@@ -299,11 +278,8 @@ export function ColumnMapping({
         <MappingStatusPanel
           mappingSummary={mappingSummary}
           resolvedTaskType={resolvedTaskType}
-          selectedMetrics={selectedMetrics}
-          selectedMetricIds={selectedMetricIds}
           positiveClass={positiveClass}
           yTrueRow={yTrueRow}
-          onSelectedMetricIdsChange={onSelectedMetricIdsChange}
           onGoBackToUpload={onGoBackToUpload}
         />
       </main>

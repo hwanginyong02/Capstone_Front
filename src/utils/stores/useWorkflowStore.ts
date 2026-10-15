@@ -553,7 +553,11 @@ interface WorkflowState {
    */
   columnNotes: ColumnNote[];
   mappingWarnings: MappingWarning[];
-  /** confirm-mapping 이 계산 가능하다고 답한 지표 ID(‘N/M’ 표시용, A-12). */
+  /**
+   * confirm-mapping 이 계산 가능하다고 답한 지표 ID(A-12). 지표 화면이 계산할 수 없는 지표를
+   * 비활성으로 둘 때 정본으로 쓴다(docs/MATERIAL_PICKER.md §3, `metricAvailability`). 매핑을
+   * 바꾸면 비운다 — 그 뒤의 답이 아니기 때문이다.
+   */
   availableMetricIds: string[] | null;
 
   // Step 5 — Column mapping
@@ -817,10 +821,12 @@ export const useWorkflowStore = create<WorkflowState>()(
 
       // Step 5
       setColumnMapping: (value) =>
-        set((state) => ({
-          columnMapping:
-            typeof value === "function" ? value(state.columnMapping) : value,
-        })),
+        set((state) => {
+          const next = typeof value === "function" ? value(state.columnMapping) : value;
+          // 매핑이 바뀌면 확정 응답의 가용 지표는 이 매핑의 답이 아니다. 지표 화면이 낡은 답으로
+          // 지표를 막거나 열지 않도록 비운다 — 그때는 지금 매핑으로 다시 계산한다.
+          return next === state.columnMapping ? {} : { columnMapping: next, availableMetricIds: null };
+        }),
 
       setClassLabelDescriptions: (value) =>
         set((state) => ({

@@ -47,6 +47,14 @@ interface TestItemsProps {
   metricCardIssues?: FieldIssue[];
   /** 지표 격자와 선택 이유 아래에 붙일 합격 기준 표(`PassCriteriaCard`). */
   passCriteria?: ReactNode;
+  /**
+   * 지금 매핑으로 계산할 수 없는 지표와 그 이유 한 줄(`unavailableMetricReasons`). 이 지표는
+   * 고를 수 없고, 추천·전체 선택도 건너뛴다(docs/MATERIAL_PICKER.md §3). 넘기지 않으면 모두
+   * 고를 수 있다.
+   */
+  unavailableReasons?: Record<string, string>;
+  /** 제목 아래에 붙일 안내(들어올 때 선택에서 뺀 지표 알림). */
+  notice?: ReactNode;
 }
 
 export function TestItems({
@@ -60,6 +68,8 @@ export function TestItems({
   onMetricCardChange,
   metricCardIssues = [],
   passCriteria,
+  unavailableReasons = {},
+  notice,
 }: TestItemsProps) {
   const availableMetrics = useMemo(() => getAvailableMetrics(taskType), [taskType]);
   const resolvedTaskType = taskType || "";
@@ -116,7 +126,11 @@ export function TestItems({
     setSelectedColumns([]);
   }, [taskType]);
 
+  const isUnavailable = (metricId: string) => metricId in unavailableReasons;
+
   const handleToggleMetric = (metricId: string) => {
+    // 계산할 수 없는 지표는 고를 수 없다. 이미 골라져 있으면 빼는 것만 된다.
+    if (isUnavailable(metricId) && !selectedMetrics.includes(metricId)) return;
     setSelected(
       selectedMetrics.includes(metricId)
         ? selectedMetrics.filter((id) => id !== metricId)
@@ -124,9 +138,11 @@ export function TestItems({
     );
   };
 
-  const handleRecommended = () => setSelected(getRecommendedMetricIds(taskType));
+  const handleRecommended = () =>
+    setSelected(getRecommendedMetricIds(taskType).filter((id) => !isUnavailable(id)));
 
-  const handleSelectAll = () => setSelected(availableMetrics.map((m) => m.id));
+  const handleSelectAll = () =>
+    setSelected(availableMetrics.map((m) => m.id).filter((id) => !isUnavailable(id)));
 
   const handleClear = () => setSelected([]);
 
@@ -154,6 +170,8 @@ export function TestItems({
             성적서에 넣을 지표를 고르고, 지표마다 넘어야 할 목표값을 정하세요.
           </p>
         </div>
+
+        {notice}
 
         <div className="flex items-center justify-between">
           <div className="text-sm">
@@ -293,17 +311,32 @@ export function TestItems({
             {filteredMetrics.map((metric) => {
               const isSelected = selectedMetrics.includes(metric.id);
               const requiredColumns = getRequiredColumnsForMetric(taskType, metric.id);
+              const reason = unavailableReasons[metric.id];
+              const disabled = Boolean(reason) && !isSelected;
+              const reasonId = `metric-${metric.id}-reason`;
 
               return (
                 <label
                   key={metric.id}
+                  aria-disabled={disabled || undefined}
                   className={cn(
-                    "relative flex flex-col p-5 rounded-lg border-2 cursor-pointer transition-colors min-h-[180px]",
-                    isSelected ? "border-primary bg-primary-subtle" : "border-border bg-card hover:border-border-strong",
+                    "relative flex flex-col p-5 rounded-lg border-2 transition-colors min-h-[180px]",
+                    disabled
+                      ? "cursor-not-allowed border-border bg-muted"
+                      : isSelected
+                        ? "cursor-pointer border-primary bg-primary-subtle"
+                        : "cursor-pointer border-border bg-card hover:border-border-strong",
                   )}
                 >
                   <div className="flex items-start gap-2 mb-3">
-                    <Checkbox checked={isSelected} onCheckedChange={() => handleToggleMetric(metric.id)} className="mt-0.5" />
+                    <Checkbox
+                      checked={isSelected}
+                      disabled={disabled}
+                      onCheckedChange={() => handleToggleMetric(metric.id)}
+                      aria-label={metric.name}
+                      aria-describedby={reason ? reasonId : undefined}
+                      className="mt-0.5"
+                    />
                     <div className="ml-auto flex flex-wrap justify-end gap-1">
                       {requiredColumns.map((column) => (
                         <Badge key={column.code} variant="outline" className="font-mono text-[10px] leading-4">
@@ -321,8 +354,17 @@ export function TestItems({
                     <div className="font-mono text-xs uppercase font-medium text-muted-foreground">
                       {getMetricDisplayId(metric.id)}
                     </div>
-                    <h3 className="text-base font-semibold leading-tight">{metric.name}</h3>
-                    <div className="text-sm text-foreground">{metric.subtitle}</div>
+                    <h3 className={cn("text-base font-semibold leading-tight", disabled && "text-muted-foreground")}>
+                      {metric.name}
+                    </h3>
+                    {reason && (
+                      <p id={reasonId} className="text-sm text-muted-foreground">
+                        {reason}
+                      </p>
+                    )}
+                    <div className={cn("text-sm", disabled ? "text-muted-foreground" : "text-foreground")}>
+                      {metric.subtitle}
+                    </div>
                     <p className="text-xs text-muted-foreground leading-[1.5]">{metric.description}</p>
                   </div>
                 </label>
@@ -387,7 +429,7 @@ export function TestItems({
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <div>M5 (F-beta Score)는 β 값이 필요합니다.</div>
             <div>이진 분류의 일부 지표는 양성 클래스도 정해야 합니다.</div>
-            <div>확률 기반 지표를 고르면 확률 컬럼이 저절로 필수가 됩니다.</div>
+            <div>매핑한 컬럼으로 계산할 수 없는 지표는 고를 수 없습니다. 이유는 지표 이름 아래에 적혀 있습니다.</div>
           </CardContent>
         </Card>
       </main>

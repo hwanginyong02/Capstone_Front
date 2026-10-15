@@ -276,19 +276,6 @@ export function getSelectedMetrics(taskType: TaskType, selectedIds: string[]): M
   return getAvailableMetrics(taskType).filter((m) => selectedSet.has(m.id));
 }
 
-export function selectionRequiresProbability(taskType: TaskType, selectedIds: string[]): boolean {
-  return getSelectedMetrics(taskType, selectedIds).some((m) => m.probabilityRequiredFor?.includes(taskType));
-}
-
-export function selectionNeedsField(taskType: TaskType, selectedIds: string[], field: AdditionalInputField): boolean {
-  return getSelectedMetrics(taskType, selectedIds).some((m) => {
-    if (!m.additionalFields?.includes(field)) {
-      return false;
-    }
-    return field !== "positiveClass" || taskType === "binary";
-  });
-}
-
 export function getRequiredColumnsForSelection(taskType: TaskType, selectedIds: string[]): RequiredColumnDisplay[] {
   const columns = new Set<RequiredColumnCode>();
   const mapping = REQUIRED_COLUMNS_BY_METRIC[taskType];
