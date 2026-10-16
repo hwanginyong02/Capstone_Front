@@ -38,8 +38,8 @@ interface MaterialPickerProps {
   /** 필드 패널에 보이는 카드. */
   selectedCardId: ComposerCardId;
   onSelectCard: (cardId: ComposerCardId) => void;
-  /** 다이어그램 노드의 "필드 보기" — 그 카드를 필드 패널에 열고 보이게 한다. */
-  onReveal: (cardId: ComposerCardId) => void;
+  /** 다이어그램 노드를 눌렀을 때 — 그 카드를 필드 패널에 열고 보이게 한다. */
+  onSelectInDiagram: (cardId: ComposerCardId) => void;
   blockedReason: string | null;
   hints: string[];
   /** 지금 고른 것과 똑같은 추천 세트. */
@@ -58,7 +58,7 @@ export function MaterialPicker({
   cards,
   selectedCardId,
   onSelectCard,
-  onReveal,
+  onSelectInDiagram,
   blockedReason,
   hints,
   currentSet,
@@ -112,7 +112,8 @@ export function MaterialPicker({
               lanes={lanes}
               cards={cards}
               picks={picks}
-              onReveal={onReveal}
+              selectedCardId={selectedCardId}
+              onSelectCard={onSelectInDiagram}
               blockedReason={blockedReason}
               hints={hints}
               actions={actions}

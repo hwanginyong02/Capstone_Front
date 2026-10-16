@@ -27,8 +27,10 @@ interface PickDiagramProps {
   /** 들어간 카드, 입력 순서대로. */
   cards: ComposerCard[];
   picks: MaterialPicks;
+  /** 필드 패널에 열려 있는 카드. */
+  selectedCardId: ComposerCardId;
   /** 필드 패널에 그 카드를 연다. */
-  onReveal: (cardId: ComposerCardId) => void;
+  onSelectCard: (cardId: ComposerCardId) => void;
   /** 방금 막힌 순서 변경의 이유. */
   blockedReason: string | null;
   /** 막지는 않는 순서 권고. */
@@ -41,7 +43,8 @@ export function PickDiagram({
   lanes,
   cards,
   picks,
-  onReveal,
+  selectedCardId,
+  onSelectCard,
   blockedReason,
   hints,
   actions,
@@ -102,7 +105,8 @@ export function PickDiagram({
               numberOf={numberOf}
               taskType={taskType}
               picks={picks}
-              onReveal={onReveal}
+              selectedCardId={selectedCardId}
+              onSelectCard={onSelectCard}
               previousLaneId={lanes[index - 1]?.id}
               nextLaneId={lanes[index + 1]?.id}
               actions={actions}

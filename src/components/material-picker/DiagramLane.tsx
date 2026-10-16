@@ -30,8 +30,10 @@ interface DiagramLaneProps {
   numberOf: (cardId: ComposerCardId) => number;
   taskType: TaskType | "";
   picks: MaterialPicks;
+  /** 필드 패널에 열려 있는 카드. */
+  selectedCardId: ComposerCardId;
   /** 필드 패널에 그 카드를 연다. */
-  onReveal: (cardId: ComposerCardId) => void;
+  onSelectCard: (cardId: ComposerCardId) => void;
   previousLaneId?: MaterialCategoryId;
   nextLaneId?: MaterialCategoryId;
   actions: PickerActions;
@@ -43,7 +45,8 @@ export function DiagramLane({
   numberOf,
   taskType,
   picks,
-  onReveal,
+  selectedCardId,
+  onSelectCard,
   previousLaneId,
   nextLaneId,
   actions,
@@ -134,7 +137,8 @@ export function DiagramLane({
             number={numberOf(card.id)}
             taskType={taskType}
             picks={picks[card.id] ?? []}
-            onReveal={() => onReveal(card.id)}
+            selected={card.id === selectedCardId}
+            onSelect={() => onSelectCard(card.id)}
             previousCardId={cards[index - 1]?.id}
             nextCardId={cards[index + 1]?.id}
             actions={actions}

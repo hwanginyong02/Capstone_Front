@@ -142,7 +142,8 @@ describe("넣고 빼기 — 바로 반영", () => {
     for (const label of ["알고리즘", "하이퍼파라미터", "실행 환경", "GPU 사용 여부"]) {
       expect(within(card).getByRole("button", { name: `${label} 빼기` })).toBeInTheDocument();
     }
-    expect(within(card).getByText("권장 4/4")).toBeInTheDocument();
+    // 필드 수 같은 숫자는 노드에 두지 않는다 — 들어간 항목 칩만 보인다.
+    expect(within(card).queryByText(/권장 \d+\/\d+|필수 \d+/)).not.toBeInTheDocument();
 
     const state = useWorkflowStore.getState();
     expect(state.composerCards.modelEnv).toBe(true);
@@ -171,10 +172,22 @@ describe("넣고 빼기 — 바로 반영", () => {
     expect(diagramCards()).not.toContain("모델 설정과 실행 환경");
   });
 
-  it("노드의 필드 보기는 그 카드를 필드 패널에 열고, 거기서 넣은 항목이 칩으로 바로 보인다", async () => {
+  it("다이어그램의 카드를 누르면 그 카드가 필드 패널에 열린다 — 필드 보기 버튼은 따로 없다", async () => {
+    renderPage();
+    expect(within(diagram()).queryByRole("button", { name: /필드 보기/ })).not.toBeInTheDocument();
+
+    await userEvent.click(within(node("평가 관점")).getByText("평가 관점"));
+
+    expect(fieldPanel("평가 관점")).toBeInTheDocument();
+    expect(within(node("평가 관점")).getByRole("button", { name: /^평가 관점/, pressed: true })).toBeInTheDocument();
+    // 왼쪽 목록도 같은 카드를 고른 것으로 보인다.
+    expect(paletteCard("평가 관점", true)).toBeInTheDocument();
+  });
+
+  it("다이어그램에서 연 카드의 항목을 넣으면 칩으로 바로 보인다", async () => {
     renderPage();
     await selectInPalette("평가 관점");
-    await userEvent.click(within(node("의뢰자 정보")).getByRole("button", { name: "의뢰자 정보 필드 보기" }));
+    await userEvent.click(within(node("의뢰자 정보")).getByText("의뢰자 정보"));
 
     const fields = fieldPanel("의뢰자 정보");
     const website = within(fields).getByRole("button", { name: "홈페이지 넣기" });

@@ -162,23 +162,6 @@ export function fieldRows(cardId: ComposerCardId, taskType: TaskType | ""): Reco
   return rows;
 }
 
-/** 늘 받는 필드 수 — 필수와 조건부. 다이어그램 칩에 "필수 n"으로 접어 보인다. */
-export function fixedFieldCounts(
-  cardId: ComposerCardId,
-  taskType: TaskType | "",
-): { required: number; conditional: number } {
-  const card = getCard(cardId);
-  const counts = { required: 0, conditional: 0 };
-  for (const field of getCardFields(cardId, taskType)) {
-    const kind = pickKind(card, field);
-    if (kind === "required" || kind === "conditional") {
-      // 쪼갠 항목이 있는 필수 필드는 재료 고르기에서 항목마다 보였다(§8). 같은 단위로 센다.
-      counts[kind] += field.parts?.length ?? 1;
-    }
-  }
-  return counts;
-}
-
 /** 항목 하나의 구분(권장 또는 선택). 체크할 수 없는 id 면 null. */
 export function pickIdKind(cardId: ComposerCardId, pickId: string): "recommended" | "optional" | null {
   const card = getCard(cardId);

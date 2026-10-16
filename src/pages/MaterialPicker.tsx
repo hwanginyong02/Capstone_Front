@@ -63,7 +63,7 @@ export function MaterialPicker() {
   const focusCardId = (location.state as { cardId?: ComposerCardId } | null)?.cardId ?? null;
   /** 가운데 아래 필드 패널에 보이는 카드. 처음에는 첫 카드(의뢰자 정보)다. */
   const [selectedCardId, setSelectedCardId] = useState<ComposerCardId>(focusCardId ?? "clientInfo");
-  /** 그리고 나서 필드 패널로 스크롤할지. 다이어그램 노드의 "필드 보기"가 켠다. */
+  /** 그리고 나서 필드 패널로 스크롤할지. 다이어그램 노드를 누르면 켠다. */
   const [scrollToPanel, setScrollToPanel] = useState(Boolean(focusCardId));
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
   const [undo, setUndo] = useState<{ label: string; picks: MaterialPicks; order: ComposerCardId[] } | null>(
@@ -77,7 +77,8 @@ export function MaterialPicker() {
 
   useEffect(() => {
     if (!scrollToPanel) return;
-    document.getElementById(FIELD_PANEL_ID)?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+    // 패널이 이미 보이면 움직이지 않는다 — 다이어그램을 보던 자리를 지킨다.
+    document.getElementById(FIELD_PANEL_ID)?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
     setScrollToPanel(false);
   }, [scrollToPanel]);
 
@@ -114,8 +115,8 @@ export function MaterialPicker() {
     onMoveLane: (laneId, targetLaneId, position) => reorder(moveLane(cardOrder, laneId, targetLaneId, position)),
   };
 
-  /** 다이어그램 노드의 "필드 보기" — 그 카드를 필드 패널에 열고 그리로 스크롤한다. */
-  const revealFields = (cardId: ComposerCardId) => {
+  /** 다이어그램 노드를 누르면 — 그 카드를 필드 패널에 열고, 패널이 화면 밖이면 그리로 스크롤한다. */
+  const selectInDiagram = (cardId: ComposerCardId) => {
     setSelectedCardId(cardId);
     setScrollToPanel(true);
   };
@@ -175,7 +176,7 @@ export function MaterialPicker() {
         cards={cards}
         selectedCardId={selectedCardId}
         onSelectCard={setSelectedCardId}
-        onReveal={revealFields}
+        onSelectInDiagram={selectInDiagram}
         blockedReason={blockedReason}
         hints={orderHints(cards.map((card) => card.id))}
         currentSet={PICK_TIERS.find((tier) => matchesTier(tier.id, taskType, picks))?.id ?? null}

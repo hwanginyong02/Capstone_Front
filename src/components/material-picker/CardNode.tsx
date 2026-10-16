@@ -2,11 +2,11 @@
  * 다이어그램의 카드 노드 하나(docs/MATERIAL_PICKER.md §11).
  *
  * 왼쪽 세로축 위에 입력 순서 번호가 있고, 같은 레인의 다음 카드 번호까지 선으로 잇는다. 레인 안의
- * 순서는 화살표 없이 위에서 아래로 읽는다. 노드에는 카드 이름과 필수 표시, 받기로 한 항목의 칩이
- * 붙는다. 필수·조건부 필드는 늘 받으므로 "필수 n"으로 접어 보이고, 권장·선택 칩은 ×로 뺀다.
+ * 순서는 화살표 없이 위에서 아래로 읽는다. 노드에는 카드 이름과 필수 표시, 받기로 고른 권장·선택
+ * 항목의 칩만 붙는다 — 필드 수 같은 숫자는 두지 않는다. 칩은 ×로 뺀다.
  *
- * "필드 보기"는 가운데 아래 필드 패널에 이 카드를 연다 — 필드 설명과 형식은 거기서 읽고 고른다.
- * 같은 레인 안에서는 끌거나 ▲▼ 버튼으로 순서를 바꾼다.
+ * 노드를 누르면 가운데 아래 필드 패널에 이 카드가 열리고, 열린 노드는 강조 테두리로 보인다. 필드
+ * 설명과 형식은 거기서 읽고 고른다. 같은 레인 안에서는 끌거나 ▲▼ 버튼으로 순서를 바꾼다.
  */
 import { useRef, useState, type ReactNode } from "react";
 import { useDrag, useDrop } from "react-dnd";
@@ -15,7 +15,7 @@ import type { TaskType } from "../../data/evaluationData";
 import type { ComposerCard, ComposerCardId } from "../../types/reportComposer.types";
 import type { DropPosition } from "../../utils/domain/cardOrder";
 import { categoryOf } from "../../data/reportComposer";
-import { fixedFieldCounts, pickItems, type PickItem } from "../../utils/domain/materialPicks";
+import { pickItems, type PickItem } from "../../utils/domain/materialPicks";
 import { cn } from "../../utils/styling/styles";
 import { DND, dropPosition, type CardDragItem, type ItemDragItem, type PickerActions } from "./dnd";
 
@@ -25,8 +25,10 @@ interface CardNodeProps {
   number: number;
   taskType: TaskType | "";
   picks: readonly string[];
+  /** 필드 패널에 열려 있는 카드인지. */
+  selected: boolean;
   /** 필드 패널에 이 카드를 연다. */
-  onReveal: () => void;
+  onSelect: () => void;
   /** 같은 레인의 위·아래 카드. 없으면 그쪽으로 옮기는 버튼을 끈다. */
   previousCardId?: ComposerCardId;
   nextCardId?: ComposerCardId;
@@ -38,7 +40,8 @@ export function CardNode({
   number,
   taskType,
   picks,
-  onReveal,
+  selected,
+  onSelect,
   previousCardId,
   nextCardId,
   actions,
@@ -46,10 +49,7 @@ export function CardNode({
   const ref = useRef<HTMLLIElement>(null);
   const [hoverPosition, setHoverPosition] = useState<DropPosition | null>(null);
   const items = pickItems(card.id, taskType);
-  const fixed = fixedFieldCounts(card.id, taskType);
   const picked = items.filter((item) => picks.includes(item.pickId));
-  const recommended = items.filter((item) => item.kind === "recommended");
-  const recommendedPicked = recommended.filter((item) => picks.includes(item.pickId)).length;
 
   const [{ isDragging }, drag, preview] = useDrag<CardDragItem, unknown, { isDragging: boolean }>({
     type: DND.node,
@@ -100,7 +100,14 @@ export function CardNode({
         )}
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2.5 rounded-lg border border-border-strong bg-card p-3">
+      {/* 상자 어디를 눌러도 필드 패널에 연다. 키보드는 카드 이름 버튼으로 연다(클릭이 상자로 올라온다). */}
+      <div
+        onClick={onSelect}
+        className={cn(
+          "flex min-w-0 flex-1 cursor-pointer flex-col gap-2.5 rounded-lg border bg-card p-3 transition-colors",
+          selected ? "border-primary ring-1 ring-primary" : "border-border-strong hover:border-foreground-subtle",
+        )}
+      >
         <div className="flex items-start gap-1.5">
           <span
             ref={(element) => {
@@ -111,10 +118,14 @@ export function CardNode({
           >
             <GripVertical className="size-4" aria-hidden="true" />
           </span>
-          <span className="min-w-0 flex-1 pt-px text-sm font-medium leading-5 text-foreground">
+          <button
+            type="button"
+            aria-pressed={selected}
+            className="min-w-0 flex-1 pt-px text-left text-sm font-medium leading-5 text-foreground"
+          >
             {card.name}
             {card.locked && <span className="ml-1.5 text-xs font-normal text-muted-foreground">필수</span>}
-          </span>
+          </button>
           <span className="-mr-1 -mt-1 flex shrink-0 items-center">
             <IconButton
               label={`${card.name} 위로`}
@@ -138,31 +149,13 @@ export function CardNode({
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          {fixed.required > 0 && <FixedChip>필수 {fixed.required}</FixedChip>}
-          {fixed.conditional > 0 && <FixedChip>조건부 {fixed.conditional}</FixedChip>}
-          {picked.map((item) => (
-            <PickChip key={item.pickId} cardId={card.id} item={item} actions={actions} />
-          ))}
-        </div>
-
-        <div className="flex items-center justify-between gap-2">
-          {recommended.length > 0 ? (
-            <span className="text-xs text-muted-foreground">
-              권장 {recommendedPicked}/{recommended.length}
-            </span>
-          ) : (
-            <span />
-          )}
-          <button
-            type="button"
-            aria-label={`${card.name} 필드 보기`}
-            onClick={onReveal}
-            className="text-xs text-foreground-secondary underline underline-offset-4 hover:text-foreground"
-          >
-            필드 보기
-          </button>
-        </div>
+        {picked.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {picked.map((item) => (
+              <PickChip key={item.pickId} cardId={card.id} item={item} actions={actions} />
+            ))}
+          </div>
+        )}
       </div>
     </li>
   );
@@ -191,10 +184,6 @@ function IconButton({
       {children}
     </button>
   );
-}
-
-function FixedChip({ children }: { children: ReactNode }) {
-  return <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">{children}</span>;
 }
 
 /** 받기로 한 권장·선택 항목 칩. ×로 빼거나 재료 목록으로 끌어 뺀다. */
