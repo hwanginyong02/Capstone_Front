@@ -9,6 +9,7 @@
  */
 import type { KpiResult, LatencyStats } from "../../types/finalReport.types";
 import type { ConfusionMatrixData } from "../../types/report.types";
+import { buildClassReportTable } from "./classReportTable";
 
 export interface FactSheetMetric {
   metric_id: string;
@@ -33,6 +34,11 @@ export interface FactSheet {
   dropped_rows: number;
   metrics: FactSheetMetric[];
   per_class: FactSheetPerClass[];
+  /**
+   * 클래스별 표(M22)의 평균 줄 — 매크로·가중·마이크로(멀티레이블은 샘플 평균도). 평균 방식
+   * 차이를 8.2 에 쓰는 재료다(서술 설계 D17·D39). M22 를 고르지 않으면 빈 배열.
+   */
+  class_averages: FactSheetPerClass[];
   confusion: { labels: string[]; matrix: number[][]; positive_class: string | null } | null;
   distribution: {
     class_distribution: Record<string, number>;
@@ -93,28 +99,6 @@ function num(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
-/** classification report(M22)에서 클래스별 지표를 추출. 집계행(accuracy/avg)은 제외. */
-function buildPerClass(
-  classReport: Record<string, any> | null | undefined,
-  classLabels: string[],
-): FactSheetPerClass[] {
-  if (!classReport) return [];
-  const result: FactSheetPerClass[] = [];
-  for (const label of classLabels) {
-    const row = classReport[label];
-    if (!row || typeof row !== "object") continue;
-    result.push({
-      label,
-      precision: num(row.precision),
-      recall: num(row.recall),
-      // sklearn classification_report 의 키는 "f1-score"
-      f1: num(row["f1-score"] ?? row.f1),
-      support: num(row.support),
-    });
-  }
-  return result;
-}
-
 /**
  * fact_sheet 의 혼동행렬 — 멀티레이블은 **전 레이블 합계**로 보낸다 (ISSUES.md C-08).
  *
@@ -172,7 +156,7 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
     positiveClass,
   } = input;
 
-  // 지표: 임계값(threshold)이 없으면(0) 정보 제공(info)으로 표기, threshold 는 null.
+  // 지표: 목표값이 없으면(null) 정보 제공(info)으로 표기한다.
   // 계산 실패(unavailable) 지표는 value 0 이 서술로 새지 않도록 아예 제외한다(D4).
   const metrics: FactSheetMetric[] = kpiResults
     .filter((r) => r.status !== "unavailable")
@@ -189,12 +173,14 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
   });
 
   const hasDistribution = Object.keys(classDistribution).length > 0;
+  const classTable = buildClassReportTable(classReport, classLabels);
 
   return {
     n_samples: nSamples,
     dropped_rows: droppedRows,
     metrics,
-    per_class: buildPerClass(classReport, classLabels),
+    per_class: classTable?.rows ?? [],
+    class_averages: classTable?.averages ?? [],
     confusion: buildConfusionFact(confusionMatrix, positiveClass ?? null),
     distribution: hasDistribution
       ? {

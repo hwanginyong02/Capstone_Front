@@ -141,6 +141,22 @@ export interface MetricFormula {
   isCommon: boolean;
 }
 
+/** 클래스별 표(M22)의 한 줄 — 클래스 하나 또는 평균 하나. */
+export interface ClassReportRow {
+  label: string;
+  precision: number | null;
+  recall: number | null;
+  f1: number | null;
+  support: number | null;
+}
+
+/** 클래스별 표(M22). 클래스 줄과 평균 줄(매크로·가중·마이크로·샘플). */
+export interface ClassReportTable {
+  rows: ClassReportRow[];
+  averages: ClassReportRow[];
+}
+
+/** 지표별 클래스 판정. 클래스별 표(`classReport`)가 생기기 전에 발급된 성적서에만 있다. */
 export interface PerClassKpi {
   label: string;
   value: number;
@@ -257,6 +273,11 @@ export interface FinalReportData {
   /** 검증 수행 요약 수치 (없으면 섹션이 fallback 처리) */
   validationSummary?: ValidationSummary;
   kpiResults: KpiResult[];
+  /**
+   * 클래스별 표(M22). M22 를 골랐을 때만 있다. 이 키가 생기기 전 발급된 성적서는 지표별
+   * 클래스 판정(`KpiResult.perClass`)을 대신 찍는다.
+   */
+  classReport?: ClassReportTable | null;
   charts: {
     confusionMatrix: ConfusionMatrixData | null;
     rocCurve: { fpr: number[]; tpr: number[]; auroc?: number } | null;

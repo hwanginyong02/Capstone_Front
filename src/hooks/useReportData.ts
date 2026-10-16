@@ -20,6 +20,7 @@ import { buildConclusion, resolveCoreMetricIds } from "../lib/report/computeVerd
 import { buildClientInputs } from "../lib/report/reportMaterials";
 import { buildDatasetDiagnosis } from "../lib/report/buildDatasetDiagnosis";
 import { buildFactSheet } from "../lib/report/buildFactSheet";
+import { buildClassReportTable } from "../lib/report/classReportTable";
 import { evaluateStatus } from "../lib/report/evaluateStatus";
 import { fetchNarrative } from "../lib/report/fetchNarrative";
 import { translateRoleToBackend } from "../lib/mapping/translateRoleToBackend";
@@ -202,35 +203,6 @@ export function useReportData(id: string): UseReportDataResult {
               status = evaluateStatus(resolvedValue, target, higherIsBetter);
             }
 
-            let perClass: Array<{ label: string; value: number; status: string }> | undefined;
-            if (["M2", "M3", "M4"].includes(metricId) && success_metrics["M22"]) {
-              const classReport = success_metrics["M22"];
-              const excludeKeys = ["accuracy", "macro avg", "weighted avg", "micro avg", "samples avg"];
-              const classValues = Object.keys(classReport).filter(k => !excludeKeys.includes(k));
-
-              const metricKeyMap: Record<string, string> = {
-                "M2": "precision",
-                "M3": "recall",
-                "M4": "f1-score",
-              };
-              const key = metricKeyMap[metricId];
-
-              if (classValues.length > 0 && key) {
-                perClass = classValues.map((val) => {
-                  const classVal = classReport[val];
-                  const score = classVal ? classVal[key] : 0;
-                  const classStatus = target !== null
-                    ? evaluateStatus(score, target, higherIsBetter)
-                    : "pass";
-                  return {
-                    label: val,
-                    value: score,
-                    status: classStatus,
-                  };
-                });
-              }
-            }
-
             const isVisualOnly = metricId === "M21" || metricId === "M22";
 
             return {
@@ -240,7 +212,6 @@ export function useReportData(id: string): UseReportDataResult {
               threshold: isVisualOnly ? null : target,
               status: isVisualOnly ? "pass" : status,
               higherIsBetter,
-              perClass,
               subMetrics,
               isCore: coreDisplayIds.has(displayId),
             };
@@ -389,6 +360,8 @@ export function useReportData(id: string): UseReportDataResult {
           // 같은 사실이 여기에만 실려 온다.
           evaluationWarnings: Array.isArray(result.warnings) ? result.warnings : [],
           kpiResults: updatedKpiResults,
+          // 클래스별 표(M22) — 평균 줄까지. M22 만 골라도 보인다.
+          classReport: buildClassReportTable(success_metrics.M22, classLabels),
           conclusion: ruleConclusion,  // full ConclusionData (verdict/score + 빈 서술)
           datasetDiagnosis,
           charts: { confusionMatrix, rocCurve, prCurve },

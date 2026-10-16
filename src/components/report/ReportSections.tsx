@@ -54,6 +54,7 @@ export function ReportSections({ data }: { data: FinalReportData }) {
       />
       <KpiResultSection
         kpiResults={data.kpiResults}
+        classReport={data.classReport}
         taskType={data.meta.taskType}
         meta={data.meta}
         // 판정 규칙 문구는 그 규칙(D19)으로 판정한 성적서에만 — judgedCount 가 그 표시다.

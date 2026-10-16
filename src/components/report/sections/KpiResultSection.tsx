@@ -1,4 +1,10 @@
-import type { DerivedPredictionFact, FinalReportMeta, KpiResult } from "../../../types/finalReport.types";
+import type {
+  ClassReportRow,
+  ClassReportTable,
+  DerivedPredictionFact,
+  FinalReportMeta,
+  KpiResult,
+} from "../../../types/finalReport.types";
 import { MetricRow } from "../shared/MetricRow";
 import { PassBadge } from "../shared/PassBadge";
 import { verdictRuleText } from "../../../lib/report/reportConstants";
@@ -7,6 +13,11 @@ import type { TaskType } from "../../../data/evaluationData";
 
 interface KpiResultSectionProps {
   kpiResults: KpiResult[];
+  /**
+   * 클래스별 표(M22) — 클래스 줄과 평균 줄. 없으면(이 키가 생기기 전 발급된 성적서) 지표별 클래스
+   * 판정(`perClass`)을 종전처럼 찍는다.
+   */
+  classReport?: ClassReportTable | null;
   taskType: TaskType;
   meta?: FinalReportMeta;
   /**
@@ -45,6 +56,7 @@ function describeDerivation(fact: DerivedPredictionFact): string {
 
 export function KpiResultSection({
   kpiResults,
+  classReport,
   taskType,
   meta,
   showVerdictRule = false,
@@ -142,8 +154,11 @@ export function KpiResultSection({
         </table>
 
 
-        {/* Per-class 세부 결과 */}
-        {kpiResults.some((r) => r.perClass?.length) && (
+        {/* M22 클래스별 표 — 클래스 줄 아래에 평균 줄(매크로·가중·마이크로·샘플). M22 만 골라도 보인다. */}
+        {classReport && <ClassReportBlock table={classReport} />}
+
+        {/* 지표별 클래스 판정 — classReport 가 생기기 전 발급된 성적서에만 있다(보관본을 종전대로 그린다). */}
+        {!classReport && kpiResults.some((r) => r.perClass?.length) && (
           <div className="space-y-4 pt-4 border-t border-slate-100">
             <p className="text-sm font-semibold text-slate-700">M22 — Class-wise Metric (클래스별 세부 성능)</p>
             {kpiResults
@@ -215,6 +230,56 @@ export function KpiResultSection({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+const fmt = (v: number | null, digits = 3) => (v === null ? "—" : v.toFixed(digits));
+
+function ClassReportCells({ row }: { row: ClassReportRow }) {
+  return (
+    <>
+      <td className="py-1.5 pr-4 font-mono text-slate-900">{fmt(row.precision)}</td>
+      <td className="py-1.5 pr-4 font-mono text-slate-900">{fmt(row.recall)}</td>
+      <td className="py-1.5 pr-4 font-mono text-slate-900">{fmt(row.f1)}</td>
+      <td className="py-1.5 font-mono text-slate-700">{row.support === null ? "—" : row.support}</td>
+    </>
+  );
+}
+
+/** M22 클래스별 표. 평균 줄은 클래스 줄과 굵은 선으로 가른다. */
+function ClassReportBlock({ table }: { table: ClassReportTable }) {
+  return (
+    <div className="space-y-2 pt-4 border-t border-slate-100">
+      <p className="text-sm font-semibold text-slate-700">M22 — Class-wise Metric (클래스별 세부 성능)</p>
+      <table className="w-full text-sm border-collapse" aria-label="클래스별 세부 성능">
+        <thead>
+          <tr className="border-b border-slate-200">
+            <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">클래스</th>
+            <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">Precision</th>
+            <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">Recall</th>
+            <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">F1</th>
+            <th className="py-1.5 text-left text-xs font-medium text-slate-500">표본 수</th>
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row) => (
+            <tr key={row.label} className="border-b border-slate-50">
+              <td className="py-1.5 pr-4 text-slate-700">{row.label}</td>
+              <ClassReportCells row={row} />
+            </tr>
+          ))}
+          {table.averages.map((row, index) => (
+            <tr
+              key={row.label}
+              className={index === 0 ? "border-t-2 border-slate-200" : "border-t border-slate-50"}
+            >
+              <td className="py-1.5 pr-4 font-medium text-slate-700">{row.label}</td>
+              <ClassReportCells row={row} />
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
