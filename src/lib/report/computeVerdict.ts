@@ -4,7 +4,8 @@
  * 성적서 6.1·8절의 최종 판정을 LLM이 아닌 결정론적 규칙으로 계산한다.
  *
  * 규칙 — 서술 설계 D19, 성적서 고정 문구 10. 위에서부터 처음 맞는 것:
- *  - 판정 대상 = 목표값이 설정되고(threshold > 0) 산출에 성공한(unavailable 아님) 지표.
+ *  - 판정 대상 = 목표값이 있고(threshold !== null) 산출에 성공한(unavailable 아님) 지표.
+ *    목표값 0·음수도 그 지표의 허용 범위 안이면 판정한다(MCC 등, `resolveTargetValue`).
  *  ① 핵심 지표가 하나라도 목표에 미달            → FAIL (불합격)
  *  ② 핵심 지표가 산출되지 않았거나 판정 대상 0개 → INCONCLUSIVE (판정 불가)
  *  ③ 핵심 지표는 모두 충족, 그 외 지표에 미달    → CONDITIONAL_PASS (조건부 합격)
@@ -72,7 +73,7 @@ export function computeVerdict(
 
   // 판정 대상 = 목표값이 설정되고 산출에 성공한 지표(고정 문구 10).
   // 계산 실패(unavailable) 지표는 "미달"로 위장하지 않고 분모·판정에서 제외한다(D4).
-  const judged = kpiResults.filter((r) => r.threshold > 0 && r.status !== "unavailable");
+  const judged = kpiResults.filter((r) => r.threshold !== null && r.status !== "unavailable");
 
   const passed = judged.filter((r) => r.status === "pass").length;
   const score = judged.length > 0 ? Math.round((passed / judged.length) * 1000) / 10 : 0;

@@ -177,7 +177,7 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
   const metrics: FactSheetMetric[] = kpiResults
     .filter((r) => r.status !== "unavailable")
     .map((r) => {
-    const isInfoOnly = r.metricId === "M21" || r.metricId === "M22" || r.threshold <= 0;
+    const isInfoOnly = r.metricId === "M21" || r.metricId === "M22" || r.threshold === null;
     return {
       metric_id: r.metricId,
       display_name: r.name,

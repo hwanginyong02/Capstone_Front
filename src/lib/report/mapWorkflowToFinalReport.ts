@@ -36,6 +36,8 @@ import { normalizeIsoDate } from "../../utils/domain/isoDate";
 import type { ValidateDataResponseData } from "../../types/validation.types";
 import { mapValidationResultToReport } from "./mapValidationResultToReport";
 import { buildConclusion } from "./computeVerdict";
+import { REPORT_CONTENT_SCHEMA } from "./normalizeReportContent";
+import { resolveTargetValue } from "../../utils/domain/validation";
 import type {
   BasicInfoFormData,
   MetricDetailStateMap,
@@ -215,6 +217,7 @@ export function mapWorkflowToFinalReport(
     : null;
 
   return {
+    contentSchema: REPORT_CONTENT_SCHEMA,
     meta: buildMeta(input, resolvedTaskType),
     applicant: buildApplicant(input.basicInfo),
     performer: DEFAULT_PERFORMER,
@@ -448,8 +451,7 @@ function buildMetricList(
       if (!metric || !metric.supportedTaskTypes.includes(taskType)) return null;
 
       const detail = metricDetails[metricId];
-      const target = parseFloat(detail?.targetValue ?? "");
-      const hasThreshold = Number.isFinite(target) && target > 0;
+      const target = resolveTargetValue(metricId, detail?.targetValue);
 
       // 방향성에 맞춰 합격 기준 표기(낮을수록 좋은 지표는 ≤). 6절 표(MetricRow)와 일관.
       const criteriaOp = metric.higherIsBetter === false ? "≤" : "≥";
@@ -462,8 +464,8 @@ function buildMetricList(
       return {
         metricId: getMetricDisplayId(metricId),
         name: displayName,
-        threshold: hasThreshold ? target : 0,
-        passCriteria: hasThreshold ? `${criteriaOp} ${target.toFixed(2)}` : "정보 제공",
+        threshold: target,
+        passCriteria: target !== null ? `${criteriaOp} ${target.toFixed(2)}` : "정보 제공",
       };
     })
     .filter((item): item is MetricItem => item !== null);

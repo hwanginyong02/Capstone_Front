@@ -114,7 +114,8 @@ export interface DatasetSampleRow {
 export interface MetricItem {
   metricId: string;
   name: string;
-  threshold: number;
+  /** 합격 목표값. 없으면 `null` — 0 은 목표값 0 이다(`resolveTargetValue`). */
+  threshold: number | null;
   passCriteria: string;
 }
 
@@ -150,7 +151,11 @@ export interface KpiResult {
   metricId: string;
   name: string;
   value: number;
-  threshold: number;
+  /**
+   * 합격 목표값. 없으면 `null` 이고 판정 대상이 아니다. 0 이나 음수도 그 지표의 허용 범위 안이면
+   * 목표값이다(MCC 등). 종전에는 0 이 "없음"을 뜻했다 — `contentSchema` 참고.
+   */
+  threshold: number | null;
   /** unavailable = 백엔드 계산 실패(측정 불가). 판정/집계에서 제외하고 '측정 불가'로 표기. */
   status: "pass" | "fail" | "warning" | "unavailable";
   /** 방향성(합격 기준 표기 ≥/≤). 미지정=높을수록 좋음. */
@@ -229,6 +234,14 @@ export interface TrainingDatasetInfo {
 }
 
 export interface FinalReportData {
+  /**
+   * 성적서 데이터 형식의 판. 발급된 성적서는 이 데이터를 통째로 보관하고 번호로 다시 그리므로,
+   * 뜻이 바뀐 칸을 옛 판에서 읽을 때 옮겨 읽는다(`normalizeReportContent`).
+   *
+   * - 없음(1): 목표값 없음을 `threshold: 0` 으로 적었다.
+   * - 2: 목표값 없음을 `threshold: null` 로 적는다.
+   */
+  contentSchema?: number;
   meta: FinalReportMeta;
   applicant: ApplicantInfo;
   performer: PerformerInfo;

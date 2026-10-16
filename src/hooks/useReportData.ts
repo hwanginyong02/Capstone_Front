@@ -23,7 +23,7 @@ import { buildFactSheet } from "../lib/report/buildFactSheet";
 import { evaluateStatus } from "../lib/report/evaluateStatus";
 import { fetchNarrative } from "../lib/report/fetchNarrative";
 import { translateRoleToBackend } from "../lib/mapping/translateRoleToBackend";
-import { metricNeedsTargetValue } from "../utils/domain/validation";
+import { resolveTargetValue } from "../utils/domain/validation";
 
 interface UseReportDataResult {
   data: FinalReportData | null;
@@ -161,11 +161,10 @@ export function useReportData(id: string): UseReportDataResult {
             // 방향성(높을수록/낮을수록 좋음) — 판정·기준 표기의 단일 출처(evaluationData.ts)
             const higherIsBetter = metric.higherIsBetter !== false;
             const detail = workflowState.metricDetails[metricId];
-            const target = parseFloat(detail?.targetValue ?? "");
-            // 정보성 지표(M21/M22)는 타겟값을 받지 않는다. 과거 세션에 저장된 값이
-            // 남아 있어도 판정 대상이 되지 않도록 여기서도 같은 규칙을 적용한다.
-            const hasThreshold =
-              metricNeedsTargetValue(metricId) && Number.isFinite(target) && target > 0;
+            // 목표값이 없으면 null. 정보성 지표(M21/M22)는 과거 세션에 저장된 값이 남아 있어도
+            // null 이다. 0·음수도 그 지표의 허용 범위 안이면 목표값이다(MCC 등).
+            const target = resolveTargetValue(metricId, detail?.targetValue);
+            const hasThreshold = target !== null;
             const displayId = getMetricDisplayId(metricId);
 
             // 계산 실패 지표: 판정/집계에서 제외되도록 'unavailable' 로 표기(value 0/fail 위장 금지)
@@ -175,7 +174,7 @@ export function useReportData(id: string): UseReportDataResult {
                 metricId: displayId,
                 name: metric.name,
                 value: 0,
-                threshold: hasThreshold ? target : 0,
+                threshold: target,
                 status: "unavailable" as const,
                 higherIsBetter,
                 errorMessage: typeof failReason === "string" ? failReason : String(failReason),
@@ -199,7 +198,7 @@ export function useReportData(id: string): UseReportDataResult {
             }
 
             let status: "pass" | "fail" | "warning" | "unavailable" = "pass";
-            if (hasThreshold) {
+            if (target !== null) {
               status = evaluateStatus(resolvedValue, target, higherIsBetter);
             }
 
@@ -220,7 +219,7 @@ export function useReportData(id: string): UseReportDataResult {
                 perClass = classValues.map((val) => {
                   const classVal = classReport[val];
                   const score = classVal ? classVal[key] : 0;
-                  const classStatus = hasThreshold
+                  const classStatus = target !== null
                     ? evaluateStatus(score, target, higherIsBetter)
                     : "pass";
                   return {
@@ -238,7 +237,7 @@ export function useReportData(id: string): UseReportDataResult {
               metricId: displayId,
               name: metric.name,
               value: resolvedValue,
-              threshold: (hasThreshold && !isVisualOnly) ? target : 0,
+              threshold: isVisualOnly ? null : target,
               status: isVisualOnly ? "pass" : status,
               higherIsBetter,
               perClass,

@@ -6,7 +6,8 @@ interface MetricRowProps {
   name: string;
   formula?: string;
   value: number;
-  threshold: number;
+  /** 합격 목표값. 없으면 null — 0 은 목표값 0 이다. */
+  threshold: number | null;
   status: "pass" | "fail" | "warning" | "unavailable";
   /** 낮을수록 좋은 지표(false)면 합격 기준을 "≤"로 표기. 미지정=높을수록 좋음("≥"). */
   higherIsBetter?: boolean;
@@ -17,14 +18,14 @@ interface MetricRowProps {
 
 export function MetricRow({ metricId, name, formula, value, threshold, status, higherIsBetter, isCore, className }: MetricRowProps) {
   // 표시 모드
-  // 1) threshold > 0            → 일반 KPI (값 + 기준 + 판정)
-  // 2) threshold == 0 & value>0 → 정보 제공 (MCC 등 — 값은 표시, 기준 "—", "ℹ 정보 제공")
-  // 3) threshold == 0 & value==0 → 시각화 참조 (CM/Class별 — 값 "—", 기준 "정보 제공", "ℹ 시각화 참조")
+  // 1) 목표값 있음(threshold !== null) → 일반 KPI (값 + 기준 + 판정). 0·음수 목표도 여기다.
+  // 2) 목표값 없음                      → 정보 제공 (값은 표시, 기준 "—", "ℹ 정보 제공")
+  // 3) M21·M22                          → 시각화 참조 (값 "—", 기준 "정보 제공", "ℹ 시각화 참조")
   // 4) status == unavailable    → 측정 불가 (값 "—", 기준 "—", "측정 불가" 배지)
   const isUnavailable   = status === "unavailable";
   const isVisualOnly    = metricId === "M21" || metricId === "M22";
-  const isInfoWithValue = !isVisualOnly && !isUnavailable && threshold === 0;
-  const isThresholded   = !isVisualOnly && !isUnavailable && threshold > 0;
+  const isInfoWithValue = !isVisualOnly && !isUnavailable && threshold === null;
+  const isThresholded   = !isVisualOnly && !isUnavailable && threshold !== null;
   const criteriaOp      = higherIsBetter === false ? "≤" : "≥";
 
   return (
@@ -45,7 +46,7 @@ export function MetricRow({ metricId, name, formula, value, threshold, status, h
         {isVisualOnly || isUnavailable ? "—" : value.toFixed(3)}
       </td>
       <td className="py-2.5 pr-4 text-slate-500">
-        {isThresholded ? `${criteriaOp} ${threshold.toFixed(2)}` : isInfoWithValue ? "—" : isUnavailable ? "—" : "정보 제공"}
+        {isThresholded && threshold !== null ? `${criteriaOp} ${threshold.toFixed(2)}` : isInfoWithValue ? "—" : isUnavailable ? "—" : "정보 제공"}
       </td>
       <td className="py-2.5">
         {isThresholded ? (
