@@ -20,7 +20,7 @@ interface ModelEnvProps {
   issues: FieldIssue[];
   /** 빈 필수 칸을 빨갛게 칠할지. 페이지가 다음을 누른 뒤에 켠다. */
   showErrors?: boolean;
-  /** 재료 고르기에서 ⑨ 에 저장한 체크. */
+  /** 재료 고르기에서 ⑨ 에 고른 항목. */
   picks?: readonly string[];
 }
 

@@ -365,13 +365,13 @@ describe("persist 마이그레이션 v7 → v8 — 평가 결과 단계가 폐�
     const migrated = migrateWorkflowState(
       {
         completedStepIds: ["upload", "metrics", "mapping", "validation", "summary"],
-        currentStepId: "dataInfo",
+        currentStepId: "modelEnv",
       },
       7,
     );
 
     expect(migrated.completedStepIds).toEqual(["upload", "metrics", "mapping", "validation"]);
-    expect(migrated.currentStepId).toBe("dataInfo");
+    expect(migrated.currentStepId).toBe("modelEnv");
   });
 
   it("평가 결과에 서 있던 사용자는 Details 로 옮긴다 — 검증 다음 단계다", async () => {
@@ -664,5 +664,57 @@ describe("persist 마이그레이션 v11 → v12 — 재료 고르기 저장 상
     expect(migrated.materialPicks.trainingData).toContain("trainingNotes");
     expect(migrated.materialPicks.trainingData).not.toContain("trainingDataFormat");
     expect(migrated.materialPicks.clientInfo).toEqual(["contactExtra:website", "projectNumber"]);
+  });
+});
+
+/**
+ * v12 → v13 — 재료 고르기가 다이어그램이 됐다(docs/MATERIAL_PICKER.md §11). 입력 순서(`cardOrder`)가
+ * 생기고, ⑥ ⑦ ⑧ 을 묶던 데이터 정보 단계가 카드마다 나뉘었다.
+ */
+describe("persist 마이그레이션 v12 → v13 — 입력 순서와 데이터 카드 단계", () => {
+  const migrate = async (state: object) => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+    return migrateWorkflowState(state, 12);
+  };
+
+  it("순서는 카탈로그 순서로 시작한다 — 지금까지 걸어 온 순서와 같다", async () => {
+    const { DEFAULT_CARD_ORDER } = await import("../utils/domain/cardOrder");
+    const migrated = await migrate({ composerCards: {} });
+
+    expect(migrated.cardOrder).toEqual(DEFAULT_CARD_ORDER);
+  });
+
+  it("데이터 정보를 마쳤으면 넣어 둔 데이터 카드를 모두 마친 것이다", async () => {
+    const migrated = await migrate({
+      composerCards: { trainingData: true, testData: false, groundTruth: true, modelEnv: false },
+      completedStepIds: ["clientInfo", "model", "upload", "mapping", "dataInfo"],
+      currentStepId: "perspective",
+    });
+
+    expect(migrated.completedStepIds).toEqual([
+      "clientInfo",
+      "model",
+      "upload",
+      "mapping",
+      "trainingData",
+      "groundTruth",
+    ]);
+    expect(migrated.currentStepId).toBe("perspective");
+  });
+
+  it("데이터 정보에 서 있었으면 넣어 둔 첫 데이터 카드에 선다", async () => {
+    const migrated = await migrate({
+      composerCards: { trainingData: false, testData: true, groundTruth: true, modelEnv: false },
+      completedStepIds: ["mapping"],
+      currentStepId: "dataInfo",
+    });
+
+    expect(migrated.currentStepId).toBe("testData");
+  });
+
+  it("넣어 둔 데이터 카드가 없으면 그다음이던 평가 관점에 선다", async () => {
+    const migrated = await migrate({ composerCards: {}, completedStepIds: [], currentStepId: "dataInfo" });
+
+    expect(migrated.currentStepId).toBe("perspective");
   });
 });

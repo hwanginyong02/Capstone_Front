@@ -374,7 +374,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     name: "학습 데이터",
     description: "모델을 훈련할 때 쓴 데이터입니다.",
     locked: false,
-    steps: ["dataInfo"],
+    steps: ["trainingData"],
     help:
       "수집 환경 차이는 같은 클래스의 데이터가 서로 다른 장비, 처리 방식, 사람, 환경에서 " +
       "모였는지(TS 4213 5.3.8 채널 효과)를 묻습니다. 불균형 보정은 한쪽 클래스에 몰린 " +
@@ -566,7 +566,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     name: "테스트 데이터",
     description: "성능을 잰 테스트 데이터의 출처입니다.",
     locked: false,
-    steps: ["dataInfo"],
+    steps: ["testData"],
     // 건수와 클래스별 건수는 올린 파일에서 시스템이 세므로 사용자에게 묻지 않는다.
     help:
       "학습 데이터와 같은 곳에서 왔으면 점수가 실제보다 좋게 나올 수 있어 성적서에 함께 " +
@@ -647,7 +647,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     name: "정답 라벨",
     description: "테스트 데이터의 정답을 누가, 어떻게 붙였는지입니다.",
     locked: false,
-    steps: ["dataInfo"],
+    steps: ["groundTruth"],
     help:
       "정답이 틀리면 점수도 믿을 수 없어서 정답의 출처를 성적서에 적습니다. 실제 결과 기록은 " +
       "\"실제 해지 여부\"처럼 사후에 확인된 결과를 정답으로 쓴 경우입니다.",

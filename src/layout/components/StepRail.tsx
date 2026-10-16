@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router";
+import { LayoutGrid } from "lucide-react";
 import { cn } from "../../utils/styling/styles";
 import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
 import { getStepDefinition } from "../../data/workflowSteps";
@@ -9,11 +10,14 @@ import type { StepId } from "../../types/workflow.types";
 /**
  * 단계 표시줄 — 입력 화면 오른쪽의 세로 목록(docs/MATERIAL_PICKER.md §9).
  *
- * 세로로 두는 것은 단계 수가 카드 선택에 따라 8~10개로 바뀌고 단계 이름 길이가 제각각이기
+ * 세로로 두는 것은 단계 수가 카드 선택에 따라 8~12개로 바뀌고 단계 이름 길이가 제각각이기
  * 때문이다. 종전에는 헤더 아래 가로 탭(`StepTabs`)이었는데, 칸이 늘면 이름이 잘렸다.
  *
- * 라벨·경로는 카탈로그 하나가 들고(`data/workflowSteps.ts`), 걸을 목록은 고른 카드에서 계산한다.
- * 확인과 생성도 처음부터 보이되, 아직 도달하지 않은 단계는 누를 수 없다.
+ * 라벨·경로는 카탈로그 하나가 들고(`data/workflowSteps.ts`), 걸을 목록은 고른 카드와 사용자가 정한
+ * 순서에서 계산한다. 확인과 생성도 처음부터 보이되, 아직 도달하지 않은 단계는 누를 수 없다.
+ *
+ * 목록 위에는 재료 고르기로 돌아가는 버튼을 둔다. 순서와 넣을 항목은 언제든 다이어그램에서
+ * 다시 보고 고칠 수 있다(docs/MATERIAL_PICKER.md §11).
  *
  * - 지난 단계(마쳤거나 현재보다 앞): 누를 수 있다. 본문색.
  * - 현재 단계: 제목색, 굵기 500, 강조색 막대, `aria-current="step"`.
@@ -24,9 +28,10 @@ export function StepRail() {
   const currentStepId = useWorkflowStore((s) => s.currentStepId);
   const completedStepIds = useWorkflowStore((s) => s.completedStepIds);
   const composerCards = useWorkflowStore((s) => s.composerCards);
+  const cardOrder = useWorkflowStore((s) => s.cardOrder);
   const lastRunId = useWorkflowStore((s) => s.lastRunId);
 
-  const steps = buildStepList(composerCards);
+  const steps = buildStepList(composerCards, cardOrder);
   const currentIndex = steps.indexOf(currentStepId);
 
   const handleStepClick = (id: StepId) => {
@@ -42,7 +47,15 @@ export function StepRail() {
       aria-label="진행 단계"
       className="p-6 lg:sticky lg:top-14 lg:max-h-[calc(100vh-3.5rem)] lg:overflow-y-auto"
     >
-      <ol className="flex flex-col gap-1">
+      <button
+        type="button"
+        onClick={() => navigate("/app/composer")}
+        className="mb-3 flex min-h-11 w-full items-center gap-3 rounded-lg border border-border-strong bg-background px-4 py-2 text-left text-base text-foreground-secondary transition-colors hover:text-foreground"
+      >
+        <LayoutGrid className="size-4 shrink-0" aria-hidden="true" />
+        <span className="min-w-0 flex-1">재료 고르기</span>
+      </button>
+      <ol aria-label="입력 단계" className="flex flex-col gap-1">
         {steps.map((id, index) => {
           const { label } = getStepDefinition(id);
           const isActive = id === currentStepId;

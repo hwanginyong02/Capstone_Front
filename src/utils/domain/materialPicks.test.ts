@@ -1,71 +1,116 @@
-/** 재료 고르기 규칙의 순수 함수(docs/MATERIAL_PICKER.md §4·§7). */
+/** 재료 고르기 규칙의 순수 함수(docs/MATERIAL_PICKER.md §6·§11). */
 import { describe, expect, it } from "vitest";
 
-import { MATERIAL_CATEGORIES } from "../../data/reportComposer";
+import { catalogCards, pickableIds } from "../../data/reportComposer";
 import type { MaterialPicks } from "../../types/reportComposer.types";
 import {
-  inputOrderCards,
-  isCardSaved,
-  isCategoryComplete,
-  isDraftDirty,
+  includeCardPicks,
+  matchesTier,
   missingRecommended,
-  picksToSave,
-  requiredProgress,
-  unsavedRequiredCards,
+  orderPicks,
+  pickCoverage,
+  pickItems,
+  pickTier,
+  picksForTier,
+  togglePick,
 } from "./materialPicks";
 
-const category = (id: string) => MATERIAL_CATEGORIES.find((item) => item.id === id)!;
-
-describe("저장", () => {
-  it("빈 배열로 저장한 것도 저장이다 — 넣지 않기로 확정", () => {
-    expect(isCardSaved({ trainingData: [] }, "trainingData")).toBe(true);
-    expect(isCardSaved({}, "trainingData")).toBe(false);
+describe("넣고 빼기 — 바로 반영", () => {
+  it("항목 하나를 넣고 다시 누르면 뺀다", () => {
+    const on = togglePick("modelEnv", "binary", [], "gpuUsage");
+    expect(on).toEqual(["gpuUsage"]);
+    expect(togglePick("modelEnv", "binary", on, "gpuUsage")).toEqual([]);
   });
 
-  it("저장할 체크는 이 카드에서 고를 수 있는 항목만, 화면 순서로", () => {
-    expect(picksToSave("modelEnv", "binary", ["gpuUsage", "nope", "algorithm"])).toEqual([
+  it("넣은 순서와 상관없이 화면 순서로 둔다 — 고를 수 없는 id 는 버린다", () => {
+    expect(orderPicks("modelEnv", "binary", ["gpuUsage", "nope", "algorithm"])).toEqual([
       "algorithm",
       "gpuUsage",
     ]);
+    expect(togglePick("modelEnv", "binary", ["gpuUsage"], "algorithm")).toEqual(["algorithm", "gpuUsage"]);
   });
 
-  it("화면 체크가 저장한 것과 다르면 변경이 있다 — 순서는 보지 않는다", () => {
-    expect(isDraftDirty(["a", "b"], ["b", "a"])).toBe(false);
-    expect(isDraftDirty(["a"], ["a", "b"])).toBe(true);
-    expect(isDraftDirty([], undefined)).toBe(false);
-    expect(isDraftDirty(["a"], undefined)).toBe(true);
+  it("선택 카드를 통째로 넣으면 권장 항목이 모두 들어간다", () => {
+    expect(includeCardPicks("modelEnv", "binary")).toEqual([
+      "algorithm",
+      "hyperparameters",
+      "runtimeEnv",
+      "gpuUsage",
+    ]);
+    // 선택 항목은 들어가지 않는다 — 권장만 기본으로 받는다.
+    const optional = pickItems("trainingData", "binary").filter((item) => item.kind === "optional");
+    expect(optional.length).toBeGreaterThan(0);
+    for (const item of optional) {
+      expect(includeCardPicks("trainingData", "binary")).not.toContain(item.pickId);
+    }
+  });
+
+  it("넣고 뺄 항목은 권장(필드 한 줄)과 선택(쪼갠 항목마다)이다", () => {
+    const items = pickItems("clientInfo", "binary");
+    expect(items.map((item) => item.pickId)).toEqual(pickableIds("clientInfo", "binary"));
+    expect(items.find((item) => item.pickId === "contactExtra:website")?.label).toBe("홈페이지");
+    expect(items.every((item) => item.kind === "optional")).toBe(true);
   });
 });
 
-describe("입력 순서와 진행", () => {
-  it("필수 카드와 항목을 골라 저장한 선택 카드만, 카탈로그 순서로", () => {
-    const picks: MaterialPicks = { groundTruth: ["labelAuthor"], trainingData: [], modelEnv: ["algorithm"] };
-    expect(inputOrderCards("binary", picks).map((card) => card.id)).toEqual([
-      "clientInfo",
-      "model",
-      "modelEnv",
-      "evalData",
-      "groundTruth",
-      "perspective",
-      "metrics",
-    ]);
+describe("품질 단계와 추천 세트", () => {
+  it("최소 세트는 권장·선택을 하나도 받지 않는다", () => {
+    const picks = picksForTier("minimum", "binary");
+    for (const card of catalogCards("binary")) {
+      expect(picks[card.id], card.id).toEqual([]);
+    }
+    expect(pickTier("binary", picks)).toBe("minimum");
   });
 
-  it("저장하지 않은 필수 카드와 진행 수", () => {
-    const picks: MaterialPicks = { clientInfo: [], metrics: [] };
-    expect(unsavedRequiredCards("binary", picks).map((card) => card.id)).toEqual([
-      "model",
-      "evalData",
-      "perspective",
-    ]);
-    expect(requiredProgress("binary", picks)).toEqual({ total: 5, saved: 2 });
+  it("표준 세트는 권장을 모두 받고 선택은 받지 않는다 — 충분한 품질의 기준선", () => {
+    const picks = picksForTier("standard", "binary");
+    const coverage = pickCoverage("binary", picks);
+
+    expect(coverage.recommended.picked).toBe(coverage.recommended.total);
+    expect(coverage.recommended.total).toBeGreaterThan(0);
+    expect(coverage.optional.picked).toBe(0);
+    expect(pickTier("binary", picks)).toBe("standard");
   });
 
-  it("대분류는 그 안의 필수 카드를 모두 저장하면 완료다 — 선택 카드는 보지 않는다", () => {
-    expect(isCategoryComplete(category("model"), { model: [] })).toBe(true);
-    expect(isCategoryComplete(category("data"), { trainingData: ["trainingDatasetName"] })).toBe(false);
-    expect(isCategoryComplete(category("criteria"), { perspective: [] })).toBe(false);
-    expect(isCategoryComplete(category("criteria"), { perspective: [], metrics: [] })).toBe(true);
+  it("상세 세트는 선택까지 모두 받는다", () => {
+    const picks = picksForTier("detailed", "binary");
+    const coverage = pickCoverage("binary", picks);
+
+    expect(coverage.optional.picked).toBe(coverage.optional.total);
+    expect(pickTier("binary", picks)).toBe("detailed");
+  });
+
+  it("권장이 하나라도 빠지면 표준에 못 미친다 — 선택을 다 넣어도 그렇다", () => {
+    const picks = picksForTier("detailed", "binary");
+    picks.modelEnv = (picks.modelEnv ?? []).filter((id) => id !== "gpuUsage");
+
+    expect(pickTier("binary", picks)).toBe("minimum");
+  });
+
+  it("세트 버튼은 지금 고른 것이 그 세트와 똑같을 때만 눌린다", () => {
+    const standard = picksForTier("standard", "binary");
+    expect(matchesTier("standard", "binary", standard)).toBe(true);
+    expect(matchesTier("detailed", "binary", standard)).toBe(false);
+
+    // 순서가 달라도 같은 것으로 본다.
+    const reversed: MaterialPicks = { ...standard, modelEnv: [...(standard.modelEnv ?? [])].reverse() };
+    expect(matchesTier("standard", "binary", reversed)).toBe(true);
+
+    // 하나만 더해도 어느 세트도 아니다.
+    const plusOne = { ...standard, clientInfo: ["projectNumber"] };
+    expect(matchesTier("standard", "binary", plusOne)).toBe(false);
+  });
+
+  it("아무것도 고르지 않은 처음 상태는 최소 세트와 같다", () => {
+    expect(matchesTier("minimum", "binary", {})).toBe(true);
+  });
+
+  it("현황은 필수 카드 수와 권장·선택의 들어간 수/전체 수다", () => {
+    const coverage = pickCoverage("binary", { modelEnv: ["algorithm"], clientInfo: ["projectNumber"] });
+
+    expect(coverage.requiredCards).toBe(5);
+    expect(coverage.recommended.picked).toBe(1);
+    expect(coverage.optional.picked).toBe(1);
   });
 });
 
@@ -92,5 +137,9 @@ describe("빠진 권장 항목 (§5·§6)", () => {
     const missing = missingRecommended("binary", { testData: ["testDataSource", "testSourceRelation"] });
 
     expect(missing.find((item) => item.card.id === "testData")).toBeUndefined();
+  });
+
+  it("표준 세트면 빠진 권장 항목이 없다", () => {
+    expect(missingRecommended("binary", picksForTier("standard", "binary"))).toEqual([]);
   });
 });

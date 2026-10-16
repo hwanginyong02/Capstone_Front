@@ -13,7 +13,6 @@ import {
   stepIdToPath,
 } from "../utils/domain/workflowSteps";
 import { seedShowcaseData } from "../utils/domain/showcaseSeed";
-import { cn } from "../utils/styling/styles";
 
 interface WorkflowShellProps {
   children: ReactNode;
@@ -29,18 +28,10 @@ interface WorkflowShellProps {
   rightAction?: ReactNode;
   buttonSize?: "default" | "lg";
   /**
-   * 단계 표시줄을 띄울지. 재료 고르기 화면은 **입력 단계에 들어가기 전**이고, 단계 수가 바로 그
-   * 화면의 선택으로 정해지므로 표시줄을 두지 않는다(docs/MATERIAL_PICKER.md §4).
+   * 단계 표시줄을 띄울지. 재료 고르기 화면은 **입력 단계에 들어가기 전**이고, 단계 수와 순서가
+   * 바로 그 화면에서 정해지므로 표시줄을 두지 않는다(docs/MATERIAL_PICKER.md §11).
    */
   showStepRail?: boolean;
-  /**
-   * 본문 오른쪽에 붙는 패널(재료 고르기의 "입력 순서", docs/MATERIAL_PICKER.md §4). 이전·다음
-   * 버튼을 이 패널에 두는 화면은 하단 ActionBar 를 끈다. 버튼은 페이지가 조립해 넘긴다 —
-   * 도메인 컴포넌트가 버튼을 직접 들지 않는다(FRONTEND_DEVELOPMENT_GUIDELINE §2).
-   *
-   * 넘기면 단계 표시줄 대신 이 패널이 그 자리에 선다.
-   */
-  aside?: ReactNode;
   /**
    * 이 화면이 워크플로우의 단계인지.
    *
@@ -52,12 +43,11 @@ interface WorkflowShellProps {
 
 /**
  * Shared layout shell for all workflow step pages.
- * Renders AppHeader once, the step rail (or a page's own `aside`) to the right of the content,
- * and the sticky ActionBar at the bottom if requested.
+ * Renders AppHeader once, the step rail to the right of the content, and the sticky ActionBar at
+ * the bottom if requested.
  *
- * 단계 표시줄은 입력 화면 오른쪽의 세로 목록이다(docs/MATERIAL_PICKER.md §9). 재료 고르기의
- * "입력 순서"와 같은 자리, 같은 배경(`bg-muted`)이다. `lg` 보다 좁으면 본문 위로 올라간다 —
- * 어디까지 왔는지를 먼저 보고 입력한다.
+ * 단계 표시줄은 입력 화면 오른쪽의 세로 목록이다(docs/MATERIAL_PICKER.md §9). `lg` 보다 좁으면
+ * 본문 위로 올라간다 — 어디까지 왔는지를 먼저 보고 입력한다.
  */
 export function WorkflowShell({ 
   children,
@@ -74,7 +64,6 @@ export function WorkflowShell({
   buttonSize,
   showStepRail = true,
   isStepPage = true,
-  aside,
 }: WorkflowShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -90,8 +79,8 @@ export function WorkflowShell({
     if (!stepId) return;
 
     const store = useWorkflowStore.getState();
-    // 걸을 목록은 고른 카드에서 나온다 — 가드도 이 목록을 기준으로 판단해야 한다.
-    const steps = buildStepList(store.composerCards);
+    // 걸을 목록은 고른 카드와 그 순서에서 나온다 — 가드도 이 목록을 기준으로 판단해야 한다.
+    const steps = buildStepList(store.composerCards, store.cardOrder);
 
     if (isShowcaseMode) {
       // 시연은 시드가 완료 표시를 직접 채우므로 가드를 적용하지 않는다.
@@ -129,24 +118,15 @@ export function WorkflowShell({
     store.setCurrentStepId(stepId);
   }, [location.pathname, location.search, isShowcaseMode, isStepPage, navigate]);
 
-  const panel = aside ?? (showStepRail ? <StepRail /> : null);
-
   return (
     <div className="min-h-screen bg-background flex flex-col relative">
       {/* 워크플로우 안에서는 현재 분류 유형을 계속 보여준다(docs/UI_DESIGN.md §4). */}
       <AppHeader showTaskType />
-      {panel ? (
+      {showStepRail ? (
         <div className="flex flex-1 flex-col lg:flex-row lg:items-stretch">
-          <div className={cn("min-w-0 flex-1 pb-8", !aside && "order-2 lg:order-1")}>{children}</div>
-          <aside
-            className={cn(
-              "w-full bg-muted lg:shrink-0",
-              aside
-                ? "border-t border-border lg:w-80 lg:border-t-0"
-                : "order-1 border-b border-border lg:order-2 lg:w-72 lg:border-b-0",
-            )}
-          >
-            {panel}
+          <div className="order-2 min-w-0 flex-1 pb-8 lg:order-1">{children}</div>
+          <aside className="order-1 w-full border-b border-border bg-muted lg:order-2 lg:w-72 lg:shrink-0 lg:border-b-0">
+            <StepRail />
           </aside>
         </div>
       ) : (

@@ -8,7 +8,8 @@ import { todayIsoDate } from "../utils/domain/isoDate";
  * 재료 고르기에서 고른 카드에서 **계산되므로**(docs/MATERIAL_PICKER.md §3), 번호는 선택이 바뀔 때마다 뜻이 달라진다 — 저장된 진행 표시가 조용히 어긋나는
  * 바로 그 상황이다(docs/WORKFLOW_REDESIGN.md §3.3). 그래서 번호가 아니라 이름으로 가리킨다.
  *
- * 아래 순서가 정본 순서다. 실제 목록은 `data/workflowSteps.ts` 가 들고 있다.
+ * 순서는 여기서 정하지 않는다. 사용자가 재료 고르기 다이어그램에서 정한 카드 순서를 펼친 것이
+ * 걸을 순서다(`utils/domain/workflowSteps.ts` 의 `buildStepList`, docs/MATERIAL_PICKER.md §11).
  */
 export type StepId =
   | "clientInfo" // 의뢰자 정보 — ③
@@ -16,7 +17,9 @@ export type StepId =
   | "modelEnv" // 모델 설정과 실행 환경 — ⑨ (조건부)
   | "upload" // 평가 데이터 — ① 결과 파일
   | "mapping" // 컬럼 매핑 — ① 컬럼 매핑·양성 클래스·결정 임계값
-  | "dataInfo" // 데이터 정보 — ⑥ ⑦ ⑧ 중 넣은 카드 (조건부)
+  | "trainingData" // 학습 데이터 — ⑥ (조건부)
+  | "testData" // 테스트 데이터 — ⑦ (조건부)
+  | "groundTruth" // 정답 라벨 — ⑧ (조건부)
   | "perspective" // 평가 관점 — ⑤
   | "metrics" // 지표와 합격 기준 — ②
   | "validation" // 검증 — 검증·평가 run 저장

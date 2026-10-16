@@ -1,82 +1,71 @@
 /**
- * ⑥ 학습 데이터 · ⑦ 테스트 데이터 · ⑧ 정답 라벨 — 넣은 카드만.
+ * ⑥ 학습 데이터 · ⑦ 테스트 데이터 · ⑧ 정답 라벨 — 카드 하나의 입력 화면.
  *
- * 셋 중 하나라도 넣으면 이 단계가 생기고, 넣은 카드의 폼만 카드 순서대로 그린다
- * (docs/MATERIAL_PICKER.md §5). 셋을 한 화면에 묶은 이유는 같은
- * 데이터 이야기이고, 각각을 단계로 쪼개면 성적서까지 가는 길이 두 화면 더 길어지기 때문이다.
+ * 종전에는 셋을 "데이터 정보" 한 단계에 묶었다. 사용자가 입력 순서를 정하면서 셋이 떨어질 수
+ * 있게 돼 카드마다 한 단계가 됐다(docs/MATERIAL_PICKER.md §11).
  *
- * ⑥ 의 클래스별 데이터 양은 **업로드한 파일의 클래스 목록으로 칸을 만든다** — 그래서 이
- * 단계가 업로드 뒤에 있어야 한다.
+ * ⑥ 의 클래스별 데이터 양은 **업로드한 파일의 클래스 목록으로 칸을 만든다** — 그래서 학습
+ * 데이터는 평가 데이터 뒤에만 놓을 수 있다(`ORDER_RULES`).
  */
 import type { ReactNode } from "react";
 import { ComposerCardForm } from "../composer-input/ComposerCardForm";
 import { getCard } from "../../data/reportComposer";
 import type { TaskType } from "../../data/evaluationData";
-import type {
-  ComposerCardId,
-  ComposerFieldValue,
-  ComposerValueMap,
-} from "../../types/reportComposer.types";
+import type { ComposerFieldValue, ComposerValueMap } from "../../types/reportComposer.types";
 import type { FieldIssue } from "../../utils/domain/composerFieldGate";
 
-/** 이 단계가 받는 카드. 배열 순서가 화면 순서다. */
-export const DATA_INFO_CARDS: ComposerCardId[] = ["trainingData", "testData", "groundTruth"];
+/** 이 화면이 받는 카드. 카드마다 한 단계다. */
+export const DATA_INFO_CARDS = ["trainingData", "testData", "groundTruth"] as const;
+export type DataInfoCardId = (typeof DATA_INFO_CARDS)[number];
 
 interface DataInfoProps {
   taskType: TaskType | "";
-  /** 넣어서 그릴 카드. 하나도 없으면 이 단계 자체가 목록에 없다. */
-  includedCards: ComposerCardId[];
-  /** 재료 고르기에서 카드마다 저장한 체크. 체크하지 않은 권장·선택 필드는 그리지 않는다. */
-  picksOf?: (cardId: ComposerCardId) => readonly string[] | undefined;
-  valuesOf: (cardId: ComposerCardId) => ComposerValueMap;
-  onChange: (cardId: ComposerCardId, fieldId: string, next: ComposerFieldValue) => void;
+  cardId: DataInfoCardId;
+  /** 재료 고르기에서 고른 항목. 고르지 않은 권장·선택 필드는 그리지 않는다. */
+  picks?: readonly string[];
+  values: ComposerValueMap;
+  onChange: (fieldId: string, next: ComposerFieldValue) => void;
   issues: FieldIssue[];
   /** 업로드한 파일에서 찾은 클래스. ⑥ 클래스별 데이터 양의 칸이 된다. */
   classNames?: string[];
   /** 빈 필수 칸을 빨갛게 칠할지. 페이지가 다음을 누른 뒤에 켠다. */
   showErrors?: boolean;
-  /**
-   * 카드 바로 아래에 붙일 것. 레지스트리로 그릴 수 없는 입력(⑥ 의 예시 파일 업로드)을
-   * 그 카드 곁에 둔다 — 화면 맨 끝에 두면 어느 카드의 것인지 알 수 없다.
-   */
-  afterCard?: Partial<Record<ComposerCardId, ReactNode>>;
+  /** 카드 아래에 붙일 것. 레지스트리로 그릴 수 없는 입력(⑥ 의 예시 파일 업로드)이다. */
+  after?: ReactNode;
 }
 
 export function DataInfo({
   taskType,
-  includedCards,
-  picksOf = () => undefined,
-  valuesOf,
+  cardId,
+  picks,
+  values,
   onChange,
   issues,
   classNames,
   showErrors = false,
-  afterCard = {},
+  after,
 }: DataInfoProps) {
+  const card = getCard(cardId);
   return (
     <main className="mx-auto max-w-[1344px] space-y-6 px-8 pt-12 pb-24">
       <div>
-        <h1 className="text-heading-large font-bold text-foreground">데이터 정보</h1>
+        <h1 className="text-heading-large font-bold text-foreground">{card.name}</h1>
         <p className="mt-1 text-body-medium text-muted-foreground">
-          성적서에 넣기로 한 카드가 이 항목들을 받습니다. 모르는 것은 모름을 고르세요.
+          {card.description} 모르는 것은 모름을 고르세요.
         </p>
       </div>
 
-      {DATA_INFO_CARDS.filter((id) => includedCards.includes(id)).map((id) => (
-        <div key={id} className="space-y-6">
-          <ComposerCardForm
-            card={getCard(id)}
-            taskType={taskType}
-            values={valuesOf(id)}
-            onChange={(fieldId, next) => onChange(id, fieldId, next)}
-            issues={issues.filter((issue) => issue.cardId === id)}
-            classNames={classNames}
-            showErrors={showErrors}
-            picks={picksOf(id)}
-          />
-          {afterCard[id]}
-        </div>
-      ))}
+      <ComposerCardForm
+        card={card}
+        taskType={taskType}
+        values={values}
+        onChange={onChange}
+        issues={issues}
+        classNames={classNames}
+        showErrors={showErrors}
+        picks={picks}
+      />
+      {after}
     </main>
   );
 }

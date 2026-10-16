@@ -72,7 +72,7 @@ function clientPicks(picks: readonly string[] | undefined) {
 interface ClientInfoFormProps {
   formData: BasicInfoFormData;
   onFormDataChange: FormDataSetter;
-  /** 재료 고르기에서 ③ 에 저장한 체크. 없으면 선택 항목을 모두 보인다. */
+  /** 재료 고르기에서 ③ 에 고른 항목. 없으면 선택 항목을 모두 보인다. */
   picks?: readonly string[];
 }
 

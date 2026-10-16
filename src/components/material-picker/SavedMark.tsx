@@ -1,6 +1,6 @@
 /**
- * 저장 표시 — 강조색 원 안의 체크(docs/MATERIAL_PICKER.md §7·§10). 카드 줄, 대분류 카드, 입력
- * 순서가 같은 표시를 쓴다. 저장하지 않은 자리에는 빈 원을 둔다(`UnsavedMark`).
+ * 완료 표시 — 강조색 원 안의 체크(docs/MATERIAL_PICKER.md §10). 단계 표시줄이 마친 단계에 쓴다.
+ * 아직 마치지 않은 자리에는 빈 원을 둔다(`UnsavedMark`).
  */
 export function SavedMark({ label, size = 18 }: { label: string; size?: number }) {
   return (
@@ -18,7 +18,7 @@ export function SavedMark({ label, size = 18 }: { label: string; size?: number }
   );
 }
 
-/** 아직 저장하지 않은 카드 자리. 장식이라 읽히지 않는다. */
+/** 아직 마치지 않은 자리. 장식이라 읽히지 않는다. */
 export function UnsavedMark({ size = 18 }: { size?: number }) {
   return (
     <span

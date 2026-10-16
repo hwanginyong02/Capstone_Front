@@ -103,7 +103,7 @@ export type ReportInputSource = Omit<MapWorkflowToReportInput, "composer"> & {
   composerTestData: ComposerValueMap;
   composerGroundTruth: ComposerValueMap;
   composerModelEnv: ComposerValueMap;
-  /** 재료 고르기에서 카드마다 저장한 체크. 없으면(재료 고르기 이전 상태) 모든 값을 싣는다. */
+  /** 재료 고르기에서 카드마다 고른 항목. 없으면(재료 고르기 이전 상태) 모든 값을 싣는다. */
   materialPicks?: MaterialPicks;
 };
 

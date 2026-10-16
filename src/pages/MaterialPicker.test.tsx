@@ -1,8 +1,9 @@
 /**
- * 재료 고르기 화면 — 3단 구조와 저장 규칙(docs/MATERIAL_PICKER.md §4·§6·§7).
+ * 재료 고르기 화면 — 왼쪽 재료 목록, 가운데 4열 다이어그램, 하단 현황(docs/MATERIAL_PICKER.md §11).
  *
- * 저장은 "그 카드에서 무엇을 받을지 확정"하는 것이다. 체크는 저장해야 반영되고, 저장하지 않은
- * 필수 카드가 있으면 다음으로 넘어가지 않는다. 선택 카드는 항목을 골라 저장해야 들어간다.
+ * 저장 버튼은 없다. 넣고 빼는 것과 순서를 바꾸는 것이 바로 스토어에 들어가고 다이어그램에 보인다.
+ * 필수 카드는 처음부터 들어가 있어 다음을 막지 않는다. 끌어 놓기와 같은 일을 하는 버튼이 모두
+ * 있어, 여기서는 버튼으로 확인한다(jsdom 은 HTML5 끌어 놓기를 재현하지 못한다).
  */
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -11,29 +12,41 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { MaterialPicker } from "./MaterialPicker";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
+import { buildStepList } from "../utils/domain/workflowSteps";
 
-function renderPage() {
+function renderPage(state?: { cardId: string }) {
   render(
-    <MemoryRouter initialEntries={["/app/composer"]}>
+    <MemoryRouter initialEntries={[{ pathname: "/app/composer", state }]}>
       <Routes>
         <Route path="/app/composer" element={<MaterialPicker />} />
-        <Route path="/app/client-info" element={<div data-testid="first-step" />} />
+        <Route path="/app/client-info" element={<div data-testid="step-client-info" />} />
+        <Route path="/app/model" element={<div data-testid="step-model" />} />
         <Route path="/app" element={<div data-testid="task-type" />} />
       </Routes>
     </MemoryRouter>,
   );
 }
 
-const inputOrder = () => screen.getByRole("list", { name: "입력 순서" });
-const categoryTile = (name: string) => screen.getByRole("button", { name: new RegExp("^" + name), pressed: false });
-const cardInList = (name: string) =>
-  within(screen.getByRole("list", { name: / 카드$/ })).getByRole("button", { name: new RegExp("^" + name) });
-const save = () => userEvent.click(screen.getByRole("button", { name: "저장" }));
+const diagram = () => screen.getByRole("region", { name: "입력 순서 다이어그램" });
+const palette = () => screen.getByRole("navigation", { name: "재료 목록" });
 
-async function openCard(category: string, card: string) {
-  await userEvent.click(categoryTile(category));
-  await userEvent.click(cardInList(card));
-}
+/** 다이어그램의 레인 이름, 왼쪽부터. */
+const laneNames = () =>
+  within(screen.getByRole("list", { name: "대분류 레인" }))
+    .getAllByRole("heading", { level: 2 })
+    .map((heading) => heading.textContent);
+
+/** 다이어그램의 카드, 입력 순서대로(왼쪽 레인부터, 레인 안에서는 위부터). */
+const diagramCards = () =>
+  laneNames().flatMap((lane) => {
+    const list = screen.getByRole("list", { name: `${lane} 카드` });
+    return within(list)
+      .queryAllByRole("listitem")
+      .filter((item) => item.parentElement === list)
+      .map((item) => item.getAttribute("aria-label"));
+  });
+
+const node = (name: string) => within(diagram()).getByRole("listitem", { name });
 
 beforeEach(() => {
   localStorage.clear();
@@ -42,173 +55,218 @@ beforeEach(() => {
 });
 
 describe("화면 구조", () => {
-  it("처음에는 의뢰 정보의 의뢰자 정보를 보인다 — 필드는 하나씩 쪼개 보인다", () => {
+  it("가운데 다이어그램은 대분류 4열이고, 필수 카드 다섯 장이 처음부터 들어가 있다", () => {
     renderPage();
 
-    expect(screen.getByRole("heading", { level: 1, name: "의뢰자 정보" })).toBeInTheDocument();
-    for (const name of ["회사명", "대표자", "사업자등록번호", "전화번호", "주소"]) {
-      expect(screen.getByText(name)).toBeInTheDocument();
-    }
-    // 필수는 체크박스 없이 글자만, 선택은 항목마다 체크한다(§4·§6).
-    expect(screen.queryByRole("checkbox", { name: "회사명" })).not.toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "홈페이지" })).not.toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "팩스" })).not.toBeChecked();
-    // 조건부는 조건 문구와 함께 보인다.
-    expect(screen.getAllByText("조건: 성적서 용도에서 과제 제출 선택 시")).toHaveLength(2);
+    expect(screen.getByRole("heading", { level: 1, name: "재료 고르기" })).toBeInTheDocument();
+    expect(laneNames()).toEqual(["의뢰 정보", "모델", "데이터", "평가 기준"]);
+    expect(diagramCards()).toEqual(["의뢰자 정보", "평가 대상 모델", "평가 데이터", "평가 관점", "지표와 합격 기준"]);
+    // 입력 순서 번호가 붙는다.
+    expect(within(node("의뢰자 정보")).getByText("1")).toBeInTheDocument();
+    expect(within(node("지표와 합격 기준")).getByText("5")).toBeInTheDocument();
   });
 
-  it("대분류 네 개와 카드 목록 — 필수 카드에는 '필수'를 붙인다", async () => {
+  it("필수 카드는 저장 없이 들어가 있고, 고르지 않은 선택 항목은 받지 않는다", () => {
+    renderPage();
+
+    expect(screen.queryByRole("button", { name: "저장" })).not.toBeInTheDocument();
+    // 필수 카드의 키가 채워져 입력 화면이 홈페이지·팩스를 묻지 않는다.
+    expect(useWorkflowStore.getState().materialPicks.clientInfo).toEqual([]);
+  });
+
+  it("재료 목록은 대분류 → 카드 나무이고, 대분류에 카드 수 문구를 달지 않는다", () => {
     renderPage();
 
     for (const name of ["의뢰 정보", "모델", "데이터", "평가 기준"]) {
-      expect(screen.getByRole("button", { name: new RegExp("^" + name) })).toBeInTheDocument();
+      expect(within(palette()).getByRole("heading", { level: 3, name })).toBeInTheDocument();
     }
-    await userEvent.click(categoryTile("데이터"));
-
-    const list = screen.getByRole("list", { name: "데이터 카드" });
-    expect(within(list).getAllByRole("button").map((button) => button.textContent)).toEqual([
-      "평가 데이터필수",
-      "학습 데이터",
-      "테스트 데이터",
-      "정답 라벨",
-    ]);
+    expect(within(palette()).queryByText(/카드 \d+장/)).not.toBeInTheDocument();
+    // 필수 카드는 이미 들어가 있다고 보인다.
+    expect(within(palette()).getAllByText("들어감")).toHaveLength(5);
   });
+});
 
-  it("선택 카드의 표준 보고 항목은 권장이고 기본은 꺼져 있다", async () => {
+describe("넣고 빼기 — 바로 반영", () => {
+  it("선택 카드를 넣으면 권장 항목이 모두 든 채 레인 맨 아래에 나타나고 단계가 생긴다", async () => {
     renderPage();
-    await openCard("데이터", "학습 데이터");
+    await userEvent.click(within(palette()).getByRole("button", { name: "모델 설정과 실행 환경 넣기" }));
 
-    expect(screen.getByRole("heading", { level: 2, name: "권장" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "선택" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { level: 2, name: "필수" })).not.toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "데이터 이름" })).not.toBeChecked();
-  });
-
-  it("권장 항목은 한 줄로 체크하고 그 안의 칸은 아래에 나열한다", async () => {
-    renderPage();
-    await openCard("모델", "모델 설정과 실행 환경");
-
-    expect(screen.getByRole("checkbox", { name: "실행 환경" })).toBeInTheDocument();
-    expect(screen.queryByRole("checkbox", { name: "운영체제" })).not.toBeInTheDocument();
-    expect(screen.getByText("운영체제")).toBeInTheDocument();
-  });
-
-  it("입력 순서에는 처음부터 필수 카드 다섯 장이 카탈로그 순서로 나온다", () => {
-    renderPage();
-
-    expect(within(inputOrder()).getAllByRole("button").map((b) => b.textContent)).toEqual([
+    expect(diagramCards()).toEqual([
       "의뢰자 정보",
       "평가 대상 모델",
+      "모델 설정과 실행 환경",
       "평가 데이터",
       "평가 관점",
       "지표와 합격 기준",
     ]);
-    expect(screen.getByText("필수 5개 중 0개 저장")).toBeInTheDocument();
-  });
-});
-
-describe("저장 규칙 (§7)", () => {
-  it("저장하면 카드 줄과 입력 순서에 저장 표시가 붙고, 대분류도 저장 표시로 바뀐다", async () => {
-    renderPage();
-    await save();
-
-    expect(within(cardInList("의뢰자 정보")).getByRole("img", { name: "저장됨" })).toBeInTheDocument();
-    expect(
-      within(within(inputOrder()).getByRole("button", { name: /의뢰자 정보/ })).getByRole("img", {
-        name: "저장됨",
-      }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "필수 카드 모두 저장됨" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "저장됨" })).toBeDisabled();
-    expect(screen.getByText("필수 5개 중 1개 저장")).toBeInTheDocument();
-  });
-
-  it("필수 카드를 저장하지 않고 다음을 누르면 넘어가지 않고 그 이름을 알린다", async () => {
-    renderPage();
-    await save();
-    await userEvent.click(screen.getByRole("button", { name: "다음" }));
-
-    const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent("저장하지 않은 필수 카드가 있어요");
-    expect(alert).toHaveTextContent("평가 대상 모델, 평가 데이터, 평가 관점, 지표와 합격 기준");
-    expect(alert).not.toHaveTextContent("의뢰자 정보");
-    expect(screen.queryByTestId("first-step")).not.toBeInTheDocument();
-  });
-
-  it("필수 카드를 모두 저장하면 오류가 사라지고 첫 입력 단계(의뢰자 정보)로 간다", async () => {
-    renderPage();
-    await userEvent.click(screen.getByRole("button", { name: "다음" }));
-    expect(screen.getByRole("alert")).toBeInTheDocument();
-
-    for (const name of ["의뢰자 정보", "평가 대상 모델", "평가 데이터", "평가 관점", "지표와 합격 기준"]) {
-      await userEvent.click(within(inputOrder()).getByRole("button", { name: new RegExp("^" + name) }));
-      await save();
+    const card = node("모델 설정과 실행 환경");
+    for (const label of ["알고리즘", "하이퍼파라미터", "실행 환경", "GPU 사용 여부"]) {
+      expect(within(card).getByRole("button", { name: `${label} 빼기` })).toBeInTheDocument();
     }
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(within(card).getByText("권장 4/4")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "다음" }));
-    expect(screen.getByTestId("first-step")).toBeInTheDocument();
-  });
-
-  it("항목을 골라 저장한 선택 카드는 입력 순서에 들어가고 단계가 생긴다", async () => {
-    renderPage();
-    await openCard("데이터", "학습 데이터");
-    await userEvent.click(screen.getByRole("checkbox", { name: "데이터 이름" }));
-    await save();
-
-    expect(within(inputOrder()).getByRole("button", { name: /학습 데이터/ })).toHaveTextContent(
-      "고른 항목 1개",
-    );
     const state = useWorkflowStore.getState();
-    expect(state.materialPicks.trainingData).toEqual(["trainingDatasetName"]);
-    expect(state.composerCards.trainingData).toBe(true);
+    expect(state.composerCards.modelEnv).toBe(true);
+    expect(buildStepList(state.composerCards, state.cardOrder)).toContain("modelEnv");
   });
 
-  it("아무것도 고르지 않고 저장한 선택 카드는 '넣지 않기로 확정'이다", async () => {
+  it("칩의 ×로 항목을 빼고, 마지막 항목을 빼면 카드가 다이어그램에서 빠진다", async () => {
+    useWorkflowStore.getState().setMaterialPick("modelEnv", ["algorithm", "gpuUsage"]);
     renderPage();
-    await openCard("데이터", "학습 데이터");
-    await save();
 
-    expect(within(inputOrder()).queryByRole("button", { name: /학습 데이터/ })).not.toBeInTheDocument();
-    expect(within(cardInList("학습 데이터")).getByRole("img", { name: "저장됨" })).toBeInTheDocument();
-    const state = useWorkflowStore.getState();
-    expect(state.materialPicks.trainingData).toEqual([]);
-    expect(state.composerCards.trainingData).toBe(false);
+    await userEvent.click(within(node("모델 설정과 실행 환경")).getByRole("button", { name: "알고리즘 빼기" }));
+    expect(useWorkflowStore.getState().materialPicks.modelEnv).toEqual(["gpuUsage"]);
+
+    await userEvent.click(within(node("모델 설정과 실행 환경")).getByRole("button", { name: "GPU 사용 여부 빼기" }));
+    expect(diagramCards()).not.toContain("모델 설정과 실행 환경");
+    expect(useWorkflowStore.getState().composerCards.modelEnv).toBe(false);
   });
 
-  it("저장하지 않은 체크는 화면에 남지만 반영되지 않는다", async () => {
+  it("카드의 ×로 선택 카드를 통째로 뺀다 — 필수 카드에는 ×가 없다", async () => {
+    useWorkflowStore.getState().setMaterialPick("modelEnv", ["algorithm"]);
     renderPage();
-    await openCard("데이터", "학습 데이터");
-    await userEvent.click(screen.getByRole("checkbox", { name: "데이터 이름" }));
 
-    expect(screen.getByText("저장해야 반영돼요")).toBeInTheDocument();
-    expect(within(inputOrder()).queryByRole("button", { name: /학습 데이터/ })).not.toBeInTheDocument();
+    expect(within(node("의뢰자 정보")).queryByRole("button", { name: "의뢰자 정보 빼기" })).not.toBeInTheDocument();
+    await userEvent.click(within(diagram()).getByRole("button", { name: "모델 설정과 실행 환경 빼기" }));
 
-    await userEvent.click(cardInList("테스트 데이터"));
-    await userEvent.click(cardInList("학습 데이터"));
-    expect(screen.getByRole("checkbox", { name: "데이터 이름" })).toBeChecked();
-    expect(useWorkflowStore.getState().materialPicks.trainingData).toBeUndefined();
-    expect(useWorkflowStore.getState().composerCards.trainingData).toBe(false);
+    expect(diagramCards()).not.toContain("모델 설정과 실행 환경");
   });
 
-  it("저장한 뒤 체크를 바꾸면 저장하지 않은 변경을 알린다", async () => {
+  it("노드를 펼치면 그 카드의 항목을 클릭 한 번으로 넣고 뺀다", async () => {
     renderPage();
-    await openCard("데이터", "학습 데이터");
-    await userEvent.click(screen.getByRole("checkbox", { name: "데이터 이름" }));
-    await save();
-    await userEvent.click(screen.getByRole("checkbox", { name: "데이터 출처" }));
+    const card = node("의뢰자 정보");
+    await userEvent.click(within(card).getByRole("button", { name: "항목 고르기" }));
 
-    expect(screen.getByText("저장하지 않은 변경이 있어요")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "저장" })).toBeEnabled();
-    // 다음을 누르면 마지막으로 저장한 내용이 적용된다.
-    expect(useWorkflowStore.getState().materialPicks.trainingData).toEqual(["trainingDatasetName"]);
+    const website = within(card).getByRole("button", { name: "홈페이지 (선택)" });
+    expect(website).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(website);
+
+    expect(website).toHaveAttribute("aria-pressed", "true");
+    expect(useWorkflowStore.getState().materialPicks.clientInfo).toEqual(["contactExtra:website"]);
+    // 칩으로도 바로 보인다.
+    expect(within(card).getByRole("button", { name: "홈페이지 빼기" })).toBeInTheDocument();
+  });
+
+  it("목록에서 빠진 카드의 항목을 넣으면 그 카드도 함께 들어간다", async () => {
+    renderPage();
+    await userEvent.click(within(palette()).getByRole("button", { name: "정답 라벨 항목 보기" }));
+    const items = within(palette()).getByRole("list", { name: "정답 라벨 고를 항목" });
+    const [first] = within(items).getAllByRole("button", { name: / 넣기$/ });
+    await userEvent.click(first);
+
+    expect(diagramCards()).toContain("정답 라벨");
+    expect(useWorkflowStore.getState().materialPicks.groundTruth).toHaveLength(1);
   });
 });
 
-describe("진입", () => {
-  it("유형을 고르지 않았으면 작업 유형 화면으로 보낸다", () => {
+describe("입력 순서 — 다이어그램에서 정한다", () => {
+  it("레인을 옮기면 입력 순서가 바뀌고, 다음은 그 첫 단계로 간다", async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: "모델 왼쪽으로" }));
+
+    expect(laneNames()).toEqual(["모델", "의뢰 정보", "데이터", "평가 기준"]);
+    expect(within(node("평가 대상 모델")).getByText("1")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "다음" }));
+    expect(screen.getByTestId("step-model")).toBeInTheDocument();
+  });
+
+  it("레인 안에서 카드를 옮긴다", async () => {
+    useWorkflowStore.getState().setMaterialPick("testData", ["testDataSource"]);
+    renderPage();
+
+    await userEvent.click(screen.getByRole("button", { name: "테스트 데이터 위로" }));
+
+    expect(diagramCards().slice(2, 4)).toEqual(["테스트 데이터", "평가 데이터"]);
+  });
+
+  it("평가 기준 레인은 데이터 레인 앞으로 옮길 수 없다 — 원래 자리에 두고 이유를 보인다", async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: "평가 기준 왼쪽으로" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("지표와 합격 기준은 평가 데이터 뒤에 둬야 해요");
+    expect(laneNames()).toEqual(["의뢰 정보", "모델", "데이터", "평가 기준"]);
+  });
+
+  it("학습 데이터는 평가 데이터 위로 옮길 수 없다", async () => {
+    useWorkflowStore.getState().setMaterialPick("trainingData", ["trainingDatasetName"]);
+    renderPage();
+
+    await userEvent.click(screen.getByRole("button", { name: "학습 데이터 위로" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("학습 데이터는 평가 데이터 뒤에 둬야 해요");
+    expect(diagramCards().slice(2, 4)).toEqual(["평가 데이터", "학습 데이터"]);
+  });
+
+  it("평가 관점을 지표 뒤로 옮기면 막지 않고 지표 추천에 대해 알린다", async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: "평가 관점 아래로" }));
+
+    expect(diagramCards().slice(-2)).toEqual(["지표와 합격 기준", "평가 관점"]);
+    expect(within(diagram()).getByText(/관점에 맞는 지표를 추천받을 수 있어요/)).toBeInTheDocument();
+  });
+});
+
+describe("추천 세트와 하단 현황", () => {
+  it("처음에는 최소이고 표준까지 남은 권장 항목을 경고한다", () => {
+    renderPage();
+
+    const status = screen.getByRole("status", { name: "재료 현황" });
+    expect(status).toHaveTextContent("필수 카드 5장");
+    expect(status).toHaveTextContent("품질 최소");
+    expect(status).toHaveTextContent(/표준까지 권장 \d+개가 남았어요/);
+    expect(screen.getByRole("button", { name: "최소" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("표준 세트를 고르면 선택 카드 넷이 권장 항목과 함께 들어가고, 되돌릴 수 있다", async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: "표준" }));
+
+    expect(screen.getByRole("button", { name: "표준" })).toHaveAttribute("aria-pressed", "true");
+    expect(diagramCards()).toHaveLength(9);
+    const status = screen.getByRole("status", { name: "재료 현황" });
+    expect(status).toHaveTextContent("품질 표준");
+    expect(status).not.toHaveTextContent("표준까지");
+
+    await userEvent.click(screen.getByRole("button", { name: "되돌리기" }));
+    expect(diagramCards()).toHaveLength(5);
+    expect(screen.getByRole("button", { name: "최소" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("빠진 권장 항목을 하단에서 펼쳐 바로 넣는다", async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: "빠진 항목 보기" }));
+    await userEvent.click(screen.getByRole("button", { name: "모델 설정과 실행 환경 알고리즘 넣기" }));
+
+    expect(useWorkflowStore.getState().materialPicks.modelEnv).toEqual(["algorithm"]);
+    expect(diagramCards()).toContain("모델 설정과 실행 환경");
+  });
+
+  it("다음은 막지 않는다 — 필수 카드가 늘 들어가 있다", async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: "다음" }));
+
+    expect(screen.getByTestId("step-client-info")).toBeInTheDocument();
+  });
+});
+
+describe("들어오고 나가기", () => {
+  it("확인과 생성에서 고른 카드를 열어 둔 채 들어온다", () => {
+    renderPage({ cardId: "trainingData" });
+
+    expect(within(palette()).getByRole("list", { name: "학습 데이터 고를 항목" })).toBeInTheDocument();
+  });
+
+  it("유형을 고르지 않고 들어오면 작업 유형 화면으로 보낸다", () => {
     useWorkflowStore.setState({ taskType: "" });
     renderPage();
+
+    expect(screen.getByTestId("task-type")).toBeInTheDocument();
+  });
+
+  it("이전은 작업 유형 화면으로 간다", async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: "이전" }));
 
     expect(screen.getByTestId("task-type")).toBeInTheDocument();
   });

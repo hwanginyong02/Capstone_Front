@@ -37,9 +37,11 @@ import {
 import {
   COMPOSER_CARDS,
   OPTIONAL_CARD_IDS,
+  REQUIRED_CARD_IDS,
   pickKind,
   pickableIds,
 } from "../../data/reportComposer";
+import { DEFAULT_CARD_ORDER, normalizeCardOrder, placeAtLaneEnd } from "../domain/cardOrder";
 
 /**
  * 단계 번호·경로 상수는 이 파일을 떠났다.
@@ -53,7 +55,7 @@ import {
  */
 
 /** persist 스키마 버전. 저장된 상태의 의미가 바뀔 때만 올린다. */
-export const WORKFLOW_PERSIST_VERSION = 12;
+export const WORKFLOW_PERSIST_VERSION = 13;
 
 /**
  * 구 번호 체계(v4 까지)의 1~6 이 가리켰던 단계.
@@ -81,6 +83,7 @@ const LEGACY_STEP_IDS: readonly string[] = [
 const INITIAL_COMPOSER_STATE = {
   composerCards: DEFAULT_COMPOSER_SELECTION,
   materialPicks: {} as MaterialPicks,
+  cardOrder: DEFAULT_CARD_ORDER,
   composerMetrics: {} as ComposerValueMap,
   composerPerspective: {} as ComposerValueMap,
   composerTrainingData: {} as ComposerValueMap,
@@ -334,6 +337,33 @@ function migrateMaterialPicksV12(next: any): any {
 }
 
 /**
+ * v12 → v13 — 재료 고르기가 다이어그램이 됐다(docs/MATERIAL_PICKER.md §11). 입력 순서를 사용자가
+ * 정하고(`cardOrder`), ⑥ ⑦ ⑧ 을 묶던 "데이터 정보" 단계가 카드마다 한 단계로 나뉘었다.
+ *
+ * - 순서는 카탈로그 순서로 시작한다 — 지금까지 걸어 온 순서와 같다.
+ * - 진행 표시의 `"dataInfo"` 는 넣어 둔 데이터 카드의 단계로 옮긴다. 데이터 정보를 마쳤으면 그
+ *   카드들을 모두 마친 것이고, 거기 서 있었으면 그 첫 카드에 서 있는 것이다. 넣은 데이터 카드가
+ *   없으면 데이터 정보 다음이던 평가 관점에 세운다.
+ */
+const DATA_CARD_STEPS = ["trainingData", "testData", "groundTruth"] as const;
+
+function migrateCardOrderV13(next: any): any {
+  const cards: ComposerSelection = { ...DEFAULT_COMPOSER_SELECTION, ...(next.composerCards ?? {}) };
+  const dataSteps: StepId[] = DATA_CARD_STEPS.filter((id) => cards[id]);
+  const completed: unknown = next.completedStepIds;
+  const completedStepIds = [
+    ...new Set(
+      (Array.isArray(completed) ? completed : []).flatMap((id: StepId | "dataInfo") =>
+        id === "dataInfo" ? dataSteps : [id],
+      ),
+    ),
+  ];
+  const currentStepId =
+    next.currentStepId === "dataInfo" ? (dataSteps[0] ?? "perspective") : next.currentStepId;
+  return { ...next, cardOrder: normalizeCardOrder(next.cardOrder), completedStepIds, currentStepId };
+}
+
+/**
  * 저장된 워크플로우 상태를 현재 규칙으로 옮긴다(순수 함수 — 테스트가 직접 호출한다).
  *
  * **v1 → v2**: multilabel 에서 M1·M11·M12·M13 이 제거됐다(ISSUES.md A-04, 결정 2).
@@ -392,6 +422,9 @@ function migrateMaterialPicksV12(next: any): any {
  *
  * **v11 → v12**: 성적서 구성 화면이 재료 고르기가 됐다. 카드마다 저장한 체크(`materialPicks`)를
  * 지금 상태에서 만든다(`migrateMaterialPicksV12`).
+ *
+ * **v12 → v13**: 입력 순서(`cardOrder`)가 생기고 데이터 정보 단계가 카드마다 나뉘었다
+ * (`migrateCardOrderV13`).
  */
 export function migrateWorkflowState(persisted: any, version: number): any {
   if (!persisted || version >= WORKFLOW_PERSIST_VERSION) return persisted;
@@ -503,6 +536,11 @@ export function migrateWorkflowState(persisted: any, version: number): any {
     next = migrateMaterialPicksV12(next);
   }
 
+  // v12 → v13 — 사용자 입력 순서, 데이터 정보 단계 분리.
+  if (version < 13) {
+    next = migrateCardOrderV13(next);
+  }
+
   return next;
 }
 
@@ -510,7 +548,7 @@ interface WorkflowState {
   /**
    * 지금 있는 단계와 마친 단계. **번호가 아니라 이름이다.**
    *
-   * 걸을 단계 목록은 `composerCards` 에서 계산되므로 번호의 뜻이 선택에 따라 달라진다.
+   * 걸을 단계 목록은 `composerCards`·`cardOrder` 에서 계산되므로 번호의 뜻이 선택에 따라 달라진다.
    * 저장소를 왕복하는 값이 그런 번호면 카드를 토글할 때마다 진행 표시가 조용히 어긋난다
    * (docs/WORKFLOW_REDESIGN.md §3.3 이 경고한 상황). 화면에 보일 번호는 목록 위치에서
    * 그때그때 만든다(`stepNumberOf`).
@@ -532,7 +570,7 @@ interface WorkflowState {
   uploadedFile: UploadedFileInfo | null;
   rawFile: File | null;
   metadata: any | null;
-  /** ⑥ 학습 데이터의 예시 파일. ⑥ 을 넣었을 때 데이터 정보 단계에서 받는다. */
+  /** ⑥ 학습 데이터의 예시 파일. ⑥ 을 넣었을 때 학습 데이터 단계에서 받는다. */
   trainingExampleFiles: UploadedFileInfo[];
   trainingUnsuitableExampleFiles: UploadedFileInfo[];
 
@@ -581,16 +619,23 @@ interface WorkflowState {
    * 선택 카드(⑥~⑨)가 성적서에 들어가는지.
    *
    * 필수 카드(①~⑤)는 늘 들어가 상태로 들지 않는다. 이 값이 **걸을 단계 목록을 정한다**
-   * (`utils/domain/workflowSteps.ts` 의 `buildStepList`). 재료 고르기에서 선택 카드를 저장할 때
-   * 함께 맞춘다(`saveMaterialPick`) — 항목을 하나 이상 골라 저장하면 켜진다.
+   * (`utils/domain/workflowSteps.ts` 의 `buildStepList`). 재료 고르기에서 선택 카드의 항목을
+   * 바꿀 때 함께 맞춘다(`setMaterialPick`) — 항목이 하나라도 들어가면 켜진다.
    */
   composerCards: ComposerSelection;
 
   /**
-   * 재료 고르기에서 카드마다 저장한 체크(docs/MATERIAL_PICKER.md §7). 키가 없으면 그 카드를
-   * 저장하지 않은 것이다. 저장하지 않은 체크는 화면에만 있고 여기 들지 않는다.
+   * 재료 고르기에서 카드마다 받기로 한 권장·선택 항목(docs/MATERIAL_PICKER.md §11). 넣고 빼는
+   * 즉시 바뀐다. 키가 없으면 재료 고르기를 지나기 전의 상태다 — 입력 화면은 그 카드의 필드를 모두
+   * 받는다(`isFieldPicked`). 재료 고르기에 들어오면 필수 카드의 키를 채운다(`initRequiredPicks`).
    */
   materialPicks: MaterialPicks;
+
+  /**
+   * 입력 순서 — 사용자가 다이어그램에서 정한 카드 순서(`utils/domain/cardOrder.ts`). 넣지 않은
+   * 선택 카드도 자리를 갖는다. 걸을 단계 목록이 이 순서를 따른다.
+   */
+  cardOrder: ComposerCardId[];
 
   /**
    * 카드별 입력값. 키는 재료 레지스트리의 `field.id` 다(`data/reportComposer.ts`).
@@ -658,10 +703,15 @@ interface WorkflowState {
 
   // Actions — 재료 고르기
   /**
-   * 카드 하나의 체크를 저장한다. 선택 카드면 항목이 하나 이상일 때 켜고, 비어 있으면 끈다 —
-   * 아무것도 고르지 않고 저장한 선택 카드는 "넣지 않기로 확정"이다(§7).
+   * 카드 하나의 항목을 바꾼다. 선택 카드면 항목이 하나 이상일 때 켜고, 비어 있으면 끈다. 새로 켜진
+   * 선택 카드는 그 레인 맨 아래로 간다(`placeAtLaneEnd`).
    */
-  saveMaterialPick: (cardId: ComposerCardId, ids: string[]) => void;
+  setMaterialPick: (cardId: ComposerCardId, ids: string[]) => void;
+  /** 여러 카드의 항목을 한 번에 바꾼다(추천 세트, 되돌리기). 준 카드만 바뀐다. */
+  setMaterialPicks: (picks: MaterialPicks) => void;
+  /** 필수 카드 중 키가 없는 것을 빈 배열로 채운다 — 고르지 않은 선택 항목을 받지 않게 한다. */
+  initRequiredPicks: () => void;
+  setCardOrder: (order: ComposerCardId[]) => void;
   setComposerMetrics: (
     value: ComposerValueMap | ((prev: ComposerValueMap) => ComposerValueMap),
   ) => void;
@@ -708,6 +758,27 @@ const INITIAL_STATE = {
   lastRunId: null as string | null,
   ...INITIAL_COMPOSER_STATE,
 };
+
+/**
+ * 카드 항목을 바꾸고 선택 카드의 켜짐(`composerCards`)과 순서를 맞춘다.
+ *
+ * 선택 카드는 항목이 하나라도 있으면 켜진다. 꺼져 있다가 켜진 카드는 그 레인 맨 아래로 보낸다 —
+ * 넣지 않은 동안 남아 있던 옛 자리가 순서 규칙(`ORDER_RULES`)을 깨지 않게 한다.
+ */
+function applyMaterialPicks(
+  state: Pick<WorkflowState, "materialPicks" | "composerCards" | "cardOrder">,
+  changes: MaterialPicks,
+): Pick<WorkflowState, "materialPicks" | "composerCards" | "cardOrder"> {
+  const composerCards = { ...state.composerCards };
+  let cardOrder = state.cardOrder;
+  for (const [cardId, ids] of Object.entries(changes) as Array<[ComposerCardId, string[]]>) {
+    if (!(OPTIONAL_CARD_IDS as string[]).includes(cardId)) continue;
+    const on = ids.length > 0;
+    if (on && !composerCards[cardId as OptionalCardId]) cardOrder = placeAtLaneEnd(cardOrder, cardId);
+    composerCards[cardId as OptionalCardId] = on;
+  }
+  return { materialPicks: { ...state.materialPicks, ...changes }, composerCards, cardOrder };
+}
 
 /** persist 저장소 키. 테스트와 운영이 같은 값을 보도록 export 한다. */
 export const WORKFLOW_STORAGE_KEY = "ml-evaluation-workflow";
@@ -842,13 +913,23 @@ export const useWorkflowStore = create<WorkflowState>()(
       setLastRunId: (runId) => set({ lastRunId: runId }),
 
       // 재료 고르기
-      saveMaterialPick: (cardId, ids) =>
-        set((state) => ({
-          materialPicks: { ...state.materialPicks, [cardId]: ids },
-          ...((OPTIONAL_CARD_IDS as string[]).includes(cardId)
-            ? { composerCards: { ...state.composerCards, [cardId]: ids.length > 0 } }
-            : {}),
-        })),
+      setMaterialPick: (cardId, ids) => set((state) => applyMaterialPicks(state, { [cardId]: ids })),
+
+      setMaterialPicks: (picks) => set((state) => applyMaterialPicks(state, picks)),
+
+      initRequiredPicks: () =>
+        set((state) => {
+          const missing = REQUIRED_CARD_IDS.filter((id) => state.materialPicks[id] === undefined);
+          if (missing.length === 0) return {};
+          return {
+            materialPicks: {
+              ...state.materialPicks,
+              ...Object.fromEntries(missing.map((id) => [id, [] as string[]])),
+            },
+          };
+        }),
+
+      setCardOrder: (order) => set({ cardOrder: normalizeCardOrder(order) }),
 
       setComposerMetrics: (value) =>
         set((state) => ({
