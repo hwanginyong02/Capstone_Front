@@ -1,5 +1,6 @@
 /**
- * 재료 고르기 화면 — 왼쪽 재료 목록, 가운데 4열 다이어그램, 하단 현황(docs/MATERIAL_PICKER.md §11).
+ * 재료 고르기 화면 — 왼쪽 재료 목록(대분류·카드), 가운데 위 4열 다이어그램, 가운데 아래 필드 패널,
+ * 하단 현황(docs/MATERIAL_PICKER.md §11).
  *
  * 저장 버튼은 없다. 넣고 빼는 것과 순서를 바꾸는 것이 바로 스토어에 들어가고 다이어그램에 보인다.
  * 필수 카드는 처음부터 들어가 있어 다음을 막지 않는다. 끌어 놓기와 같은 일을 하는 버튼이 모두
@@ -29,6 +30,12 @@ function renderPage(state?: { cardId: string }) {
 
 const diagram = () => screen.getByRole("region", { name: "입력 순서 다이어그램" });
 const palette = () => screen.getByRole("navigation", { name: "재료 목록" });
+/** 가운데 아래 필드 패널. 고른 카드의 이름이 붙는다. */
+const fieldPanel = (card: string) => screen.getByRole("region", { name: `${card} 필드` });
+/** 재료 목록의 카드 버튼. 필수 카드는 이름 뒤에 "필수"가 붙어 읽힌다. */
+const paletteCard = (card: string, pressed: boolean) =>
+  within(palette()).getByRole("button", { name: new RegExp("^" + card + "(필수)?$"), pressed });
+const selectInPalette = (card: string) => userEvent.click(paletteCard(card, false));
 
 /** 다이어그램의 레인 이름, 왼쪽부터. */
 const laneNames = () =>
@@ -74,11 +81,11 @@ describe("화면 구조", () => {
     expect(useWorkflowStore.getState().materialPicks.clientInfo).toEqual([]);
   });
 
-  it("재료 목록에서 카드를 펼치면 필드가 구분별로 나오고, 이름·형식·설명이 마우스 없이 보인다", async () => {
+  it("재료 목록에서 카드를 고르면 가운데 아래에 필드가 구분별로 나오고, 이름·형식·설명이 마우스 없이 보인다", async () => {
     renderPage();
-    await userEvent.click(within(palette()).getByRole("button", { name: "모델 설정과 실행 환경 필드 보기" }));
+    await selectInPalette("모델 설정과 실행 환경");
 
-    const fields = within(palette()).getByRole("group", { name: "모델 설정과 실행 환경 필드" });
+    const fields = fieldPanel("모델 설정과 실행 환경");
     expect(within(fields).getByRole("heading", { name: /^권장/ })).toBeInTheDocument();
     expect(within(fields).getByText("알고리즘")).toBeInTheDocument();
     expect(within(fields).getByText("모델 학습에 쓴 알고리즘입니다. 예: 랜덤포레스트, XGBoost")).toBeVisible();
@@ -89,11 +96,10 @@ describe("화면 구조", () => {
     expect(useWorkflowStore.getState().materialPicks.modelEnv).toEqual(["algorithm"]);
   });
 
-  it("필수·조건부 필드도 목록에 나온다 — 필드는 하나씩 쪼개 보인다", async () => {
+  it("처음에는 의뢰자 정보의 필드를 보인다 — 필수·조건부도 나오고 필드는 하나씩 쪼개 보인다", () => {
     renderPage();
-    await userEvent.click(within(palette()).getByRole("button", { name: "의뢰자 정보 필드 보기" }));
 
-    const fields = within(palette()).getByRole("group", { name: "의뢰자 정보 필드" });
+    const fields = fieldPanel("의뢰자 정보");
     for (const name of ["회사명", "대표자", "사업자등록번호", "전화번호", "주소"]) {
       expect(within(fields).getByText(name)).toBeInTheDocument();
     }
@@ -103,13 +109,17 @@ describe("화면 구조", () => {
     expect(within(fields).getByRole("button", { name: "홈페이지 넣기" })).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("재료 목록은 대분류 → 카드 나무이고, 대분류에 카드 수 문구를 달지 않는다", () => {
+  it("재료 목록에는 대분류와 카드만 있고, 대분류에 카드 수 문구를 달지 않는다", () => {
     renderPage();
 
     for (const name of ["의뢰 정보", "모델", "데이터", "평가 기준"]) {
-      expect(within(palette()).getByRole("heading", { level: 3, name })).toBeInTheDocument();
+      const category = within(palette()).getByRole("region", { name });
+      expect(within(category).getByRole("heading", { level: 3, name })).toBeInTheDocument();
     }
     expect(within(palette()).queryByText(/카드 \d+장/)).not.toBeInTheDocument();
+    // 필드는 왼쪽에 두지 않는다 — 가운데 아래 필드 패널에서 읽는다.
+    expect(within(palette()).queryByText("회사명")).not.toBeInTheDocument();
+    expect(paletteCard("의뢰자 정보", true)).toBeInTheDocument();
     // 필수 카드는 이미 들어가 있다고 보인다.
     expect(within(palette()).getAllByText("들어감")).toHaveLength(5);
   });
@@ -161,11 +171,12 @@ describe("넣고 빼기 — 바로 반영", () => {
     expect(diagramCards()).not.toContain("모델 설정과 실행 환경");
   });
 
-  it("노드의 필드 보기는 재료 목록에서 그 카드를 펼치고, 거기서 넣은 항목이 칩으로 바로 보인다", async () => {
+  it("노드의 필드 보기는 그 카드를 필드 패널에 열고, 거기서 넣은 항목이 칩으로 바로 보인다", async () => {
     renderPage();
+    await selectInPalette("평가 관점");
     await userEvent.click(within(node("의뢰자 정보")).getByRole("button", { name: "의뢰자 정보 필드 보기" }));
 
-    const fields = within(palette()).getByRole("group", { name: "의뢰자 정보 필드" });
+    const fields = fieldPanel("의뢰자 정보");
     const website = within(fields).getByRole("button", { name: "홈페이지 넣기" });
     await userEvent.click(website);
 
@@ -174,11 +185,12 @@ describe("넣고 빼기 — 바로 반영", () => {
     expect(within(node("의뢰자 정보")).getByRole("button", { name: "홈페이지 빼기" })).toBeInTheDocument();
   });
 
-  it("목록에서 빠진 카드의 항목을 넣으면 그 카드도 함께 들어간다", async () => {
+  it("빠진 카드의 항목을 필드 패널에서 넣으면 그 카드도 함께 들어간다", async () => {
     renderPage();
-    await userEvent.click(within(palette()).getByRole("button", { name: "정답 라벨 필드 보기" }));
-    const items = within(palette()).getByRole("group", { name: "정답 라벨 필드" });
-    const [first] = within(items).getAllByRole("button", { name: / 넣기$/ });
+    await selectInPalette("정답 라벨");
+    const items = fieldPanel("정답 라벨");
+    // 필드 줄의 넣기만 — 머리의 "카드 넣기"는 권장 항목을 모두 넣는다.
+    const [first] = within(items).getAllByRole("button", { name: / 넣기$/, pressed: false });
     await userEvent.click(first);
 
     expect(diagramCards()).toContain("정답 라벨");
@@ -281,7 +293,7 @@ describe("들어오고 나가기", () => {
   it("확인과 생성에서 고른 카드를 열어 둔 채 들어온다", () => {
     renderPage({ cardId: "trainingData" });
 
-    expect(within(palette()).getByRole("group", { name: "학습 데이터 필드" })).toBeInTheDocument();
+    expect(fieldPanel("학습 데이터")).toBeInTheDocument();
   });
 
   it("유형을 고르지 않고 들어오면 작업 유형 화면으로 보낸다", () => {

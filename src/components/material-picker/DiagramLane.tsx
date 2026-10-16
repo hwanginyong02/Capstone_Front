@@ -30,7 +30,7 @@ interface DiagramLaneProps {
   numberOf: (cardId: ComposerCardId) => number;
   taskType: TaskType | "";
   picks: MaterialPicks;
-  /** 재료 목록에서 그 카드를 펼친다. */
+  /** 필드 패널에 그 카드를 연다. */
   onReveal: (cardId: ComposerCardId) => void;
   previousLaneId?: MaterialCategoryId;
   nextLaneId?: MaterialCategoryId;

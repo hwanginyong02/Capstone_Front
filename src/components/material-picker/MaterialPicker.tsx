@@ -1,10 +1,12 @@
 /**
- * 재료 고르기 화면의 본문 — 왼쪽 재료 목록과 가운데 큰 다이어그램(docs/MATERIAL_PICKER.md §11).
+ * 재료 고르기 화면의 본문(docs/MATERIAL_PICKER.md §11).
  *
- * 무엇을 넣을지는 재료 목록에서 필드 설명을 읽고 고르고, 어떤 순서로 입력할지는 다이어그램에서
- * 정한다. 바꾼 것은 그 자리에서 바로 보인다. 저장 버튼은 없다. 현황과 이전·다음은 셸의 하단 바에
- * 있다.
+ * - 왼쪽: 재료 목록 — 대분류와 카드만.
+ * - 가운데 위: 다이어그램 — 무엇이 들어갔고 어떤 순서로 입력하는지.
+ * - 가운데 아래: 필드 패널 — 왼쪽이나 다이어그램에서 고른 카드의 필드 설명과 형식. 여기서
+ *   다이어그램으로 끌어 놓거나 ＋로 넣는다.
  *
+ * 바꾼 것은 그 자리에서 바로 보인다. 저장 버튼은 없다. 현황과 이전·다음은 셸의 하단 바에 있다.
  * 상태는 페이지가 든다 — 이 컴포넌트는 그리기만 한다(FRONTEND_DEVELOPMENT_GUIDELINE §1).
  */
 import { DndProvider } from "react-dnd";
@@ -17,7 +19,10 @@ import type {
   MaterialCategory,
   MaterialPicks,
 } from "../../types/reportComposer.types";
+import { getCard } from "../../data/reportComposer";
+import { isCardIncluded } from "../../utils/domain/cardOrder";
 import type { PickTier } from "../../utils/domain/materialPicks";
+import { FieldPanel } from "./FieldPanel";
 import { PickDiagram } from "./PickDiagram";
 import { PickPalette } from "./PickPalette";
 import { PickSetToggle } from "./PickSetToggle";
@@ -30,10 +35,10 @@ interface MaterialPickerProps {
   lanes: MaterialCategory[];
   /** 들어간 카드, 입력 순서대로. */
   cards: ComposerCard[];
-  /** 재료 목록에서 펼친 카드. */
-  paletteExpanded: ReadonlySet<ComposerCardId>;
-  onTogglePaletteCard: (cardId: ComposerCardId) => void;
-  /** 재료 목록에서 그 카드를 펼치고 보이게 한다(다이어그램 노드의 "필드 보기"). */
+  /** 필드 패널에 보이는 카드. */
+  selectedCardId: ComposerCardId;
+  onSelectCard: (cardId: ComposerCardId) => void;
+  /** 다이어그램 노드의 "필드 보기" — 그 카드를 필드 패널에 열고 보이게 한다. */
   onReveal: (cardId: ComposerCardId) => void;
   blockedReason: string | null;
   hints: string[];
@@ -51,8 +56,8 @@ export function MaterialPicker({
   selection,
   lanes,
   cards,
-  paletteExpanded,
-  onTogglePaletteCard,
+  selectedCardId,
+  onSelectCard,
   onReveal,
   blockedReason,
   hints,
@@ -61,6 +66,8 @@ export function MaterialPicker({
   undo,
   actions,
 }: MaterialPickerProps) {
+  const selectedCard = getCard(selectedCardId);
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex flex-col gap-6 px-6 pb-6 pt-8 lg:px-8">
@@ -68,8 +75,8 @@ export function MaterialPicker({
           <div className="flex max-w-[640px] flex-col gap-2">
             <h1 className="text-heading-large font-medium text-foreground">재료 고르기</h1>
             <p className="text-sm leading-[21px] text-muted-foreground">
-              왼쪽 목록에서 필드 설명을 보고 성적서에 넣을 재료를 고른 뒤, 가운데 다이어그램에서 입력할
-              순서를 정하세요. 바꾼 것은 바로 반영돼요. 입력은 화살표와 번호 순서대로 진행돼요.
+              왼쪽에서 카드를 고르면 아래에 필드 설명이 나와요. 성적서에 넣을 재료를 다이어그램에 끌어 놓고
+              입력할 순서를 정하세요. 바꾼 것은 바로 반영되고, 입력은 화살표와 번호 순서대로 진행돼요.
             </p>
           </div>
           <div className="flex flex-col items-end gap-1.5">
@@ -90,17 +97,16 @@ export function MaterialPicker({
         </header>
 
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-          <div className="w-full lg:sticky lg:top-20 lg:max-h-[calc(100vh-11rem)] lg:w-[380px] lg:shrink-0 lg:overflow-y-auto">
+          <div className="w-full lg:sticky lg:top-20 lg:max-h-[calc(100vh-11rem)] lg:w-[260px] lg:shrink-0 lg:overflow-y-auto">
             <PickPalette
               taskType={taskType}
-              picks={picks}
               selection={selection}
-              expanded={paletteExpanded}
-              onToggleExpanded={onTogglePaletteCard}
+              selectedCardId={selectedCardId}
+              onSelectCard={onSelectCard}
               actions={actions}
             />
           </div>
-          <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 flex-1 flex-col gap-6">
             <PickDiagram
               taskType={taskType}
               lanes={lanes}
@@ -109,6 +115,14 @@ export function MaterialPicker({
               onReveal={onReveal}
               blockedReason={blockedReason}
               hints={hints}
+              actions={actions}
+            />
+            <FieldPanel
+              key={selectedCardId}
+              taskType={taskType}
+              card={selectedCard}
+              picks={picks[selectedCardId] ?? []}
+              included={isCardIncluded(selectedCard, selection)}
               actions={actions}
             />
           </div>

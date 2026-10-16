@@ -5,7 +5,7 @@
  * 순서는 화살표 없이 위에서 아래로 읽는다. 노드에는 카드 이름과 필수 표시, 받기로 한 항목의 칩이
  * 붙는다. 필수·조건부 필드는 늘 받으므로 "필수 n"으로 접어 보이고, 권장·선택 칩은 ×로 뺀다.
  *
- * "필드 보기"는 왼쪽 재료 목록에서 이 카드를 펼친다 — 필드 설명과 형식은 거기서 읽고 고른다.
+ * "필드 보기"는 가운데 아래 필드 패널에 이 카드를 연다 — 필드 설명과 형식은 거기서 읽고 고른다.
  * 같은 레인 안에서는 끌거나 ▲▼ 버튼으로 순서를 바꾼다.
  */
 import { useRef, useState, type ReactNode } from "react";
@@ -25,7 +25,7 @@ interface CardNodeProps {
   number: number;
   taskType: TaskType | "";
   picks: readonly string[];
-  /** 재료 목록에서 이 카드를 펼친다. */
+  /** 필드 패널에 이 카드를 연다. */
   onReveal: () => void;
   /** 같은 레인의 위·아래 카드. 없으면 그쪽으로 옮기는 버튼을 끈다. */
   previousCardId?: ComposerCardId;
