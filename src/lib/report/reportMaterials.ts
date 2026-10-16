@@ -187,10 +187,23 @@ function groundTruthRows(c: ReportComposerInput): MaterialRow[] {
   } else if (kind?.text) {
     const value = v.labelAgreementValue?.text?.trim();
     const name = choiceLabel("groundTruth", "labelAgreementKind", kind.text, kind.otherText);
-    if (value) agreement = kind.text === "Percent agreement" ? `${name} ${value}%` : `${name} ${value}`;
+    if (value) {
+      agreement =
+        kind.text === "Percent agreement" ? `${name} ${percentToRatio(value)}` : `${name} ${value}`;
+    }
   }
   rows.push({ label: "라벨 일치도", value: agreement });
   return rows;
+}
+
+/**
+ * 단순 일치율은 화면에서 %로 받고 성적서와 AI 에는 0~1 로 적는다(재료 목록 5절 "단순 일치율 0~1,
+ * 화면에는 %"). 82 → "0.82". 숫자가 아니면 받은 글을 그대로 둔다.
+ */
+function percentToRatio(text: string): string {
+  const percent = Number(text);
+  if (!Number.isFinite(percent)) return text;
+  return String(Number((percent / 100).toFixed(4)));
 }
 
 function environmentRows(c: ReportComposerInput): MaterialRow[] {

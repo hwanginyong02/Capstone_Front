@@ -128,7 +128,7 @@ describe("⑧ 정답 라벨", () => {
     ).toBe("Cohen의 카파 0.71");
     expect(
       valueOf(groundTruth({ ...several, labelAgreementKind: { text: "Percent agreement" }, labelAgreementValue: { text: "82" } }), "라벨 일치도"),
-    ).toBe("단순 일치율 82%");
+    ).toBe("단순 일치율 0.82"); // 화면은 %, 성적서·AI 는 0~1(재료 목록 5절)
     expect(
       valueOf(groundTruth({ ...several, labelAgreementKind: { text: "Other", otherText: "Gwet's AC1" }, labelAgreementValue: { text: "0.6" } }), "라벨 일치도"),
     ).toBe("기타(Gwet's AC1) 0.6");
