@@ -18,6 +18,7 @@ import { categoryOf } from "../../data/reportComposer";
 import { pickItems, type PickItem } from "../../utils/domain/materialPicks";
 import { cn } from "../../utils/styling/styles";
 import { DND, dropPosition, type CardDragItem, type ItemDragItem, type PickerActions } from "./dnd";
+import { KIND_STYLE } from "./kindStyles";
 
 interface CardNodeProps {
   card: ComposerCard;
@@ -203,12 +204,11 @@ function PickChip({
         drag(element);
       }}
       className={cn(
-        "inline-flex cursor-grab items-center gap-1 rounded-md border py-0.5 pl-2 pr-0.5 text-xs",
-        item.kind === "recommended"
-          ? "border-primary/30 bg-primary-subtle text-foreground"
-          : "border-border-strong bg-card text-foreground-secondary",
+        "inline-flex cursor-grab items-center gap-1.5 rounded-md border border-border-strong bg-card py-0.5 pl-2 pr-0.5 text-xs text-foreground",
       )}
     >
+      {/* 구분 색 점 — 필드 패널의 배지와 같은 색이다(권장 앰버, 선택 회색). */}
+      <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full", KIND_STYLE[item.kind].dot)} />
       {item.label}
       <button
         type="button"

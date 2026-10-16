@@ -9,6 +9,8 @@
  */
 import { TriangleAlert, CircleCheck } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { cn } from "../../utils/styling/styles";
+import { KIND_STYLE } from "./kindStyles";
 import type { ComposerCardId } from "../../types/reportComposer.types";
 import {
   tierInfo,
@@ -33,11 +35,13 @@ export function PickStatusBar({ coverage, tier, missing, onAddRecommended }: Pic
       <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-foreground">
         <span>필수 카드 {coverage.requiredCards}장</span>
         <span aria-hidden="true" className="text-border-strong">|</span>
-        <span>
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden="true" className={cn("size-1.5 rounded-full", KIND_STYLE.recommended.dot)} />
           권장 {coverage.recommended.picked}/{coverage.recommended.total}
         </span>
         <span aria-hidden="true" className="text-border-strong">|</span>
-        <span>
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden="true" className={cn("size-1.5 rounded-full", KIND_STYLE.optional.dot)} />
           선택 {coverage.optional.picked}/{coverage.optional.total}
         </span>
         <span className="rounded-md bg-primary-subtle px-2 py-0.5 text-xs font-medium text-primary">

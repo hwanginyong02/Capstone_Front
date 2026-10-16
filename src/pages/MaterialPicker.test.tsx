@@ -88,7 +88,10 @@ describe("화면 구조", () => {
     const fields = fieldPanel("모델 설정과 실행 환경");
     expect(within(fields).getByRole("heading", { name: /^권장/ })).toBeInTheDocument();
     expect(within(fields).getByText("알고리즘")).toBeInTheDocument();
-    expect(within(fields).getByText("모델 학습에 쓴 알고리즘입니다. 예: 랜덤포레스트, XGBoost")).toBeVisible();
+    expect(within(fields).getByText("모델 학습에 쓴 알고리즘입니다.")).toBeVisible();
+    // 설명 끝의 예시는 한 줄 떼어 보인다. 형식은 이름 옆 칩이다.
+    expect(within(fields).getByText("랜덤포레스트, XGBoost")).toBeVisible();
+    expect(within(fields).getAllByText("텍스트").length).toBeGreaterThan(0);
     // 권장 필드 안의 칸도 나열한다.
     expect(within(fields).getByText("운영체제")).toBeInTheDocument();
     // 설명을 읽고 바로 넣는다.
