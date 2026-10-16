@@ -64,9 +64,9 @@ export function PickPalette({ taskType, selection, selectedCardId, onSelectCard,
         <section
           key={category.id}
           aria-label={category.name}
-          className="overflow-hidden rounded-lg border border-border bg-card"
+          className="overflow-hidden rounded-lg border border-border-strong bg-card"
         >
-          <h3 className="border-b border-border bg-muted px-3 py-2 text-sm font-medium text-foreground">
+          <h3 className="border-b border-border-strong bg-border px-3 py-2 text-sm font-medium text-foreground">
             {category.name}
           </h3>
           <ul className="flex flex-col">
