@@ -666,3 +666,13 @@ describe("persist 마이그레이션 v11 → v12 — 재료 고르기 저장 상
     expect(migrated.materialPicks.clientInfo).toEqual(["contactExtra:website", "projectNumber"]);
   });
 });
+
+describe("멀티레이블 기본 핵심 지표가 추천에 있다 (재료 목록 7절)", () => {
+  it("F1(M4)과 Jaccard(M17)가 모두 추천 지표다 — 핵심 지표가 F1 하나로 줄지 않는다", async () => {
+    const { resolveCoreMetricIds } = await import("../lib/report/computeVerdict");
+    const recommended = getRecommendedMetricIds("multilabel");
+
+    expect(recommended).toEqual(expect.arrayContaining(["M4", "M17"]));
+    expect(resolveCoreMetricIds("multilabel", recommended)).toEqual(["M4", "M17"]);
+  });
+});

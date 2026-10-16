@@ -27,7 +27,11 @@ interface KpiResultSectionProps {
   showVerdictRule?: boolean;
 }
 
-const KPI_CORE_IDS_BY_TASK: Record<TaskType, Set<string>> = {
+/**
+ * 종전 6.1 의 유형별 고정 묶음. 핵심 지표 표시(`KpiResult.isCore`)가 생기기 전 발급된 보관본만 이
+ * 묶음으로 6.1 을 그린다. 지금은 고객이 정한 핵심 지표가 6.1 이다(재료 목록 7절 "핵심 지표").
+ */
+const LEGACY_KPI_CORE_IDS_BY_TASK: Record<TaskType, Set<string>> = {
   binary: new Set(["M1", "M4", "M20", "M23"]),
   multiclass: new Set(["M1", "M4", "M11", "M23"]),
   multilabel: new Set(["M4", "M15", "M17", "M23"]),
@@ -61,9 +65,13 @@ export function KpiResultSection({
   meta,
   showVerdictRule = false,
 }: KpiResultSectionProps) {
-  const coreIds = KPI_CORE_IDS_BY_TASK[taskType] || KPI_CORE_IDS_BY_TASK.binary;
-  const kpiCore   = kpiResults.filter((r) => coreIds.has(r.metricId));
-  const kpiDetail = kpiResults.filter((r) => !coreIds.has(r.metricId));
+  // 6.1 은 고객이 정한 핵심 지표다(판정 규칙 D19 의 핵심 지표와 같다). 핵심 지표 표시가 없는 옛
+  // 보관본만 종전의 유형별 고정 묶음으로 그린다.
+  const hasCoreMarks = kpiResults.some((r) => r.isCore !== undefined);
+  const legacyCore = LEGACY_KPI_CORE_IDS_BY_TASK[taskType] || LEGACY_KPI_CORE_IDS_BY_TASK.binary;
+  const isCoreRow = (r: KpiResult) => (hasCoreMarks ? Boolean(r.isCore) : legacyCore.has(r.metricId));
+  const kpiCore   = kpiResults.filter(isCoreRow);
+  const kpiDetail = kpiResults.filter((r) => !isCoreRow(r));
 
   return (
     <div className="space-y-8 pt-8">
@@ -113,6 +121,13 @@ export function KpiResultSection({
                 isCore={r.isCore}
               />
             ))}
+            {kpiCore.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-3 text-slate-500">
+                  의뢰자가 지정한 핵심 지표가 없습니다. 지표별 결과는 아래 세부 시험항목에 있습니다.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
         {showVerdictRule && (

@@ -87,7 +87,9 @@ const RECOMMENDED_METRICS: Record<TaskType, string[]> = {
   multiclass: ["M1", "M2", "M3", "M4", "M11", "M21", "M22", "M23"],
   // M1 은 multilabel 에서 M16 과 값이 같아 제거됐다(결정 2). 같은 측정을 정확한
   // 이름으로 추천한다 — 그냥 빼면 추천 세트에서 '전 라벨 일치' 계열이 사라진다.
-  multilabel: ["M16", "M2", "M3", "M4", "M15", "M21", "M22", "M23"],
+  // M17(Jaccard)은 멀티레이블 기본 핵심 지표(F1·Jaccard, 재료 목록 7절)라 추천에 있어야 한다.
+  // 없으면 핵심 지표가 "고른 지표 중"에서 걸러져 F1 하나만 남는다(`resolveCoreMetricIds`).
+  multilabel: ["M16", "M2", "M3", "M4", "M15", "M17", "M21", "M22", "M23"],
 };
 
 /**

@@ -174,3 +174,37 @@ describe("6.2 클래스별 표(M22)", () => {
     expect(screen.getByText("M2 — Precision")).toBeInTheDocument();
   });
 });
+
+/**
+ * 6.1 종합 핵심 성능은 고객이 정한 핵심 지표다(재료 목록 7절). 종전에는 유형별 고정 묶음이었다 —
+ * 핵심 지표 표시가 없는 옛 보관본만 그 묶음으로 그린다.
+ */
+describe("6.1 종합 핵심 성능", () => {
+  const sixOne = () => screen.getByText("종합 핵심 성능 (Key Performance Indicators)").parentElement!;
+
+  it("고객이 정한 핵심 지표만 6.1 에 찍는다", () => {
+    const results: KpiResult[] = [
+      { metricId: "M3", name: "Recall", value: 0.8, threshold: 0.7, status: "pass", isCore: true },
+      { metricId: "M1", name: "Accuracy", value: 0.9, threshold: 0.8, status: "pass", isCore: false },
+    ];
+    render(<KpiResultSection kpiResults={results} taskType="binary" meta={meta()} />);
+
+    expect(sixOne()).toHaveTextContent("Recall");
+    expect(sixOne()).not.toHaveTextContent("Accuracy");
+  });
+
+  it("핵심 지표를 정하지 않았으면 그렇다고 적는다", () => {
+    const results: KpiResult[] = [
+      { metricId: "M1", name: "Accuracy", value: 0.9, threshold: 0.8, status: "pass", isCore: false },
+    ];
+    render(<KpiResultSection kpiResults={results} taskType="binary" meta={meta()} />);
+
+    expect(sixOne()).toHaveTextContent("의뢰자가 지정한 핵심 지표가 없습니다");
+  });
+
+  it("핵심 지표 표시가 없는 옛 보관본은 유형별 묶음으로 그린다", () => {
+    render(<KpiResultSection kpiResults={kpi} taskType="binary" meta={meta()} />);
+
+    expect(sixOne()).toHaveTextContent("Accuracy");
+  });
+});
