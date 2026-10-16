@@ -296,8 +296,9 @@ export interface ClientInputsSource {
  */
 export function buildClientInputs(source: ClientInputsSource): ClientInputs {
   const { composer, materials } = source;
-  const preprocessing = composer.cards.testData
-    ? describeValue("testData", "preprocessingMatch", composer.testData.preprocessingMatch)
+  // 학습·평가 전처리 일치는 ⑥ 학습 데이터 카드가 받는다(서술 설계 D44, persist v13).
+  const preprocessing = composer.cards.trainingData
+    ? describeValue("trainingData", "preprocessingMatch", composer.trainingData.preprocessingMatch)
     : null;
   const descriptions = Object.fromEntries(
     Object.entries(source.classLabelDescriptions).filter(([, text]) => text.trim() !== ""),
@@ -318,11 +319,11 @@ export function buildClientInputs(source: ClientInputsSource): ClientInputs {
       ? { metric_rationale: materials.metricRationale ?? NOT_PROVIDED }
       : {}),
     core_metrics: source.coreMetrics,
-    training_data: rowsToObject(materials.training),
-    test_data: {
-      ...rowsToObject(materials.test),
+    training_data: {
+      ...rowsToObject(materials.training),
       ...(preprocessing ? { "학습·평가 전처리 일치": preprocessing } : {}),
     },
+    test_data: rowsToObject(materials.test),
     ground_truth: rowsToObject(materials.groundTruth),
     environment: {
       ...Object.fromEntries(

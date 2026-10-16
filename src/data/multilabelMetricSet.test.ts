@@ -588,22 +588,24 @@ describe("persist 마이그레이션 v10 → v11 — 전처리 한 칸, 일치�
       },
     });
 
-    expect(migrated.composerTestData).toEqual({
-      preprocessingMatch: {
-        text: "Different",
-        note: "Training: Normalized / Test: Dropped outliers",
-      },
+    // v11 은 ⑦ 에 만들고 v13 이 ⑥ 으로 옮긴다 — 체인 끝에서는 ⑥ 에 있다.
+    expect(migrated.composerTrainingData.preprocessingMatch).toEqual({
+      text: "Different",
+      note: "Training: Normalized / Test: Dropped outliers",
     });
+    expect(migrated.composerTestData).toEqual({});
     expect(migrated.composerTrainingData.preprocessing).toBeUndefined();
   });
 
   it('"모름"은 모름으로, "전처리 없음"은 짝이 없어 글로 남긴다', async () => {
     expect(
-      (await migrate({ composerTestData: { testPreprocessing: { unknown: true } } })).composerTestData,
-    ).toEqual({ preprocessingMatch: { text: "Unknown" } });
+      (await migrate({ composerTestData: { testPreprocessing: { unknown: true } } })).composerTrainingData
+        .preprocessingMatch,
+    ).toEqual({ text: "Unknown" });
     expect(
-      (await migrate({ composerTestData: { testPreprocessing: { text: "None" } } })).composerTestData,
-    ).toEqual({ preprocessingMatch: { note: "Test: no preprocessing" } });
+      (await migrate({ composerTestData: { testPreprocessing: { text: "None" } } })).composerTrainingData
+        .preprocessingMatch,
+    ).toEqual({ note: "Test: no preprocessing" });
   });
 
   it("옛 일치도(%)는 단순 일치율로 옮긴다", async () => {
@@ -674,5 +676,51 @@ describe("멀티레이블 기본 핵심 지표가 추천에 있다 (재료 목�
 
     expect(recommended).toEqual(expect.arrayContaining(["M4", "M17"]));
     expect(resolveCoreMetricIds("multilabel", recommended)).toEqual(["M4", "M17"]);
+  });
+});
+
+/**
+ * v12 → v13 — 학습·평가 전처리 일치가 ⑦ 에서 ⑥ 으로 옮겨 갔다(재료 목록 4절 "AI 예" — ⑦ 을 넣지
+ * 않으면 학습 데이터를 넣어도 값이 AI 로 가지 않던 문제).
+ */
+describe("persist 마이그레이션 v12 → v13 — 전처리 일치를 ⑥ 으로", () => {
+  const migrate = async (state: Record<string, unknown>) => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+    return migrateWorkflowState(state, 12);
+  };
+
+  it("적어 둔 값과 체크를 ⑥ 으로 옮긴다", async () => {
+    const migrated = await migrate({
+      composerTestData: { testDataSource: { text: "Q1 logs" }, preprocessingMatch: { text: "Same" } },
+      composerTrainingData: {},
+      materialPicks: { testData: ["testDataSource", "preprocessingMatch"], trainingData: ["trainingDatasetName"] },
+      composerCards: { trainingData: true, testData: true, groundTruth: false, modelEnv: false },
+    });
+
+    expect(migrated.composerTrainingData.preprocessingMatch).toEqual({ text: "Same" });
+    expect(migrated.composerTestData).toEqual({ testDataSource: { text: "Q1 logs" } });
+    expect(migrated.materialPicks.testData).toEqual(["testDataSource"]);
+    expect(migrated.materialPicks.trainingData).toEqual(["trainingDatasetName", "preprocessingMatch"]);
+    expect(migrated.composerCards.testData).toBe(true);
+  });
+
+  it("⑦ 에 그 체크만 있었다면 ⑦ 은 빠진다", async () => {
+    const migrated = await migrate({
+      composerTestData: { preprocessingMatch: { text: "Different" } },
+      materialPicks: { testData: ["preprocessingMatch"] },
+      composerCards: { trainingData: false, testData: true, groundTruth: false, modelEnv: false },
+    });
+
+    expect(migrated.materialPicks.testData).toEqual([]);
+    expect(migrated.composerCards.testData).toBe(false);
+  });
+
+  it("⑥ 에 이미 값이 있으면 그것을 둔다", async () => {
+    const migrated = await migrate({
+      composerTestData: { preprocessingMatch: { text: "Different" } },
+      composerTrainingData: { preprocessingMatch: { text: "Same" } },
+    });
+
+    expect(migrated.composerTrainingData.preprocessingMatch).toEqual({ text: "Same" });
   });
 });

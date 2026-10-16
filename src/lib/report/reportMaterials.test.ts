@@ -202,10 +202,8 @@ describe("AI 에 넘기는 고객 입력 (서술 설계 D25, D34)", () => {
   const input = composer({
     cards: ALL_ON,
     perspective: { usageMode: { text: "Batch" }, criticalErrorType: { text: "Similar" } },
-    testData: {
-      testDataSource: { text: "Q1 logs" },
-      preprocessingMatch: { text: "Different", note: "Extra outlier filtering" },
-    },
+    testData: { testDataSource: { text: "Q1 logs" } },
+    trainingData: { preprocessingMatch: { text: "Different", note: "Extra outlier filtering" } },
   });
   const inputs = buildClientInputs({
     composer: input,
@@ -228,7 +226,8 @@ describe("AI 에 넘기는 고객 입력 (서술 설계 D25, D34)", () => {
   });
 
   it("성적서에 찍지 않는 전처리 일치도 넘기고, 덧붙인 글은 의뢰자 덧붙임으로 표시한다", () => {
-    expect((inputs.test_data as Record<string, string>)["학습·평가 전처리 일치"]).toBe(
+    // ⑥ 학습 데이터가 받는다(persist v13) — ⑦ 을 넣지 않아도 학습 데이터와 함께 간다.
+    expect((inputs.training_data as Record<string, string>)["학습·평가 전처리 일치"]).toBe(
       "다름 (의뢰자 덧붙임: Extra outlier filtering)",
     );
   });

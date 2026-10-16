@@ -450,7 +450,7 @@ describe("수집 기간", () => {
 
 describe("덧붙이는 글", () => {
   it("전처리 일치 칸은 선택지와 함께 글을 받는다 (서술 설계 D26)", async () => {
-    const { onChange } = renderForm("testData", { values: { preprocessingMatch: { text: "Different" } } });
+    const { onChange } = renderForm("trainingData", { values: { preprocessingMatch: { text: "Different" } } });
 
     await userEvent.type(screen.getByRole("textbox", { name: "학습과 같은 전처리 덧붙이는 글" }), "Y");
 

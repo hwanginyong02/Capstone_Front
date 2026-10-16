@@ -558,6 +558,36 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         description: "학습 데이터에 대해 그 밖에 알릴 내용입니다. 예: 개인정보는 가명 처리함",
         reportSection: "7절",
       },
+      {
+        /**
+         * 학습과 평가 데이터의 전처리가 같은가 — 종전의 자유서술 세 칸(⑥ 전처리, ⑦ 전처리·전처리
+         * 내용)을 이 한 칸으로 바꿨다(서술 설계 D44).
+         *
+         * TS 4213 5.3.3 은 전처리를 "주의를 기울여야 할 것"으로만 적고 보고를 요구하지 않는다.
+         * 걱정하는 것은 일관되지 않은 전처리가 해석을 비트는 경우라, 같은지만 묻고 코드가 조건으로
+         * 쓸 수 있게 선택지로 받는다. 전처리가 채널 효과의 원인이면 ⑥ "Different processing"이 받는다.
+         *
+         * ⑥ 학습 데이터 카드에 둔다. 종전에는 ⑦ 테스트 데이터 카드에 있어, ⑦ 을 넣지 않으면 학습
+         * 데이터를 넣어도 이 값을 받을 수 없었다(재료 목록 4절 "AI 예", persist v13 이 옮긴다).
+         */
+        id: "preprocessingMatch",
+        label: "학습과 같은 전처리",
+        inputExample: "같음 / 다름 / 모름 (덧붙이는 글 가능)",
+        kind: "optional",
+        input: "single",
+        description: "평가 데이터를 학습 데이터와 같은 방식으로 전처리했는지입니다. 내용은 묻지 않습니다. 예: 같은 정규화 코드를 썼으면 같음",
+        choiceLabels: {
+          Same: "같음",
+          Different: "다름",
+          Unknown: "모름",
+        },
+        choices: ["Same", "Different", "Unknown"],
+        allowsNote: true,
+        help: "학습 데이터와 평가 데이터를 같은 방식으로 전처리했는지입니다.",
+        reportSection: "정할 것",
+        sentToAi: true,
+        reportLabels: { Same: "같음", Different: "다름", Unknown: "모름" },
+      },
     ],
   },
   {
@@ -611,33 +641,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         mono: true,
         reportSection: "4절",
         sentToAi: true,
-      },
-      {
-        /**
-         * 학습과 평가 데이터의 전처리가 같은가 — 종전의 자유서술 세 칸(⑥ 전처리, ⑦ 전처리·전처리
-         * 내용)을 이 한 칸으로 바꿨다(서술 설계 D44).
-         *
-         * TS 4213 5.3.3 은 전처리를 "주의를 기울여야 할 것"으로만 적고 보고를 요구하지 않는다.
-         * 걱정하는 것은 일관되지 않은 전처리가 해석을 비트는 경우라, 같은지만 묻고 코드가 조건으로
-         * 쓸 수 있게 선택지로 받는다. 전처리가 채널 효과의 원인이면 ⑥ "Different processing"이 받는다.
-         */
-        id: "preprocessingMatch",
-        label: "학습과 같은 전처리",
-        inputExample: "같음 / 다름 / 모름 (덧붙이는 글 가능)",
-        kind: "optional",
-        input: "single",
-        description: "테스트 데이터를 학습 때와 같은 방식으로 전처리했는지입니다. 내용은 묻지 않습니다. 예: 같은 정규화 코드를 썼으면 같음",
-        choiceLabels: {
-          Same: "같음",
-          Different: "다름",
-          Unknown: "모름",
-        },
-        choices: ["Same", "Different", "Unknown"],
-        allowsNote: true,
-        help: "학습 데이터와 테스트 데이터를 같은 방식으로 전처리했는지입니다.",
-        reportSection: "정할 것",
-        sentToAi: true,
-        reportLabels: { Same: "같음", Different: "다름", Unknown: "모름" },
       },
     ],
   },

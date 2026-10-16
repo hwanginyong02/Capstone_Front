@@ -501,7 +501,7 @@ describe('조건이 걸린 답에 "모름"을 체크하면', () => {
 });
 
 describe("덧붙이는 글", () => {
-  const 전처리 = getCard("testData").fields.find((f) => f.id === "preprocessingMatch")!;
+  const 전처리 = getCard("trainingData").fields.find((f) => f.id === "preprocessingMatch")!;
 
   it("맞는 선택지가 없으면 글만 써도 답한 것이다 (서술 설계 D26)", () => {
     expect(hasValue(전처리, { note: "Test data had extra outlier filtering" })).toBe(true);
