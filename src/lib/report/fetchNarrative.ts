@@ -6,6 +6,7 @@
  * 호출부에서 ruleConclusion 과 병합한다(백엔드도 verdict 를 fact_sheet 값으로 강제함).
  */
 import type {
+  BenchmarkRef,
   InterpretationData,
   NarrativeSource,
   RecommendationNarrative,
@@ -19,6 +20,8 @@ export interface NarrativeFields {
   conclusionText: { benchmark: string; narrative: string; risks: string };
   recommendationNarrative: RecommendationNarrative;
   recommendations: ReportRecommendation[];
+  /** 8.1 에 숫자로 찍는 벤치마크 비교(서버 계산). 서술 경로와 무관하게 온다. */
+  benchmarkRefs: BenchmarkRef[];
   /** 추적용: llm(LLM 생성) | fallback(규칙 폴백) | error(호출 실패) */
   source: NarrativeSource;
 }
@@ -28,8 +31,25 @@ const EMPTY: NarrativeFields = {
   conclusionText: { benchmark: "", narrative: "", risks: "" },
   recommendationNarrative: { dataQuality: "", modelOps: "" },
   recommendations: [],
+  benchmarkRefs: [],
   source: "error",
 };
+
+function toBenchmarkRefs(raw: unknown): BenchmarkRef[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((r) => r && typeof r === "object" && typeof r.metric === "string")
+    .map((r: any) => ({
+      metric: r.metric,
+      modelValue: Number(r.model_value),
+      refLow: Number(r.ref_low),
+      refHigh: Number(r.ref_high),
+      quality: String(r.quality ?? ""),
+      direction: String(r.direction ?? "higher"),
+      sourceNote: String(r.source_note ?? ""),
+    }))
+    .filter((r) => [r.modelValue, r.refLow, r.refHigh].every(Number.isFinite));
+}
 
 function normalizePriority(v: unknown): ReportRecommendation["priority"] {
   const s = String(v ?? "").toUpperCase();
@@ -77,6 +97,7 @@ export async function fetchNarrative(
             expectedImpact: String(r.expected_impact ?? ""),
           }))
         : [],
+      benchmarkRefs: toBenchmarkRefs(n.benchmark_refs),
       source: n.meta?.source === "llm" ? "llm" : "fallback",
     };
   } catch {

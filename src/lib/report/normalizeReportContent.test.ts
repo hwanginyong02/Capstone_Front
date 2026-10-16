@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { REPORT_CONTENT_SCHEMA, normalizeReportContent } from "./normalizeReportContent";
+import { REPORT_CONTENT_SCHEMA, isLegacyLayout, normalizeReportContent } from "./normalizeReportContent";
 import type { FinalReportData } from "../../types/finalReport.types";
 
 const legacy = {
@@ -21,7 +21,9 @@ describe("normalizeReportContent", () => {
   it("판 표시가 없는 옛 보관본은 threshold 0 을 목표값 없음으로 읽는다", () => {
     const read = normalizeReportContent(legacy);
 
-    expect(read.contentSchema).toBe(REPORT_CONTENT_SCHEMA);
+    // 판 표시는 그대로 둔다 — 그 판의 배치로 그린다.
+    expect(read.contentSchema).toBeUndefined();
+    expect(isLegacyLayout(read)).toBe(true);
     expect(read.metricList.map((m) => m.threshold)).toEqual([0.8, null]);
     expect(read.kpiResults.map((k) => k.threshold)).toEqual([0.8, null]);
   });
@@ -34,5 +36,6 @@ describe("normalizeReportContent", () => {
   it("지금 판은 그대로 둔다 — 0 은 목표값 0 이다", () => {
     const current = { ...legacy, contentSchema: REPORT_CONTENT_SCHEMA };
     expect(normalizeReportContent(current)).toBe(current);
+    expect(isLegacyLayout(current)).toBe(false);
   });
 });

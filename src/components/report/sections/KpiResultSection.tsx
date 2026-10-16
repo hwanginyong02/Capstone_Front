@@ -1,13 +1,13 @@
 import type {
   ClassReportRow,
   ClassReportTable,
-  DerivedPredictionFact,
   FinalReportMeta,
   KpiResult,
 } from "../../../types/finalReport.types";
 import { MetricRow } from "../shared/MetricRow";
 import { PassBadge } from "../shared/PassBadge";
 import { verdictRuleText } from "../../../lib/report/reportConstants";
+import { describeDerivation } from "../../../lib/report/derivationText";
 
 import type { TaskType } from "../../../data/evaluationData";
 
@@ -18,6 +18,11 @@ interface KpiResultSectionProps {
    * 판정(`perClass`)을 종전처럼 찍는다.
    */
   classReport?: ClassReportTable | null;
+  /**
+   * 파생 예측 사실을 6.0 일러두기에 찍을지. 판 2 이전에 발급된 보관본만 그렇다 — 지금은 7.1 앞
+   * 고정 문구로 찍는다(재료 목록 4절, `InterpretSection`).
+   */
+  derivationIn60?: boolean;
   taskType: TaskType;
   meta?: FinalReportMeta;
   /**
@@ -37,30 +42,11 @@ const LEGACY_KPI_CORE_IDS_BY_TASK: Record<TaskType, Set<string>> = {
   multilabel: new Set(["M4", "M15", "M17", "M23"]),
 };
 
-/**
- * 파생 예측의 방법·임계값·출처를 한 문장으로. SPEC §0 이 요구하는 기재 항목이다
- * (ISSUES.md A-01) — 어떤 컬럼에서 어떤 규칙으로 만들었는지가 성적서에 남아야
- * 독자가 그 수치를 재현할 수 있다.
- */
-function describeDerivation(fact: DerivedPredictionFact): string {
-  const source = fact.source_columns.join(", ");
-  if (fact.method === "argmax") {
-    return `확률 컬럼 [${source}] 중 가장 큰 값의 클래스를 예측으로 삼았습니다(argmax, 임계값 없음).`;
-  }
-  if (fact.method === "threshold_per_label") {
-    const t =
-      typeof fact.threshold === "object" && fact.threshold !== null
-        ? Object.entries(fact.threshold).map(([col, v]) => `${col} ≥ ${v}`).join(", ")
-        : `모든 레이블 ≥ ${fact.threshold}`;
-    return `점수 컬럼 [${source}] 에 레이블별 결정 임계값을 적용했습니다(${t}).`;
-  }
-  const positive = fact.positive_class ? ` 양성 클래스는 [${fact.positive_class}] 입니다.` : "";
-  return `점수 컬럼 [${source}] 이 결정 임계값 ${fact.threshold} 이상이면 양성으로 판정했습니다.${positive}`;
-}
 
 export function KpiResultSection({
   kpiResults,
   classReport,
+  derivationIn60 = false,
   taskType,
   meta,
   showVerdictRule = false,
@@ -83,7 +69,7 @@ export function KpiResultSection({
           {taskType === "binary" && (
             <li>본 성적서의 이진 분류 평가 지표는 사용자가 매핑 단계에서 지정한 {meta?.positiveClass ? `[ ${meta.positiveClass} ]` : "Target"} 클래스 기준으로 산출되었습니다.</li>
           )}
-          {meta?.derivedPrediction && (
+          {derivationIn60 && meta?.derivedPrediction && (
             <li>
               <strong>본 평가의 예측 레이블은 모델이 직접 출력한 값이 아니라 확률·점수에서 파생한 값입니다.</strong>{" "}
               {describeDerivation(meta.derivedPrediction)}

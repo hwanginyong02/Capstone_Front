@@ -30,9 +30,10 @@ function meta(derivedPrediction?: DerivedPredictionFact): FinalReportMeta {
   };
 }
 
-describe("성능 평가 산출 기준 — 파생 예측 기재", () => {
+describe("성능 평가 산출 기준 — 파생 예측 기재(판 2 이전 보관본)", () => {
+  // 판 2 부터는 7.1 앞 고정 문구로 찍는다(InterpretSection). 옛 보관본만 6.0 일러두기에 찍는다.
   it("파생이 없으면 기재하지 않는다", () => {
-    render(<KpiResultSection kpiResults={kpi} taskType="binary" meta={meta()} />);
+    render(<KpiResultSection kpiResults={kpi} derivationIn60 taskType="binary" meta={meta()} />);
     expect(screen.queryByText(/파생한 값입니다/)).not.toBeInTheDocument();
   });
 
@@ -40,6 +41,7 @@ describe("성능 평가 산출 기준 — 파생 예측 기재", () => {
     render(
       <KpiResultSection
         kpiResults={kpi}
+        derivationIn60
         taskType="binary"
         meta={meta({
           method: "threshold",
@@ -61,6 +63,7 @@ describe("성능 평가 산출 기준 — 파생 예측 기재", () => {
     render(
       <KpiResultSection
         kpiResults={kpi}
+        derivationIn60
         taskType="multiclass"
         meta={{
           ...meta({
@@ -83,6 +86,7 @@ describe("성능 평가 산출 기준 — 파생 예측 기재", () => {
     render(
       <KpiResultSection
         kpiResults={kpi}
+        derivationIn60
         taskType="multilabel"
         meta={{
           ...meta({
@@ -206,5 +210,18 @@ describe("6.1 종합 핵심 성능", () => {
     render(<KpiResultSection kpiResults={kpi} taskType="binary" meta={meta()} />);
 
     expect(sixOne()).toHaveTextContent("Accuracy");
+  });
+});
+
+describe("판 2 — 파생 예측 사실은 6.0 에 찍지 않는다", () => {
+  it("7.1 앞으로 옮겼다(재료 목록 4절)", () => {
+    render(
+      <KpiResultSection
+        kpiResults={kpi}
+        taskType="binary"
+        meta={meta({ method: "threshold", threshold: 0.5, source_columns: ["score"], target_role: "y_pred" })}
+      />,
+    );
+    expect(screen.queryByText(/파생한 값입니다/)).not.toBeInTheDocument();
   });
 });

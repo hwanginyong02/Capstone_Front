@@ -21,6 +21,8 @@ import { buildClientInputs } from "../lib/report/reportMaterials";
 import { buildDatasetDiagnosis } from "../lib/report/buildDatasetDiagnosis";
 import { buildFactSheet } from "../lib/report/buildFactSheet";
 import { buildClassReportTable } from "../lib/report/classReportTable";
+import { parseConfusionCounts } from "../lib/report/confusionCounts";
+import { normalizeReportContent } from "../lib/report/normalizeReportContent";
 import { evaluateStatus } from "../lib/report/evaluateStatus";
 import { fetchNarrative } from "../lib/report/fetchNarrative";
 import { translateRoleToBackend } from "../lib/mapping/translateRoleToBackend";
@@ -41,8 +43,9 @@ export function useReportData(id: string): UseReportDataResult {
   );
 
   const [data, setData] = useState<FinalReportData | null>(() => {
+    // 캐시된 성적서는 옛 판일 수 있다 — 지금 뜻으로 옮겨 읽는다(저장값은 그대로).
     if (run?.reportData && (run.reportData as any).isEvaluated) {
-      return run.reportData;
+      return normalizeReportContent(run.reportData);
     }
     return null;
   });
@@ -53,12 +56,12 @@ export function useReportData(id: string): UseReportDataResult {
   useEffect(() => {
     // 만약 워크스페이스에 기 저장된 run 정보가 있고, 이미 계산이 완료된 상태라면 바로 캐시 반환
     if (run?.reportData && (run.reportData as any).isEvaluated) {
-      setData(run.reportData);
+      setData(normalizeReportContent(run.reportData));
       return;
     }
 
     if (!workflowState.rawFile) {
-      setData(run?.reportData || null);
+      setData(run?.reportData ? normalizeReportContent(run.reportData) : null);
       return;
     }
 
@@ -320,6 +323,12 @@ export function useReportData(id: string): UseReportDataResult {
                 ? [...new Set(yTrueRow.sampleValues)]
                 : [];
 
+        // TP·TN·FP·FN 건수 — M21 선택과 무관하게 백엔드가 늘 내린다(재료 목록 9절).
+        const confusionCounts = parseConfusionCounts(success_metrics.confusion_counts);
+        // 파생 예측 사실(SPEC §0 기재 의무) — 7.1 앞 고정 문구와 AI 사실 시트에 쓴다. 백엔드는 실제로
+        // 파생이 일어났을 때만 이 키를 내려보낸다(ISSUES.md A-01).
+        const derivedPrediction = success_metrics.derived_prediction ?? undefined;
+
         const factSheet = buildFactSheet({
           kpiResults: updatedKpiResults,
           confusionMatrix,
@@ -335,14 +344,13 @@ export function useReportData(id: string): UseReportDataResult {
           classLabels,
           latencyStats,
           positiveClass: workflowState.metadata?.positive_class ?? null,
+          confusionCounts,
+          derivedPrediction,
         });
 
         // ── Stage 1: 서술과 무관한 결정론적 결과(KPI·차트·규칙 verdict)를 즉시 렌더한다.
         //    느리거나 실패하는 LLM 서술이 성적서 전체 표시를 인질로 잡지 않도록 분리(D6b).
         //    interpretation/recommendation* 은 baseReport 의 빈 기본값 유지, narrativeSource 미설정.
-        // 파생 예측 사실(SPEC §0 기재 의무)을 성적서 메타로 나른다. 백엔드는 실제로
-        // 파생이 일어났을 때만 이 키를 내려보낸다(ISSUES.md A-01).
-        const derivedPrediction = success_metrics.derived_prediction ?? undefined;
 
         const stage1Report: FinalReportData = {
           ...baseReport,
@@ -362,6 +370,7 @@ export function useReportData(id: string): UseReportDataResult {
           kpiResults: updatedKpiResults,
           // 클래스별 표(M22) — 평균 줄까지. M22 만 골라도 보인다.
           classReport: buildClassReportTable(success_metrics.M22, classLabels),
+          confusionCounts,
           conclusion: ruleConclusion,  // full ConclusionData (verdict/score + 빈 서술)
           datasetDiagnosis,
           charts: { confusionMatrix, rocCurve, prCurve },
@@ -415,7 +424,11 @@ export function useReportData(id: string): UseReportDataResult {
         const mergedReport: FinalReportData = {
           ...stage1Report,
           // verdict/score 는 규칙 산출값, 서술(benchmark/narrative/risks)은 LLM 결과로 병합
-          conclusion: { ...ruleConclusion, ...narrative.conclusionText },
+          conclusion: {
+            ...ruleConclusion,
+            ...narrative.conclusionText,
+            benchmarkRefs: narrative.benchmarkRefs,
+          },
           interpretation: narrative.interpretation,
           recommendationNarrative: narrative.recommendationNarrative,
           recommendations: narrative.recommendations,

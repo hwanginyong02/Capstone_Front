@@ -83,3 +83,38 @@ describe("8절 판정 불가", () => {
     expect(screen.getByText("—")).toBeInTheDocument();
   });
 });
+
+/** 8.1 — 참조 범위를 숫자로 찍는다(재료 목록 9절). 종전에는 AI 가 쓴 문장 안에만 나왔다. */
+describe("8.1 벤치마크 참조 범위", () => {
+  it("모델 값·참조 범위·위치와 출처를 표로 찍는다", () => {
+    render(
+      <ConclusionSection
+        conclusion={{
+          ...conclusion,
+          benchmarkRefs: [
+            {
+              metric: "Accuracy",
+              modelValue: 0.94,
+              refLow: 0.85,
+              refHigh: 0.92,
+              quality: "better",
+              direction: "higher",
+              sourceNote: "내부 참조 기준치 v1",
+            },
+          ],
+        }}
+      />,
+    );
+    const table = screen.getByRole("table", { name: "벤치마크 참조 범위" });
+    expect(table).toHaveTextContent("Accuracy");
+    expect(table).toHaveTextContent("0.940");
+    expect(table).toHaveTextContent("0.85 ~ 0.92");
+    expect(table).toHaveTextContent("우수");
+    expect(screen.getByText(/내부 참조 기준치 v1/)).toBeInTheDocument();
+  });
+
+  it("비교값이 없으면 표를 그리지 않는다", () => {
+    render(<ConclusionSection conclusion={conclusion} />);
+    expect(screen.queryByRole("table", { name: "벤치마크 참조 범위" })).not.toBeInTheDocument();
+  });
+});

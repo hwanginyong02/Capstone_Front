@@ -1,4 +1,5 @@
 import { useParams } from "react-router";
+import { isLegacyLayout } from "../../lib/report/normalizeReportContent";
 import { useReportData } from "../../hooks/useReportData";
 import { usePrintOnReady } from "../../hooks/usePrintOnReady";
 import { PrintLayout } from "../../components/report/layout/PrintLayout";
@@ -59,6 +60,7 @@ export function ReportPrint() {
           <KpiResultSection
             kpiResults={data.kpiResults}
             classReport={data.classReport}
+            derivationIn60={isLegacyLayout(data)}
             taskType={data.meta.taskType}
             meta={data.meta}
             // 판정 규칙 문구는 그 규칙(D19)으로 판정한 성적서에만 — judgedCount 가 그 표시다.
@@ -70,7 +72,13 @@ export function ReportPrint() {
           <LatencySection latency={data.latency} />
         </PageBreak>
         <PageBreak>
-          <InterpretSection interpretation={data.interpretation} source={data.narrativeSource} />
+          <InterpretSection
+            interpretation={data.interpretation}
+            source={data.narrativeSource}
+            // 파생 예측 사실은 7.1 앞에 찍는다. 판 2 이전 보관본은 6.0 일러두기에 찍었다.
+            derivedPrediction={isLegacyLayout(data) ? undefined : data.meta.derivedPrediction}
+            confusionCounts={data.confusionCounts}
+          />
           <ConclusionSection conclusion={data.conclusion} source={data.narrativeSource} />
           <RecommendSection
             recommendations={data.recommendations}

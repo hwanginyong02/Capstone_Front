@@ -134,3 +134,32 @@ describe("멀티레이블 혼동행렬 — 첫 레이블만 보내던 문제 (IS
     expect(sheet.confusion?.labels).toEqual(["0", "1"]);
   });
 });
+
+/** 건수와 파생 예측 사실은 M21 선택과 무관하게 AI 로 간다(재료 목록 9절). */
+describe("TP·TN·FP·FN 건수와 파생 예측 사실", () => {
+  it("건수를 confusion_counts 로 싣는다 — 혼동행렬이 없어도", () => {
+    const fs = buildFactSheet(
+      input({
+        confusionMatrix: null,
+        confusionCounts: { kind: "binary", rows: [{ label: "1", tp: 52, tn: 49, fp: 56, fn: 43 }] },
+      }),
+    );
+    expect(fs.confusion).toBeNull();
+    expect(fs.confusion_counts).toEqual([{ label: "1", tp: 52, fp: 56, fn: 43, tn: 49 }]);
+  });
+
+  it("파생 예측 사실을 방법·임계값·출처 컬럼으로 싣는다", () => {
+    const fs = buildFactSheet(
+      input({
+        derivedPrediction: { method: "threshold", threshold: 0.35, source_columns: ["score"], target_role: "y_pred" },
+      }),
+    );
+    expect(fs.derived_prediction).toEqual({ method: "threshold", threshold: 0.35, source_columns: ["score"] });
+  });
+
+  it("파생이 없으면 null, 건수가 없으면 빈 배열", () => {
+    const fs = buildFactSheet(input());
+    expect(fs.derived_prediction).toBeNull();
+    expect(fs.confusion_counts).toEqual([]);
+  });
+});

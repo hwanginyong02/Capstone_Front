@@ -141,6 +141,34 @@ export interface MetricFormula {
   isCommon: boolean;
 }
 
+/** TP·TN·FP·FN 건수 한 줄. */
+export interface ConfusionCountRow {
+  label: string;
+  tp: number;
+  fp: number;
+  fn: number;
+  tn: number;
+}
+
+/** TP·TN·FP·FN 건수(재료 목록 9절). 이진은 양성 클래스 한 줄, 다중·멀티는 클래스마다 일대다. */
+export interface ConfusionCounts {
+  kind: "binary" | "perClass";
+  rows: ConfusionCountRow[];
+}
+
+/** 8.1 벤치마크 비교 한 줄 — 서버가 계산한 값 그대로(내부 참조 기준치). */
+export interface BenchmarkRef {
+  metric: string;
+  modelValue: number;
+  refLow: number;
+  refHigh: number;
+  /** 방향을 반영한 우열 — better(우수) / within(범위 내) / worse(미흡). */
+  quality: string;
+  /** higher(높을수록 좋음) / lower(낮을수록 좋음). */
+  direction: string;
+  sourceNote: string;
+}
+
 /** 클래스별 표(M22)의 한 줄 — 클래스 하나 또는 평균 하나. */
 export interface ClassReportRow {
   label: string;
@@ -203,6 +231,8 @@ export interface ConclusionData {
   /** 판정 대상 지표 수. 0 이면 통과율을 셀 수 없다. 이 키가 생기기 전 저장된 성적서에는 없다. */
   judgedCount?: number;
   benchmark: string;
+  /** 8.1 에 숫자로 찍는 벤치마크 비교(서버 계산). 이 키가 생기기 전 성적서에는 없다. */
+  benchmarkRefs?: BenchmarkRef[];
   narrative: string;
   risks: string;
 }
@@ -254,8 +284,9 @@ export interface FinalReportData {
    * 성적서 데이터 형식의 판. 발급된 성적서는 이 데이터를 통째로 보관하고 번호로 다시 그리므로,
    * 뜻이 바뀐 칸을 옛 판에서 읽을 때 옮겨 읽는다(`normalizeReportContent`).
    *
-   * - 없음(1): 목표값 없음을 `threshold: 0` 으로 적었다.
-   * - 2: 목표값 없음을 `threshold: null` 로 적는다.
+   * - 없음(1): 목표값 없음을 `threshold: 0` 으로 적었다. 파생 예측 사실을 6.0 일러두기에 찍었다.
+   * - 2: 목표값 없음을 `threshold: null` 로 적는다. 파생 예측 사실은 7.1 앞에 찍는다(재료 목록
+   *   4절 "결정 임계값 — 7.1 앞 고정 문구").
    */
   contentSchema?: number;
   meta: FinalReportMeta;
@@ -278,6 +309,8 @@ export interface FinalReportData {
    * 클래스 판정(`KpiResult.perClass`)을 대신 찍는다.
    */
   classReport?: ClassReportTable | null;
+  /** TP·TN·FP·FN 건수. 7.1 에 찍는다(재료 목록 9절). 이 키가 생기기 전 성적서에는 없다. */
+  confusionCounts?: ConfusionCounts | null;
   charts: {
     confusionMatrix: ConfusionMatrixData | null;
     rocCurve: { fpr: number[]; tpr: number[]; auroc?: number } | null;
