@@ -13,6 +13,7 @@ import {
   stepIdToPath,
 } from "../utils/domain/workflowSteps";
 import { seedShowcaseData } from "../utils/domain/showcaseSeed";
+import { cn } from "../utils/styling/styles";
 
 interface WorkflowShellProps {
   children: ReactNode;
@@ -39,6 +40,15 @@ interface WorkflowShellProps {
    * 화면이라 아직 어느 단계에도 있지 않다.
    */
   isStepPage?: boolean;
+  /**
+   * 화면 높이 안에 다 담는다 — 페이지 전체 스크롤을 만들지 않고, 넘치는 것은 본문의 각 영역이
+   * 안에서 스크롤한다(재료 고르기, docs/MATERIAL_PICKER.md §11). `lg` 이상에서만 그렇다 — 더 좁은
+   * 화면은 영역을 한 화면에 담을 수 없어 종전처럼 페이지가 스크롤한다.
+   *
+   * 켜면 본문은 남은 높이를 채우는 세로 flex 영역이 된다. 본문은 `lg:flex-1 lg:min-h-0` 으로 그
+   * 높이를 받아 나눠 쓴다.
+   */
+  fitViewport?: boolean;
 }
 
 /**
@@ -64,6 +74,7 @@ export function WorkflowShell({
   buttonSize,
   showStepRail = true,
   isStepPage = true,
+  fitViewport = false,
 }: WorkflowShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -119,7 +130,12 @@ export function WorkflowShell({
   }, [location.pathname, location.search, isShowcaseMode, isStepPage, navigate]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col relative">
+    <div
+      className={cn(
+        "relative flex min-h-screen flex-col bg-background",
+        fitViewport && "lg:h-screen lg:overflow-hidden",
+      )}
+    >
       {/* 워크플로우 안에서는 현재 분류 유형을 계속 보여준다(docs/UI_DESIGN.md §4). */}
       <AppHeader showTaskType />
       {showStepRail ? (
@@ -130,7 +146,7 @@ export function WorkflowShell({
           </aside>
         </div>
       ) : (
-        <div className="flex-1 pb-8">
+        <div className={cn("flex-1", fitViewport ? "flex flex-col lg:min-h-0" : "pb-8")}>
           {children}
         </div>
       )}

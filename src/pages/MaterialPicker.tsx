@@ -150,6 +150,7 @@ export function MaterialPicker() {
     <WorkflowShell
       showStepRail={false}
       isStepPage={false}
+      fitViewport
       showActionBar
       showPrevious
       showNext

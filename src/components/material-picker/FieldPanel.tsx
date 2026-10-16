@@ -61,31 +61,28 @@ export function FieldPanel({ taskType, card, picks, included, actions }: FieldPa
     <section
       id={FIELD_PANEL_ID}
       aria-label={`${card.name} 필드`}
-      className="flex scroll-mt-20 flex-col gap-6 rounded-xl border border-border bg-card p-5"
+      className="flex w-full min-w-0 scroll-mt-20 flex-col gap-4 rounded-xl border border-border bg-card p-4 lg:min-h-0"
     >
       <header
         ref={(element) => {
           drag(element);
         }}
         className={cn(
-          "flex flex-wrap items-start justify-between gap-x-6 gap-y-3 border-b border-border pb-4",
+          "flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-border pb-3",
           !included && "cursor-grab",
           isDragging && "opacity-40",
         )}
       >
-        <div className="flex min-w-0 flex-col gap-1">
-          <p className="text-xs text-muted-foreground">{categoryOf(card.id).name}</p>
-          <h2 className="flex items-center gap-2 text-base font-medium text-foreground">
-            {card.name}
-            {card.locked && (
-              <span className={cn("rounded-md px-1.5 py-0.5 text-xs font-medium", KIND_STYLE.required.badge)}>
-                필수 카드
-              </span>
-            )}
-          </h2>
-          <p className="text-sm leading-[21px] text-muted-foreground">{card.description}</p>
-          <p className="pt-1 text-xs text-foreground-subtle">
-            권장·선택 필드는 ＋를 누르거나 위 다이어그램으로 끌어 놓으면 바로 들어가요.
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span className="text-xs text-muted-foreground">{categoryOf(card.id).name} ›</span>
+          <h2 className="text-base font-medium text-foreground">{card.name}</h2>
+          {card.locked && (
+            <span className={cn("rounded-md px-1.5 py-0.5 text-xs font-medium", KIND_STYLE.required.badge)}>
+              필수 카드
+            </span>
+          )}
+          <p className="w-full text-sm leading-[21px] text-muted-foreground">
+            {card.description} 권장·선택 필드는 ＋를 누르거나 위 다이어그램으로 끌어 놓으면 들어가요.
           </p>
         </div>
         {included ? (
@@ -106,14 +103,14 @@ export function FieldPanel({ taskType, card, picks, included, actions }: FieldPa
       </header>
 
       {/*
-        필드만 패널 안에서 스크롤한다 — 필드가 많아도 패널이 길어지지 않아, 페이지를 내리지 않고 바로
-        위 다이어그램으로 끌어 놓는다. 머리(카드 이름·카드 넣기)는 그대로 있다. 높이는 넉넉히 —
-        최소 360px, 보통은 화면 높이의 45%.
+        필드만 패널 안에서 스크롤한다 — 페이지는 스크롤하지 않고, 머리(카드 이름·카드 넣기)는 그대로
+        둔 채 바로 위 다이어그램으로 끌어 놓는다. 데스크톱에서는 패널이 화면의 남은 높이를 다 쓴다.
+        페이지가 스크롤하는 좁은 화면에서는 최소 360px, 보통 화면 높이의 45%로 둔다.
       */}
       <div
         aria-label={`${card.name} 필드 목록`}
         role="group"
-        className="-mr-2 flex max-h-[max(360px,45vh)] flex-col gap-6 overflow-y-auto pr-2"
+        className="-mr-2 flex max-h-[max(360px,45vh)] flex-col gap-5 overflow-y-auto pr-2 lg:max-h-none lg:min-h-0 lg:flex-1"
       >
         {sections.map((section) => {
           const sectionRows = rows[section.kind];

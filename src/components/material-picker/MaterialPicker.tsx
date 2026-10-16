@@ -7,6 +7,10 @@
  *   다이어그램으로 끌어 놓거나 ＋로 넣는다.
  *
  * 바꾼 것은 그 자리에서 바로 보인다. 저장 버튼은 없다. 현황과 이전·다음은 셸의 하단 바에 있다.
+ *
+ * 데스크톱(lg 이상)에서는 페이지 전체 스크롤을 만들지 않는다(셸의 `fitViewport`). 화면 높이를
+ * 영역끼리 나누고 넘치는 것은 각자 안에서 스크롤한다 — 재료 목록, 다이어그램(가운데 높이의 최대
+ * 55%), 필드 패널의 필드 목록(남은 높이 전부).
  * 상태는 페이지가 든다 — 이 컴포넌트는 그리기만 한다(FRONTEND_DEVELOPMENT_GUIDELINE §1).
  */
 import { DndProvider } from "react-dnd";
@@ -70,13 +74,12 @@ export function MaterialPicker({
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flex flex-col gap-6 px-6 pb-6 pt-8 lg:px-8">
-        <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
-          <div className="flex max-w-[640px] flex-col gap-2">
+      <div className="flex flex-col gap-4 px-6 pb-4 pt-5 lg:min-h-0 lg:flex-1 lg:px-8">
+        <header className="flex shrink-0 flex-wrap items-end justify-between gap-x-8 gap-y-3">
+          <div className="flex min-w-0 flex-col gap-1">
             <h1 className="text-heading-large font-medium text-foreground">재료 고르기</h1>
             <p className="text-sm leading-[21px] text-muted-foreground">
-              왼쪽에서 카드를 고르면 아래에 필드 설명이 나와요. 성적서에 넣을 재료를 다이어그램에 끌어 놓고
-              입력할 순서를 정하세요. 바꾼 것은 바로 반영되고, 입력은 화살표와 번호 순서대로 진행돼요.
+              카드를 고르면 아래에 필드가 나와요. 넣을 재료를 다이어그램에 끌어 놓고 입력할 순서를 정하세요.
             </p>
           </div>
           <div className="flex flex-col items-end gap-1.5">
@@ -96,8 +99,8 @@ export function MaterialPicker({
           </div>
         </header>
 
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-          <div className="w-full lg:sticky lg:top-20 lg:max-h-[calc(100vh-11rem)] lg:w-[260px] lg:shrink-0 lg:overflow-y-auto">
+        <div className="flex flex-col gap-6 lg:min-h-0 lg:flex-1 lg:flex-row">
+          <div className="w-full lg:w-[260px] lg:shrink-0 lg:overflow-y-auto">
             <PickPalette
               taskType={taskType}
               selection={selection}
@@ -106,26 +109,32 @@ export function MaterialPicker({
               actions={actions}
             />
           </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-6">
-            <PickDiagram
-              taskType={taskType}
-              lanes={lanes}
-              cards={cards}
-              picks={picks}
-              selectedCardId={selectedCardId}
-              onSelectCard={onSelectInDiagram}
-              blockedReason={blockedReason}
-              hints={hints}
-              actions={actions}
-            />
-            <FieldPanel
-              key={selectedCardId}
-              taskType={taskType}
-              card={selectedCard}
-              picks={picks[selectedCardId] ?? []}
-              included={isCardIncluded(selectedCard, selection)}
-              actions={actions}
-            />
+          <div className="flex min-w-0 flex-1 flex-col gap-4 lg:min-h-0">
+            {/* 다이어그램은 제 높이만큼, 가운데 높이의 55%까지. 넘치면 안에서 스크롤한다. */}
+            <div className="lg:max-h-[55%] lg:shrink-0 lg:overflow-y-auto">
+              <PickDiagram
+                taskType={taskType}
+                lanes={lanes}
+                cards={cards}
+                picks={picks}
+                selectedCardId={selectedCardId}
+                onSelectCard={onSelectInDiagram}
+                blockedReason={blockedReason}
+                hints={hints}
+                actions={actions}
+              />
+            </div>
+            {/* 필드 패널은 남은 높이를 다 쓴다. 필드 목록만 패널 안에서 스크롤한다. */}
+            <div className="flex lg:min-h-0 lg:flex-1">
+              <FieldPanel
+                key={selectedCardId}
+                taskType={taskType}
+                card={selectedCard}
+                picks={picks[selectedCardId] ?? []}
+                included={isCardIncluded(selectedCard, selection)}
+                actions={actions}
+              />
+            </div>
           </div>
         </div>
       </div>
