@@ -37,7 +37,7 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         evalScope={data.evalScope}
         meta={data.meta}
       />
-      <EvalScopeSection meta={data.meta} />
+      <EvalScopeSection meta={data.meta} evalScope={data.evalScope} />
       <DatasetSection
         datasetInfo={data.datasetInfo}
         datasetSamples={data.datasetSamples}

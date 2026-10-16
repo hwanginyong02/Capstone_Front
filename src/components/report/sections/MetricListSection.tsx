@@ -38,6 +38,11 @@ export function MetricListSection({
         </div>
       )}
 
+      {/* 다중 클래스 평균 방식 — 클래스 중요도 선언으로 정한다(고정 문구 4, 서술 설계 D28). */}
+      {materials?.averagingSentence && (
+        <p className="text-sm leading-relaxed text-slate-600">{materials.averagingSentence}</p>
+      )}
+
       {/* 멀티레이블 지표의 선택 기준(TS 4213 6.5.1) — 2층 항목. 다른 유형에는 해당 없음. */}
       {materials && materials.metricRationale !== undefined && (
         <p className="text-sm leading-relaxed text-slate-600">

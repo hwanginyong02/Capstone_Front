@@ -36,7 +36,7 @@ export function ReportPrint() {
           evalScope={data.evalScope}
           meta={data.meta}
         />
-        <EvalScopeSection meta={data.meta} />
+        <EvalScopeSection meta={data.meta} evalScope={data.evalScope} />
         <PageBreak>
           <DatasetSection
             datasetInfo={data.datasetInfo}

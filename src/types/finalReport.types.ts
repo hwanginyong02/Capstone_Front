@@ -355,6 +355,11 @@ export interface ReportMaterials {
   declarations: MaterialRow[];
   /** 5절 선택 기준 문장. 멀티레이블에서만 있다(그 밖은 해당 없음). */
   metricRationale?: MaterialValue;
+  /**
+   * 5절 평균 방식 문장(고정 문구 4, 서술 설계 D28). 다중 클래스에서 클래스 중요도를 답했을 때만
+   * 있다. 이 키가 생기기 전 성적서에는 없다.
+   */
+  averagingSentence?: string;
   /** 3절 학습 데이터셋 표. */
   training: MaterialRow[];
   /** 3절 평가 데이터셋 표에 덧붙이는 줄(출처, 학습 데이터와의 관계, 수집 기간). */

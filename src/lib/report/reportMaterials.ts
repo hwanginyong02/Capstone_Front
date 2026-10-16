@@ -246,6 +246,27 @@ function declarationRows(c: ReportComposerInput, taskType: TaskType): MaterialRo
   ];
 }
 
+/** 클래스 중요도 → 평균 방식(서술 설계 D28: 동등 = 매크로, 다수 우선 = 가중, 샘플 단위 = 마이크로). */
+const AVERAGING_BY_PRIORITY: Record<string, string> = {
+  "All equal": "매크로 평균",
+  "Larger classes first": "가중 평균",
+  "Individual samples first": "마이크로 평균",
+};
+
+/**
+ * 고정 문구 4 — "다중 클래스 지표의 평균 방식은 {평균 방식}을 기준으로 한다. 의뢰자가 클래스
+ * 중요도를 "{선언 값}"으로 밝혔기 때문이다." 다중 클래스에서 클래스 중요도를 답했을 때만.
+ */
+function averagingSentence(c: ReportComposerInput, taskType: TaskType): string | undefined {
+  if (taskType !== "multiclass") return undefined;
+  const answer = c.perspective.classPriority;
+  const averaging = answer?.unknown ? undefined : AVERAGING_BY_PRIORITY[answer?.text ?? ""];
+  if (!averaging) return undefined;
+  // 따옴표 안에는 선언 값(선택지의 성적서 이름)만 — 덧붙인 글은 의뢰자 선언 표에 있다.
+  const declared = choiceLabel("perspective", "classPriority", answer!.text!);
+  return `다중 클래스 지표의 평균 방식은 ${averaging}을 기준으로 한다. 의뢰자가 클래스 중요도를 "${declared}"으로 밝혔기 때문이다.`;
+}
+
 /** 성적서 구성 카드의 값 → 성적서 자리별 줄. */
 export function buildReportMaterials(
   composer: ReportComposerInput,
@@ -253,6 +274,7 @@ export function buildReportMaterials(
 ): ReportMaterials {
   return {
     declarations: declarationRows(composer, taskType),
+    averagingSentence: averagingSentence(composer, taskType),
     metricRationale:
       taskType === "multilabel"
         ? describeValue("metrics", "metricRationale", composer.metrics.metricRationale)

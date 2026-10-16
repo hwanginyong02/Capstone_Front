@@ -245,3 +245,26 @@ describe("AI 에 넘기는 고객 입력 (서술 설계 D25, D34)", () => {
     expect(inputs.declarations).toEqual({ "위험 방향": "비슷함", "사용 방식": "배치" });
   });
 });
+
+/** 5절 평균 방식 문장 — 고정 문구 4(서술 설계 D28). 다중 클래스에서 클래스 중요도로 정한다. */
+describe("5절 평균 방식 문장", () => {
+  const sentence = (classPriority: { text?: string; unknown?: boolean; note?: string }, taskType: "multiclass" | "multilabel" | "binary" = "multiclass") =>
+    buildReportMaterials(composer({ perspective: { classPriority } }), taskType).averagingSentence;
+
+  it("클래스 중요도에 맞는 평균 방식을 선언 값과 함께 적는다", () => {
+    expect(sentence({ text: "All equal" })).toBe(
+      '다중 클래스 지표의 평균 방식은 매크로 평균을 기준으로 한다. 의뢰자가 클래스 중요도를 "모든 클래스가 동등"으로 밝혔기 때문이다.',
+    );
+    expect(sentence({ text: "Larger classes first" })).toContain("가중 평균");
+    expect(sentence({ text: "Individual samples first" })).toContain("마이크로 평균");
+  });
+
+  it("덧붙인 글은 따옴표 안에 넣지 않는다 — 선언 표에 있다", () => {
+    expect(sentence({ text: "All equal", note: "희귀 클래스도 중요" })).toContain('"모든 클래스가 동등"');
+  });
+
+  it("다중 클래스가 아니거나 답하지 않았으면 문장이 없다", () => {
+    expect(sentence({ text: "All equal" }, "multilabel")).toBeUndefined();
+    expect(sentence({ unknown: true })).toBeUndefined();
+  });
+});
