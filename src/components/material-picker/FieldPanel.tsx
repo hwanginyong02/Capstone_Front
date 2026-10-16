@@ -109,14 +109,11 @@ export function FieldPanel({ taskType, card, picks, included, actions }: FieldPa
         const sectionRows = rows[section.kind];
         return (
           <div key={section.kind} className="flex flex-col gap-2.5">
-            <h3 className="flex items-center gap-2">
+            <h3 className="flex">
               <span
-                className={cn("rounded-md px-2 py-0.5 text-xs font-medium", KIND_STYLE[section.kind].badge)}
+                className={cn("rounded-md px-2.5 py-1 text-xs font-medium", KIND_STYLE[section.kind].solid)}
               >
                 {section.title}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {sectionRows.length}개 · {section.note}
               </span>
             </h3>
             <ul className="grid gap-2.5 md:grid-cols-2">

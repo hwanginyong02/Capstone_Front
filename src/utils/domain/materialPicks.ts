@@ -104,11 +104,11 @@ export interface FieldRow {
   subs?: FieldPart[];
 }
 
-export const FIELD_SECTIONS: Array<{ kind: PickKind; title: string; note: string }> = [
-  { kind: "required", title: "필수", note: "늘 들어가요" },
-  { kind: "recommended", title: "권장", note: "표준 보고 항목이에요. 빼면 \"제공되지 않음\"으로 찍혀요" },
-  { kind: "optional", title: "선택", note: "필요하면 넣어요" },
-  { kind: "conditional", title: "조건부", note: "조건이 맞을 때 받아요" },
+export const FIELD_SECTIONS: Array<{ kind: PickKind; title: string }> = [
+  { kind: "required", title: "필수" },
+  { kind: "recommended", title: "권장" },
+  { kind: "optional", title: "선택" },
+  { kind: "conditional", title: "조건부" },
 ];
 
 /**
