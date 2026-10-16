@@ -43,7 +43,7 @@ import type {
   MetricDetailStateMap,
   UploadedFileInfo,
 } from "../../types/workflow.types";
-import { buildReportMaterials, type ReportComposerInput } from "./reportMaterials";
+import { NOT_PROVIDED, buildReportMaterials, type ReportComposerInput } from "./reportMaterials";
 import type {
   ComposerCardId,
   ComposerSelection,
@@ -423,15 +423,19 @@ function buildTrainingDatasetInfo(input: MapWorkflowToReportInput): TrainingData
   };
 }
 
+/**
+ * 4절 환경 표. 실행 환경은 2층 보고 항목이라 비었거나 "모름"이면 "제공되지 않음"으로 적는다
+ * (재료 선택 점검 4.2 — "—"는 쓰지 않는다. "해당 없음"과 구분된다).
+ */
 function buildEvalEnv(basicInfo: BasicInfoFormData): EvalEnvironment {
   return {
     ...DEFAULT_EVAL_ENV_CONSTANTS,
     systemSpec: {
-      os: basicInfo.envOS || "—",
-      cpu: basicInfo.envCPU || "—",
-      gpu: basicInfo.envGPU || "—",
-      memory: basicInfo.envMemory || "—",
-      software: basicInfo.envSoftware || "—",
+      os: basicInfo.envOS || NOT_PROVIDED,
+      cpu: basicInfo.envCPU || NOT_PROVIDED,
+      gpu: basicInfo.envGPU || NOT_PROVIDED,
+      memory: basicInfo.envMemory || NOT_PROVIDED,
+      software: basicInfo.envSoftware || NOT_PROVIDED,
     },
   };
 }

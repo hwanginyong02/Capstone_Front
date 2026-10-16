@@ -20,6 +20,7 @@ import type {
   ComposerCard,
   ComposerCardId,
   ComposerField,
+  ComposerValueMap,
   MaterialCategory,
   MaterialPicks,
 } from "../../types/reportComposer.types";
@@ -109,5 +110,35 @@ export function missingRecommended(taskType: TaskType | "", picks: MaterialPicks
           pickKind(card, field) === "recommended" && !isFieldPicked(card, field, picks[card.id] ?? []),
       ),
     }))
+    .filter((item) => item.fields.length > 0);
+}
+
+/**
+ * 받기로 골랐지만 "모름"으로 답한 권장 항목을 카드별로, 카탈로그 순서로.
+ *
+ * "모름"은 제공되지 않음으로 센다(재료 선택 점검 5절) — 고르지 않은 권장 항목처럼 성적서에 "제공되지
+ * 않음"으로 찍힌다. 그래서 확인과 생성 단계에서 함께 알린다. 넣지 않은 카드는 보지 않는다.
+ *
+ * @param valuesOf 카드의 입력값. 카드 값이 없으면 빈 맵으로 본다.
+ */
+export function unknownRecommended(
+  taskType: TaskType | "",
+  picks: MaterialPicks,
+  valuesOf: (cardId: ComposerCardId) => ComposerValueMap | undefined,
+): MissingRecommended[] {
+  return catalogCards(taskType)
+    .filter((card) => !card.locked && (picks[card.id]?.length ?? 0) > 0)
+    .map((card) => {
+      const values = valuesOf(card.id) ?? {};
+      return {
+        card,
+        fields: getCardFields(card.id, taskType).filter(
+          (field) =>
+            pickKind(card, field) === "recommended" &&
+            isFieldPicked(card, field, picks[card.id]) &&
+            Boolean(values[field.id]?.unknown),
+        ),
+      };
+    })
     .filter((item) => item.fields.length > 0);
 }
