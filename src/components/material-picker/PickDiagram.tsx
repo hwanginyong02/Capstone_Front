@@ -1,8 +1,9 @@
 /**
  * 재료 고르기 가운데 — 대분류 4열 레인 다이어그램(docs/MATERIAL_PICKER.md §11).
  *
- * 들어간 카드가 레인마다 입력 순서대로 보인다. 왼쪽 레인부터, 레인 안에서는 위부터가 입력 순서이고
- * 카드 머리의 번호가 그 순서다. 팔레트에서 카드나 항목을 끌어 이 위 아무 데나 놓으면 들어간다.
+ * 들어간 카드가 레인마다 입력 순서대로 보인다. 레인 사이는 화살표로 왼쪽에서 오른쪽, 레인 안은
+ * 세로축을 따라 위에서 아래가 입력 순서이고, 세로축 위의 번호가 전체 순서다. 재료 목록에서 카드나
+ * 항목을 끌어 이 위 아무 데나 놓으면 들어간다.
  *
  * 위쪽 알림 줄에는 방금 막힌 순서의 이유와 순서 권고(평가 관점 → 지표)가 나온다.
  */
@@ -26,8 +27,8 @@ interface PickDiagramProps {
   /** 들어간 카드, 입력 순서대로. */
   cards: ComposerCard[];
   picks: MaterialPicks;
-  expandedCardId: ComposerCardId | null;
-  onToggleExpanded: (cardId: ComposerCardId) => void;
+  /** 재료 목록에서 그 카드를 펼친다. */
+  onReveal: (cardId: ComposerCardId) => void;
   /** 방금 막힌 순서 변경의 이유. */
   blockedReason: string | null;
   /** 막지는 않는 순서 권고. */
@@ -40,8 +41,7 @@ export function PickDiagram({
   lanes,
   cards,
   picks,
-  expandedCardId,
-  onToggleExpanded,
+  onReveal,
   blockedReason,
   hints,
   actions,
@@ -93,7 +93,7 @@ export function PickDiagram({
       )}
 
       <div className="overflow-x-auto pb-2">
-        <ol aria-label="대분류 레인" className="grid min-w-[880px] grid-cols-4 gap-4">
+        <ol aria-label="대분류 레인" className="grid min-w-[900px] grid-cols-4 gap-7">
           {lanes.map((lane, index) => (
             <DiagramLane
               key={lane.id}
@@ -102,8 +102,7 @@ export function PickDiagram({
               numberOf={numberOf}
               taskType={taskType}
               picks={picks}
-              expandedCardId={expandedCardId}
-              onToggleExpanded={onToggleExpanded}
+              onReveal={onReveal}
               previousLaneId={lanes[index - 1]?.id}
               nextLaneId={lanes[index + 1]?.id}
               actions={actions}

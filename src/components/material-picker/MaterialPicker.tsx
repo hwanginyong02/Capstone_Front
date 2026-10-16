@@ -1,8 +1,9 @@
 /**
  * 재료 고르기 화면의 본문 — 왼쪽 재료 목록과 가운데 큰 다이어그램(docs/MATERIAL_PICKER.md §11).
  *
- * 무엇을 넣을지와 어떤 순서로 입력할지를 한 다이어그램에서 정하고, 바꾼 것은 그 자리에서 바로
- * 보인다. 저장 버튼은 없다. 현황과 이전·다음은 셸의 하단 바에 있다.
+ * 무엇을 넣을지는 재료 목록에서 필드 설명을 읽고 고르고, 어떤 순서로 입력할지는 다이어그램에서
+ * 정한다. 바꾼 것은 그 자리에서 바로 보인다. 저장 버튼은 없다. 현황과 이전·다음은 셸의 하단 바에
+ * 있다.
  *
  * 상태는 페이지가 든다 — 이 컴포넌트는 그리기만 한다(FRONTEND_DEVELOPMENT_GUIDELINE §1).
  */
@@ -29,10 +30,11 @@ interface MaterialPickerProps {
   lanes: MaterialCategory[];
   /** 들어간 카드, 입력 순서대로. */
   cards: ComposerCard[];
-  expandedCardId: ComposerCardId | null;
-  onToggleExpanded: (cardId: ComposerCardId) => void;
-  /** 처음에 팔레트에서 펼쳐 둘 카드. */
-  focusCardId?: ComposerCardId | null;
+  /** 재료 목록에서 펼친 카드. */
+  paletteExpanded: ReadonlySet<ComposerCardId>;
+  onTogglePaletteCard: (cardId: ComposerCardId) => void;
+  /** 재료 목록에서 그 카드를 펼치고 보이게 한다(다이어그램 노드의 "필드 보기"). */
+  onReveal: (cardId: ComposerCardId) => void;
   blockedReason: string | null;
   hints: string[];
   /** 지금 고른 것과 똑같은 추천 세트. */
@@ -49,9 +51,9 @@ export function MaterialPicker({
   selection,
   lanes,
   cards,
-  expandedCardId,
-  onToggleExpanded,
-  focusCardId,
+  paletteExpanded,
+  onTogglePaletteCard,
+  onReveal,
   blockedReason,
   hints,
   currentSet,
@@ -66,8 +68,8 @@ export function MaterialPicker({
           <div className="flex max-w-[640px] flex-col gap-2">
             <h1 className="text-heading-large font-medium text-foreground">재료 고르기</h1>
             <p className="text-sm leading-[21px] text-muted-foreground">
-              성적서에 넣을 재료를 가운데 다이어그램에 끌어 놓고, 입력할 순서를 정하세요. 바꾼 것은 바로
-              반영돼요. 입력은 다이어그램의 번호 순서대로 진행돼요.
+              왼쪽 목록에서 필드 설명을 보고 성적서에 넣을 재료를 고른 뒤, 가운데 다이어그램에서 입력할
+              순서를 정하세요. 바꾼 것은 바로 반영돼요. 입력은 화살표와 번호 순서대로 진행돼요.
             </p>
           </div>
           <div className="flex flex-col items-end gap-1.5">
@@ -88,12 +90,13 @@ export function MaterialPicker({
         </header>
 
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-          <div className="w-full lg:sticky lg:top-20 lg:max-h-[calc(100vh-11rem)] lg:w-[300px] lg:shrink-0 lg:overflow-y-auto">
+          <div className="w-full lg:sticky lg:top-20 lg:max-h-[calc(100vh-11rem)] lg:w-[380px] lg:shrink-0 lg:overflow-y-auto">
             <PickPalette
               taskType={taskType}
               picks={picks}
               selection={selection}
-              initialExpanded={focusCardId}
+              expanded={paletteExpanded}
+              onToggleExpanded={onTogglePaletteCard}
               actions={actions}
             />
           </div>
@@ -103,8 +106,7 @@ export function MaterialPicker({
               lanes={lanes}
               cards={cards}
               picks={picks}
-              expandedCardId={expandedCardId}
-              onToggleExpanded={onToggleExpanded}
+              onReveal={onReveal}
               blockedReason={blockedReason}
               hints={hints}
               actions={actions}

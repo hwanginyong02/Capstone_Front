@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from "react-router";
 import { WorkflowShell } from "../layout/WorkflowShell";
 import { MaterialPicker as MaterialPickerContent } from "../components/material-picker/MaterialPicker";
 import { PickStatusBar } from "../components/material-picker/PickStatusBar";
+import { paletteCardElementId } from "../components/material-picker/PickPalette";
 import type { PickerActions } from "../components/material-picker/dnd";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { buildStepList } from "../utils/domain/workflowSteps";
@@ -34,9 +35,9 @@ import type { ComposerCardId, MaterialPicks } from "../types/reportComposer.type
 /**
  * 재료 고르기 (`/app/composer`) — 작업 유형 다음, 입력 단계 시작 전(docs/MATERIAL_PICKER.md §11).
  *
- * 왼쪽 재료 목록에서 카드와 항목을 가운데 다이어그램으로 끌어 놓고(또는 ＋), 다이어그램에서 대분류
- * 레인과 카드의 순서를 바꿔 입력 순서를 정한다. 바꾼 것은 저장 버튼 없이 바로 스토어에 들어간다.
- * 필수 카드는 처음부터 들어가 있어 다음을 막을 일이 없다.
+ * 왼쪽 재료 목록에서 필드 설명과 형식을 읽고 카드와 항목을 가운데 다이어그램으로 끌어 놓고(또는 ＋),
+ * 다이어그램에서 대분류 레인과 카드의 순서를 바꿔 입력 순서를 정한다. 바꾼 것은 저장 버튼 없이 바로
+ * 스토어에 들어간다. 필수 카드는 처음부터 들어가 있어 다음을 막을 일이 없다.
  *
  * 순서 규칙(`ORDER_RULES`)을 깨는 이동은 반영하지 않고 그 이유를 보인다. 막지 않는 권고
  * (`ORDER_HINTS`)는 다이어그램 위에 남겨 둔다.
@@ -57,9 +58,13 @@ export function MaterialPicker() {
   const setCardOrder = useWorkflowStore((s) => s.setCardOrder);
   const initRequiredPicks = useWorkflowStore((s) => s.initRequiredPicks);
 
-  // 확인과 생성의 "재료 고르기에서 넣기"는 그 카드를 열어 둔 채 들어온다.
+  // 확인과 생성의 "재료 고르기에서 넣기"는 그 카드를 재료 목록에서 펼쳐 둔 채 들어온다.
   const focusCardId = (location.state as { cardId?: ComposerCardId } | null)?.cardId ?? null;
-  const [expandedCardId, setExpandedCardId] = useState<ComposerCardId | null>(focusCardId);
+  const [paletteExpanded, setPaletteExpanded] = useState<ReadonlySet<ComposerCardId>>(
+    () => new Set(focusCardId ? [focusCardId] : []),
+  );
+  /** 재료 목록에서 보이게 할 카드. 펼친 뒤 그리고 나서 스크롤한다. */
+  const [revealCardId, setRevealCardId] = useState<ComposerCardId | null>(focusCardId);
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
   const [undo, setUndo] = useState<{ label: string; picks: MaterialPicks; order: ComposerCardId[] } | null>(
     null,
@@ -69,6 +74,14 @@ export function MaterialPicker() {
   useEffect(() => {
     initRequiredPicks();
   }, [initRequiredPicks]);
+
+  useEffect(() => {
+    if (!revealCardId) return;
+    document
+      .getElementById(paletteCardElementId(revealCardId))
+      ?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+    setRevealCardId(null);
+  }, [revealCardId]);
 
   // 렌더 중에 navigate 를 부르지 않는다 — 라우트 테이블의 리다이렉트와 같은 방식을 쓴다.
   if (!taskType) return <Navigate to="/app" replace />;
@@ -98,10 +111,23 @@ export function MaterialPicker() {
     onExcludeCard: (cardId) => {
       if (getCard(cardId).locked) return;
       changePicks(cardId, []);
-      if (expandedCardId === cardId) setExpandedCardId(null);
     },
     onMoveCard: (cardId, targetCardId, position) => reorder(moveCard(cardOrder, cardId, targetCardId, position)),
     onMoveLane: (laneId, targetLaneId, position) => reorder(moveLane(cardOrder, laneId, targetLaneId, position)),
+  };
+
+  const togglePaletteCard = (cardId: ComposerCardId) =>
+    setPaletteExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(cardId)) next.delete(cardId);
+      else next.add(cardId);
+      return next;
+    });
+
+  /** 다이어그램 노드의 "필드 보기" — 재료 목록에서 그 카드를 펼치고 보이게 한다. */
+  const revealInPalette = (cardId: ComposerCardId) => {
+    setPaletteExpanded((prev) => new Set(prev).add(cardId));
+    setRevealCardId(cardId);
   };
 
   /** 추천 세트로 통째로 바꾼다. 직전 상태는 되돌리기로 남긴다. */
@@ -157,9 +183,9 @@ export function MaterialPicker() {
         selection={selection}
         lanes={laneOrder(cardOrder)}
         cards={cards}
-        expandedCardId={expandedCardId}
-        onToggleExpanded={(cardId) => setExpandedCardId((prev) => (prev === cardId ? null : cardId))}
-        focusCardId={focusCardId}
+        paletteExpanded={paletteExpanded}
+        onTogglePaletteCard={togglePaletteCard}
+        onReveal={revealInPalette}
         blockedReason={blockedReason}
         hints={orderHints(cards.map((card) => card.id))}
         currentSet={PICK_TIERS.find((tier) => matchesTier(tier.id, taskType, picks))?.id ?? null}

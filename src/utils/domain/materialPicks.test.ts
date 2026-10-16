@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { catalogCards, pickableIds } from "../../data/reportComposer";
 import type { MaterialPicks } from "../../types/reportComposer.types";
 import {
+  fieldRows,
   includeCardPicks,
   matchesTier,
   missingRecommended,
@@ -43,6 +44,28 @@ describe("넣고 빼기 — 바로 반영", () => {
     for (const item of optional) {
       expect(includeCardPicks("trainingData", "binary")).not.toContain(item.pickId);
     }
+  });
+
+  it("재료 목록의 필드 줄 — 필수는 버튼 없이, 권장은 필드 한 줄에 칸을 나열하고, 형식과 설명을 단다", () => {
+    const env = fieldRows("modelEnv", "binary");
+    expect(env.required).toEqual([]);
+    expect(env.recommended.map((row) => row.pickId)).toEqual([
+      "algorithm",
+      "hyperparameters",
+      "runtimeEnv",
+      "gpuUsage",
+    ]);
+    const algorithm = env.recommended[0];
+    expect(algorithm.format).toBe("텍스트");
+    expect(algorithm.description).toMatch(/알고리즘입니다/);
+    expect(env.recommended.find((row) => row.key === "runtimeEnv")?.subs?.map((sub) => sub.label)).toContain(
+      "운영체제",
+    );
+
+    const client = fieldRows("clientInfo", "binary");
+    expect(client.required.length).toBeGreaterThan(0);
+    expect(client.required.every((row) => row.pickId === undefined)).toBe(true);
+    expect(client.conditional.every((row) => Boolean(row.condition))).toBe(true);
   });
 
   it("넣고 뺄 항목은 권장(필드 한 줄)과 선택(쪼갠 항목마다)이다", () => {

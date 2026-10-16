@@ -11,9 +11,12 @@
 import type { TaskType } from "../../data/evaluationData";
 import {
   catalogCards,
+  fieldFormat,
+  fieldParts,
   getCard,
   getCardFields,
   isFieldPicked,
+  partPickId,
   pickKind,
   pickableIds,
 } from "../../data/reportComposer";
@@ -21,7 +24,9 @@ import type {
   ComposerCard,
   ComposerCardId,
   ComposerField,
+  FieldPart,
   MaterialPicks,
+  PickKind,
 } from "../../types/reportComposer.types";
 
 /** 그 카드에서 들어간 항목 수. */
@@ -79,6 +84,82 @@ export function pickItems(cardId: ComposerCardId, taskType: TaskType | ""): Pick
     }
     return [{ pickId: field.id, label: field.label, kind, description: field.description }];
   });
+}
+
+/**
+ * 재료 목록에 보일 필드 한 줄(또는 쪼갠 항목 한 줄). 이름·형식·설명을 마우스를 올리지 않아도
+ * 보이게 그린다 — 설명을 읽고 고른다(docs/MATERIAL_PICKER.md §8·§11).
+ */
+export interface FieldRow {
+  key: string;
+  name: string;
+  /** 이름 오른쪽에 회색으로 보일 입력 형식. */
+  format?: string;
+  description?: string;
+  /** 조건부 필드의 조건 문구. */
+  condition?: string;
+  /** 넣고 뺄 수 있는 줄(권장·선택)이면 그 항목 id. */
+  pickId?: string;
+  /** 권장 필드 아래에 나열만 하는 칸(⑨ 실행 환경의 운영체제·CPU·… 처럼). */
+  subs?: FieldPart[];
+}
+
+export const FIELD_SECTIONS: Array<{ kind: PickKind; title: string; note: string }> = [
+  { kind: "required", title: "필수", note: "늘 들어가요" },
+  { kind: "recommended", title: "권장", note: "표준 보고 항목이에요. 빼면 \"제공되지 않음\"으로 찍혀요" },
+  { kind: "optional", title: "선택", note: "필요하면 넣어요" },
+  { kind: "conditional", title: "조건부", note: "조건이 맞을 때 받아요" },
+];
+
+/**
+ * 카드의 필드를 구분별 줄로. 권장은 필드 한 줄 단위로 넣고 빼며 그 안의 칸은 아래에 나열만 한다.
+ * 필수·선택·조건부는 쪼갠 항목이 있으면 항목마다 한 줄이다(§8 "필드는 하나씩 쪼개 보여준다").
+ */
+export function fieldRows(cardId: ComposerCardId, taskType: TaskType | ""): Record<PickKind, FieldRow[]> {
+  const card = getCard(cardId);
+  const rows: Record<PickKind, FieldRow[]> = { required: [], recommended: [], optional: [], conditional: [] };
+
+  for (const field of getCardFields(cardId, taskType)) {
+    const kind = pickKind(card, field);
+    const condition = kind === "conditional" ? field.conditionLabel : undefined;
+
+    if (kind === "recommended") {
+      const subs = fieldParts(field);
+      rows.recommended.push({
+        key: field.id,
+        name: field.label,
+        format: subs.length > 0 ? undefined : fieldFormat(field),
+        description: field.description,
+        pickId: field.id,
+        subs: subs.length > 0 ? subs : undefined,
+      });
+      continue;
+    }
+
+    if (field.parts) {
+      for (const part of field.parts) {
+        rows[kind].push({
+          key: partPickId(field, part.key),
+          name: part.label,
+          format: part.format,
+          description: part.description,
+          condition,
+          pickId: kind === "optional" ? partPickId(field, part.key) : undefined,
+        });
+      }
+      continue;
+    }
+
+    rows[kind].push({
+      key: field.id,
+      name: field.label,
+      format: fieldFormat(field),
+      description: field.description,
+      condition,
+      pickId: kind === "optional" ? field.id : undefined,
+    });
+  }
+  return rows;
 }
 
 /** 늘 받는 필드 수 — 필수와 조건부. 다이어그램 칩에 "필수 n"으로 접어 보인다. */

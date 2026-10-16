@@ -1,12 +1,13 @@
 /**
  * 다이어그램의 레인 하나 — 대분류 하나와 그 안의 들어간 카드(docs/MATERIAL_PICKER.md §11).
  *
- * 레인 머리를 좌우로 끌거나 ◀▶ 버튼으로 대분류 순서를 바꾼다. 레인 안의 카드는 위에서 아래로
- * 입력 순서다. 레인 맨 아래의 빈 자리에 같은 레인의 카드를 놓으면 맨 뒤로 간다.
+ * 레인 머리를 좌우로 끌거나 ◀▶ 버튼으로 대분류 순서를 바꾼다. 레인 사이의 순서는 머리 오른쪽의
+ * 화살표로, 레인 안의 순서는 세로축을 따라 위에서 아래로 보인다. 레인 맨 아래의 빈 자리에 같은
+ * 레인의 카드를 놓으면 맨 뒤로 간다.
  */
 import { useRef, useState, type ReactNode } from "react";
 import { useDrag, useDrop } from "react-dnd";
-import { ChevronLeft, ChevronRight, GripHorizontal } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, GripHorizontal } from "lucide-react";
 import type { TaskType } from "../../data/evaluationData";
 import type {
   ComposerCard,
@@ -29,8 +30,8 @@ interface DiagramLaneProps {
   numberOf: (cardId: ComposerCardId) => number;
   taskType: TaskType | "";
   picks: MaterialPicks;
-  expandedCardId: ComposerCardId | null;
-  onToggleExpanded: (cardId: ComposerCardId) => void;
+  /** 재료 목록에서 그 카드를 펼친다. */
+  onReveal: (cardId: ComposerCardId) => void;
   previousLaneId?: MaterialCategoryId;
   nextLaneId?: MaterialCategoryId;
   actions: PickerActions;
@@ -42,8 +43,7 @@ export function DiagramLane({
   numberOf,
   taskType,
   picks,
-  expandedCardId,
-  onToggleExpanded,
+  onReveal,
   previousLaneId,
   nextLaneId,
   actions,
@@ -86,11 +86,20 @@ export function DiagramLane({
           aria-hidden="true"
           className={cn(
             "absolute inset-y-0 w-0.5 rounded-full bg-primary",
-            showIndicator === "before" ? "-left-2" : "-right-2",
+            showIndicator === "before" ? "-left-[15px]" : "-right-[15px]",
           )}
         />
       )}
-      <div className="flex items-center gap-1 rounded-lg bg-muted px-2 py-1.5">
+      {/* 다음 레인으로 가는 화살표 — 대분류 사이의 입력 순서. 레인 사이 틈(gap-7)에 둔다. */}
+      {nextLaneId && (
+        <span
+          aria-hidden="true"
+          className="absolute -right-7 top-0 flex h-10 w-7 items-center justify-center text-foreground-secondary"
+        >
+          <ArrowRight className="size-5" strokeWidth={2} />
+        </span>
+      )}
+      <div className="flex h-10 items-center gap-1 rounded-lg bg-muted px-2">
         <span
           ref={(element) => {
             drag(element);
@@ -125,8 +134,7 @@ export function DiagramLane({
             number={numberOf(card.id)}
             taskType={taskType}
             picks={picks[card.id] ?? []}
-            expanded={expandedCardId === card.id}
-            onToggleExpanded={() => onToggleExpanded(card.id)}
+            onReveal={() => onReveal(card.id)}
             previousCardId={cards[index - 1]?.id}
             nextCardId={cards[index + 1]?.id}
             actions={actions}
