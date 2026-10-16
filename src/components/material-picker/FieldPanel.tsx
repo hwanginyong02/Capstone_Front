@@ -105,32 +105,43 @@ export function FieldPanel({ taskType, card, picks, included, actions }: FieldPa
         )}
       </header>
 
-      {sections.map((section) => {
-        const sectionRows = rows[section.kind];
-        return (
-          <div key={section.kind} className="flex flex-col gap-2.5">
-            <h3 className="flex">
-              <span
-                className={cn("rounded-md px-2.5 py-1 text-xs font-medium", KIND_STYLE[section.kind].solid)}
-              >
-                {section.title}
-              </span>
-            </h3>
-            <ul className="grid gap-2.5 md:grid-cols-2">
-              {sectionRows.map((row) => (
-                <FieldTile
-                  key={row.key}
-                  cardId={card.id}
-                  kind={section.kind}
-                  row={row}
-                  on={row.pickId ? picks.includes(row.pickId) : false}
-                  actions={actions}
-                />
-              ))}
-            </ul>
-          </div>
-        );
-      })}
+      {/*
+        필드만 패널 안에서 스크롤한다 — 필드가 많아도 패널이 길어지지 않아, 페이지를 내리지 않고 바로
+        위 다이어그램으로 끌어 놓는다. 머리(카드 이름·카드 넣기)는 그대로 있다. 높이는 넉넉히 —
+        최소 360px, 보통은 화면 높이의 45%.
+      */}
+      <div
+        aria-label={`${card.name} 필드 목록`}
+        role="group"
+        className="-mr-2 flex max-h-[max(360px,45vh)] flex-col gap-6 overflow-y-auto pr-2"
+      >
+        {sections.map((section) => {
+          const sectionRows = rows[section.kind];
+          return (
+            <div key={section.kind} className="flex flex-col gap-2.5">
+              <h3 className="flex">
+                <span
+                  className={cn("rounded-md px-2.5 py-1 text-xs font-medium", KIND_STYLE[section.kind].solid)}
+                >
+                  {section.title}
+                </span>
+              </h3>
+              <ul className="grid gap-2.5 md:grid-cols-2">
+                {sectionRows.map((row) => (
+                  <FieldTile
+                    key={row.key}
+                    cardId={card.id}
+                    kind={section.kind}
+                    row={row}
+                    on={row.pickId ? picks.includes(row.pickId) : false}
+                    actions={actions}
+                  />
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }
