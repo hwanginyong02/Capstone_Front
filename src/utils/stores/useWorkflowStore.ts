@@ -53,7 +53,7 @@ import {
  */
 
 /** persist 스키마 버전. 저장된 상태의 의미가 바뀔 때만 올린다. */
-export const WORKFLOW_PERSIST_VERSION = 12;
+export const WORKFLOW_PERSIST_VERSION = 13;
 
 /**
  * 구 번호 체계(v4 까지)의 1~6 이 가리켰던 단계.
@@ -334,6 +334,38 @@ function migrateMaterialPicksV12(next: any): any {
 }
 
 /**
+ * v12 → v13 — 학습·평가 전처리 일치(`preprocessingMatch`)가 ⑦ 테스트 데이터에서 ⑥ 학습 데이터 카드로
+ * 옮겨 갔다. 적어 둔 값과 재료 고르기의 체크를 함께 옮긴다. ⑥ 에 이미 값이 있으면 그것을 둔다.
+ * ⑦ 에 그 체크만 있었다면 ⑦ 은 고른 항목이 없어져 빠진다(선택 카드는 항목이 있어야 들어간다).
+ */
+function migratePreprocessingV13(next: any): any {
+  const test: ComposerValueMap = { ...(next.composerTestData ?? {}) };
+  const training: ComposerValueMap = { ...(next.composerTrainingData ?? {}) };
+  if (test.preprocessingMatch !== undefined) {
+    if (training.preprocessingMatch === undefined) training.preprocessingMatch = test.preprocessingMatch;
+    delete test.preprocessingMatch;
+  }
+
+  const picks: MaterialPicks = { ...(next.materialPicks ?? {}) };
+  const cards: ComposerSelection = { ...DEFAULT_COMPOSER_SELECTION, ...(next.composerCards ?? {}) };
+  if (picks.testData?.includes("preprocessingMatch")) {
+    picks.testData = picks.testData.filter((id) => id !== "preprocessingMatch");
+    cards.testData = picks.testData.length > 0;
+    if (picks.trainingData && !picks.trainingData.includes("preprocessingMatch")) {
+      picks.trainingData = [...picks.trainingData, "preprocessingMatch"];
+    }
+  }
+
+  return {
+    ...next,
+    composerTestData: test,
+    composerTrainingData: training,
+    ...(next.materialPicks ? { materialPicks: picks } : {}),
+    ...(next.composerCards ? { composerCards: cards } : {}),
+  };
+}
+
+/**
  * 저장된 워크플로우 상태를 현재 규칙으로 옮긴다(순수 함수 — 테스트가 직접 호출한다).
  *
  * **v1 → v2**: multilabel 에서 M1·M11·M12·M13 이 제거됐다(ISSUES.md A-04, 결정 2).
@@ -501,6 +533,11 @@ export function migrateWorkflowState(persisted: any, version: number): any {
   // v11 → v12 — 재료 고르기. 지금 상태를 저장된 체크로 옮긴다.
   if (version < 12) {
     next = migrateMaterialPicksV12(next);
+  }
+
+  // v12 → v13 — 전처리 일치를 ⑦ 에서 ⑥ 으로.
+  if (version < 13) {
+    next = migratePreprocessingV13(next);
   }
 
   return next;

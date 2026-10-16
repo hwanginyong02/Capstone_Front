@@ -128,7 +128,7 @@ describe("⑧ 정답 라벨", () => {
     ).toBe("Cohen의 카파 0.71");
     expect(
       valueOf(groundTruth({ ...several, labelAgreementKind: { text: "Percent agreement" }, labelAgreementValue: { text: "82" } }), "라벨 일치도"),
-    ).toBe("단순 일치율 82%");
+    ).toBe("단순 일치율 0.82"); // 화면은 %, 성적서·AI 는 0~1(재료 목록 5절)
     expect(
       valueOf(groundTruth({ ...several, labelAgreementKind: { text: "Other", otherText: "Gwet's AC1" }, labelAgreementValue: { text: "0.6" } }), "라벨 일치도"),
     ).toBe("기타(Gwet's AC1) 0.6");
@@ -202,10 +202,8 @@ describe("AI 에 넘기는 고객 입력 (서술 설계 D25, D34)", () => {
   const input = composer({
     cards: ALL_ON,
     perspective: { usageMode: { text: "Batch" }, criticalErrorType: { text: "Similar" } },
-    testData: {
-      testDataSource: { text: "Q1 logs" },
-      preprocessingMatch: { text: "Different", note: "Extra outlier filtering" },
-    },
+    testData: { testDataSource: { text: "Q1 logs" } },
+    trainingData: { preprocessingMatch: { text: "Different", note: "Extra outlier filtering" } },
   });
   const inputs = buildClientInputs({
     composer: input,
@@ -228,7 +226,8 @@ describe("AI 에 넘기는 고객 입력 (서술 설계 D25, D34)", () => {
   });
 
   it("성적서에 찍지 않는 전처리 일치도 넘기고, 덧붙인 글은 의뢰자 덧붙임으로 표시한다", () => {
-    expect((inputs.test_data as Record<string, string>)["학습·평가 전처리 일치"]).toBe(
+    // ⑥ 학습 데이터가 받는다(persist v13) — ⑦ 을 넣지 않아도 학습 데이터와 함께 간다.
+    expect((inputs.training_data as Record<string, string>)["학습·평가 전처리 일치"]).toBe(
       "다름 (의뢰자 덧붙임: Extra outlier filtering)",
     );
   });
@@ -244,5 +243,28 @@ describe("AI 에 넘기는 고객 입력 (서술 설계 D25, D34)", () => {
     expect(inputs.core_metrics).toEqual(["Accuracy(M1)"]);
     expect(inputs.class_label_descriptions).toEqual({ "0": "stays" });
     expect(inputs.declarations).toEqual({ "위험 방향": "비슷함", "사용 방식": "배치" });
+  });
+});
+
+/** 5절 평균 방식 문장 — 고정 문구 4(서술 설계 D28). 다중 클래스에서 클래스 중요도로 정한다. */
+describe("5절 평균 방식 문장", () => {
+  const sentence = (classPriority: { text?: string; unknown?: boolean; note?: string }, taskType: "multiclass" | "multilabel" | "binary" = "multiclass") =>
+    buildReportMaterials(composer({ perspective: { classPriority } }), taskType).averagingSentence;
+
+  it("클래스 중요도에 맞는 평균 방식을 선언 값과 함께 적는다", () => {
+    expect(sentence({ text: "All equal" })).toBe(
+      '다중 클래스 지표의 평균 방식은 매크로 평균을 기준으로 한다. 의뢰자가 클래스 중요도를 "모든 클래스가 동등"으로 밝혔기 때문이다.',
+    );
+    expect(sentence({ text: "Larger classes first" })).toContain("가중 평균");
+    expect(sentence({ text: "Individual samples first" })).toContain("마이크로 평균");
+  });
+
+  it("덧붙인 글은 따옴표 안에 넣지 않는다 — 선언 표에 있다", () => {
+    expect(sentence({ text: "All equal", note: "희귀 클래스도 중요" })).toContain('"모든 클래스가 동등"');
+  });
+
+  it("다중 클래스가 아니거나 답하지 않았으면 문장이 없다", () => {
+    expect(sentence({ text: "All equal" }, "multilabel")).toBeUndefined();
+    expect(sentence({ unknown: true })).toBeUndefined();
   });
 });

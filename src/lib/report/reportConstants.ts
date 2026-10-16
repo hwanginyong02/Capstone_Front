@@ -42,7 +42,7 @@ export const DEFAULT_EVAL_ENV_CONSTANTS: Pick<EvalEnvironment, "method" | "outpu
 export const REPORT_PURPOSE_LABEL: Record<ReportPurposeKey, string> = {
   internal: "내부 검증용",
   external: "외부 제출용",
-  project: "프로젝트 산출물",
+  project: "과제 산출물",
 };
 
 export const REPORT_PURPOSE_OVERVIEW: Record<ReportPurposeKey, string> = {

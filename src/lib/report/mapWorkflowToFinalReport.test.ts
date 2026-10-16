@@ -230,3 +230,11 @@ describe("평가 데이터 표본 수", () => {
     expect(report.datasetInfo.sampleCount).toBe(0);
   });
 });
+
+/** 4절 실행 환경은 2층 — 비었거나 "모름"이면 "제공되지 않음"이다(재료 선택 점검 4.2). "—"가 아니다. */
+describe("4절 실행 환경의 빈 칸", () => {
+  it("제공되지 않음으로 적는다", () => {
+    const report = mapWorkflowToFinalReport(baseInput());
+    expect(Object.values(report.evalEnv.systemSpec)).toEqual(Array(5).fill("제공되지 않음"));
+  });
+});

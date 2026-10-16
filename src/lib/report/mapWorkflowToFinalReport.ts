@@ -36,12 +36,14 @@ import { normalizeIsoDate } from "../../utils/domain/isoDate";
 import type { ValidateDataResponseData } from "../../types/validation.types";
 import { mapValidationResultToReport } from "./mapValidationResultToReport";
 import { buildConclusion } from "./computeVerdict";
+import { REPORT_CONTENT_SCHEMA } from "./normalizeReportContent";
+import { resolveTargetValue } from "../../utils/domain/validation";
 import type {
   BasicInfoFormData,
   MetricDetailStateMap,
   UploadedFileInfo,
 } from "../../types/workflow.types";
-import { buildReportMaterials, type ReportComposerInput } from "./reportMaterials";
+import { NOT_PROVIDED, buildReportMaterials, type ReportComposerInput } from "./reportMaterials";
 import type {
   ComposerCardId,
   ComposerSelection,
@@ -215,6 +217,7 @@ export function mapWorkflowToFinalReport(
     : null;
 
   return {
+    contentSchema: REPORT_CONTENT_SCHEMA,
     meta: buildMeta(input, resolvedTaskType),
     applicant: buildApplicant(input.basicInfo),
     performer: DEFAULT_PERFORMER,
@@ -420,15 +423,19 @@ function buildTrainingDatasetInfo(input: MapWorkflowToReportInput): TrainingData
   };
 }
 
+/**
+ * 4절 환경 표. 실행 환경은 2층 보고 항목이라 비었거나 "모름"이면 "제공되지 않음"으로 적는다
+ * (재료 선택 점검 4.2 — "—"는 쓰지 않는다. "해당 없음"과 구분된다).
+ */
 function buildEvalEnv(basicInfo: BasicInfoFormData): EvalEnvironment {
   return {
     ...DEFAULT_EVAL_ENV_CONSTANTS,
     systemSpec: {
-      os: basicInfo.envOS || "—",
-      cpu: basicInfo.envCPU || "—",
-      gpu: basicInfo.envGPU || "—",
-      memory: basicInfo.envMemory || "—",
-      software: basicInfo.envSoftware || "—",
+      os: basicInfo.envOS || NOT_PROVIDED,
+      cpu: basicInfo.envCPU || NOT_PROVIDED,
+      gpu: basicInfo.envGPU || NOT_PROVIDED,
+      memory: basicInfo.envMemory || NOT_PROVIDED,
+      software: basicInfo.envSoftware || NOT_PROVIDED,
     },
   };
 }
@@ -448,8 +455,7 @@ function buildMetricList(
       if (!metric || !metric.supportedTaskTypes.includes(taskType)) return null;
 
       const detail = metricDetails[metricId];
-      const target = parseFloat(detail?.targetValue ?? "");
-      const hasThreshold = Number.isFinite(target) && target > 0;
+      const target = resolveTargetValue(metricId, detail?.targetValue);
 
       // 방향성에 맞춰 합격 기준 표기(낮을수록 좋은 지표는 ≤). 6절 표(MetricRow)와 일관.
       const criteriaOp = metric.higherIsBetter === false ? "≤" : "≥";
@@ -462,8 +468,8 @@ function buildMetricList(
       return {
         metricId: getMetricDisplayId(metricId),
         name: displayName,
-        threshold: hasThreshold ? target : 0,
-        passCriteria: hasThreshold ? `${criteriaOp} ${target.toFixed(2)}` : "정보 제공",
+        threshold: target,
+        passCriteria: target !== null ? `${criteriaOp} ${target.toFixed(2)}` : "정보 제공",
       };
     })
     .filter((item): item is MetricItem => item !== null);

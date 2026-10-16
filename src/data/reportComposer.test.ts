@@ -190,7 +190,7 @@ describe("② 지표와 합격 기준", () => {
 });
 
 describe("⑥ 학습 데이터", () => {
-  it("재료 고르기에서 권장 6개와 선택 4개로 나뉜다 (docs/MATERIAL_PICKER.md §6)", () => {
+  it("재료 고르기에서 권장 6개와 선택 5개로 나뉜다 (docs/MATERIAL_PICKER.md §6)", () => {
     const card = getCard("trainingData");
     const of = (kind: string) =>
       card.fields.filter((field) => pickKind(card, field) === kind).map((field) => field.id);
@@ -207,6 +207,8 @@ describe("⑥ 학습 데이터", () => {
       "trainingDescription",
       "trainingDataFormat",
       "trainingNotes",
+      // 학습·평가 전처리 일치 — ⑦ 에서 옮겨 왔다(persist v13, 서술 설계 D44).
+      "preprocessingMatch",
     ]);
   });
 
@@ -242,16 +244,12 @@ describe("⑥ 학습 데이터", () => {
 });
 
 describe("⑦ 테스트 데이터", () => {
-  it("선택 항목은 수집 기간과 학습과 같은 전처리다", () => {
-    expect(pickableIds("testData", "binary")).toEqual([
-      "testDataSource",
-      "testSourceRelation",
-      "testPeriod",
-      "preprocessingMatch",
-    ]);
+  it("선택 항목은 수집 기간이다 — 학습·평가 전처리 일치는 ⑥ 으로 옮겼다", () => {
+    expect(pickableIds("testData", "binary")).toEqual(["testDataSource", "testSourceRelation", "testPeriod"]);
     const card = getCard("testData");
     const optional = card.fields.filter((field) => pickKind(card, field) === "optional");
-    expect(optional.map((field) => field.id)).toEqual(["testPeriod", "preprocessingMatch"]);
+    expect(optional.map((field) => field.id)).toEqual(["testPeriod"]);
+    expect(getCard("trainingData").fields.map((field) => field.id)).toContain("preprocessingMatch");
   });
 
   /**
@@ -259,7 +257,7 @@ describe("⑦ 테스트 데이터", () => {
    * D44). TS 4213 5.3.3 은 전처리 보고를 요구하지 않아 2층 근거가 없다.
    */
   it("전처리는 같음 / 다름 / 모름 한 칸이고 글을 덧붙일 수 있다", () => {
-    const field = getCard("testData").fields.find((item) => item.id === "preprocessingMatch");
+    const field = getCard("trainingData").fields.find((item) => item.id === "preprocessingMatch");
     expect(field?.input).toBe("single");
     expect(field?.choices).toEqual(["Same", "Different", "Unknown"]);
     expect(field?.allowsNote).toBe(true);
@@ -407,13 +405,13 @@ describe("재료 고르기 — 대분류와 필드 구분 (docs/MATERIAL_PICKER.
     const conditions = COMPOSER_CARDS.flatMap((card) => card.fields)
       .filter((field) => field.kind === "conditional")
       .map((field) => field.conditionLabel);
-    expect(conditions).toContain("성적서 용도에서 과제 제출 선택 시");
+    expect(conditions).toContain("성적서 용도에서 과제 산출물 선택 시");
     for (const label of conditions) expect(label).toMatch(/에서 .+ 선택 시$/);
   });
 
   it("형식은 선택지의 화면 이름으로 만든다 — 저장값이 드러나지 않는다", () => {
     expect(fieldFormat(fieldOf("perspective", "usageMode"))).toBe("하나 선택: 실시간 응답 / 일괄 처리");
-    expect(fieldFormat(fieldOf("testData", "preprocessingMatch"))).toBe(
+    expect(fieldFormat(fieldOf("trainingData", "preprocessingMatch"))).toBe(
       "하나 선택: 같음 / 다름 / 모름. 덧붙이는 글 가능",
     );
   });

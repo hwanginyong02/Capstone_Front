@@ -501,7 +501,7 @@ describe('조건이 걸린 답에 "모름"을 체크하면', () => {
 });
 
 describe("덧붙이는 글", () => {
-  const 전처리 = getCard("testData").fields.find((f) => f.id === "preprocessingMatch")!;
+  const 전처리 = getCard("trainingData").fields.find((f) => f.id === "preprocessingMatch")!;
 
   it("맞는 선택지가 없으면 글만 써도 답한 것이다 (서술 설계 D26)", () => {
     expect(hasValue(전처리, { note: "Test data had extra outlier filtering" })).toBe(true);
@@ -511,5 +511,43 @@ describe("덧붙이는 글", () => {
   it("글을 받지 않는 필드는 글만으로 답이 되지 않는다", () => {
     const 관계 = getCard("testData").fields.find((f) => f.id === "testSourceRelation")!;
     expect(hasValue(관계, { note: "something" })).toBe(false);
+  });
+});
+
+/**
+ * ⑥ 학습·검증 표본 수와 학습 클래스 분포는 건수다 — 0 이상의 정수만 받는다(재료 목록 6절).
+ * 종전에는 숫자 키패드만 띄우고 검사하지 않아 글자를 넣어도 통과했다.
+ */
+describe("숫자 칸 묶음은 0 이상의 정수만 받는다", () => {
+  const volume = 학습데이터.fields.find((f) => f.id === "trainingVolume")!;
+  const classVolume = 학습데이터.fields.find((f) => f.id === "trainingClassVolume")!;
+  const issueOf = (field: typeof volume, entries: Array<{ key: string; value: string }>) =>
+    getFieldIssue(학습데이터, field, { [field.id]: { entries } });
+
+  it("글자를 넣으면 걸린다", () => {
+    const issue = issueOf(volume, [
+      { key: "Training", value: "많음" },
+      { key: "Validation", value: "3000" },
+    ]);
+    expect(issue?.reason).toBe("outOfRange");
+    expect(issue?.message).toBe("0 이상의 정수로 적어 주세요.");
+  });
+
+  it("음수와 소수도 걸린다", () => {
+    expect(issueOf(classVolume, [{ key: "cat", value: "-3" }])?.reason).toBe("outOfRange");
+    expect(issueOf(classVolume, [{ key: "cat", value: "2.5" }])?.reason).toBe("outOfRange");
+  });
+
+  it("정수는 통과한다 — 천 단위 쉼표도 된다", () => {
+    expect(
+      issueOf(volume, [
+        { key: "Training", value: "12,000" },
+        { key: "Validation", value: "3000" },
+      ]),
+    ).toBeNull();
+  });
+
+  it("빈 칸은 숫자 검사가 아니라 필수 검사의 몫이다", () => {
+    expect(issueOf(classVolume, [{ key: "cat", value: "" }])?.reason).not.toBe("outOfRange");
   });
 });

@@ -114,7 +114,8 @@ export interface DatasetSampleRow {
 export interface MetricItem {
   metricId: string;
   name: string;
-  threshold: number;
+  /** 합격 목표값. 없으면 `null` — 0 은 목표값 0 이다(`resolveTargetValue`). */
+  threshold: number | null;
   passCriteria: string;
 }
 
@@ -140,6 +141,50 @@ export interface MetricFormula {
   isCommon: boolean;
 }
 
+/** TP·TN·FP·FN 건수 한 줄. */
+export interface ConfusionCountRow {
+  label: string;
+  tp: number;
+  fp: number;
+  fn: number;
+  tn: number;
+}
+
+/** TP·TN·FP·FN 건수(재료 목록 9절). 이진은 양성 클래스 한 줄, 다중·멀티는 클래스마다 일대다. */
+export interface ConfusionCounts {
+  kind: "binary" | "perClass";
+  rows: ConfusionCountRow[];
+}
+
+/** 8.1 벤치마크 비교 한 줄 — 서버가 계산한 값 그대로(내부 참조 기준치). */
+export interface BenchmarkRef {
+  metric: string;
+  modelValue: number;
+  refLow: number;
+  refHigh: number;
+  /** 방향을 반영한 우열 — better(우수) / within(범위 내) / worse(미흡). */
+  quality: string;
+  /** higher(높을수록 좋음) / lower(낮을수록 좋음). */
+  direction: string;
+  sourceNote: string;
+}
+
+/** 클래스별 표(M22)의 한 줄 — 클래스 하나 또는 평균 하나. */
+export interface ClassReportRow {
+  label: string;
+  precision: number | null;
+  recall: number | null;
+  f1: number | null;
+  support: number | null;
+}
+
+/** 클래스별 표(M22). 클래스 줄과 평균 줄(매크로·가중·마이크로·샘플). */
+export interface ClassReportTable {
+  rows: ClassReportRow[];
+  averages: ClassReportRow[];
+}
+
+/** 지표별 클래스 판정. 클래스별 표(`classReport`)가 생기기 전에 발급된 성적서에만 있다. */
 export interface PerClassKpi {
   label: string;
   value: number;
@@ -150,7 +195,11 @@ export interface KpiResult {
   metricId: string;
   name: string;
   value: number;
-  threshold: number;
+  /**
+   * 합격 목표값. 없으면 `null` 이고 판정 대상이 아니다. 0 이나 음수도 그 지표의 허용 범위 안이면
+   * 목표값이다(MCC 등). 종전에는 0 이 "없음"을 뜻했다 — `contentSchema` 참고.
+   */
+  threshold: number | null;
   /** unavailable = 백엔드 계산 실패(측정 불가). 판정/집계에서 제외하고 '측정 불가'로 표기. */
   status: "pass" | "fail" | "warning" | "unavailable";
   /** 방향성(합격 기준 표기 ≥/≤). 미지정=높을수록 좋음. */
@@ -182,6 +231,8 @@ export interface ConclusionData {
   /** 판정 대상 지표 수. 0 이면 통과율을 셀 수 없다. 이 키가 생기기 전 저장된 성적서에는 없다. */
   judgedCount?: number;
   benchmark: string;
+  /** 8.1 에 숫자로 찍는 벤치마크 비교(서버 계산). 이 키가 생기기 전 성적서에는 없다. */
+  benchmarkRefs?: BenchmarkRef[];
   narrative: string;
   risks: string;
 }
@@ -229,6 +280,15 @@ export interface TrainingDatasetInfo {
 }
 
 export interface FinalReportData {
+  /**
+   * 성적서 데이터 형식의 판. 발급된 성적서는 이 데이터를 통째로 보관하고 번호로 다시 그리므로,
+   * 뜻이 바뀐 칸을 옛 판에서 읽을 때 옮겨 읽는다(`normalizeReportContent`).
+   *
+   * - 없음(1): 목표값 없음을 `threshold: 0` 으로 적었다. 파생 예측 사실을 6.0 일러두기에 찍었다.
+   * - 2: 목표값 없음을 `threshold: null` 로 적는다. 파생 예측 사실은 7.1 앞에 찍는다(재료 목록
+   *   4절 "결정 임계값 — 7.1 앞 고정 문구").
+   */
+  contentSchema?: number;
   meta: FinalReportMeta;
   applicant: ApplicantInfo;
   performer: PerformerInfo;
@@ -244,6 +304,13 @@ export interface FinalReportData {
   /** 검증 수행 요약 수치 (없으면 섹션이 fallback 처리) */
   validationSummary?: ValidationSummary;
   kpiResults: KpiResult[];
+  /**
+   * 클래스별 표(M22). M22 를 골랐을 때만 있다. 이 키가 생기기 전 발급된 성적서는 지표별
+   * 클래스 판정(`KpiResult.perClass`)을 대신 찍는다.
+   */
+  classReport?: ClassReportTable | null;
+  /** TP·TN·FP·FN 건수. 7.1 에 찍는다(재료 목록 9절). 이 키가 생기기 전 성적서에는 없다. */
+  confusionCounts?: ConfusionCounts | null;
   charts: {
     confusionMatrix: ConfusionMatrixData | null;
     rocCurve: { fpr: number[]; tpr: number[]; auroc?: number } | null;
@@ -288,6 +355,11 @@ export interface ReportMaterials {
   declarations: MaterialRow[];
   /** 5절 선택 기준 문장. 멀티레이블에서만 있다(그 밖은 해당 없음). */
   metricRationale?: MaterialValue;
+  /**
+   * 5절 평균 방식 문장(고정 문구 4, 서술 설계 D28). 다중 클래스에서 클래스 중요도를 답했을 때만
+   * 있다. 이 키가 생기기 전 성적서에는 없다.
+   */
+  averagingSentence?: string;
   /** 3절 학습 데이터셋 표. */
   training: MaterialRow[];
   /** 3절 평가 데이터셋 표에 덧붙이는 줄(출처, 학습 데이터와의 관계, 수집 기간). */

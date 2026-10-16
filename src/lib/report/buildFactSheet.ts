@@ -7,8 +7,14 @@
  *
  * 백엔드 schemas.py 의 FactSheet/NarrativeRequest(snake_case)와 1:1 대응한다.
  */
-import type { KpiResult, LatencyStats } from "../../types/finalReport.types";
+import type {
+  ConfusionCounts,
+  DerivedPredictionFact,
+  KpiResult,
+  LatencyStats,
+} from "../../types/finalReport.types";
 import type { ConfusionMatrixData } from "../../types/report.types";
+import { buildClassReportTable } from "./classReportTable";
 
 export interface FactSheetMetric {
   metric_id: string;
@@ -33,7 +39,20 @@ export interface FactSheet {
   dropped_rows: number;
   metrics: FactSheetMetric[];
   per_class: FactSheetPerClass[];
+  /**
+   * 클래스별 표(M22)의 평균 줄 — 매크로·가중·마이크로(멀티레이블은 샘플 평균도). 평균 방식
+   * 차이를 8.2 에 쓰는 재료다(서술 설계 D17·D39). M22 를 고르지 않으면 빈 배열.
+   */
+  class_averages: FactSheetPerClass[];
   confusion: { labels: string[]; matrix: number[][]; positive_class: string | null } | null;
+  /** TP·TN·FP·FN 건수 — M21 선택과 무관하게 늘 싣는다(재료 목록 9절). */
+  confusion_counts: Array<{ label: string; tp: number; fp: number; fn: number; tn: number }>;
+  /** 확률에서 예측을 파생했을 때만 — 방법·임계값·출처 컬럼(재료 목록 9절 "파생 예측 사실 — AI 예"). */
+  derived_prediction: {
+    method: string;
+    threshold: number | Record<string, number> | null;
+    source_columns: string[];
+  } | null;
   distribution: {
     class_distribution: Record<string, number>;
     imbalance_ratio: number | null;
@@ -87,32 +106,14 @@ export interface BuildFactSheetInput {
   latencyStats?: LatencyStats | null;
   /** 양성 클래스 라벨 (2x2 혼동행렬 FN/FP 매핑 기준, binary) */
   positiveClass?: string | null;
+  /** TP·TN·FP·FN 건수(백엔드 confusion_counts). 없으면 빈 배열로 싣는다. */
+  confusionCounts?: ConfusionCounts | null;
+  /** 파생 예측 사실(백엔드 derived_prediction). */
+  derivedPrediction?: DerivedPredictionFact | null;
 }
 
 function num(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
-}
-
-/** classification report(M22)에서 클래스별 지표를 추출. 집계행(accuracy/avg)은 제외. */
-function buildPerClass(
-  classReport: Record<string, any> | null | undefined,
-  classLabels: string[],
-): FactSheetPerClass[] {
-  if (!classReport) return [];
-  const result: FactSheetPerClass[] = [];
-  for (const label of classLabels) {
-    const row = classReport[label];
-    if (!row || typeof row !== "object") continue;
-    result.push({
-      label,
-      precision: num(row.precision),
-      recall: num(row.recall),
-      // sklearn classification_report 의 키는 "f1-score"
-      f1: num(row["f1-score"] ?? row.f1),
-      support: num(row.support),
-    });
-  }
-  return result;
 }
 
 /**
@@ -170,14 +171,16 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
     classLabels,
     latencyStats,
     positiveClass,
+    confusionCounts,
+    derivedPrediction,
   } = input;
 
-  // 지표: 임계값(threshold)이 없으면(0) 정보 제공(info)으로 표기, threshold 는 null.
+  // 지표: 목표값이 없으면(null) 정보 제공(info)으로 표기한다.
   // 계산 실패(unavailable) 지표는 value 0 이 서술로 새지 않도록 아예 제외한다(D4).
   const metrics: FactSheetMetric[] = kpiResults
     .filter((r) => r.status !== "unavailable")
     .map((r) => {
-    const isInfoOnly = r.metricId === "M21" || r.metricId === "M22" || r.threshold <= 0;
+    const isInfoOnly = r.metricId === "M21" || r.metricId === "M22" || r.threshold === null;
     return {
       metric_id: r.metricId,
       display_name: r.name,
@@ -189,13 +192,23 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
   });
 
   const hasDistribution = Object.keys(classDistribution).length > 0;
+  const classTable = buildClassReportTable(classReport, classLabels);
 
   return {
     n_samples: nSamples,
     dropped_rows: droppedRows,
     metrics,
-    per_class: buildPerClass(classReport, classLabels),
+    per_class: classTable?.rows ?? [],
+    class_averages: classTable?.averages ?? [],
     confusion: buildConfusionFact(confusionMatrix, positiveClass ?? null),
+    confusion_counts: (confusionCounts?.rows ?? []).map(({ label, tp, fp, fn, tn }) => ({ label, tp, fp, fn, tn })),
+    derived_prediction: derivedPrediction
+      ? {
+          method: derivedPrediction.method,
+          threshold: derivedPrediction.threshold,
+          source_columns: derivedPrediction.source_columns,
+        }
+      : null,
     distribution: hasDistribution
       ? {
           class_distribution: classDistribution,

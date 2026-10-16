@@ -90,3 +90,19 @@ export function getTargetValueRule(metricId: string): { summary: string; validat
 export function metricNeedsTargetValue(metricId: string): boolean {
   return metricId !== "M21" && metricId !== "M22";
 }
+
+/**
+ * 성적서·판정에 쓸 합격 목표값. 목표값이 없으면 `null` 이다.
+ *
+ * 비었거나, 숫자가 아니거나, 그 지표의 허용 범위(`getTargetValueRule`)를 벗어나면 목표값이 없는
+ * 것으로 본다. 정보성 지표(M21·M22)는 늘 `null` 이다.
+ *
+ * 종전에는 "목표값 없음"을 0 으로 나타내고 `> 0` 만 판정했다. 그래서 MCC(−1~1)처럼 0 이나
+ * 음수가 정상인 목표가 판정에서 조용히 빠졌다(재료 목록 7절 "지표별 허용 범위 검사").
+ */
+export function resolveTargetValue(metricId: string, raw: string | undefined): number | null {
+  if (!metricNeedsTargetValue(metricId)) return null;
+  const value = parseNumericValue(raw ?? "");
+  if (value === null) return null;
+  return getTargetValueRule(metricId).validate(value) === null ? value : null;
+}

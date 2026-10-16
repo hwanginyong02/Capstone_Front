@@ -1,5 +1,5 @@
 import { CheckCircle2, AlertTriangle, XCircle, CircleHelp } from "lucide-react";
-import type { ConclusionData, NarrativeSource } from "../../../types/finalReport.types";
+import type { BenchmarkRef, ConclusionData, NarrativeSource } from "../../../types/finalReport.types";
 import { SectionTitle } from "../shared/SectionTitle";
 import { NarrativeSourceBadge } from "../shared/NarrativeSourceBadge";
 import { cn } from "../../../utils/styling/styles";
@@ -102,8 +102,13 @@ export function ConclusionSection({ conclusion, source }: ConclusionSectionProps
         항목별 값과 기준은 6절 표에서 확인할 수 있습니다.
       </p>
 
-      {/* 8.1 도메인 성능 벤치마크 */}
-      <NarrativeBlock title="도메인 성능 벤치마크" text={conclusion.benchmark} />
+      {/* 8.1 도메인 성능 벤치마크 — 참조 범위를 숫자로 찍고(재료 목록 9절) 서술을 붙인다. */}
+      <div className="space-y-3">
+        {conclusion.benchmarkRefs && conclusion.benchmarkRefs.length > 0 && (
+          <BenchmarkTable refs={conclusion.benchmarkRefs} />
+        )}
+        <NarrativeBlock title="도메인 성능 벤치마크" text={conclusion.benchmark} />
+      </div>
 
       {/* 8.2 전반적 성능 및 일반화 능력 총평 */}
       <NarrativeBlock title="전반적 성능 및 일반화 능력 총평" text={conclusion.narrative} />
@@ -111,5 +116,46 @@ export function ConclusionSection({ conclusion, source }: ConclusionSectionProps
       {/* 8.3 기술적 취약점 및 잠재적 리스크 요약 */}
       <NarrativeBlock title="기술적 취약점 및 잠재적 리스크 요약" text={conclusion.risks} />
     </section>
+  );
+}
+
+const QUALITY_LABEL: Record<string, string> = { better: "우수", within: "범위 내", worse: "미흡" };
+
+/** 8.1 벤치마크 비교 표 — 모델 값과 참조 범위(내부 참조 기준치). 서술보다 앞에 숫자로 둔다. */
+function BenchmarkTable({ refs }: { refs: BenchmarkRef[] }) {
+  const notes = [...new Set(refs.map((r) => r.sourceNote).filter(Boolean))];
+  return (
+    <div className="space-y-1">
+      <table className="w-full text-sm border-collapse" aria-label="벤치마크 참조 범위">
+        <thead>
+          <tr className="border-b border-slate-200">
+            <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">지표</th>
+            <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">모델 값</th>
+            <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">참조 범위</th>
+            <th className="py-1.5 text-left text-xs font-medium text-slate-500">위치</th>
+          </tr>
+        </thead>
+        <tbody>
+          {refs.map((r) => (
+            <tr key={r.metric} className="border-b border-slate-50 last:border-b-0">
+              <td className="py-1.5 pr-4 text-slate-700">
+                {r.metric}
+                {r.direction === "lower" && <span className="ml-1 text-xs text-slate-400">(낮을수록 좋음)</span>}
+              </td>
+              <td className="py-1.5 pr-4 font-mono tabular-nums text-slate-900">{r.modelValue.toFixed(3)}</td>
+              <td className="py-1.5 pr-4 font-mono tabular-nums text-slate-900">
+                {r.refLow.toFixed(2)} ~ {r.refHigh.toFixed(2)}
+              </td>
+              <td className="py-1.5 text-slate-700">{QUALITY_LABEL[r.quality] ?? r.quality}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {notes.map((note) => (
+        <p key={note} className="text-xs text-slate-500">
+          ※ {note}
+        </p>
+      ))}
+    </div>
   );
 }

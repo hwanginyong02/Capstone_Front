@@ -10,7 +10,10 @@ import { UnevaluatedDraftNotice } from "../../components/report/UnevaluatedDraft
 import { BackendNoticePanel } from "../../components/workflow/BackendNoticePanel";
 import { MissingRecommendedNotice } from "../../components/workflow/MissingRecommendedNotice";
 import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
-import { missingRecommended } from "../../utils/domain/materialPicks";
+import { missingRecommended, unknownRecommended } from "../../utils/domain/materialPicks";
+import { getCard } from "../../data/reportComposer";
+import { getStepDefinition } from "../../data/workflowSteps";
+import type { ComposerCardId, ComposerValueMap } from "../../types/reportComposer.types";
 
 export function Report() {
   // 기본값을 두지 않는다 — 폐지된 임시 성적서("preview")로 조용히 떨어지지 않게(E-06).
@@ -23,6 +26,19 @@ export function Report() {
   const taskType = useWorkflowStore((s) => s.taskType);
   const picks = useWorkflowStore((s) => s.materialPicks);
   const lastRunId = useWorkflowStore((s) => s.lastRunId);
+  // 선택 카드의 입력값 — "모름"으로 답한 권장 항목을 찾는다. 하나씩 고른다(새 객체를 돌려주는
+  // 선택자는 렌더마다 바뀐 것으로 보인다).
+  const trainingData = useWorkflowStore((s) => s.composerTrainingData);
+  const testData = useWorkflowStore((s) => s.composerTestData);
+  const groundTruth = useWorkflowStore((s) => s.composerGroundTruth);
+  const modelEnv = useWorkflowStore((s) => s.composerModelEnv);
+  const composerValues: Partial<Record<ComposerCardId, ComposerValueMap>> = {
+    trainingData,
+    testData,
+    groundTruth,
+    modelEnv,
+  };
+  const valuesOf = (cardId: ComposerCardId): ComposerValueMap | undefined => composerValues[cardId];
 
   if (isLoading) {
     return <ReportLoadingState />;
@@ -51,6 +67,11 @@ export function Report() {
         <MissingRecommendedNotice
           items={missingRecommended(taskType, picks)}
           onOpenPicker={(cardId) => navigate("/app/composer", { state: { cardId } })}
+          unknownItems={unknownRecommended(taskType, picks, valuesOf)}
+          onOpenInput={(cardId) => {
+            const path = getStepDefinition(getCard(cardId).steps[0]).path;
+            if (path) navigate(path);
+          }}
         />
       )}
 

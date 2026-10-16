@@ -30,9 +30,10 @@ function meta(derivedPrediction?: DerivedPredictionFact): FinalReportMeta {
   };
 }
 
-describe("성능 평가 산출 기준 — 파생 예측 기재", () => {
+describe("성능 평가 산출 기준 — 파생 예측 기재(판 2 이전 보관본)", () => {
+  // 판 2 부터는 7.1 앞 고정 문구로 찍는다(InterpretSection). 옛 보관본만 6.0 일러두기에 찍는다.
   it("파생이 없으면 기재하지 않는다", () => {
-    render(<KpiResultSection kpiResults={kpi} taskType="binary" meta={meta()} />);
+    render(<KpiResultSection kpiResults={kpi} derivationIn60 taskType="binary" meta={meta()} />);
     expect(screen.queryByText(/파생한 값입니다/)).not.toBeInTheDocument();
   });
 
@@ -40,6 +41,7 @@ describe("성능 평가 산출 기준 — 파생 예측 기재", () => {
     render(
       <KpiResultSection
         kpiResults={kpi}
+        derivationIn60
         taskType="binary"
         meta={meta({
           method: "threshold",
@@ -61,6 +63,7 @@ describe("성능 평가 산출 기준 — 파생 예측 기재", () => {
     render(
       <KpiResultSection
         kpiResults={kpi}
+        derivationIn60
         taskType="multiclass"
         meta={{
           ...meta({
@@ -83,6 +86,7 @@ describe("성능 평가 산출 기준 — 파생 예측 기재", () => {
     render(
       <KpiResultSection
         kpiResults={kpi}
+        derivationIn60
         taskType="multilabel"
         meta={{
           ...meta({
@@ -125,5 +129,99 @@ describe("6.1 판정 규칙 문구", () => {
   it("옛 규칙으로 판정한 성적서에는 찍지 않는다", () => {
     render(<KpiResultSection kpiResults={withCore} taskType="binary" meta={meta()} />);
     expect(screen.queryByText(/^판정 규칙:/)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * M22 클래스별 표 — 평균 줄을 버리지 않고, M22 만 골라도 보인다(재료 목록 9절, 서술 설계 D17·D39).
+ * 이 표가 생기기 전 발급된 성적서는 지표별 클래스 판정을 종전대로 그린다.
+ */
+describe("6.2 클래스별 표(M22)", () => {
+  const table = {
+    rows: [
+      { label: "cat", precision: 0.9, recall: 0.8, f1: 0.85, support: 50 },
+      { label: "dog", precision: 0.7, recall: 0.75, f1: 0.72, support: 40 },
+    ],
+    averages: [
+      { label: "매크로 평균", precision: 0.8, recall: 0.775, f1: 0.785, support: 90 },
+      { label: "가중 평균", precision: 0.81, recall: 0.78, f1: 0.79, support: 90 },
+    ],
+  };
+
+  it("클래스 줄과 평균 줄을 함께 찍는다", () => {
+    render(<KpiResultSection kpiResults={kpi} classReport={table} taskType="multiclass" meta={meta()} />);
+    const report = screen.getByRole("table", { name: "클래스별 세부 성능" });
+    for (const label of ["cat", "dog", "매크로 평균", "가중 평균"]) {
+      expect(report).toHaveTextContent(label);
+    }
+    expect(report).toHaveTextContent("0.785");
+  });
+
+  it("다른 지표를 고르지 않아도 표가 보인다", () => {
+    render(<KpiResultSection kpiResults={[]} classReport={table} taskType="multiclass" meta={meta()} />);
+    expect(screen.getByRole("table", { name: "클래스별 세부 성능" })).toBeInTheDocument();
+  });
+
+  it("표가 없는 옛 보관본은 지표별 클래스 판정을 종전대로 찍는다", () => {
+    const legacy: KpiResult[] = [
+      {
+        metricId: "M2",
+        name: "Precision",
+        value: 0.8,
+        threshold: 0.7,
+        status: "pass",
+        perClass: [{ label: "cat", value: 0.9, status: "pass" }],
+      },
+    ];
+    render(<KpiResultSection kpiResults={legacy} taskType="multiclass" meta={meta()} />);
+    expect(screen.queryByRole("table", { name: "클래스별 세부 성능" })).not.toBeInTheDocument();
+    expect(screen.getByText("M2 — Precision")).toBeInTheDocument();
+  });
+});
+
+/**
+ * 6.1 종합 핵심 성능은 고객이 정한 핵심 지표다(재료 목록 7절). 종전에는 유형별 고정 묶음이었다 —
+ * 핵심 지표 표시가 없는 옛 보관본만 그 묶음으로 그린다.
+ */
+describe("6.1 종합 핵심 성능", () => {
+  const sixOne = () => screen.getByText("종합 핵심 성능 (Key Performance Indicators)").parentElement!;
+
+  it("고객이 정한 핵심 지표만 6.1 에 찍는다", () => {
+    const results: KpiResult[] = [
+      { metricId: "M3", name: "Recall", value: 0.8, threshold: 0.7, status: "pass", isCore: true },
+      { metricId: "M1", name: "Accuracy", value: 0.9, threshold: 0.8, status: "pass", isCore: false },
+    ];
+    render(<KpiResultSection kpiResults={results} taskType="binary" meta={meta()} />);
+
+    expect(sixOne()).toHaveTextContent("Recall");
+    expect(sixOne()).not.toHaveTextContent("Accuracy");
+  });
+
+  it("핵심 지표를 정하지 않았으면 그렇다고 적는다", () => {
+    const results: KpiResult[] = [
+      { metricId: "M1", name: "Accuracy", value: 0.9, threshold: 0.8, status: "pass", isCore: false },
+    ];
+    render(<KpiResultSection kpiResults={results} taskType="binary" meta={meta()} />);
+
+    expect(sixOne()).toHaveTextContent("의뢰자가 지정한 핵심 지표가 없습니다");
+  });
+
+  it("핵심 지표 표시가 없는 옛 보관본은 유형별 묶음으로 그린다", () => {
+    render(<KpiResultSection kpiResults={kpi} taskType="binary" meta={meta()} />);
+
+    expect(sixOne()).toHaveTextContent("Accuracy");
+  });
+});
+
+describe("판 2 — 파생 예측 사실은 6.0 에 찍지 않는다", () => {
+  it("7.1 앞으로 옮겼다(재료 목록 4절)", () => {
+    render(
+      <KpiResultSection
+        kpiResults={kpi}
+        taskType="binary"
+        meta={meta({ method: "threshold", threshold: 0.5, source_columns: ["score"], target_role: "y_pred" })}
+      />,
+    );
+    expect(screen.queryByText(/파생한 값입니다/)).not.toBeInTheDocument();
   });
 });

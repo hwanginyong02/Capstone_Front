@@ -9,6 +9,7 @@ import {
   isCategoryComplete,
   isDraftDirty,
   missingRecommended,
+  unknownRecommended,
   picksToSave,
   requiredProgress,
   unsavedRequiredCards,
@@ -92,5 +93,33 @@ describe("빠진 권장 항목 (§5·§6)", () => {
     const missing = missingRecommended("binary", { testData: ["testDataSource", "testSourceRelation"] });
 
     expect(missing.find((item) => item.card.id === "testData")).toBeUndefined();
+  });
+});
+
+/**
+ * "모름"은 제공되지 않음으로 센다(재료 선택 점검 5절) — 받기로 고른 권장 항목을 "모름"으로 답하면
+ * 생성 전 안내에 함께 나온다(재료 목록 8절 "모름이라고 답한 경우는 생성 전 안내에 나오지 않음").
+ */
+describe("모름으로 답한 권장 항목", () => {
+  const picks: MaterialPicks = { modelEnv: ["algorithm", "runtimeEnv", "gpuUsage"] };
+
+  it("받기로 골랐고 모름이면 카드별로 돌려준다", () => {
+    const items = unknownRecommended("binary", picks, (cardId) =>
+      cardId === "modelEnv" ? { runtimeEnv: { unknown: true }, algorithm: { text: "XGBoost" } } : undefined,
+    );
+    expect(items.map((item) => item.card.id)).toEqual(["modelEnv"]);
+    expect(items[0].fields.map((field) => field.id)).toEqual(["runtimeEnv"]);
+  });
+
+  it("고르지 않은 항목의 모름은 세지 않는다 — 그건 빠진 권장 항목 쪽이 알린다", () => {
+    const items = unknownRecommended("binary", { modelEnv: ["algorithm"] }, () => ({
+      hyperparameters: { unknown: true },
+    }));
+    expect(items).toEqual([]);
+  });
+
+  it("넣지 않은 카드는 보지 않는다", () => {
+    const items = unknownRecommended("binary", {}, () => ({ runtimeEnv: { unknown: true } }));
+    expect(items).toEqual([]);
   });
 });

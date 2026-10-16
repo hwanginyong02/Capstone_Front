@@ -1,4 +1,4 @@
-import type { FinalReportMeta } from "../../../types/finalReport.types";
+import type { EvalScope, FinalReportMeta } from "../../../types/finalReport.types";
 import { SectionTitle } from "../shared/SectionTitle";
 
 const EVAL_PROCEDURE_STEPS = [
@@ -13,9 +13,11 @@ const EVAL_PROCEDURE_STEPS = [
 
 interface EvalScopeSectionProps {
   meta: FinalReportMeta;
+  /** 시험 대상 모델명·버전을 2절에 찍는다(재료 목록 2절 "모델명, 버전 — 1절, 2절, 4절"). */
+  evalScope?: EvalScope;
 }
 
-export function EvalScopeSection({ meta }: EvalScopeSectionProps) {
+export function EvalScopeSection({ meta, evalScope }: EvalScopeSectionProps) {
   return (
     <section className="space-y-6 border-t border-slate-200 py-10">
       <SectionTitle number={2} title="시험 목적 및 절차" />
@@ -27,6 +29,20 @@ export function EvalScopeSection({ meta }: EvalScopeSectionProps) {
           바탕으로, 국제 표준인 ISO/IEC TS 4213:2022에 명시된 평가 지표를 적용하여 객관적인 분류 성능을
           측정하고 신뢰성 수준을 정량적으로 확인하는 데 있다.
         </p>
+        {evalScope && (
+          <table className="text-sm border-collapse" aria-label="시험 대상 모델">
+            <tbody>
+              <tr className="border-b border-slate-100">
+                <th className="py-1.5 pr-6 text-left font-medium text-slate-500">시험 대상 모델</th>
+                <td className="py-1.5 text-slate-700">{evalScope.targetModel}</td>
+              </tr>
+              <tr>
+                <th className="py-1.5 pr-6 text-left font-medium text-slate-500">버전</th>
+                <td className="py-1.5 font-mono text-slate-700">{evalScope.version}</td>
+              </tr>
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div className="space-y-2">

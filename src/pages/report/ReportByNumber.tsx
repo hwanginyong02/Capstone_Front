@@ -14,6 +14,7 @@ import { Link, useParams } from "react-router";
 import { ReportSections } from "../../components/report/ReportSections";
 import { ReportLoadingState } from "../../components/report/ReportLoadingState";
 import { getReportContent, formatKstDateTime } from "../../lib/report/issuanceApi";
+import { normalizeReportContent } from "../../lib/report/normalizeReportContent";
 import type { FinalReportData } from "../../types/finalReport.types";
 
 type State =
@@ -37,7 +38,8 @@ export function ReportByNumber() {
       }
       setState({
         kind: "found",
-        data: result.content as FinalReportData,
+        // 옛 판의 보관본은 지금 뜻으로 옮겨 읽는다(보관본 자체는 그대로).
+        data: normalizeReportContent(result.content as FinalReportData),
         version: result.version,
         issuedAt: result.issuedAt,
         hash: result.contentHash,

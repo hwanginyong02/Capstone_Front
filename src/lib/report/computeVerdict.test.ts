@@ -42,7 +42,7 @@ describe("computeVerdict", () => {
   });
 
   it("D19: 판정 대상 지표가 하나도 없으면 판정 불가, 통과율은 셀 수 없다", () => {
-    const res = computeVerdict([kpi({ metricId: "M21", status: "pass", threshold: 0 })], "binary");
+    const res = computeVerdict([kpi({ metricId: "M21", status: "pass", threshold: null })], "binary");
     expect(res.verdict).toBe("INCONCLUSIVE");
     expect(res.judgedCount).toBe(0);
     expect(res.score).toBe(0);
@@ -130,7 +130,7 @@ describe("D19 규칙 순서", () => {
     const res = computeVerdict(
       [
         kpi({ metricId: "M1", status: "pass", threshold: 0.9 }),
-        kpi({ metricId: "M20", status: "pass", threshold: 0 }),
+        kpi({ metricId: "M20", status: "pass", threshold: null }),
       ],
       "binary",
       ["M1", "M20"],

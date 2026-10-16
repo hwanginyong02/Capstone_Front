@@ -11,6 +11,7 @@
  * 대신 `DataValidationSection.test.tsx` 의 배선 계약 테스트가 두 경로의 prop 집합을 대조한다.
  */
 import type { FinalReportData } from "../../types/finalReport.types";
+import { isLegacyLayout } from "../../lib/report/normalizeReportContent";
 import { ReportCoverSection } from "./sections/ReportCoverSection";
 import { CompanyInfoSection } from "./sections/CompanyInfoSection";
 import { EvalScopeSection } from "./sections/EvalScopeSection";
@@ -36,7 +37,7 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         evalScope={data.evalScope}
         meta={data.meta}
       />
-      <EvalScopeSection meta={data.meta} />
+      <EvalScopeSection meta={data.meta} evalScope={data.evalScope} />
       <DatasetSection
         datasetInfo={data.datasetInfo}
         datasetSamples={data.datasetSamples}
@@ -54,6 +55,8 @@ export function ReportSections({ data }: { data: FinalReportData }) {
       />
       <KpiResultSection
         kpiResults={data.kpiResults}
+        classReport={data.classReport}
+        derivationIn60={isLegacyLayout(data)}
         taskType={data.meta.taskType}
         meta={data.meta}
         // 판정 규칙 문구는 그 규칙(D19)으로 판정한 성적서에만 — judgedCount 가 그 표시다.
@@ -61,7 +64,13 @@ export function ReportSections({ data }: { data: FinalReportData }) {
       />
       <ChartSection charts={data.charts} />
       <LatencySection latency={data.latency} />
-      <InterpretSection interpretation={data.interpretation} source={data.narrativeSource} />
+      <InterpretSection
+        interpretation={data.interpretation}
+        source={data.narrativeSource}
+        // 파생 예측 사실은 7.1 앞에 찍는다. 판 2 이전 보관본은 6.0 일러두기에 찍었다.
+        derivedPrediction={isLegacyLayout(data) ? undefined : data.meta.derivedPrediction}
+        confusionCounts={data.confusionCounts}
+      />
       <ConclusionSection conclusion={data.conclusion} source={data.narrativeSource} />
       <RecommendSection
         recommendations={data.recommendations}
