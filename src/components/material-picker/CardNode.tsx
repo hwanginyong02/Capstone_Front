@@ -105,7 +105,7 @@ export function CardNode({
       <div
         onClick={onSelect}
         className={cn(
-          "group relative flex min-w-0 flex-1 cursor-pointer flex-col gap-2.5 rounded-lg border bg-card p-3 transition-colors",
+          "flex min-w-0 flex-1 cursor-pointer flex-col gap-2.5 rounded-lg border bg-card p-3 transition-colors",
           selected ? "border-primary ring-1 ring-primary" : "border-border-strong hover:border-foreground-subtle",
         )}
       >
@@ -127,8 +127,7 @@ export function CardNode({
             {card.name}
             {card.locked && <span className="ml-1.5 text-xs font-normal text-muted-foreground">필수</span>}
           </button>
-          {/* 순서·빼기 버튼은 마우스를 올리거나 키보드로 들어오면 나타난다 — 좁은 레인에서 이름 자리를 지킨다. */}
-          <span className="absolute right-1 top-1 flex items-center rounded-md border border-border bg-card opacity-0 shadow-sm transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+          <span className="-mr-1 -mt-1 flex shrink-0 items-center">
             <IconButton
               label={`${card.name} 위로`}
               disabled={!previousCardId}
