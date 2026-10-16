@@ -14,11 +14,12 @@
  */
 import { useDrag } from "react-dnd";
 import { Check, CornerDownRight, GripVertical, Plus } from "lucide-react";
-import type { TaskType } from "../../data/evaluationData";
+import { TASK_TYPE_LABELS_KO, type TaskType } from "../../data/evaluationData";
 import type { ComposerCard, ComposerCardId, PickKind } from "../../types/reportComposer.types";
 import { categoryOf } from "../../data/reportComposer";
 import { FIELD_SECTIONS, fieldRows, type FieldRow } from "../../utils/domain/materialPicks";
 import { cn } from "../../utils/styling/styles";
+import { CsvExampleViewer } from "../data-upload/CsvExampleViewer";
 import { DND, type CardDragItem, type ItemDragItem, type PickerActions } from "./dnd";
 import { KIND_STYLE } from "./kindStyles";
 
@@ -127,6 +128,7 @@ export function FieldPanel({ taskType, card, picks, included, actions }: FieldPa
                 {sectionRows.map((row) => (
                   <FieldTile
                     key={row.key}
+                    taskType={taskType}
                     cardId={card.id}
                     kind={section.kind}
                     row={row}
@@ -148,12 +150,14 @@ export function FieldPanel({ taskType, card, picks, included, actions }: FieldPa
  * 권장·선택 칸에는 넣기·빼기 버튼이 있고, 아직 넣지 않았으면 다이어그램으로 끌 수 있다.
  */
 function FieldTile({
+  taskType,
   cardId,
   kind,
   row,
   on,
   actions,
 }: {
+  taskType: TaskType | "";
   cardId: ComposerCardId;
   kind: PickKind;
   row: FieldRow;
@@ -178,6 +182,8 @@ function FieldTile({
       }}
       className={cn(
         "flex items-start gap-2 rounded-lg border border-l-[3px] py-3 pl-2.5 pr-3",
+        // 파일 필드는 예시 표를 붙이므로 두 칸 폭을 쓴다.
+        row.file && "md:col-span-2",
         kind === "conditional" ? "border-dashed" : "",
         KIND_STYLE[kind].accent,
         on ? "border-y-primary/40 border-r-primary/40 bg-primary-subtle" : "border-y-border border-r-border bg-card",
@@ -219,6 +225,7 @@ function FieldTile({
             )}
           </div>
         )}
+        {row.file && <FileExample taskType={taskType} />}
         {row.subs && (
           <ul className="mt-0.5 flex flex-col gap-1 border-l-2 border-border pl-2.5">
             {row.subs.map((sub) => (
@@ -251,5 +258,21 @@ function FieldTile({
         </button>
       )}
     </li>
+  );
+}
+
+/**
+ * 파일 필드의 예시 — 이 분류 유형에서 받는 파일을 표로 보인다. 업로드 화면의 "파일 예시"와 같은
+ * 표(`CsvExampleViewer`)와 필수 컬럼 안내를 쓴다. 무엇을 올려야 하는지 고르기 전에 알 수 있다.
+ */
+function FileExample({ taskType }: { taskType: TaskType | "" }) {
+  const resolved = taskType || "multiclass";
+  return (
+    <div className="mt-1 flex flex-col gap-2 rounded-md border border-border bg-background p-3">
+      <span className="text-xs font-medium text-foreground-secondary">
+        파일 예시 · {TASK_TYPE_LABELS_KO[resolved]} · CSV
+      </span>
+      <CsvExampleViewer taskType={resolved} />
+    </div>
   );
 }

@@ -62,6 +62,10 @@ describe("넣고 빼기 — 바로 반영", () => {
       "운영체제",
     );
 
+    // 파일을 받는 필드만 파일 표시가 붙는다 — 필드 패널이 예시 표를 붙인다.
+    expect(fieldRows("evalData", "binary").required.find((row) => row.key === "resultFile")?.file).toBe(true);
+    expect(env.recommended.every((row) => !row.file)).toBe(true);
+
     const client = fieldRows("clientInfo", "binary");
     expect(client.required.length).toBeGreaterThan(0);
     expect(client.required.every((row) => row.pickId === undefined)).toBe(true);

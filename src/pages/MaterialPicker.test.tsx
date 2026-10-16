@@ -99,6 +99,26 @@ describe("화면 구조", () => {
     expect(useWorkflowStore.getState().materialPicks.modelEnv).toEqual(["algorithm"]);
   });
 
+  it("파일을 받는 필드는 이 분류 유형의 파일 예시를 표로 보인다", async () => {
+    renderPage();
+    await selectInPalette("평가 데이터");
+
+    const fields = fieldPanel("평가 데이터");
+    expect(within(fields).getByText("결과 파일")).toBeInTheDocument();
+    const table = within(fields).getByRole("table");
+    for (const column of ["y_true", "y_pred", "score"]) {
+      expect(within(table).getByRole("columnheader", { name: column })).toBeInTheDocument();
+    }
+    // 업로드 화면과 같은 필수 컬럼 안내도 붙는다.
+    expect(within(fields).getByText(/정답\(y_true\)은 필수/)).toBeInTheDocument();
+  });
+
+  it("파일이 아닌 필드에는 예시 표가 없다", () => {
+    renderPage();
+
+    expect(within(fieldPanel("의뢰자 정보")).queryByRole("table")).not.toBeInTheDocument();
+  });
+
   it("처음에는 의뢰자 정보의 필드를 보인다 — 필수·조건부도 나오고 필드는 하나씩 쪼개 보인다", () => {
     renderPage();
 

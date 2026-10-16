@@ -102,6 +102,8 @@ export interface FieldRow {
   pickId?: string;
   /** 권장 필드 아래에 나열만 하는 칸(⑨ 실행 환경의 운영체제·CPU·… 처럼). */
   subs?: FieldPart[];
+  /** 파일을 받는 필드인지(① 결과 파일). 필드 패널이 파일 예시를 표로 붙인다. */
+  file?: boolean;
 }
 
 export const FIELD_SECTIONS: Array<{ kind: PickKind; title: string }> = [
@@ -132,6 +134,7 @@ export function fieldRows(cardId: ComposerCardId, taskType: TaskType | ""): Reco
         description: field.description,
         pickId: field.id,
         subs: subs.length > 0 ? subs : undefined,
+        file: field.input === "file" || undefined,
       });
       continue;
     }
@@ -157,6 +160,7 @@ export function fieldRows(cardId: ComposerCardId, taskType: TaskType | ""): Reco
       description: field.description,
       condition,
       pickId: kind === "optional" ? field.id : undefined,
+      file: field.input === "file" || undefined,
     });
   }
   return rows;
