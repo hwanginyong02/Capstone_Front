@@ -61,7 +61,7 @@ export function FieldPanel({ taskType, card, picks, included, actions }: FieldPa
     <section
       id={FIELD_PANEL_ID}
       aria-label={`${card.name} 필드`}
-      className="flex scroll-mt-20 flex-col gap-6 rounded-xl border border-border bg-card p-5"
+      className="@container flex scroll-mt-20 flex-col gap-6 rounded-xl border border-border bg-card p-5"
     >
       <header
         ref={(element) => {
@@ -116,7 +116,8 @@ export function FieldPanel({ taskType, card, picks, included, actions }: FieldPa
                 {section.title}
               </span>
             </h3>
-            <ul className="grid gap-2.5 md:grid-cols-2">
+            {/* 패널 폭으로 줄 수를 정한다 — 다이어그램 옆의 좁은 패널은 한 줄, 아래의 넓은 패널은 두 줄. */}
+            <ul className="grid gap-2.5 @xl:grid-cols-2">
               {sectionRows.map((row) => (
                 <FieldTile
                   key={row.key}

@@ -96,7 +96,7 @@ export function PickDiagram({
       )}
 
       <div className="overflow-x-auto pb-2">
-        <ol aria-label="대분류 레인" className="grid min-w-[900px] grid-cols-4 gap-7">
+        <ol aria-label="대분류 레인" className="grid min-w-[720px] grid-cols-4 gap-7">
           {lanes.map((lane, index) => (
             <DiagramLane
               key={lane.id}
