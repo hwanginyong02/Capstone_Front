@@ -144,7 +144,7 @@ export function ClientInfoForm({ formData, onFormDataChange, picks }: ClientInfo
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <ChoiceCard id="internal" title="내부 검증" description="사내 품질 확인이나 모델 모니터링에 씁니다" selected={formData.reportPurpose === "internal"} />
               <ChoiceCard id="external" title="외부 제출" description="고객사나 심사 기관에 냅니다" selected={formData.reportPurpose === "external"} />
-              <ChoiceCard id="project" title="과제 제출" description="지원 과제의 증빙으로 냅니다" selected={formData.reportPurpose === "project"} />
+              <ChoiceCard id="project" title="과제 산출물" description="지원 과제의 증빙으로 냅니다" selected={formData.reportPurpose === "project"} />
             </div>
           </RadioGroup>
 

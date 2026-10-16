@@ -405,7 +405,7 @@ describe("재료 고르기 — 대분류와 필드 구분 (docs/MATERIAL_PICKER.
     const conditions = COMPOSER_CARDS.flatMap((card) => card.fields)
       .filter((field) => field.kind === "conditional")
       .map((field) => field.conditionLabel);
-    expect(conditions).toContain("성적서 용도에서 과제 제출 선택 시");
+    expect(conditions).toContain("성적서 용도에서 과제 산출물 선택 시");
     for (const label of conditions) expect(label).toMatch(/에서 .+ 선택 시$/);
   });
 

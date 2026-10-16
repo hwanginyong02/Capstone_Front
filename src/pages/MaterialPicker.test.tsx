@@ -54,7 +54,7 @@ describe("화면 구조", () => {
     expect(screen.getByRole("checkbox", { name: "홈페이지" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "팩스" })).not.toBeChecked();
     // 조건부는 조건 문구와 함께 보인다.
-    expect(screen.getAllByText("조건: 성적서 용도에서 과제 제출 선택 시")).toHaveLength(2);
+    expect(screen.getAllByText("조건: 성적서 용도에서 과제 산출물 선택 시")).toHaveLength(2);
   });
 
   it("대분류 네 개와 카드 목록 — 필수 카드에는 '필수'를 붙인다", async () => {
