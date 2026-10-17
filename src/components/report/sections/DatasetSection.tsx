@@ -272,13 +272,13 @@ function TrainingDatasetExampleTable({
     <div className="overflow-hidden rounded-md border border-slate-300 bg-white">
       {/* 표 헤더 */}
       <div className="grid grid-cols-2 border-b border-slate-300 bg-slate-100 text-center text-xs font-bold text-slate-800 divide-x divide-slate-300">
-        <div className="py-2.5 px-3">정상 데이터</div>
-        <div className="py-2.5 px-3">불량 데이터</div>
+        <div className="py-2.5 px-3">적합 예시</div>
+        <div className="py-2.5 px-3">부적합 예시</div>
       </div>
 
       {/* 표 본문 (흰색 깔끔한 셀 2분할) */}
       <div className="grid grid-cols-2 divide-x divide-slate-300 bg-white">
-        {/* 정상 데이터 셀 */}
+        {/* 적합 예시 셀 */}
         <div className="flex items-center justify-center p-3 overflow-hidden">
           {validExamples.length > 0 ? (
             <div className="w-full space-y-2">
@@ -286,17 +286,17 @@ function TrainingDatasetExampleTable({
                 <ExampleImageCell
                   key={`valid-${file.name}-${idx}`}
                   file={file}
-                  label="정상 데이터"
+                  label="적합 예시"
                   onImageClick={onImageClick}
                 />
               ))}
             </div>
           ) : (
-            <p className="text-xs text-slate-400 p-6">등록된 정상 데이터 없음</p>
+            <p className="text-xs text-slate-400 p-6">등록된 적합 예시 없음</p>
           )}
         </div>
 
-        {/* 불량 데이터 셀 */}
+        {/* 부적합 예시 셀 */}
         <div className="flex items-center justify-center p-3 overflow-hidden">
           {edgeExamples.length > 0 ? (
             <div className="w-full space-y-2">
@@ -304,18 +304,23 @@ function TrainingDatasetExampleTable({
                 <ExampleImageCell
                   key={`edge-${file.name}-${idx}`}
                   file={file}
-                  label="불량 데이터"
+                  label="부적합 예시"
                   onImageClick={onImageClick}
                 />
               ))}
             </div>
           ) : (
-            <p className="text-xs text-slate-400 p-6">등록된 불량 데이터 없음</p>
+            <p className="text-xs text-slate-400 p-6">등록된 부적합 예시 없음</p>
           )}
         </div>
       </div>
     </div>
   );
+}
+
+/** "파일명 · 크기" — 3절은 예시 파일의 파일명과 크기를 적는다(재료 목록 6절). 크기는 원본 파일의 크기다. */
+function exampleFileCaption(file: UploadedFileInfo): string {
+  return file.size ? `${file.name} · ${file.size}` : file.name;
 }
 
 function ExampleImageCell({
@@ -329,29 +334,31 @@ function ExampleImageCell({
 }) {
   const hasPreview = !!file.previewUrl;
   return (
-    <div
-      className="group relative flex w-full items-center justify-center overflow-hidden cursor-pointer bg-white py-2"
-      onClick={() => hasPreview && onImageClick?.(file.previewUrl!, `${label} - ${file.name}`)}
-    >
-      {hasPreview ? (
-        <>
-          <img
-            src={file.previewUrl}
-            alt={file.name}
-            className="w-full max-h-[300px] object-contain transition-transform duration-300 group-hover:scale-[1.02]"
-          />
-          <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-semibold text-white shadow">
-              <ZoomIn className="size-4 text-teal-400" /> 클릭하여 확대
-            </span>
+    <figure className="w-full space-y-1">
+      <div
+        className="group relative flex w-full items-center justify-center overflow-hidden cursor-pointer bg-white py-2"
+        onClick={() => hasPreview && onImageClick?.(file.previewUrl!, `${label} - ${file.name}`)}
+      >
+        {hasPreview ? (
+          <>
+            <img
+              src={file.previewUrl}
+              alt={file.name}
+              className="w-full max-h-[300px] object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded print:hidden">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-semibold text-white shadow">
+                <ZoomIn className="size-4 text-teal-400" /> 클릭하여 확대
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-2 text-slate-400 py-4">
+            <FileImage className="size-10 stroke-[1.5]" />
           </div>
-        </>
-      ) : (
-        <div className="flex flex-col items-center gap-2 text-slate-400 py-6">
-          <FileImage className="size-10 stroke-[1.5]" />
-          <span className="text-xs text-slate-600">{file.name}</span>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+      <figcaption className="text-center text-xs text-slate-600 break-all">{exampleFileCaption(file)}</figcaption>
+    </figure>
   );
 }
