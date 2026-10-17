@@ -185,6 +185,62 @@ export interface ErrorRatios {
   threshold: number | Record<string, number> | null;
 }
 
+/**
+ * 임계값 조정 여지(서술 설계 D40) — 백엔드 `success_metrics.f1_threshold_gain` 그대로. 이진이고 점수가
+ * 있을 때만 온다. 원본 PR 곡선의 최대 F1 과 실제 예측의 F1 차이(음수면 0, 4자리 반올림).
+ */
+export interface F1ThresholdGain {
+  max_f1: number;
+  current_f1: number;
+  gain: number;
+  best_threshold: number;
+}
+
+/**
+ * 불균형 영향(서술 설계 D20) — 백엔드 `success_metrics.imbalance_effect` 그대로. affected(영향 있음) /
+ * no_distortion(불균형 있으나 성능 왜곡 미관찰) / mild(경미). 멀티레이블은 accuracy_minus_macro_f1 이 null.
+ */
+export interface ImbalanceEffect {
+  level: "affected" | "no_distortion" | "mild";
+  imbalance_ratio: number;
+  accuracy_minus_macro_f1: number | null;
+  majority_minus_minority_f1: number;
+  majority_class: string;
+  minority_class: string;
+}
+
+/** 문제 종류 9종(서술 설계 D22). 이 순서가 번호 순서다(우선순위 순, 같은 우선순위는 표 순서). */
+export type ProblemKind =
+  | "core_fail"
+  | "inconclusive"
+  | "noncore_fail"
+  | "core_near_target"
+  | "threshold_tuning"
+  | "imbalance_effect"
+  | "weakest_class"
+  | "distribution_shift"
+  | "label_caution";
+
+/**
+ * 9절 권고가 대응하는 문제 하나(`problemList.ts`). 생성 때 만들어 저장한다 — AI 사실 시트에도 이 모양
+ * (snake_case) 그대로 실어 보낸다(백엔드 ProblemFact).
+ */
+export interface Problem {
+  /** "P1"… 번호 순서 그대로. */
+  id: string;
+  kind: ProblemKind;
+  priority: "HIGH" | "MEDIUM" | "LOW";
+  /** 문제 이름 — 지표·클래스 이름을 괄호에 쉼표로("핵심 지표 미달 (F1 Score, Recall)"). */
+  title: string;
+  /** 문제가 드러난 절과 권고를 쓰는 절. */
+  source_section: string;
+  recommend_section: string;
+  /** 근거 수치. 숫자는 AI 서술의 허용 목록에 들어간다. */
+  evidence: Record<string, unknown>;
+  /** 덧붙임(예: 불균형 영향 + 편향 감소 노력 "수행 안 함"). 없으면 null. */
+  note: string | null;
+}
+
 /** 8.1 벤치마크 비교 한 줄 — 서버가 계산한 값 그대로(내부 참조 기준치). */
 export interface BenchmarkRef {
   metric: string;
@@ -385,6 +441,12 @@ export interface FinalReportData {
    * 이 키가 생기기 전 성적서에는 없다.
    */
   nearTargetNote?: string;
+  /**
+   * 9절 권고가 대응하는 문제 목록(서술 설계 D22, `problemList.ts`). 생성 때 만들어 저장한다.
+   * **이 키가 있는 성적서만** 9절을 문제 번호 표로 그린다 — 0개면 고정 문구 6. 이 키가 생기기 전
+   * 성적서는 종전 표(우선순위·분류·권고 내용·기대 효과)다.
+   */
+  problems?: Problem[];
   charts: {
     confusionMatrix: ConfusionMatrixData | null;
     rocCurve: { fpr: number[]; tpr: number[]; auroc?: number } | null;

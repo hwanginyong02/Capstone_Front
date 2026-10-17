@@ -14,7 +14,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildFactSheet, type BuildFactSheetInput } from "./buildFactSheet";
-import type { KpiResult } from "../../types/finalReport.types";
+import type { KpiResult, Problem } from "../../types/finalReport.types";
 
 function input(overrides: Partial<BuildFactSheetInput> = {}): BuildFactSheetInput {
   return {
@@ -245,5 +245,42 @@ describe("아슬아슬 margin·near_target (설계 D12)", () => {
     const fs = buildFactSheet(input({ kpiResults: [metric({ metricId: "M5", value: -0.0985, threshold: -0.1 })] }));
     expect(fs.metrics[0].margin).toBe(0.0015);
     expect(fs.metrics[0].near_target).toBe(true);
+  });
+});
+
+/** 문제 목록(설계 D22)과 그 재료(D40·D20) — 성적서에 저장한 것과 같은 모양 그대로 싣는다. */
+describe("문제 목록·임계값 조정 여지·불균형 영향", () => {
+  const problem: Problem = {
+    id: "P1",
+    kind: "core_fail",
+    priority: "HIGH",
+    title: "핵심 지표 미달 (F1 Score)",
+    source_section: "8.2",
+    recommend_section: "9.2",
+    evidence: { "F1 Score": { value: 0.71, target: 0.8 } },
+    note: null,
+  };
+  const gain = { max_f1: 0.8421, current_f1: 0.7012, gain: 0.1409, best_threshold: 0.37 };
+  const effect = {
+    level: "affected" as const,
+    imbalance_ratio: 3.2,
+    accuracy_minus_macro_f1: 0.12,
+    majority_minus_minority_f1: 0.18,
+    majority_class: "neg",
+    minority_class: "pos",
+  };
+
+  it("problems·f1_threshold_gain·imbalance_effect 를 그대로 싣는다", () => {
+    const fs = buildFactSheet(input({ problems: [problem], thresholdGain: gain, imbalanceEffect: effect }));
+    expect(fs.problems).toEqual([problem]);
+    expect(fs.f1_threshold_gain).toEqual(gain);
+    expect(fs.imbalance_effect).toEqual(effect);
+  });
+
+  it("없으면 빈 배열·null", () => {
+    const fs = buildFactSheet(input());
+    expect(fs.problems).toEqual([]);
+    expect(fs.f1_threshold_gain).toBeNull();
+    expect(fs.imbalance_effect).toBeNull();
   });
 });

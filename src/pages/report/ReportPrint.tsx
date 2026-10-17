@@ -93,6 +93,7 @@ export function ReportPrint() {
             recommendations={data.recommendations}
             narrative={data.recommendationNarrative}
             source={data.narrativeSource}
+            problems={data.problems}
           />
           <SignatureSection
             signature={data.signature}

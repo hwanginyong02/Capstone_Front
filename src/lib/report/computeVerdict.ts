@@ -12,6 +12,8 @@
  *  ④ 판정 대상 지표가 모두 충족                  → PASS (합격)
  *  - score = 합격 지표 수 / 판정 대상 지표 수 × 100 (통과율, 소수 1자리). **참고 수치일 뿐
  *    판정 근거가 아니다**(D19).
+ *  - reasons = 어느 지표 때문에 그 판정이 났는지(9절 문제 목록의 재료, `problemList.ts`). 판정 결과는
+ *    이 목록과 무관하게 위 규칙대로다.
  *
  * 종전에는 ②의 두 경우를 조건부 합격으로 적어, 확인하지 못한 것을 합격처럼 보이게 했다.
  */
@@ -57,11 +59,31 @@ export function resolveCoreMetricIds(
 
 export type Verdict = "PASS" | "CONDITIONAL_PASS" | "FAIL" | "INCONCLUSIVE";
 
+/** 판정 불가(②)의 원인 — 핵심 지표 산출 실패 / 핵심 지표 목표값 없음 / 판정 대상 0개. */
+export type InconclusiveReason = "core_not_computed" | "no_target" | "no_judged";
+
+/**
+ * 판정 사유(서술 설계 D22 문제 목록의 재료). 판정 결과를 바꾸지 않고, 판정에 쓴 지표를 그대로 돌려준다.
+ * 지표는 KpiResult.metricId(M 표기)로 적는다.
+ */
+export interface VerdictReasons {
+  /** 미달한 판정 대상 핵심 지표(①). */
+  coreFailed: string[];
+  /** 미달한 판정 대상 비핵심 지표(③). 판정이 FAIL 이어도 센다. */
+  nonCoreFailed: string[];
+  /**
+   * 판정이 INCONCLUSIVE 일 때만 — 원인과 그 원인에 해당하는 핵심 지표. 산출 실패가 하나라도 있으면
+   * core_not_computed, 아니면 no_target. 핵심 지표 탓이 아니고 판정 대상이 0개면 no_judged(지표 없음).
+   */
+  inconclusive: { reason: InconclusiveReason; metricIds: string[] } | null;
+}
+
 export interface VerdictResult {
   verdict: Verdict;
   score: number;
   /** 판정 대상 지표 수. 0 이면 통과율을 셀 수 없다(성적서에는 "—"). */
   judgedCount: number;
+  reasons: VerdictReasons;
 }
 
 /**
@@ -111,28 +133,48 @@ export function computeVerdict(
 
   const passed = judged.filter((r) => r.status === "pass").length;
   const score = judged.length > 0 ? Math.round((passed / judged.length) * 1000) / 10 : 0;
-  const result = (verdict: Verdict): VerdictResult => ({
+  const failed = judged.filter((r) => r.status === "fail");
+  const coreFailed = failed.filter((r) => coreIds.has(r.metricId)).map((r) => r.metricId);
+  const nonCoreFailed = failed.filter((r) => !coreIds.has(r.metricId)).map((r) => r.metricId);
+  const result = (
+    verdict: Verdict,
+    inconclusive: VerdictReasons["inconclusive"] = null,
+  ): VerdictResult => ({
     verdict,
     score,
     judgedCount: judged.length,
+    reasons: { coreFailed, nonCoreFailed, inconclusive },
   });
 
   // ① 핵심 지표가 하나라도 미달하면 불합격.
-  if (judged.some((r) => coreIds.has(r.metricId) && r.status === "fail")) {
+  if (coreFailed.length > 0) {
     return result("FAIL");
   }
 
   // ② 핵심 지표가 산출되지 않았으면(계산 실패·목표값 없음) 판정할 수 없다. 이번 평가에 없는
   //    지표는 핵심으로 세지 않는다 — 고르지 않은 지표의 기본값이 남아 있을 수 있다.
-  const coreNotJudged = kpiResults.some(
+  const coreNotJudged = kpiResults.filter(
     (r) => coreIds.has(r.metricId) && !judged.some((j) => j.metricId === r.metricId),
   );
-  if (judged.length === 0 || coreNotJudged) {
-    return result("INCONCLUSIVE");
+  if (judged.length === 0 || coreNotJudged.length > 0) {
+    const notComputed = coreNotJudged.filter((r) => r.status === "unavailable");
+    if (notComputed.length > 0) {
+      return result("INCONCLUSIVE", {
+        reason: "core_not_computed",
+        metricIds: notComputed.map((r) => r.metricId),
+      });
+    }
+    if (coreNotJudged.length > 0) {
+      return result("INCONCLUSIVE", {
+        reason: "no_target",
+        metricIds: coreNotJudged.map((r) => r.metricId),
+      });
+    }
+    return result("INCONCLUSIVE", { reason: "no_judged", metricIds: [] });
   }
 
   // ③ 핵심은 모두 충족했지만 그 외 지표에 미달이 있으면 조건부 합격, ④ 아니면 합격.
-  return result(judged.some((r) => r.status === "fail") ? "CONDITIONAL_PASS" : "PASS");
+  return result(failed.length > 0 ? "CONDITIONAL_PASS" : "PASS");
 }
 
 /**

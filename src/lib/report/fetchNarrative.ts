@@ -115,6 +115,10 @@ export async function fetchNarrative(
             category: String(r.category ?? ""),
             action: String(r.action ?? ""),
             expectedImpact: String(r.expected_impact ?? ""),
+            // 대응 문제 번호(서술 설계 D22). 문제 목록이 생기기 전 서버는 이 키가 없다 — 그때는 필드를 두지 않는다.
+            ...(typeof r.problem_id === "string" && r.problem_id.trim() !== ""
+              ? { problemId: r.problem_id.trim() }
+              : {}),
           }))
         : [],
       benchmarkRefs: toBenchmarkRefs(n.benchmark_refs),

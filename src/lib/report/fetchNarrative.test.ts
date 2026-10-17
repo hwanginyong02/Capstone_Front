@@ -191,3 +191,28 @@ describe("벤치마크 목표값 필드", () => {
     expect("targetPosition" in r).toBe(false);
   });
 });
+
+/** 권고의 대응 문제 번호(설계 D22) — 서버 problem_id 를 problemId 로. 옛 응답에는 필드를 두지 않는다. */
+describe("권고의 문제 번호", () => {
+  it("problem_id 를 problemId 로 옮긴다", async () => {
+    respondWith({
+      recommendations: [
+        { priority: "HIGH", category: "모델", action: "임계값 조정", expected_impact: "재현율 개선", problem_id: "P2" },
+      ],
+    });
+    const [rec] = (await fetchNarrative(PAYLOAD)).recommendations;
+    expect(rec).toEqual({
+      priority: "HIGH",
+      category: "모델",
+      action: "임계값 조정",
+      expectedImpact: "재현율 개선",
+      problemId: "P2",
+    });
+  });
+
+  it("키가 없거나 빈 값·문자열이 아니면 필드를 두지 않는다", async () => {
+    respondWith({ recommendations: [{}, { problem_id: "" }, { problem_id: 3 }, { problem_id: null }] });
+    const recs = (await fetchNarrative(PAYLOAD)).recommendations;
+    expect(recs.every((r) => !("problemId" in r))).toBe(true);
+  });
+});

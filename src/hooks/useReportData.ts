@@ -29,6 +29,11 @@ import {
   parseConfidenceIntervals,
 } from "../lib/report/confidenceIntervals";
 import { attachNearTarget, nearTargetNote } from "../lib/report/nearTarget";
+import {
+  buildProblemList,
+  parseF1ThresholdGain,
+  parseImbalanceEffect,
+} from "../lib/report/problemList";
 import { normalizeReportContent } from "../lib/report/normalizeReportContent";
 import { evaluateStatus } from "../lib/report/evaluateStatus";
 import { fetchNarrative } from "../lib/report/fetchNarrative";
@@ -139,10 +144,9 @@ export function useReportData(id: string): UseReportDataResult {
         const result = await response.json();
         if (!active) return;
 
-        const baseReport = mapWorkflowToFinalReport(
-          buildReportInput(workflowState),
-          workflowState.validationResult,
-        );
+        // 성적서 입력 스냅샷 — 매퍼·문제 목록·AI 고객 입력이 같은 값을 본다.
+        const reportInput = buildReportInput(workflowState);
+        const baseReport = mapWorkflowToFinalReport(reportInput, workflowState.validationResult);
 
         const success_metrics = result.results.success_metrics || {};
         // 계산 실패 지표({metricId: 에러문자열}). value 0/fail 위장 대신 'unavailable' 처리(D4).
@@ -349,6 +353,25 @@ export function useReportData(id: string): UseReportDataResult {
         // 경계·확신 오류 비율(설계 D30) — 확률이 있는 평가에만 백엔드가 싣는다. 7.1 문장은 지금 만들어
         // 저장한다(발급본은 나중에 문안이 바뀌어도 그대로).
         const errorRatios = parseErrorRatios(success_metrics.error_ratios);
+        // 9절 문제 목록(설계 D22) — 판정 사유·아슬아슬·임계값 조정 여지(D40)·불균형 영향(D20)·M22 표·
+        // 학습 분포·정답 라벨로 9종을 고른다. 지금 만들어 저장하고, 같은 목록을 AI 사실 시트에 싣는다.
+        const thresholdGain = parseF1ThresholdGain(success_metrics.f1_threshold_gain);
+        const imbalanceEffect = parseImbalanceEffect(success_metrics.imbalance_effect);
+        const classReport = buildClassReportTable(
+          success_metrics.M22,
+          classLabels,
+          workflowState.taskType || undefined,
+        );
+        const problems = buildProblemList({
+          kpiResults: updatedKpiResults,
+          taskType: taskTypeResolved,
+          coreMetricIds: [...coreDisplayIds],
+          thresholdGain,
+          imbalanceEffect,
+          classReport,
+          evaluationDistribution: resolvedClassDistribution,
+          composer: reportInput.composer,
+        });
 
         const factSheet = buildFactSheet({
           kpiResults: updatedKpiResults,
@@ -369,6 +392,9 @@ export function useReportData(id: string): UseReportDataResult {
           derivedPrediction,
           errorRatios,
           confidenceIntervalNote: ciNote,
+          thresholdGain,
+          imbalanceEffect,
+          problems,
         });
 
         // ── Stage 1: 서술과 무관한 결정론적 결과(KPI·차트·규칙 verdict)를 즉시 렌더한다.
@@ -392,13 +418,14 @@ export function useReportData(id: string): UseReportDataResult {
           evaluationWarnings: Array.isArray(result.warnings) ? result.warnings : [],
           kpiResults: updatedKpiResults,
           // 클래스별 표(M22) — 평균 줄까지. M22 만 골라도 보인다.
-          classReport: buildClassReportTable(success_metrics.M22, classLabels, workflowState.taskType || undefined),
+          classReport,
           confusionCounts,
           ...(errorRatios
             ? { errorRatios, errorRatioSentence: errorRatioSentence(errorRatios, taskTypeResolved) }
             : {}),
           ...(ciNote ? { confidenceIntervalNote: ciNote } : {}),
           ...(nearNote ? { nearTargetNote: nearNote } : {}),
+          problems,
           conclusion: ruleConclusion,  // full ConclusionData (verdict/score + 빈 서술)
           datasetDiagnosis,
           charts: { confusionMatrix, rocCurve, prCurve },
@@ -413,7 +440,6 @@ export function useReportData(id: string): UseReportDataResult {
         // ── Stage 2: LLM 서술을 받아 7·8·9절만 병합한다(KPI·차트는 이미 화면에 있음).
         // 고객이 제공한 입력도 함께 넘긴다(서술 설계 D25). 종전에는 성적서 구성 카드의 값이
         // 저장만 되고 AI 에 가지 않았다. 회사·과제 정보는 넣지 않는다(D34).
-        const reportInput = buildReportInput(workflowState);
         const clientInputs =
           reportInput.composer && baseReport.materials
             ? buildClientInputs({

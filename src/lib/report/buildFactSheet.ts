@@ -11,8 +11,11 @@ import type {
   ConfusionCounts,
   DerivedPredictionFact,
   ErrorRatios,
+  F1ThresholdGain,
+  ImbalanceEffect,
   KpiResult,
   LatencyStats,
+  Problem,
 } from "../../types/finalReport.types";
 import type { ConfusionMatrixData } from "../../types/report.types";
 import { buildClassReportTable } from "./classReportTable";
@@ -68,6 +71,15 @@ export interface FactSheet {
   error_ratios: ErrorRatios | null;
   /** 6.0 에 찍은 신뢰구간 방식 한 줄(서술 참고용). 구간이 없는 성적서는 null. */
   ci_method_note: string | null;
+  /** 임계값 조정 여지(서술 설계 D40) — 백엔드 응답 모양 그대로. 이진·점수가 없으면 null. */
+  f1_threshold_gain: F1ThresholdGain | null;
+  /** 불균형 영향(서술 설계 D20) — 백엔드 응답 모양 그대로. 계산하지 않았으면 null. */
+  imbalance_effect: ImbalanceEffect | null;
+  /**
+   * 9절 권고가 대응할 문제 목록(서술 설계 D22, `problemList.ts`) — 성적서에 저장한 것과 같은 모양.
+   * 권고는 이 번호(id)에 묶인다. 0개면 빈 배열이고 권고도 없다.
+   */
+  problems: Problem[];
   distribution: {
     class_distribution: Record<string, number>;
     imbalance_ratio: number | null;
@@ -129,6 +141,12 @@ export interface BuildFactSheetInput {
   errorRatios?: ErrorRatios | null;
   /** 6.0 신뢰구간 방식 한 줄(`confidenceIntervalNote`). */
   confidenceIntervalNote?: string | null;
+  /** 백엔드 f1_threshold_gain(`parseF1ThresholdGain`). */
+  thresholdGain?: F1ThresholdGain | null;
+  /** 백엔드 imbalance_effect(`parseImbalanceEffect`). */
+  imbalanceEffect?: ImbalanceEffect | null;
+  /** 문제 목록(`buildProblemList`). 없으면 빈 배열로 싣는다. */
+  problems?: Problem[];
 }
 
 function num(v: unknown): number | null {
@@ -200,6 +218,9 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
     derivedPrediction,
     errorRatios,
     confidenceIntervalNote,
+    thresholdGain,
+    imbalanceEffect,
+    problems,
   } = input;
 
   // 지표: 목표값이 없으면(null) 정보 제공(info)으로 표기한다.
@@ -245,6 +266,9 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
       : null,
     error_ratios: errorRatios ?? null,
     ci_method_note: confidenceIntervalNote ?? null,
+    f1_threshold_gain: thresholdGain ?? null,
+    imbalance_effect: imbalanceEffect ?? null,
+    problems: problems ?? [],
     distribution: hasDistribution
       ? {
           class_distribution: classDistribution,

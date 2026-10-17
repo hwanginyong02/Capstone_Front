@@ -240,3 +240,59 @@ describe("computeMargin·isNearTarget — 아슬아슬 한 곳 (D12)", () => {
     expect(isNearTarget(kpi({ value: 0.0001, threshold: 0 }))).toBe(false);
   });
 });
+
+/** 판정 사유(9절 문제 목록의 재료) — 판정 결과는 바꾸지 않고 어느 지표 때문인지를 돌려준다. */
+describe("computeVerdict 판정 사유", () => {
+  it("핵심·비핵심 미달 지표를 나눠 적는다 — FAIL 이어도 비핵심 미달을 센다", () => {
+    const res = computeVerdict(
+      [
+        kpi({ metricId: "M1", status: "fail" }),
+        kpi({ metricId: "M4", status: "pass" }),
+        kpi({ metricId: "M8", status: "fail", threshold: 0.1 }),
+        kpi({ metricId: "M9", status: "unavailable" }),
+      ],
+      "binary",
+    );
+    expect(res.verdict).toBe("FAIL");
+    expect(res.reasons).toEqual({ coreFailed: ["M1"], nonCoreFailed: ["M8"], inconclusive: null });
+  });
+
+  it("합격·조건부 합격에는 판정 불가 사유가 없다", () => {
+    const pass = computeVerdict([kpi({ metricId: "M1" }), kpi({ metricId: "M4" })], "binary");
+    expect(pass.reasons).toEqual({ coreFailed: [], nonCoreFailed: [], inconclusive: null });
+    const conditional = computeVerdict(
+      [kpi({ metricId: "M1" }), kpi({ metricId: "M4" }), kpi({ metricId: "M2", status: "fail" })],
+      "binary",
+    );
+    expect(conditional.verdict).toBe("CONDITIONAL_PASS");
+    expect(conditional.reasons.nonCoreFailed).toEqual(["M2"]);
+  });
+
+  it("핵심 지표 산출 실패 → core_not_computed (목표 없는 핵심이 함께 있어도)", () => {
+    const res = computeVerdict(
+      [
+        kpi({ metricId: "M1", status: "unavailable" }),
+        kpi({ metricId: "M4", threshold: null }),
+        kpi({ metricId: "M2" }),
+      ],
+      "binary",
+    );
+    expect(res.verdict).toBe("INCONCLUSIVE");
+    expect(res.reasons.inconclusive).toEqual({ reason: "core_not_computed", metricIds: ["M1"] });
+  });
+
+  it("핵심 지표 목표값 없음 → no_target", () => {
+    const res = computeVerdict(
+      [kpi({ metricId: "M1" }), kpi({ metricId: "M4", threshold: null })],
+      "binary",
+    );
+    expect(res.verdict).toBe("INCONCLUSIVE");
+    expect(res.reasons.inconclusive).toEqual({ reason: "no_target", metricIds: ["M4"] });
+  });
+
+  it("판정 대상 0개(핵심 지표 탓 아님) → no_judged", () => {
+    const res = computeVerdict([kpi({ metricId: "M2", threshold: null })], "binary", []);
+    expect(res.verdict).toBe("INCONCLUSIVE");
+    expect(res.reasons.inconclusive).toEqual({ reason: "no_judged", metricIds: [] });
+  });
+});
