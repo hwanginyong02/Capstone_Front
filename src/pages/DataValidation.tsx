@@ -68,7 +68,7 @@ export function DataValidation() {
       const run = addEvaluationRun({
         workspaceId,
         modelName: store.basicInfo.modelName || "Untitled model",
-        versionName: store.basicInfo.versionName || "v1.0.0",
+        versionName: reportData.evalScope.version,
         reportId: reportData.meta.reportId,
         workflowSnapshot,
         reportData,

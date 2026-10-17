@@ -43,6 +43,7 @@ import type {
   MetricDetailStateMap,
   UploadedFileInfo,
 } from "../../types/workflow.types";
+import { DEFAULT_BASIC_INFO } from "../../types/workflow.types";
 import { NOT_PROVIDED, buildReportMaterials, type ReportComposerInput } from "./reportMaterials";
 import type {
   ComposerCardId,
@@ -302,7 +303,9 @@ function buildEvalScope(basicInfo: BasicInfoFormData): EvalScope {
   return {
     purpose: REPORT_PURPOSE_OVERVIEW[purposeKey] || DEFAULT_EVAL_PURPOSE_TEXT,
     targetModel: basicInfo.modelName || "—",
-    version: basicInfo.versionName || "v1.0.0",
+    // 버전의 기본값은 여기 한 곳에서 정한다 — 성적서(2절·4절·서명란), AI, 실행 기록이 모두 이 값을
+    // 쓴다(DESIGN_GAPS R5). 입력 칸은 기본값이 미리 채워진 1층 필수지만, 끝난 단계로 돌아가 지울 수 있다.
+    version: basicInfo.versionName?.trim() || DEFAULT_BASIC_INFO.versionName,
     scope: DEFAULT_EVAL_SCOPE_TEXT,
     reportPurposeKey: purposeKey,
     modelPurpose: basicInfo.modelPurpose || undefined,

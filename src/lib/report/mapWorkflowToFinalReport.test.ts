@@ -282,3 +282,15 @@ describe("1절 팩스·홈페이지 — 비면 빈 값(줄을 만들지 않음)"
     expect(filled.applicant.homepage).toBe("https://a.example");
   });
 });
+
+describe("2절 버전 — 기본값은 한 곳에서 정한다(DESIGN_GAPS R5)", () => {
+  it.each([
+    ["", "v1.0.0"],
+    ["   ", "v1.0.0"],
+    [" v2.0 ", "v2.0"],
+  ])("입력 '%s' → '%s'", (input, expected) => {
+    const report = mapWorkflowToFinalReport(baseInput({ basicInfo: { ...DEFAULT_BASIC_INFO, versionName: input } }));
+
+    expect(report.evalScope.version).toBe(expected);
+  });
+});

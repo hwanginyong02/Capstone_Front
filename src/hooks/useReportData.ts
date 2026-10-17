@@ -393,7 +393,8 @@ export function useReportData(id: string): UseReportDataResult {
                 materials: baseReport.materials,
                 model: {
                   name: workflowState.basicInfo.modelName ?? "",
-                  version: workflowState.basicInfo.versionName ?? "",
+                  // 성적서에 찍는 버전과 같은 값(기본값 판정은 매퍼 한 곳).
+                  version: baseReport.evalScope.version,
                   purpose: workflowState.basicInfo.modelPurpose ?? "",
                   category: workflowState.basicInfo.modelCategory ?? "",
                 },
