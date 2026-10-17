@@ -172,7 +172,16 @@ export interface BenchmarkRef {
   /** higher(높을수록 좋음) / lower(낮을수록 좋음). */
   direction: string;
   sourceNote: string;
+  /**
+   * 목표값과 그 위치(설계 D31, 서버 계산). 목표값이 없는 지표는 null.
+   * 키 자체가 없으면 이 필드가 생기기 전에 만든 성적서다 — 8.1 표에 열을 그리지 않는다.
+   */
+  targetValue?: number | null;
+  /** 목표값이 참조 범위의 어디에 있는지 — 단순 수치 위치(방향 반영 안 함). below / within / above. */
+  targetPosition?: BenchmarkTargetPosition | null;
 }
+
+export type BenchmarkTargetPosition = "below" | "within" | "above";
 
 /** 클래스별 표(M22)의 한 줄 — 클래스 하나 또는 평균 하나. */
 export interface ClassReportRow {

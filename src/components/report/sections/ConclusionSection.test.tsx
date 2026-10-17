@@ -118,3 +118,67 @@ describe("8.1 벤치마크 참조 범위", () => {
     expect(screen.queryByRole("table", { name: "벤치마크 참조 범위" })).not.toBeInTheDocument();
   });
 });
+
+/**
+ * 8.1 목표값·목표값 수준(설계 D31) — 서버가 목표값 키를 실은 성적서에만 열을 그린다.
+ * 키가 없는 옛 성적서는 발급 당시 모양(4열) 그대로다.
+ */
+describe("8.1 목표값 열", () => {
+  const ref = {
+    metric: "Accuracy",
+    modelValue: 0.94,
+    refLow: 0.85,
+    refHigh: 0.92,
+    quality: "better",
+    direction: "higher",
+    sourceNote: "",
+  };
+  const headers = () =>
+    screen
+      .getByRole("table", { name: "벤치마크 참조 범위" })
+      .querySelectorAll("th");
+  const cellsOf = (metric: string) =>
+    [...screen.getByText(metric).closest("tr")!.querySelectorAll("td")].map((td) => td.textContent);
+
+  it("키가 있으면 목표값과 목표값 수준 열을 더한다", () => {
+    render(
+      <ConclusionSection
+        conclusion={{
+          ...conclusion,
+          benchmarkRefs: [
+            { ...ref, metric: "Accuracy", targetValue: 0.8, targetPosition: "below" },
+            { ...ref, metric: "Recall", targetValue: 0.9, targetPosition: "within" },
+            { ...ref, metric: "Precision", targetValue: 0.95, targetPosition: "above" },
+          ],
+        }}
+      />,
+    );
+    expect([...headers()].map((th) => th.textContent)).toEqual([
+      "지표", "모델 값", "참조 범위", "위치", "목표값", "목표값 수준",
+    ]);
+    expect(cellsOf("Accuracy").slice(4)).toEqual(["0.800", "범위보다 낮음"]);
+    expect(cellsOf("Recall").slice(4)).toEqual(["0.900", "범위 안"]);
+    expect(cellsOf("Precision").slice(4)).toEqual(["0.950", "범위보다 높음"]);
+  });
+
+  it("목표값이 없는 지표는 — 로 적는다", () => {
+    render(
+      <ConclusionSection
+        conclusion={{
+          ...conclusion,
+          benchmarkRefs: [
+            { ...ref, metric: "Accuracy", targetValue: 0.8, targetPosition: "below" },
+            { ...ref, metric: "Recall", targetValue: null, targetPosition: null },
+          ],
+        }}
+      />,
+    );
+    expect(cellsOf("Recall").slice(4)).toEqual(["—", "—"]);
+  });
+
+  it("옛 성적서(키 없음)는 열을 그리지 않는다", () => {
+    render(<ConclusionSection conclusion={{ ...conclusion, benchmarkRefs: [ref] }} />);
+    expect([...headers()].map((th) => th.textContent)).toEqual(["지표", "모델 값", "참조 범위", "위치"]);
+    expect(screen.queryByText("목표값 수준")).not.toBeInTheDocument();
+  });
+});

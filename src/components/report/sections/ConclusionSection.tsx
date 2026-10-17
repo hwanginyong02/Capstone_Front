@@ -3,6 +3,7 @@ import type { BenchmarkRef, ConclusionData, NarrativeSource } from "../../../typ
 import { SectionTitle } from "../shared/SectionTitle";
 import { NarrativeSourceBadge } from "../shared/NarrativeSourceBadge";
 import { cn } from "../../../utils/styling/styles";
+import { formatMetricValue } from "../../../lib/report/metricValueFormat";
 
 const VERDICT_CONFIG = {
   PASS: {
@@ -121,9 +122,18 @@ export function ConclusionSection({ conclusion, source }: ConclusionSectionProps
 
 const QUALITY_LABEL: Record<string, string> = { better: "우수", within: "범위 내", worse: "미흡" };
 
+/** 목표값이 참조 범위의 어디에 있는지(설계 D31). 단순 수치 위치라 방향을 반영하지 않는다. */
+const TARGET_POSITION_LABEL: Record<string, string> = {
+  below: "범위보다 낮음",
+  within: "범위 안",
+  above: "범위보다 높음",
+};
+
 /** 8.1 벤치마크 비교 표 — 모델 값과 참조 범위(내부 참조 기준치). 서술보다 앞에 숫자로 둔다. */
 function BenchmarkTable({ refs }: { refs: BenchmarkRef[] }) {
   const notes = [...new Set(refs.map((r) => r.sourceNote).filter(Boolean))];
+  // 목표값 열은 서버가 목표값 키를 실어 보낸 성적서에만 그린다. 그 전에 만든 성적서는 발급 당시 모양 그대로.
+  const showTarget = refs.some((r) => "targetValue" in r);
   return (
     <div className="space-y-1">
       <table className="w-full text-sm border-collapse" aria-label="벤치마크 참조 범위">
@@ -132,7 +142,13 @@ function BenchmarkTable({ refs }: { refs: BenchmarkRef[] }) {
             <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">지표</th>
             <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">모델 값</th>
             <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">참조 범위</th>
-            <th className="py-1.5 text-left text-xs font-medium text-slate-500">위치</th>
+            <th className={cn("py-1.5 text-left text-xs font-medium text-slate-500", showTarget && "pr-4")}>위치</th>
+            {showTarget && (
+              <>
+                <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">목표값</th>
+                <th className="py-1.5 text-left text-xs font-medium text-slate-500">목표값 수준</th>
+              </>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -146,7 +162,21 @@ function BenchmarkTable({ refs }: { refs: BenchmarkRef[] }) {
               <td className="py-1.5 pr-4 font-mono tabular-nums text-slate-900">
                 {r.refLow.toFixed(2)} ~ {r.refHigh.toFixed(2)}
               </td>
-              <td className="py-1.5 text-slate-700">{QUALITY_LABEL[r.quality] ?? r.quality}</td>
+              <td className={cn("py-1.5 text-slate-700", showTarget && "pr-4")}>
+                {QUALITY_LABEL[r.quality] ?? r.quality}
+              </td>
+              {showTarget && (
+                <>
+                  <td className="py-1.5 pr-4 font-mono tabular-nums text-slate-900">
+                    {formatMetricValue(r.targetValue)}
+                  </td>
+                  <td className="py-1.5 text-slate-700">
+                    {r.targetValue == null || !r.targetPosition
+                      ? "—"
+                      : TARGET_POSITION_LABEL[r.targetPosition]}
+                  </td>
+                </>
+              )}
             </tr>
           ))}
         </tbody>

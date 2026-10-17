@@ -7,6 +7,7 @@
  */
 import type {
   BenchmarkRef,
+  BenchmarkTargetPosition,
   InterpretationData,
   NarrativeSource,
   RecommendationNarrative,
@@ -35,6 +36,24 @@ const EMPTY: NarrativeFields = {
   source: "error",
 };
 
+const TARGET_POSITIONS: readonly BenchmarkTargetPosition[] = ["below", "within", "above"];
+
+/**
+ * 목표값·목표값 수준(설계 D31). 응답에 키가 없으면(이 필드가 생기기 전 서버) 필드를 아예 두지 않는다 —
+ * 8.1 표는 키가 있는 성적서에만 열을 그리므로, null 로 채우면 옛 응답에도 빈 열이 생긴다.
+ */
+function toTargetFields(r: any): Pick<BenchmarkRef, "targetValue" | "targetPosition"> {
+  const out: Pick<BenchmarkRef, "targetValue" | "targetPosition"> = {};
+  if ("target_value" in r) {
+    const v = r.target_value === null ? NaN : Number(r.target_value);
+    out.targetValue = Number.isFinite(v) ? v : null;
+  }
+  if ("target_position" in r) {
+    out.targetPosition = TARGET_POSITIONS.includes(r.target_position) ? r.target_position : null;
+  }
+  return out;
+}
+
 function toBenchmarkRefs(raw: unknown): BenchmarkRef[] {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -47,6 +66,7 @@ function toBenchmarkRefs(raw: unknown): BenchmarkRef[] {
       quality: String(r.quality ?? ""),
       direction: String(r.direction ?? "higher"),
       sourceNote: String(r.source_note ?? ""),
+      ...toTargetFields(r),
     }))
     .filter((r) => [r.modelValue, r.refLow, r.refHigh].every(Number.isFinite));
 }
