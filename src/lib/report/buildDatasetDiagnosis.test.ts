@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import type { ImbalanceEffect } from "../../types/finalReport.types";
 import { buildDatasetDiagnosis, imbalanceRatioOf, printedImbalanceRatio } from "./buildDatasetDiagnosis";
 
 /**
@@ -97,11 +98,83 @@ describe("3절 데이터셋 진단 — 불균형 경계 1.5 (D20)", () => {
     expect(text).toContain("허용 기준(< 1.50) 이내의 균형 상태이다.");
   });
 
-  it("찍힌 값이 1.50 이면(1.497) 불균형 쪽이다 — '1.50 … 미만'이라고 말하지 않는다", () => {
+  it("1.497 은 반올림 전 값으로 판정해 경미다 — \"1.50\" 이 아니라 \"1.497\" 로 찍는다", () => {
     const text = buildDatasetDiagnosis({ class_distribution: { A: 60, B: 40 } }, 1.497, 0, 100, "binary");
 
-    expect(text).toContain("1.50로");
+    expect(text).toContain("1.497로");
+    expect(text).not.toContain("1.50로");
+    expect(text).toContain("허용 기준(< 1.50) 이내의 균형 상태이다.");
+  });
+
+  it("백엔드 판정이 없으면 반올림 전 값으로 비교한다 — 꼭 1.5 는 불균형, 1.497 은 경미", () => {
+    const atBoundary = buildDatasetDiagnosis({ class_distribution: { A: 60, B: 40 } }, 1.5, 0, 100, "binary", null);
+    const below = buildDatasetDiagnosis({ class_distribution: { A: 60, B: 40 } }, 1.497, 0, 100, "binary", null);
+
+    expect(atBoundary).toContain("1.50로");
+    expect(atBoundary).toContain("허용 기준(1.50 미만)을 벗어나");
+    expect(below).toContain("1.497로");
+    expect(below).toContain("균형 상태이다.");
+  });
+
+  it("둘째 자리로도 셋째 자리로도 1.50 이 되면 넷째 자리까지 늘리고, 그래도 안 되면 버린다", () => {
+    const fourth = buildDatasetDiagnosis({ class_distribution: { A: 60, B: 40 } }, 1.4996, 0, 100, "binary");
+    const truncated = buildDatasetDiagnosis({ class_distribution: { A: 60, B: 40 } }, 1.49999, 0, 100, "binary");
+
+    expect(fourth).toContain("1.4996로");
+    expect(truncated).toContain("1.4999로");
+    expect(truncated).toContain("균형 상태이다.");
+  });
+});
+
+/**
+ * 판정하는 곳은 한 곳(서술 설계 D20) — 백엔드 imbalance_effect 가 있으면 3절은 그 level 을 그대로 따른다.
+ * 9절 "불균형 영향 있음"과 3절 문장이 서로 다른 결론을 말하지 않게 한다.
+ */
+describe("3절 데이터셋 진단 — 백엔드 D20 판정을 따른다 (imbalance_effect)", () => {
+  const effect = (level: ImbalanceEffect["level"], ratio: number): ImbalanceEffect => ({
+    level,
+    imbalance_ratio: ratio,
+    accuracy_minus_macro_f1: 0.05,
+    majority_minus_minority_f1: 0.12,
+    majority_class: "A",
+    minority_class: "B",
+  });
+
+  it("affected 면 IR 1.6 도 불균형 문장이다", () => {
+    const text = buildDatasetDiagnosis(
+      { class_distribution: { A: 80, B: 50 } }, 1.6, 0, 130, "binary", effect("affected", 1.6),
+    );
+
+    expect(text).toContain("1.60로");
+    expect(text).toContain("허용 기준(1.50 미만)을 벗어나");
     expect(text).not.toContain("균형 상태");
+  });
+
+  it("no_distortion 도 IR 이 1.5 이상이므로 불균형 문장이다", () => {
+    const text = buildDatasetDiagnosis(
+      { class_distribution: { A: 75, B: 50 } }, 1.5, 0, 125, "binary", effect("no_distortion", 1.5),
+    );
+
+    expect(text).toContain("허용 기준(1.50 미만)을 벗어나");
+    expect(text).not.toContain("균형 상태");
+  });
+
+  it("mild 면 균형(경미) 문장이고, 찍는 숫자도 1.5 아래로 읽힌다", () => {
+    const text = buildDatasetDiagnosis(
+      { class_distribution: { A: 60, B: 40 } }, 1.497, 0, 100, "binary", effect("mild", 1.497),
+    );
+
+    expect(text).toContain("1.497로");
+    expect(text).toContain("허용 기준(< 1.50) 이내의 균형 상태이다.");
+  });
+
+  it("백엔드 판정이 숫자 비교와 다르면 판정을 따른다(판정 지점은 하나)", () => {
+    // 분포로 다시 계산하면 1.4 라 경미지만, 엔진이 affected 라고 했으면 3절도 불균형이라고 말한다.
+    const text = buildDatasetDiagnosis(
+      { class_distribution: { A: 70, B: 50 } }, 1.4, 0, 120, "binary", effect("affected", 1.6),
+    );
+
+    expect(text).toContain("허용 기준(1.50 미만)을 벗어나");
   });
 });
 

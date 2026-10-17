@@ -67,6 +67,8 @@ describe("배선 — 만들어 두고 붙이지 않는 실수 차단", () => {
   });
 
   it("평가 응답의 warnings 를 성적서 데이터로 나른다", () => {
-    expect(read("hooks/useReportData.ts")).toContain("evaluationWarnings");
+    // 조립은 `assembleEvaluatedReport` 로 옮겼다(동작은 assembleEvaluatedReport.test.ts 가 고정). 훅이 그것을 부른다.
+    expect(read("hooks/useReportData.ts")).toContain("assembleEvaluatedReport(");
+    expect(read("lib/report/assembleEvaluatedReport.ts")).toContain("evaluationWarnings");
   });
 });

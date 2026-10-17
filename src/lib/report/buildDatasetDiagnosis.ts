@@ -1,3 +1,5 @@
+import type { ImbalanceEffect } from "../../types/finalReport.types";
+
 /**
  * 데이터셋 분포 사전 진단 문구 생성 (3절).
  *
@@ -21,7 +23,10 @@ export function imbalanceRatioOf(distribution: Record<string, number> | null | u
   return min > 0 ? Math.max(...counts) / min : null;
 }
 
-/** 3절이 찍는 IR 자릿수(소수 둘째 자리). 경계 비교도 찍힌 값으로 한다 — 9.004 는 "9.00" 이다. */
+/**
+ * 재료 선택 점검(IR > 9)이 비교하는 IR 자릿수(소수 둘째 자리) — 9.004 는 "9.00" 이다.
+ * 3절의 1.5 경계 판정은 이 값이 아니라 반올림 전 값(또는 백엔드 판정)으로 한다(`isBalancedImbalance`).
+ */
 export function printedImbalanceRatio(ratio: number): number {
   return Number(ratio.toFixed(2));
 }
@@ -29,12 +34,43 @@ export function printedImbalanceRatio(ratio: number): number {
 /** 3절 진단의 균형 기준(서술 설계 D20). IR 이 이 값 **미만**이어야 균형(경미)이다. */
 export const BALANCED_IMBALANCE_RATIO = 1.5;
 
+/**
+ * 3절의 균형(경미) 판정. 판정하는 곳은 한 곳 — 백엔드 D20 판정(`imbalance_effect.level`)이 있으면
+ * 그 결과를 그대로 읽는다(mild = 균형, affected·no_distortion = 불균형). 없으면(옛 응답·예측 없음)
+ * 백엔드와 같은 식으로 **반올림 전** IR 을 1.5 와 비교한다.
+ */
+export function isBalancedImbalance(ratio: number, imbalanceEffect?: ImbalanceEffect | null): boolean {
+  if (imbalanceEffect) return imbalanceEffect.level === "mild";
+  return ratio < BALANCED_IMBALANCE_RATIO;
+}
+
+/** 3절에 찍는 IR 의 최대 소수 자릿수. */
+const MAX_IMBALANCE_DECIMALS = 4;
+
+/**
+ * 3절에 찍는 IR 문자열. 평소에는 소수 둘째 자리다. 균형 판정인데 둘째 자리 반올림이 "1.50" 이 되면
+ * (예: 1.497) 판정과 어긋나는 숫자를 찍지 않도록 1.5 아래로 읽힐 때까지 자릿수를 늘린다(최대 넷째 자리,
+ * 그래도 안 되면 넷째 자리에서 버린다 — 1.49999 → "1.4999").
+ */
+export function formatImbalanceRatio(ratio: number, balanced: boolean): string {
+  const twoDecimals = ratio.toFixed(2);
+  if (!balanced || Number(twoDecimals) < BALANCED_IMBALANCE_RATIO) return twoDecimals;
+  for (let digits = 3; digits <= MAX_IMBALANCE_DECIMALS; digits += 1) {
+    const printed = ratio.toFixed(digits);
+    if (Number(printed) < BALANCED_IMBALANCE_RATIO) return printed;
+  }
+  const scale = 10 ** MAX_IMBALANCE_DECIMALS;
+  return (Math.floor(ratio * scale) / scale).toFixed(MAX_IMBALANCE_DECIMALS);
+}
+
 export function buildDatasetDiagnosis(
   metadata: { class_distribution?: Record<string, number> } | null | undefined,
   imbalanceRatio?: number,
   droppedRows: number = 0,
   datasetSize?: number,
   taskType?: "binary" | "multiclass" | "multilabel",
+  /** 백엔드 D20 판정(`parseImbalanceEffect`). 있으면 3절 균형 판정이 이 결과를 따른다. */
+  imbalanceEffect?: ImbalanceEffect | null,
 ): string {
   const dist: Record<string, number> = metadata?.class_distribution ?? {};
   const entries = Object.entries(dist).filter(([, count]) => typeof count === "number");
@@ -80,12 +116,13 @@ export function buildDatasetDiagnosis(
       );
     } else if (ratio > 0) {
       // 서술 설계 D20: IR 1.5 미만이 '경미'다. 꼭 1.5 는 불균형 쪽이다(종전 `<= 1.5` 는
-      // 1.5 를 균형으로 찍어 9절 불균형 판정과 어긋났다). 비교는 찍힌 값(소수 둘째 자리)으로
-      // 한다 — 1.497 을 "1.50" 으로 찍고 "1.50 미만"이라고 말하지 않기 위해서다.
+      // 1.5 를 균형으로 찍어 9절 불균형 판정과 어긋났다). 판정은 백엔드 D20 결과를 따르고(없으면
+      // 반올림 전 값으로 같은 식), 찍는 숫자가 판정과 어긋나지 않게 자릿수를 고른다 — 1.497 은
+      // 경미이므로 "1.50" 이 아니라 "1.497" 로 찍는다.
       // 이 문장은 생성 때 만들어 저장하므로 이미 발행된 성적서의 3절은 바뀌지 않는다.
-      const balanced = printedImbalanceRatio(ratio) < BALANCED_IMBALANCE_RATIO;
+      const balanced = isBalancedImbalance(ratio, imbalanceEffect);
       parts.push(
-        `클래스 불균형 비율(Imbalance Ratio)은 ${ratio.toFixed(2)}로, ` +
+        `클래스 불균형 비율(Imbalance Ratio)은 ${formatImbalanceRatio(ratio, balanced)}로, ` +
           (balanced
             ? "허용 기준(< 1.50) 이내의 균형 상태이다."
             : "허용 기준(1.50 미만)을 벗어나 클래스 불균형에 따른 성능 지표 해석에 주의가 필요하다."),

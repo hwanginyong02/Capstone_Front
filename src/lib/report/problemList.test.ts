@@ -261,6 +261,17 @@ describe("최약 클래스 — M22, F1 최저 클래스가 표본 부족(30건·
     });
   });
 
+  it("F1 최저가 둘 이상이면 표 순서 앞 클래스를 고른다(제목·근거 키 모두)", () => {
+    const tied: ClassReportTable = {
+      rows: [row("a", 0.9, 1000), row("x", 0.6, 20), row("y", 0.6, 25)],
+      averages: [row("매크로 평균", 0.85, 1045)],
+    };
+    const [p] = buildProblemList(input({ classReport: tied }));
+    expect(p.title).toBe("최약 클래스 (x)");
+    expect(Object.keys(p.evidence)).toEqual(["x"]);
+    expect(p.evidence).toMatchObject({ x: { f1: 0.6, support: 20 } });
+  });
+
   it("M22 표가 없으면 보지 않는다", () => {
     expect(weakestOf(null)).toEqual([]);
   });
