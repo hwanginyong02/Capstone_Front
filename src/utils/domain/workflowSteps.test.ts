@@ -109,7 +109,7 @@ describe("단계 순서와 번호 (docs/MATERIAL_PICKER.md §3)", () => {
     expect(steps.indexOf("mapping")).toBeLessThan(steps.indexOf("metrics"));
   });
 
-  it("평가 관점은 지표 바로 앞이다 — 답이 지표 추천의 근거다", () => {
+  it("평가 관점은 지표 바로 앞이다 — 지표 화면의 목적별 점검이 이 답을 읽는다", () => {
     for (const selection of [MINIMAL, FULL]) {
       const steps = buildStepList(selection);
       expect(steps.indexOf("perspective") + 1).toBe(steps.indexOf("metrics"));

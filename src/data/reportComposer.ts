@@ -294,11 +294,11 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     name: "평가 관점",
     description: "이 모델에서 무엇을 중요하게 볼지입니다.",
     locked: true,
-    // 지표와 합격 기준 바로 앞 단계다 — 답이 지표 추천의 근거다(docs/MATERIAL_PICKER.md §3).
+    // 지표와 합격 기준 바로 앞 단계다 — 답이 재료 선택 점검 3층의 기준점이다(docs/MATERIAL_PICKER.md §3).
     steps: ["perspective"],
     help:
-      "답에 따라 알맞은 지표를 추천하고, 고른 지표가 맞지 않으면 지표 화면에서 알려 줍니다. " +
-      "다음으로 넘어가는 것은 막지 않습니다.",
+      "고른 지표가 답과 맞지 않으면 지표 화면의 \"목적별 점검\"과 검증 화면의 생성 전 안내에서 " +
+      "알려 줍니다. 다음으로 넘어가는 것은 막지 않습니다.",
     // 유형에 따라 필드가 갈리지만 사용자는 **항상 두 개**를 받는다.
     fields: [
       {
@@ -321,8 +321,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           Similar: "비슷함",
         },
         help:
-          "놓침을 고르면 Recall 이나 β가 1보다 큰 Fβ를, 잘못 잡음을 고르면 Precision 이나 " +
-          "β가 1보다 작은 Fβ를 추천합니다.",
+          "놓침을 고르면 Recall 또는 β가 1보다 큰 Fβ가, 잘못 잡음을 고르면 Precision 또는 " +
+          "β가 1보다 작은 Fβ가 지표에 있어야 합니다. 없으면 지표 화면에서 알려 줍니다.",
         standardClause: "6.2.6",
         reportSection: "5절",
         sentToAi: true,
@@ -346,7 +346,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           "Larger classes first": "다수 클래스 우선",
           "Individual samples first": "샘플 단위로 중요",
         },
-        help: "차례대로 매크로·가중·마이크로 평균 지표에 대응합니다.",
+        help:
+          "차례대로 매크로·가중·마이크로 평균 지표가 있어야 합니다. 클래스별 표를 고르면 세 평균이 " +
+          "모두 있는 것으로 봅니다. 멀티레이블에서 큰 클래스 우선·개별 샘플 우선은 클래스별 표가 필요합니다.",
         standardClause: "6.4.3",
         reportSection: "5절",
         sentToAi: true,
@@ -364,7 +366,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         },
         choices: ["Real-time", "Batch"],
         reportLabels: { "Real-time": "대화형(실시간)", Batch: "배치" },
-        help: "실시간 응답을 고르면 파일에 응답시간(latency) 컬럼이 있는지 확인합니다.",
+        help:
+          "실시간 응답을 고르면 응답시간(latency) 컬럼을 매핑했는지 확인합니다. 없으면 생성 전에 알리고, " +
+          "성적서에 응답 속도를 판단할 수 없다고 적습니다.",
         standardClause: "6.6.2",
         reportSection: "5절",
         sentToAi: true,
