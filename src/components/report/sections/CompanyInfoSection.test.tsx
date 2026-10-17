@@ -138,9 +138,16 @@ describe("1.4 제약사항 — constraintsFor 한 곳에서 조립 (고정 문�
   const items = () => screen.getAllByRole("listitem").filter((li) => /^\d+\./.test(li.textContent ?? ""));
   const titles = () => items().map((li) => li.querySelector("strong")?.textContent);
 
-  function renderWith(materialCheck?: Parameters<typeof CompanyInfoSection>[0]["materialCheck"]) {
+  function renderWith(materialCheck?: Parameters<typeof CompanyInfoSection>[0]["materialCheck"], hasConfidenceIntervals?: boolean) {
     render(
-      <CompanyInfoSection applicant={applicant} performer={performer} evalScope={scope} meta={meta} materialCheck={materialCheck} />,
+      <CompanyInfoSection
+        applicant={applicant}
+        performer={performer}
+        evalScope={scope}
+        meta={meta}
+        materialCheck={materialCheck}
+        hasConfidenceIntervals={hasConfidenceIntervals}
+      />,
     );
   }
 
@@ -185,5 +192,34 @@ describe("1.4 제약사항 — constraintsFor 한 곳에서 조립 (고정 문�
     const shortfalls = screen.getByRole("list", { name: "목적별 점검 미충족 세부" });
     expect(shortfalls.querySelectorAll("li")).toHaveLength(1);
     expect(shortfalls.textContent).toContain('사용 방식을 "대화형(실시간)"으로 밝혔으나');
+  });
+
+  const FIXED_PHRASE_3 = "단일 모델 평가라 통계적 유의성 검정은 적용하지 않았고, 대신 주요 지표의 신뢰구간을 제시한다.";
+
+  it("신뢰구간이 있는 성적서는 고정 문구 13 바로 다음에 고정 문구 3, 그 뒤 제공되지 않은 정보", () => {
+    renderWith(materialCheckFixture({ missingLatencyAndLabel: true, realTime: true }), true);
+    expect(titles()).toEqual([
+      "데이터 기반 평가의 국한성:",
+      "결과서 효력의 한계:",
+      "자동화 진단 소견에 대한 면책:",
+      "LLM 생성 소견에 대한 면책:",
+      "의뢰자 제공 정보에 대한 전제:",
+      "통계적 유의성 검정:",
+      "제공되지 않은 정보:",
+      "목적별 점검 미충족:",
+    ]);
+    expect(items()[5].textContent).toContain(FIXED_PHRASE_3);
+  });
+
+  it("신뢰구간이 없는 성적서에는 고정 문구 3 이 없다", () => {
+    renderWith(materialCheckFixture(), false);
+    expect(titles()).toHaveLength(5);
+    expect(screen.queryByText(new RegExp(FIXED_PHRASE_3))).not.toBeInTheDocument();
+  });
+
+  it("점검 결과가 없는 성적서에 신뢰구간만 있으면 종전 4항목 뒤에 고정 문구 3", () => {
+    renderWith(undefined, true);
+    expect(titles()).toHaveLength(5);
+    expect(titles()[4]).toBe("통계적 유의성 검정:");
   });
 });

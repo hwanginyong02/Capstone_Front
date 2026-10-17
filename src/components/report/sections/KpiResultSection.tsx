@@ -30,6 +30,11 @@ interface KpiResultSectionProps {
    * 규칙으로 판정해 저장된 성적서에 새 규칙을 적으면 판정과 설명이 어긋난다.
    */
   showVerdictRule?: boolean;
+  /**
+   * 신뢰구간 산출 방식 한 줄(생성 때 저장, 설계 D29). 있으면 6.0 에 찍고 6.1·6.2 에 "95% 신뢰구간" 열을
+   * 더한다. 이 키가 생기기 전 성적서와 구간이 없는 평가는 종전 표 그대로다.
+   */
+  confidenceIntervalNote?: string;
 }
 
 /**
@@ -50,7 +55,9 @@ export function KpiResultSection({
   taskType,
   meta,
   showVerdictRule = false,
+  confidenceIntervalNote,
 }: KpiResultSectionProps) {
+  const showCi = confidenceIntervalNote !== undefined;
   // 6.1 은 고객이 정한 핵심 지표다(판정 규칙 D19 의 핵심 지표와 같다). 핵심 지표 표시가 없는 옛
   // 보관본만 종전의 유형별 고정 묶음으로 그린다.
   const hasCoreMarks = kpiResults.some((r) => r.isCore !== undefined);
@@ -78,6 +85,7 @@ export function KpiResultSection({
           {kpiResults.some(r => r.metricId === "M6") && (
             <li>KL Divergence(M6) 지표는 예측 확률(Probability) 분포가 아닌, 정답 레이블과 모델이 예측한 클래스 레이블 간의 분포 차이(Target Drift)를 기반으로 산출되었습니다.</li>
           )}
+          {showCi && <li>{confidenceIntervalNote}</li>}
         </ul>
       </div>
 
@@ -90,6 +98,7 @@ export function KpiResultSection({
               <th className="py-2 pr-3 text-left font-medium text-slate-500 w-16">Metric ID</th>
               <th className="py-2 pr-4 text-left font-medium text-slate-500">시험항목</th>
               <th className="py-2 pr-4 text-left font-medium text-slate-500 w-28">산출 결과</th>
+              {showCi && <th className="py-2 pr-4 text-left font-medium text-slate-500 w-36">95% 신뢰구간</th>}
               <th className="py-2 pr-4 text-left font-medium text-slate-500 w-24">합격 기준</th>
               <th className="py-2 text-left font-medium text-slate-500 w-24">판정</th>
             </tr>
@@ -105,11 +114,13 @@ export function KpiResultSection({
                 status={r.status}
                 higherIsBetter={r.higherIsBetter}
                 isCore={r.isCore}
+                showCi={showCi}
+                ci={r.ci}
               />
             ))}
             {kpiCore.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-3 text-slate-500">
+                <td colSpan={showCi ? 6 : 5} className="py-3 text-slate-500">
                   의뢰자가 지정한 핵심 지표가 없습니다. 지표별 결과는 아래 세부 시험항목에 있습니다.
                 </td>
               </tr>
@@ -134,6 +145,7 @@ export function KpiResultSection({
               <th className="py-2 pr-3 text-left font-medium text-slate-500 w-16">Metric ID</th>
               <th className="py-2 pr-4 text-left font-medium text-slate-500">시험항목</th>
               <th className="py-2 pr-4 text-left font-medium text-slate-500 w-28">산출 결과</th>
+              {showCi && <th className="py-2 pr-4 text-left font-medium text-slate-500 w-36">95% 신뢰구간</th>}
               <th className="py-2 pr-4 text-left font-medium text-slate-500 w-24">합격 기준</th>
               <th className="py-2 text-left font-medium text-slate-500 w-24">판정</th>
             </tr>
@@ -149,6 +161,8 @@ export function KpiResultSection({
                 status={r.status}
                 higherIsBetter={r.higherIsBetter}
                 isCore={r.isCore}
+                showCi={showCi}
+                ci={r.ci}
               />
             ))}
           </tbody>

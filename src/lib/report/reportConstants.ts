@@ -103,17 +103,36 @@ export const CLIENT_PROVIDED_PREMISE =
   "본 결과서는 의뢰자가 제공한 데이터와 정보를 바탕으로 작성되었다. 제공된 내용이 사실과 다르면 본 결과서의 결과와 해석은 유효하지 않다.";
 
 /**
- * 1.4 제약사항을 한 곳에서 조립한다. 순서: 종전 4항목 → 고정 문구 13 → (세션 3: 고정 문구 3, 신뢰구간)
+ * 고정 문구 3(서술 설계 D29) — 1.4, 고정 문구 13 다음 자리. 신뢰구간을 찍은 성적서만.
+ * 신뢰구간이 없는 성적서에 넣으면 하지 않은 일을 했다고 적게 된다.
+ */
+export const CONFIDENCE_INTERVAL_PREMISE =
+  "단일 모델 평가라 통계적 유의성 검정은 적용하지 않았고, 대신 주요 지표의 신뢰구간을 제시한다.";
+
+const CONFIDENCE_INTERVAL_ITEM: ConstraintItem = {
+  title: "통계적 유의성 검정",
+  body: CONFIDENCE_INTERVAL_PREMISE,
+};
+
+/**
+ * 1.4 제약사항을 한 곳에서 조립한다. 순서: 종전 4항목 → 고정 문구 13 → 고정 문구 3(신뢰구간)
  * → 제공되지 않은 정보 + 항목별 영향 문장 → 목적별 점검 미충족 줄(고정 문구 14 · 2절).
  *
  * 재료 선택 점검 결과가 없는 옛 성적서는 종전 4항목 그대로다 — 문장은 발급 당시 그대로 둔다.
+ * 신뢰구간 여부(`hasConfidenceIntervals`)는 점검 결과와 따로 받는다. 성적서의 `confidenceIntervalNote`
+ * 키가 그 표시다(6.1·6.2 의 신뢰구간 열과 같은 표시).
  */
-export function constraintsFor(materialCheck?: MaterialCheckResult): ConstraintItem[] {
-  if (!materialCheck) return BASE_CONSTRAINTS;
+export function constraintsFor(
+  materialCheck: MaterialCheckResult | undefined,
+  hasConfidenceIntervals: boolean,
+): ConstraintItem[] {
+  const ciItems = hasConfidenceIntervals ? [CONFIDENCE_INTERVAL_ITEM] : [];
+  if (!materialCheck) return [...BASE_CONSTRAINTS, ...ciItems];
   const { printed } = materialCheck;
   return [
     ...BASE_CONSTRAINTS,
     { title: "의뢰자 제공 정보에 대한 전제", body: CLIENT_PROVIDED_PREMISE },
+    ...ciItems,
     ...(printed.notProvided ? [{ title: "제공되지 않은 정보", body: printed.notProvided, details: printed.impacts }] : []),
     ...(printed.purposeShortfalls.length > 0
       ? [

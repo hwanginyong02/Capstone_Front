@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeVerdict, resolveCoreMetricIds } from "./computeVerdict";
+import { computeVerdict, isJudged, resolveCoreMetricIds } from "./computeVerdict";
 import type { KpiResult } from "../../types/finalReport.types";
 
 function kpi(p: Partial<KpiResult>): KpiResult {
@@ -154,5 +154,26 @@ describe("D19 규칙 순서", () => {
       computeVerdict([core, kpi({ metricId: "M3", status: "pass", threshold: 0.8 })], "binary", ["M1"])
         .verdict,
     ).toBe("PASS");
+  });
+});
+
+describe("isJudged — 판정 대상 한 곳 (신뢰구간 등도 이 식을 본다)", () => {
+  it("목표값이 있고 산출에 성공하면 판정 대상 — 목표값 0 도 목표값이다", () => {
+    expect(isJudged(kpi({ threshold: 0.8, status: "fail" }))).toBe(true);
+    expect(isJudged(kpi({ threshold: 0, status: "pass" }))).toBe(true);
+  });
+
+  it("목표값이 없거나(null) 산출에 실패하면(unavailable) 판정 대상이 아니다", () => {
+    expect(isJudged(kpi({ threshold: null }))).toBe(false);
+    expect(isJudged(kpi({ threshold: 0.8, status: "unavailable" }))).toBe(false);
+  });
+
+  it("computeVerdict 의 판정 대상 수와 같다", () => {
+    const rows = [
+      kpi({ metricId: "M1", threshold: 0.8 }),
+      kpi({ metricId: "M2", threshold: null }),
+      kpi({ metricId: "M3", threshold: 0.5, status: "unavailable" }),
+    ];
+    expect(computeVerdict(rows, "binary", []).judgedCount).toBe(rows.filter(isJudged).length);
   });
 });

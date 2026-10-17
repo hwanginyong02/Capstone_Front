@@ -225,3 +225,71 @@ describe("판 2 — 파생 예측 사실은 6.0 에 찍지 않는다", () => {
     expect(screen.queryByText(/파생한 값입니다/)).not.toBeInTheDocument();
   });
 });
+
+describe("95% 신뢰구간 (설계 D29) — 6.0 방식 한 줄, 6.1·6.2 열", () => {
+  const NOTE = "판정 대상 지표의 95% 신뢰구간은 Wilson 점수 구간(M1, M2)으로 산출하였습니다.";
+  const rows: KpiResult[] = [
+    {
+      metricId: "M1", name: "Accuracy", value: 0.8, threshold: 0.7, status: "pass", isCore: true,
+      ci: { low: 0.4902, high: 0.9433, method: "wilson" },
+    },
+    // 핵심이고 판정 대상인데 구간이 생략된 지표
+    { metricId: "M4", name: "F1 Score", value: 0.75, threshold: 0.7, status: "pass", isCore: true },
+    {
+      metricId: "M2", name: "Precision", value: 0.7, threshold: 0.6, status: "pass", isCore: false,
+      ci: { low: 0.61, high: 0.88, method: "wilson" },
+    },
+    // 판정 대상이 아닌 정보성 지표
+    { metricId: "M8", name: "Specificity", value: 0.9, threshold: null, status: "pass", isCore: false },
+  ];
+
+  const table = (title: string) =>
+    screen.getByText(title).parentElement!.querySelector("table")!;
+  const headers = (t: HTMLTableElement) => [...t.querySelectorAll("th")].map((th) => th.textContent);
+  const cellsOf = (t: HTMLTableElement, metricId: string) =>
+    [...[...t.querySelectorAll("tbody tr")].find((tr) => tr.textContent?.startsWith(metricId))!.querySelectorAll("td")].map(
+      (td) => td.textContent,
+    );
+
+  it("6.1 종합 핵심 성능: 산출 결과 다음에 '95% 신뢰구간' 열, 구간이 없는 판정 대상은 —", () => {
+    render(<KpiResultSection kpiResults={rows} taskType="binary" meta={meta()} confidenceIntervalNote={NOTE} />);
+    const t = table("종합 핵심 성능 (Key Performance Indicators)");
+    expect(headers(t)).toEqual(["Metric ID", "시험항목", "산출 결과", "95% 신뢰구간", "합격 기준", "판정"]);
+    expect(cellsOf(t, "M1")[3]).toBe("[0.490, 0.943]");
+    expect(cellsOf(t, "M4")[3]).toBe("—");
+  });
+
+  it("6.2 세부 시험항목: 같은 열, 판정 대상이 아닌 지표는 —", () => {
+    render(<KpiResultSection kpiResults={rows} taskType="binary" meta={meta()} confidenceIntervalNote={NOTE} />);
+    const t = table("세부 시험항목별 결과");
+    expect(headers(t)).toEqual(["Metric ID", "시험항목", "산출 결과", "95% 신뢰구간", "합격 기준", "판정"]);
+    expect(cellsOf(t, "M2")[3]).toBe("[0.610, 0.880]");
+    expect(cellsOf(t, "M8")[3]).toBe("—");
+  });
+
+  it("6.0 에 저장된 방식 한 줄을 그대로 찍는다", () => {
+    render(<KpiResultSection kpiResults={rows} taskType="binary" meta={meta()} confidenceIntervalNote={NOTE} />);
+    expect(screen.getByText(NOTE).tagName).toBe("LI");
+  });
+
+  it("방식 한 줄이 없는 성적서(옛 성적서·구간 없음)는 종전 5열, 6.0 에도 없다", () => {
+    render(<KpiResultSection kpiResults={rows} taskType="binary" meta={meta()} />);
+    for (const title of ["종합 핵심 성능 (Key Performance Indicators)", "세부 시험항목별 결과"]) {
+      const t = table(title);
+      expect(headers(t)).toEqual(["Metric ID", "시험항목", "산출 결과", "합격 기준", "판정"]);
+    }
+    expect(screen.queryByText(/신뢰구간/)).not.toBeInTheDocument();
+  });
+
+  it("핵심 지표가 없으면 안내 줄이 열 수만큼 걸친다", () => {
+    render(
+      <KpiResultSection
+        kpiResults={rows.map((r) => ({ ...r, isCore: false }))}
+        taskType="binary"
+        meta={meta()}
+        confidenceIntervalNote={NOTE}
+      />,
+    );
+    expect(screen.getByText(/핵심 지표가 없습니다/).getAttribute("colspan")).toBe("6");
+  });
+});

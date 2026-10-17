@@ -16,9 +16,18 @@ interface CompanyInfoSectionProps {
   meta: FinalReportMeta;
   /** 재료 선택 점검 결과. 있으면 1.4 에 점검 결과 문구를 더한다(없는 옛 성적서는 종전 4항목). */
   materialCheck?: MaterialCheckResult;
+  /** 신뢰구간을 찍은 성적서인지(`confidenceIntervalNote` 키). 그렇다면 1.4 에 고정 문구 3 을 더한다. */
+  hasConfidenceIntervals?: boolean;
 }
 
-export function CompanyInfoSection({ applicant, performer, evalScope, meta, materialCheck }: CompanyInfoSectionProps) {
+export function CompanyInfoSection({
+  applicant,
+  performer,
+  evalScope,
+  meta,
+  materialCheck,
+  hasConfidenceIntervals = false,
+}: CompanyInfoSectionProps) {
   const projectNumber = evalScope.projectNumber ?? evalScope.projectInfo?.projectNumber;
   return (
     <section className="space-y-8 border-t border-slate-200 py-10">
@@ -107,7 +116,7 @@ export function CompanyInfoSection({ applicant, performer, evalScope, meta, mate
           본 시험결과서에서 기술한 내용은 다음의 전제 및 명시적 한계를 지닌다.
         </p>
         <ol className="space-y-3">
-          {constraintsFor(materialCheck).map((c, i) => (
+          {constraintsFor(materialCheck, hasConfidenceIntervals).map((c, i) => (
             <li key={i} className="flex gap-3 text-sm">
               <span className="shrink-0 font-semibold text-slate-700">{i + 1}.</span>
               <div className="space-y-1.5 text-slate-600 leading-relaxed">

@@ -249,6 +249,18 @@ export interface KpiResult {
   subMetrics?: { precision: number; recall: number; f1Score: number };
   /** 핵심 지표 — 미달하면 최종 불합격이다(`resolveCoreMetricIds`). 성적서에 표시해 판정 근거를 보인다. */
   isCore?: boolean;
+  /**
+   * 95% 신뢰구간(서술 설계 D29). 판정 대상 지표(`isJudged`)에만 붙는다. 백엔드가 계산을 생략한 지표와
+   * 이 키가 생기기 전 성적서에는 없다.
+   */
+  ci?: KpiConfidenceInterval;
+}
+
+/** 지표 하나의 95% 신뢰구간. method 는 백엔드 표기 그대로(wilson·bootstrap_multinomial·bootstrap·delong·logit·normal). */
+export interface KpiConfidenceInterval {
+  low: number;
+  high: number;
+  method: string;
 }
 
 export interface LatencyStats {
@@ -355,6 +367,12 @@ export interface FinalReportData {
    */
   errorRatios?: ErrorRatios;
   errorRatioSentence?: string;
+  /**
+   * 6.0 에 찍는 신뢰구간 산출 방식 한 줄(서술 설계 D29). 생성 때 실제로 쓴 방식으로 만들어 저장한다.
+   * **이 키가 있는 성적서만** 6.1·6.2 에 "95% 신뢰구간" 열을, 1.4 에 고정 문구 3 을 찍는다.
+   * 판정 대상 지표에 구간이 하나도 없으면 두지 않는다.
+   */
+  confidenceIntervalNote?: string;
   charts: {
     confusionMatrix: ConfusionMatrixData | null;
     rocCurve: { fpr: number[]; tpr: number[]; auroc?: number } | null;

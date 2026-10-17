@@ -14,6 +14,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildFactSheet, type BuildFactSheetInput } from "./buildFactSheet";
+import type { KpiResult } from "../../types/finalReport.types";
 
 function input(overrides: Partial<BuildFactSheetInput> = {}): BuildFactSheetInput {
   return {
@@ -181,5 +182,36 @@ describe("경계·확신 오류 비율 (설계 D30)", () => {
 
   it("없으면 null", () => {
     expect(buildFactSheet(input()).error_ratios).toBeNull();
+  });
+});
+
+describe("95% 신뢰구간 (설계 D29)", () => {
+  const ci = { low: 0.71, high: 0.83, method: "wilson" };
+  const metric = (p: Partial<KpiResult>): KpiResult => ({
+    metricId: "M1", name: "Accuracy", value: 0.8, threshold: 0.7, status: "pass", ...p,
+  });
+
+  it("판정 대상 지표에만 ci_low·ci_high 를 싣는다", () => {
+    const fs = buildFactSheet(
+      input({
+        kpiResults: [
+          metric({ metricId: "M1", ci }),
+          metric({ metricId: "M2" }),
+          // 판정 대상이 아닌데 구간이 남아 있는 경우도 싣지 않는다(isJudged 한 곳)
+          metric({ metricId: "M3", threshold: null, ci }),
+        ],
+      }),
+    );
+    expect(fs.metrics.map((m) => [m.metric_id, m.ci_low, m.ci_high])).toEqual([
+      ["M1", 0.71, 0.83],
+      ["M2", null, null],
+      ["M3", null, null],
+    ]);
+  });
+
+  it("6.0 방식 한 줄을 ci_method_note 로, 없으면 null", () => {
+    const note = "판정 대상 지표의 95% 신뢰구간은 Wilson 점수 구간(M1)으로 산출하였습니다.";
+    expect(buildFactSheet(input({ confidenceIntervalNote: note })).ci_method_note).toBe(note);
+    expect(buildFactSheet(input()).ci_method_note).toBeNull();
   });
 });

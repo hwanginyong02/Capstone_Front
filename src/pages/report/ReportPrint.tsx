@@ -36,6 +36,7 @@ export function ReportPrint() {
           evalScope={data.evalScope}
           meta={data.meta}
           materialCheck={data.materialCheck}
+          hasConfidenceIntervals={data.confidenceIntervalNote !== undefined}
         />
         <EvalScopeSection meta={data.meta} evalScope={data.evalScope} />
         <PageBreak>
@@ -67,6 +68,7 @@ export function ReportPrint() {
             meta={data.meta}
             // 판정 규칙 문구는 그 규칙(D19)으로 판정한 성적서에만 — judgedCount 가 그 표시다.
             showVerdictRule={data.conclusion.judgedCount !== undefined}
+          confidenceIntervalNote={data.confidenceIntervalNote}
           />
         </PageBreak>
         <PageBreak>

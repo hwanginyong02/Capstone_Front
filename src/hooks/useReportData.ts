@@ -23,6 +23,11 @@ import { buildFactSheet } from "../lib/report/buildFactSheet";
 import { buildClassReportTable } from "../lib/report/classReportTable";
 import { parseConfusionCounts } from "../lib/report/confusionCounts";
 import { errorRatioSentence, parseErrorRatios } from "../lib/report/errorRatios";
+import {
+  attachConfidenceIntervals,
+  confidenceIntervalNote,
+  parseConfidenceIntervals,
+} from "../lib/report/confidenceIntervals";
 import { normalizeReportContent } from "../lib/report/normalizeReportContent";
 import { evaluateStatus } from "../lib/report/evaluateStatus";
 import { fetchNarrative } from "../lib/report/fetchNarrative";
@@ -153,7 +158,7 @@ export function useReportData(id: string): UseReportDataResult {
             workflowState.composerMetrics,
           ).map(getMetricDisplayId),
         );
-        const updatedKpiResults = workflowState.selectedMetricIds
+        const kpiResultsWithoutCi = workflowState.selectedMetricIds
           .map((metricId) => {
             // **task 필터를 함께 본다.** 4절(metricList)·5절(metricFormulas)은
             // supportedTaskTypes 로 거르는데 여기만 걸러내지 않아, 그 task 가 노출하지
@@ -221,6 +226,12 @@ export function useReportData(id: string): UseReportDataResult {
             };
           })
           .filter((item): item is any => item !== null);
+
+        // 95% 신뢰구간(설계 D29) — 엔진은 고른 지표 전부를 계산하고, 판정 대상 지표에만 붙인다(`isJudged`).
+        // 6.0 방식 한 줄은 지금 만들어 저장한다. 판정 대상에 붙은 구간이 없으면 키를 두지 않는다.
+        const confidenceIntervals = parseConfidenceIntervals(success_metrics.confidence_intervals);
+        const updatedKpiResults = attachConfidenceIntervals(kpiResultsWithoutCi, confidenceIntervals);
+        const ciNote = confidenceIntervalNote(updatedKpiResults, confidenceIntervals);
 
         // 2. 오차 행렬(Confusion Matrix) 치환
         let confusionMatrix = null;
@@ -351,6 +362,7 @@ export function useReportData(id: string): UseReportDataResult {
           confusionCounts,
           derivedPrediction,
           errorRatios,
+          confidenceIntervalNote: ciNote,
         });
 
         // ── Stage 1: 서술과 무관한 결정론적 결과(KPI·차트·규칙 verdict)를 즉시 렌더한다.
@@ -379,6 +391,7 @@ export function useReportData(id: string): UseReportDataResult {
           ...(errorRatios
             ? { errorRatios, errorRatioSentence: errorRatioSentence(errorRatios, taskTypeResolved) }
             : {}),
+          ...(ciNote ? { confidenceIntervalNote: ciNote } : {}),
           conclusion: ruleConclusion,  // full ConclusionData (verdict/score + 빈 서술)
           datasetDiagnosis,
           charts: { confusionMatrix, rocCurve, prCurve },

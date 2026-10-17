@@ -64,6 +64,16 @@ export interface VerdictResult {
   judgedCount: number;
 }
 
+/**
+ * 판정 대상 = 목표값이 설정되고 산출에 성공한 지표(고정 문구 10).
+ * 계산 실패(unavailable) 지표는 "미달"로 위장하지 않고 분모·판정에서 제외한다(D4).
+ *
+ * 판정과 판정 대상에만 붙는 정보(신뢰구간 등)가 이 식 하나를 본다 — 자리마다 따로 적으면 어긋난다.
+ */
+export function isJudged(r: KpiResult): boolean {
+  return r.threshold !== null && r.status !== "unavailable";
+}
+
 export function computeVerdict(
   kpiResults: KpiResult[],
   taskType: TaskType,
@@ -71,9 +81,7 @@ export function computeVerdict(
 ): VerdictResult {
   const coreIds = new Set(coreMetricIds ?? DEFAULT_CORE_METRIC_IDS[taskType] ?? []);
 
-  // 판정 대상 = 목표값이 설정되고 산출에 성공한 지표(고정 문구 10).
-  // 계산 실패(unavailable) 지표는 "미달"로 위장하지 않고 분모·판정에서 제외한다(D4).
-  const judged = kpiResults.filter((r) => r.threshold !== null && r.status !== "unavailable");
+  const judged = kpiResults.filter(isJudged);
 
   const passed = judged.filter((r) => r.status === "pass").length;
   const score = judged.length > 0 ? Math.round((passed / judged.length) * 1000) / 10 : 0;

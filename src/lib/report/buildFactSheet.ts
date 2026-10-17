@@ -16,6 +16,7 @@ import type {
 } from "../../types/finalReport.types";
 import type { ConfusionMatrixData } from "../../types/report.types";
 import { buildClassReportTable } from "./classReportTable";
+import { isJudged } from "./computeVerdict";
 
 export interface FactSheetMetric {
   metric_id: string;
@@ -25,6 +26,9 @@ export interface FactSheetMetric {
   status: string;
   /** 핵심 지표 — 미달하면 불합격이다. 판정(D19)의 재료라 서술도 알아야 한다. */
   is_core: boolean;
+  /** 95% 신뢰구간(설계 D29). 판정 대상 지표(`isJudged`)에 구간이 붙었을 때만 숫자, 아니면 null. */
+  ci_low: number | null;
+  ci_high: number | null;
 }
 
 export interface FactSheetPerClass {
@@ -56,6 +60,8 @@ export interface FactSheet {
   } | null;
   /** 경계·확신 오류 비율(서술 설계 D30) — 백엔드 응답 모양 그대로. 확률이 없는 평가는 null. */
   error_ratios: ErrorRatios | null;
+  /** 6.0 에 찍은 신뢰구간 방식 한 줄(서술 참고용). 구간이 없는 성적서는 null. */
+  ci_method_note: string | null;
   distribution: {
     class_distribution: Record<string, number>;
     imbalance_ratio: number | null;
@@ -115,6 +121,8 @@ export interface BuildFactSheetInput {
   derivedPrediction?: DerivedPredictionFact | null;
   /** 경계·확신 오류 비율(백엔드 error_ratios 를 `parseErrorRatios` 로 읽은 값). */
   errorRatios?: ErrorRatios | null;
+  /** 6.0 신뢰구간 방식 한 줄(`confidenceIntervalNote`). */
+  confidenceIntervalNote?: string | null;
 }
 
 function num(v: unknown): number | null {
@@ -179,6 +187,7 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
     confusionCounts,
     derivedPrediction,
     errorRatios,
+    confidenceIntervalNote,
   } = input;
 
   // 지표: 목표값이 없으면(null) 정보 제공(info)으로 표기한다.
@@ -194,6 +203,9 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
       threshold: isInfoOnly ? null : r.threshold,
       status: isInfoOnly ? "info" : r.status,
       is_core: Boolean(r.isCore),
+      // 판정 대상 여부는 판정과 같은 식 하나로 본다 — 구간은 판정 대상 지표에만 싣는다.
+      ci_low: r.ci && isJudged(r) ? r.ci.low : null,
+      ci_high: r.ci && isJudged(r) ? r.ci.high : null,
     };
   });
 
@@ -216,6 +228,7 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
         }
       : null,
     error_ratios: errorRatios ?? null,
+    ci_method_note: confidenceIntervalNote ?? null,
     distribution: hasDistribution
       ? {
           class_distribution: classDistribution,

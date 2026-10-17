@@ -1,4 +1,5 @@
 import { PassBadge } from "./PassBadge";
+import type { KpiConfidenceInterval } from "../../../types/finalReport.types";
 import { cn } from "../../../utils/styling/styles";
 
 interface MetricRowProps {
@@ -13,10 +14,16 @@ interface MetricRowProps {
   higherIsBetter?: boolean;
   /** 핵심 지표 — 미달하면 최종 불합격이다. 판정 근거가 보이도록 이름 옆에 표시한다. */
   isCore?: boolean;
+  /**
+   * "95% 신뢰구간" 칸을 그릴지. 신뢰구간을 찍은 성적서만 켠다 — 이 키가 생기기 전 성적서는 종전 5칸이다.
+   * 칸을 켰는데 `ci` 가 없으면(판정 대상이 아니거나 계산 생략) "—".
+   */
+  showCi?: boolean;
+  ci?: KpiConfidenceInterval;
   className?: string;
 }
 
-export function MetricRow({ metricId, name, formula, value, threshold, status, higherIsBetter, isCore, className }: MetricRowProps) {
+export function MetricRow({ metricId, name, formula, value, threshold, status, higherIsBetter, isCore, showCi = false, ci, className }: MetricRowProps) {
   // 표시 모드
   // 1) 목표값 있음(threshold !== null) → 일반 KPI (값 + 기준 + 판정). 0·음수 목표도 여기다.
   // 2) 목표값 없음                      → 정보 제공 (값은 표시, 기준 "—", "ℹ 정보 제공")
@@ -45,6 +52,11 @@ export function MetricRow({ metricId, name, formula, value, threshold, status, h
       <td className="py-2.5 pr-4 font-semibold tabular-nums text-slate-900">
         {isVisualOnly || isUnavailable ? "—" : value.toFixed(3)}
       </td>
+      {showCi && (
+        <td className="py-2.5 pr-4 tabular-nums text-slate-600">
+          {ci ? `[${ci.low.toFixed(3)}, ${ci.high.toFixed(3)}]` : "—"}
+        </td>
+      )}
       <td className="py-2.5 pr-4 text-slate-500">
         {isThresholded && threshold !== null ? `${criteriaOp} ${threshold.toFixed(2)}` : isInfoWithValue ? "—" : isUnavailable ? "—" : "정보 제공"}
       </td>
