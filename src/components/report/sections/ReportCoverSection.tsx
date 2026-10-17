@@ -1,15 +1,20 @@
-import type { FinalReportMeta, PerformerInfo } from "../../../types/finalReport.types";
+import type { FinalReportMeta, MaterialCheckResult, PerformerInfo } from "../../../types/finalReport.types";
 
 interface ReportCoverSectionProps {
   meta: FinalReportMeta;
   performer: PerformerInfo;
+  /**
+   * 재료 선택 점검 결과. 보고 항목이 빠졌으면 표지부터 사실대로 적는다(고정 문구 2.3). 없는 옛
+   * 성적서는 종전 문구.
+   */
+  materialCheck?: MaterialCheckResult;
 }
 
-export function ReportCoverSection({ meta, performer }: ReportCoverSectionProps) {
+export function ReportCoverSection({ meta, performer, materialCheck }: ReportCoverSectionProps) {
   return (
     <div className="mb-12 space-y-6 border-b border-slate-200 pb-10 text-center">
       <p className="text-xs font-medium uppercase tracking-widest text-slate-400">
-        기준 표준: ISO/IEC TS 4213:2022
+        {materialCheck?.printed.cover ?? "기준 표준: ISO/IEC TS 4213:2022"}
       </p>
       <h1 className="text-3xl font-bold text-slate-900">{meta.title}</h1>
       <p className="text-sm text-slate-500">발급 기관: {performer.orgName} AI 평가 플랫폼</p>

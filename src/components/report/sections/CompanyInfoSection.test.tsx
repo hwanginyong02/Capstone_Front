@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import { CompanyInfoSection } from "./CompanyInfoSection";
+import { materialCheckFixture } from "../../../test/materialCheckFixture";
 import type {
   ApplicantInfo,
   EvalScope,
@@ -130,5 +131,59 @@ describe("1.3 용도 이름 — 화면 선택지와 같은 이름(DESIGN_GAPS R6
 
     expect(screenNames.length).toBe(3);
     expect(Object.values(REPORT_PURPOSE_LABEL).sort()).toEqual(screenNames);
+  });
+});
+
+describe("1.4 제약사항 — constraintsFor 한 곳에서 조립 (고정 문구 13·14)", () => {
+  const items = () => screen.getAllByRole("listitem").filter((li) => /^\d+\./.test(li.textContent ?? ""));
+  const titles = () => items().map((li) => li.querySelector("strong")?.textContent);
+
+  function renderWith(materialCheck?: Parameters<typeof CompanyInfoSection>[0]["materialCheck"]) {
+    render(
+      <CompanyInfoSection applicant={applicant} performer={performer} evalScope={scope} meta={meta} materialCheck={materialCheck} />,
+    );
+  }
+
+  it("점검 결과가 없는 옛 성적서는 종전 4항목 그대로", () => {
+    renderWith(undefined);
+    expect(titles()).toEqual([
+      "데이터 기반 평가의 국한성:",
+      "결과서 효력의 한계:",
+      "자동화 진단 소견에 대한 면책:",
+      "LLM 생성 소견에 대한 면책:",
+    ]);
+  });
+
+  it("모두 제공된 새 성적서는 4항목 뒤에 고정 문구 13 만 더한다", () => {
+    renderWith(materialCheckFixture());
+    expect(titles()).toHaveLength(5);
+    expect(titles()[4]).toBe("의뢰자 제공 정보에 대한 전제:");
+    expect(items()[4].textContent).toContain(
+      "본 결과서는 의뢰자가 제공한 데이터와 정보를 바탕으로 작성되었다. 제공된 내용이 사실과 다르면 본 결과서의 결과와 해석은 유효하지 않다.",
+    );
+  });
+
+  it("빠진 항목이 있으면 '제공되지 않은 정보' 문장 바로 아래에 항목별 영향 문장, 그 뒤 목적별 미충족", () => {
+    renderWith(materialCheckFixture({ missingLatencyAndLabel: true, realTime: true }));
+    expect(titles()).toEqual([
+      "데이터 기반 평가의 국한성:",
+      "결과서 효력의 한계:",
+      "자동화 진단 소견에 대한 면책:",
+      "LLM 생성 소견에 대한 면책:",
+      "의뢰자 제공 정보에 대한 전제:",
+      "제공되지 않은 정보:",
+      "목적별 점검 미충족:",
+    ]);
+    expect(items()[5].textContent).toContain(
+      "ISO/IEC TS 4213이 보고를 요구하는 항목 중 정답 라벨 구축 방법, 추론 효율성(지연시간)은 의뢰자로부터 제공받지 못해",
+    );
+    const impacts = screen.getByRole("list", { name: "제공되지 않은 정보 세부" });
+    expect([...impacts.querySelectorAll("li")].map((li) => li.textContent)).toEqual([
+      "정답 라벨 구축 방법: 정답 라벨을 얼마나 믿을 수 있는지 판단할 수 없다.",
+      "추론 효율성(지연시간): 응답 속도가 용도에 맞는지 판단할 수 없다.",
+    ]);
+    const shortfalls = screen.getByRole("list", { name: "목적별 점검 미충족 세부" });
+    expect(shortfalls.querySelectorAll("li")).toHaveLength(1);
+    expect(shortfalls.textContent).toContain('사용 방식을 "대화형(실시간)"으로 밝혔으나');
   });
 });

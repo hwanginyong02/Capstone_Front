@@ -29,12 +29,13 @@ export function ReportPrint() {
   return (
     <PrintLayout>
       <div ref={containerRef}>
-        <ReportCoverSection meta={data.meta} performer={data.performer} />
+        <ReportCoverSection meta={data.meta} performer={data.performer} materialCheck={data.materialCheck} />
         <CompanyInfoSection
           applicant={data.applicant}
           performer={data.performer}
           evalScope={data.evalScope}
           meta={data.meta}
+          materialCheck={data.materialCheck}
         />
         <EvalScopeSection meta={data.meta} evalScope={data.evalScope} />
         <PageBreak>
@@ -56,6 +57,7 @@ export function ReportPrint() {
             kpiResults={data.kpiResults}
             totalSamples={data.datasetInfo.sampleCount}
             validationSummary={data.validationSummary}
+            materialCheck={data.materialCheck}
           />
           <KpiResultSection
             kpiResults={data.kpiResults}

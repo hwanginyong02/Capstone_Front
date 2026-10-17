@@ -4,6 +4,7 @@
  */
 import type {
   EvalEnvironment,
+  MaterialCheckResult,
   PerformerInfo,
   ReportPurposeKey,
 } from "../../types/finalReport.types";
@@ -68,4 +69,60 @@ export function verdictRuleText(coreMetrics: string[]): string {
     "미달이 있으면 조건부 합격, 모든 판정 대상 지표가 목표를 충족하면 합격으로 판정한다. 판정은 " +
     "측정값을 목표값과 직접 비교하였으며 측정 불확도는 반영하지 않았다."
   );
+}
+
+/** 1.4 제약사항 한 항목. `details` 는 그 항목 아래 줄(영향 문장·목적별 미충족 문장). */
+export interface ConstraintItem {
+  title: string;
+  body: string;
+  details?: string[];
+}
+
+/** 1.4 의 종전 4항목 — 모든 성적서에 찍는다. */
+const BASE_CONSTRAINTS: ConstraintItem[] = [
+  {
+    title: "데이터 기반 평가의 국한성",
+    body: "본 시험은 평가 대상 모델 자체가 아닌, 의뢰자가 당사 평가 시스템에 업로드한 추론 결과 데이터셋(Inference Result Dataset)을 기반으로 정량적 지표를 산출하였다. 따라서 본 결과서는 모델의 내부 아키텍처, 소스코드, 원본 학습 데이터의 무결성에 대한 직접적인 검증 결과를 포함하지 않는다.",
+  },
+  {
+    title: "결과서 효력의 한계",
+    body: "산출된 평가지표 및 종합 소견은 의뢰자가 제출한 특정 테스트 데이터셋 환경에 국한된 성능을 증명하며, 실제 서비스 배포 이후 발생하는 데이터 분포 변화(Data Drift)나 환경적 요인에 따른 성능 변동을 보장하지 않는다.",
+  },
+  {
+    title: "자동화 진단 소견에 대한 면책",
+    body: "종합 분석 소견은 산출된 통계 지표를 바탕으로 한 성능 해석 및 기술적 권고안으로, 모델 개선을 위한 보조적 참고 자료이다. 최종적인 서비스 운영 및 상용화 의사결정의 책임은 전적으로 평가 의뢰자에게 있다.",
+  },
+  {
+    title: "LLM 생성 소견에 대한 면책",
+    body: "본 결과서의 서술형 분석 소견(7절 이후)은 산출된 정량 지표를 바탕으로 LLM(Large Language Model) 및 RAG(Retrieval-Augmented Generation) 기술을 활용하여 자동 생성되었다. 해당 소견은 참고용이며, 전문가의 추가 검토를 권장한다.",
+  },
+];
+
+/** 고정 문구 13(서술 설계 D25) — 1.4, 재료 선택 점검이 있는 성적서부터. */
+export const CLIENT_PROVIDED_PREMISE =
+  "본 결과서는 의뢰자가 제공한 데이터와 정보를 바탕으로 작성되었다. 제공된 내용이 사실과 다르면 본 결과서의 결과와 해석은 유효하지 않다.";
+
+/**
+ * 1.4 제약사항을 한 곳에서 조립한다. 순서: 종전 4항목 → 고정 문구 13 → (세션 3: 고정 문구 3, 신뢰구간)
+ * → 제공되지 않은 정보 + 항목별 영향 문장 → 목적별 점검 미충족 줄(고정 문구 14 · 2절).
+ *
+ * 재료 선택 점검 결과가 없는 옛 성적서는 종전 4항목 그대로다 — 문장은 발급 당시 그대로 둔다.
+ */
+export function constraintsFor(materialCheck?: MaterialCheckResult): ConstraintItem[] {
+  if (!materialCheck) return BASE_CONSTRAINTS;
+  const { printed } = materialCheck;
+  return [
+    ...BASE_CONSTRAINTS,
+    { title: "의뢰자 제공 정보에 대한 전제", body: CLIENT_PROVIDED_PREMISE },
+    ...(printed.notProvided ? [{ title: "제공되지 않은 정보", body: printed.notProvided, details: printed.impacts }] : []),
+    ...(printed.purposeShortfalls.length > 0
+      ? [
+          {
+            title: "목적별 점검 미충족",
+            body: "의뢰자가 밝힌 사용 목적에 비추어 다음 재료가 시험에 포함되지 않았다.",
+            details: printed.purposeShortfalls,
+          },
+        ]
+      : []),
+  ];
 }

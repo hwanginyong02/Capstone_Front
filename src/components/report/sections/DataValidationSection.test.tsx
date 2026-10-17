@@ -12,6 +12,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { DataValidationSection } from "./DataValidationSection";
+import { materialCheckFixture } from "../../../test/materialCheckFixture";
 import type { KpiResult, ValidationResult } from "../../../types/finalReport.types";
 
 const KPIS: KpiResult[] = [
@@ -112,5 +113,28 @@ describe("화면 ↔ 인쇄본 배선", () => {
 
   it.each(screenSections)("인쇄본이 화면과 같은 prop 을 %s 에 넘긴다", (section) => {
     expect(propsPassedTo(section, PRINT)).toEqual(propsPassedTo(section, SCREEN));
+  });
+});
+
+describe("6.0 재료 선택 점검 세 줄 (고정 문구 14 · 2.1 한눈에 보기)", () => {
+  it("점검 결과가 있으면 보고 항목·목적별 점검·생성 전 안내 확인 줄을 찍는다", () => {
+    render(
+      <DataValidationSection
+        dataValidation={VALIDATION}
+        kpiResults={KPIS}
+        totalSamples={10}
+        materialCheck={materialCheckFixture({ missingLatencyAndLabel: true, realTime: true })}
+      />,
+    );
+    expect(summaryValue("보고 항목 제공")).toBe("11개 중 9개");
+    expect(summaryValue("목적별 점검")).toBe("1줄 중 0줄 충족");
+    expect(summaryValue("생성 전 안내 확인")).toBe("확인 기록 없음");
+    expect(screen.getByText("점검 표 1.0")).toBeInTheDocument();
+  });
+
+  it("점검 결과가 없는 옛 성적서에는 세 줄이 없다", () => {
+    render(<DataValidationSection dataValidation={VALIDATION} kpiResults={KPIS} totalSamples={10} />);
+    expect(screen.queryByText("보고 항목 제공")).not.toBeInTheDocument();
+    expect(screen.queryByText("생성 전 안내 확인")).not.toBeInTheDocument();
   });
 });

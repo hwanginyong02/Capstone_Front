@@ -1,4 +1,5 @@
 import type { LatencyStats } from "../../../types/finalReport.types";
+import { NOT_PROVIDED } from "../../../lib/report/reportMaterials";
 
 interface LatencySectionProps {
   latency: LatencyStats | null;
@@ -18,8 +19,12 @@ export function LatencySection({ latency }: LatencySectionProps) {
     return (
       <div className="space-y-3 pt-8">
         <h3 className="text-sm font-semibold text-slate-700">응답시간 지표</h3>
-        <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-xs text-slate-400">
-          지연시간(latency) 컬럼이 매핑되지 않아 측정되지 않았습니다. 컬럼 매핑 단계에서 응답시간 컬럼을 latency 역할로 지정하면 통계가 표시됩니다.
+        {/* 보고 항목 8(추론 효율성)이 빠진 자리 — "그 자리에서 보기"(고정 문구 2.1). */}
+        <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-600">
+          <strong className="text-slate-700">{NOT_PROVIDED}</strong>
+          <span className="ml-2 text-xs text-slate-400">
+            응답시간(latency) 자료가 제공되지 않아 측정하지 않았다.
+          </span>
         </p>
       </div>
     );

@@ -30,12 +30,13 @@ import { SignatureSection } from "./sections/SignatureSection";
 export function ReportSections({ data }: { data: FinalReportData }) {
   return (
     <>
-      <ReportCoverSection meta={data.meta} performer={data.performer} />
+      <ReportCoverSection meta={data.meta} performer={data.performer} materialCheck={data.materialCheck} />
       <CompanyInfoSection
         applicant={data.applicant}
         performer={data.performer}
         evalScope={data.evalScope}
         meta={data.meta}
+        materialCheck={data.materialCheck}
       />
       <EvalScopeSection meta={data.meta} evalScope={data.evalScope} />
       <DatasetSection
@@ -52,6 +53,7 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         kpiResults={data.kpiResults}
         totalSamples={data.datasetInfo.sampleCount}
         validationSummary={data.validationSummary}
+        materialCheck={data.materialCheck}
       />
       <KpiResultSection
         kpiResults={data.kpiResults}
