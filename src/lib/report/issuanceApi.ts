@@ -9,6 +9,7 @@
  * 여기서 KST 표시 문자열로 변환해, 리포트의 기존 로컬 날짜 표기 규약과 일치시킨다(단일 출처=백엔드).
  */
 import { apiUrl } from "@/lib/apiBase";
+import type { FinalReportData } from "../../types/finalReport.types";
 
 export interface OrganizationInfo {
   orgName: string;
@@ -232,4 +233,35 @@ export async function getReportContent(
   } catch {
     return null;
   }
+}
+
+/**
+ * 백엔드 발급 결과(IssuanceResult)를 리포트 데이터에 병합 — 문서 번호, 발급 일시, 기관, 서명, 이력.
+ *
+ * 발급 때 서버에 보내는 원본은 번호를 받기 **전** 데이터라 이 칸들이 비어 있다. 그래서 발급 직후
+ * 화면(useIssuance)과 번호로 보관본을 여는 화면(ReportByNumber)이 같은 함수로 덧입힌다.
+ */
+export function applyIssuance(report: FinalReportData, r: IssuanceResult): FinalReportData {
+  return {
+    ...report,
+    meta: {
+      ...report.meta,
+      reportId: r.reportNo,
+      issuedAt: formatKstDateTime(r.issuedAt),
+    },
+    performer: {
+      orgName: r.organization.orgName || report.performer.orgName,
+      evaluator: r.organization.evaluator ?? report.performer.evaluator,
+      contact: r.organization.contact ?? report.performer.contact,
+    },
+    signature: {
+      issuer: r.issuer,
+      signedAt: formatKstDate(r.issuedAt),
+      history: r.history.map((h) => ({
+        version: h.version,
+        issuedAt: formatKstDate(h.issuedAt),
+        note: h.note ?? "",
+      })),
+    },
+  };
 }

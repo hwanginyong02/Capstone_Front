@@ -12,13 +12,7 @@ import { useState } from "react";
 import type { FinalReportData } from "../types/finalReport.types";
 import { useWorkspaceStore } from "../utils/stores/useWorkspaceStore";
 import { ISSUE_CONTENT_MAX_BYTES, exceedsIssueLimit, jsonBytes } from "../utils/image/examplePreview";
-import {
-  formatKstDate,
-  formatKstDateTime,
-  issueReport,
-  reissueReport,
-  type IssuanceResult,
-} from "../lib/report/issuanceApi";
+import { applyIssuance, issueReport, reissueReport } from "../lib/report/issuanceApi";
 
 export interface UseIssuanceResult {
   /** 발급 반영본(있으면) 또는 원본 리포트 데이터 */
@@ -31,32 +25,6 @@ export interface UseIssuanceResult {
   busy: boolean;
   issue: () => Promise<void>;
   reissue: (note: string) => Promise<void>;
-}
-
-/** 백엔드 발급 결과(IssuanceResult)를 리포트 데이터에 병합. */
-function applyIssuance(report: FinalReportData, r: IssuanceResult): FinalReportData {
-  return {
-    ...report,
-    meta: {
-      ...report.meta,
-      reportId: r.reportNo,
-      issuedAt: formatKstDateTime(r.issuedAt),
-    },
-    performer: {
-      orgName: r.organization.orgName || report.performer.orgName,
-      evaluator: r.organization.evaluator ?? report.performer.evaluator,
-      contact: r.organization.contact ?? report.performer.contact,
-    },
-    signature: {
-      issuer: r.issuer,
-      signedAt: formatKstDate(r.issuedAt),
-      history: r.history.map((h) => ({
-        version: h.version,
-        issuedAt: formatKstDate(h.issuedAt),
-        note: h.note ?? "",
-      })),
-    },
-  };
 }
 
 export function useIssuance(
