@@ -118,3 +118,109 @@ describe("8.1 벤치마크 참조 범위", () => {
     expect(screen.queryByRole("table", { name: "벤치마크 참조 범위" })).not.toBeInTheDocument();
   });
 });
+
+/**
+ * 8.1 목표값·목표값 수준(설계 D31) — 서버가 목표값 키를 실은 성적서에만 열을 그린다.
+ * 키가 없는 옛 성적서는 발급 당시 모양(4열) 그대로다.
+ */
+describe("8.1 목표값 열", () => {
+  const ref = {
+    metric: "Accuracy",
+    modelValue: 0.94,
+    refLow: 0.85,
+    refHigh: 0.92,
+    quality: "better",
+    direction: "higher",
+    sourceNote: "",
+  };
+  const headers = () =>
+    screen
+      .getByRole("table", { name: "벤치마크 참조 범위" })
+      .querySelectorAll("th");
+  const cellsOf = (metric: string) =>
+    [...screen.getByText(metric).closest("tr")!.querySelectorAll("td")].map((td) => td.textContent);
+
+  it("키가 있으면 목표값과 목표값 수준 열을 더한다", () => {
+    render(
+      <ConclusionSection
+        conclusion={{
+          ...conclusion,
+          benchmarkRefs: [
+            { ...ref, metric: "Accuracy", targetValue: 0.8, targetPosition: "below" },
+            { ...ref, metric: "Recall", targetValue: 0.9, targetPosition: "within" },
+            { ...ref, metric: "Precision", targetValue: 0.95, targetPosition: "above" },
+          ],
+        }}
+      />,
+    );
+    expect([...headers()].map((th) => th.textContent)).toEqual([
+      "지표", "모델 값", "참조 범위", "위치", "목표값", "목표값 수준",
+    ]);
+    expect(cellsOf("Accuracy").slice(4)).toEqual(["0.800", "범위보다 낮음"]);
+    expect(cellsOf("Recall").slice(4)).toEqual(["0.900", "범위 안"]);
+    expect(cellsOf("Precision").slice(4)).toEqual(["0.950", "범위보다 높음"]);
+  });
+
+  it("목표값이 없는 지표는 — 로 적는다", () => {
+    render(
+      <ConclusionSection
+        conclusion={{
+          ...conclusion,
+          benchmarkRefs: [
+            { ...ref, metric: "Accuracy", targetValue: 0.8, targetPosition: "below" },
+            { ...ref, metric: "Recall", targetValue: null, targetPosition: null },
+          ],
+        }}
+      />,
+    );
+    expect(cellsOf("Recall").slice(4)).toEqual(["—", "—"]);
+  });
+
+  it("옛 성적서(키 없음)는 열을 그리지 않는다", () => {
+    render(<ConclusionSection conclusion={{ ...conclusion, benchmarkRefs: [ref] }} />);
+    expect([...headers()].map((th) => th.textContent)).toEqual(["지표", "모델 값", "참조 범위", "위치"]);
+    expect(screen.queryByText("목표값 수준")).not.toBeInTheDocument();
+  });
+});
+
+/** 8.3 아슬아슬 지표 한 줄(서술 설계 D12) — 생성 때 저장한 문장을 그대로 찍는다. */
+describe("8.3 아슬아슬 지표 표시", () => {
+  const note =
+    "목표값과의 차이가 목표값의 3% 미만인 지표(근소 차이): F1 Score(M4) 0.812(목표 0.800 이상, 충족).";
+
+  it("저장된 한 줄이 있으면 8.3 리스크 요약 아래 찍는다", () => {
+    render(<ConclusionSection conclusion={{ ...conclusion, risks: "리스크 서술" }} nearTargetNote={note} />);
+    const line = screen.getByText(note);
+    const heading = screen.getByText("기술적 취약점 및 잠재적 리스크 요약");
+    // 8.3 제목과 같은 묶음 안, 제목 뒤에 있다.
+    expect(heading.parentElement?.parentElement?.contains(line)).toBe(true);
+    expect(heading.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("없으면(아슬아슬 지표 없음·옛 성적서) 찍지 않는다", () => {
+    render(<ConclusionSection conclusion={conclusion} />);
+    expect(screen.queryByText(/근소 차이/)).not.toBeInTheDocument();
+  });
+});
+
+/** 8.2 일반화 고정 문구 11a·11b — 생성 때 저장한 문장을 그대로 찍는다. */
+describe("8.2 일반화 고정 문구", () => {
+  const same =
+    "평가 데이터는 학습 데이터와 동일한 출처에서 수집되었다. 본 결과는 동일 분포 내 성능을 나타내며, 다른 운영 환경에서의 일반화 성능을 보증하지 않는다.";
+
+  it("저장된 문장이 있으면 8.2 총평 아래 찍는다", () => {
+    render(<ConclusionSection conclusion={{ ...conclusion, narrative: "총평 서술" }} sourceRelationSentence={same} />);
+    const line = screen.getByText(same);
+    const heading = screen.getByText("전반적 성능 및 일반화 능력 총평");
+    expect(heading.parentElement?.parentElement?.contains(line)).toBe(true);
+    expect(heading.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // 8.3 묶음보다 앞이다.
+    const risks = screen.getByText("기술적 취약점 및 잠재적 리스크 요약");
+    expect(line.compareDocumentPosition(risks) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("없으면(답 없음·'모름'·옛 성적서) 찍지 않는다", () => {
+    render(<ConclusionSection conclusion={conclusion} />);
+    expect(screen.queryByText(/출처에서 수집되었다/)).not.toBeInTheDocument();
+  });
+});

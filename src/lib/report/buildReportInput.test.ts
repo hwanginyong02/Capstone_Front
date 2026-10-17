@@ -99,3 +99,12 @@ describe("⑨ 실행 환경 → 성적서 4절", () => {
     expect(input.basicInfo.envOS).toBe("Windows 11");
   });
 });
+
+describe("재료 선택 점검의 진행 기록", () => {
+  it("스토어의 기록을 성적서 입력에 싣는다(없으면 null)", () => {
+    expect(buildReportInput(source()).materialCheckAck).toBeNull();
+    const ack = { at: "2026-10-17T05:03:00.000Z", version: "1.0", warningIds: ["reporting:8"] };
+    useWorkflowStore.getState().setMaterialCheckAck(ack);
+    expect(buildReportInput(source()).materialCheckAck).toEqual(ack);
+  });
+});

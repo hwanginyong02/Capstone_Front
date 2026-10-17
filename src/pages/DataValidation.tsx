@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { useStepFlow } from "../hooks/useStepFlow";
@@ -14,6 +15,11 @@ import {
   getValidationGateReason,
 } from "../utils/domain/validationGate";
 import { FileReuploadNotice } from "../components/workflow/FileReuploadNotice";
+import { MaterialCheckNotice, type MaterialCheckTarget } from "../components/workflow/MaterialCheckNotice";
+import { layerOneGaps, type LayerOneGap } from "../utils/domain/layerOne";
+import { getCard } from "../data/reportComposer";
+import type { MaterialCheckResult } from "../types/finalReport.types";
+import type { ComposerCardId } from "../types/reportComposer.types";
 
 /** 평가 실행(성적서 생성) 중 발생한 예외를 사용자가 읽을 수 있는 문장으로 바꾼다. */
 function describeSubmitError(err: unknown): string {
@@ -46,6 +52,8 @@ export function DataValidation() {
   const { validationData, isLoading, error, buildEvaluationResult } = useDataValidation();
 
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [gaps, setGaps] = useState<LayerOneGap[]>([]);
+  const navigate = useNavigate();
 
   // 검증이 실패했거나 아예 수행되지 않은 경우(validationData === null)를 '오류 0건'으로
   // 읽지 않는다. 종전 판정 `(validationData?.error_count ?? 0) > 0` 은 그 둘을 `?? 0` 에
@@ -53,11 +61,54 @@ export function DataValidation() {
   const gateReason = getValidationGateReason({ validationData, isLoading, error });
   const gateMessage = describeValidationGate(gateReason);
 
+  // 생성 전 안내(재료 선택 점검 6절). 판정은 성적서를 만드는 같은 경로(매퍼 → checkMaterialSelection)
+  // 의 결과를 읽기만 한다. 검증이 끝나야 IR 을 셀 분포가 생긴다.
+  let materialCheck: MaterialCheckResult | undefined;
+  if (gateReason === "ok") {
+    try {
+      materialCheck = buildEvaluationResult()?.reportData?.materialCheck;
+    } catch {
+      materialCheck = undefined; // 안내는 보조다 — 실패해도 "다음"의 오류 처리가 알린다.
+    }
+  }
+
+  const handleFix = (target: MaterialCheckTarget) => {
+    if (target.kind === "step") {
+      flow.goTo(target.stepId);
+      return;
+    }
+    if (target.kind === "cardInput") {
+      flow.goTo(getCard(target.cardId).steps[0]);
+      return;
+    }
+    // 재료 고르기에서 그 카드를 연다 — 넣지 않은 카드나 체크하지 않은 항목은 입력 화면에 칸이 없다.
+    navigate("/app/composer", { state: { cardId: target.cardId } });
+  };
+  const includedCards = new Set(
+    (Object.entries(store.composerCards) as Array<[ComposerCardId, boolean]>)
+      .filter(([, on]) => on)
+      .map(([cardId]) => cardId),
+  );
+
   // 이 핸들러에서 예외가 나면 React 는 잡아주지 않는다(ErrorBoundary 도 없음).
   // 감싸지 않으면 "버튼을 눌러도 아무 일도 안 일어나는" 무증상 실패가 된다.
   const handleNext = () => {
     setSubmitError(null);
+
+    // 1층 — 없으면 성적서가 성립하지 않는다. 끝난 단계로 돌아가 필수 칸을 지운 경우를 막는다.
+    const missingRequired = layerOneGaps(useWorkflowStore.getState());
+    setGaps(missingRequired);
+    if (missingRequired.length > 0) return;
+
     try {
+      // 2·3층 — 막지 않는다. 지금 경고를 보고 진행한 사실을 기록한 뒤 성적서를 만든다(6절).
+      const check = buildEvaluationResult().reportData.materialCheck;
+      store.setMaterialCheckAck(
+        check && check.warningIds.length > 0
+          ? { at: new Date().toISOString(), version: check.version, warningIds: [...check.warningIds] }
+          : null,
+      );
+
       const { workflowSnapshot, reportData } = buildEvaluationResult();
 
       // 워크스페이스가 없으면 만든다(ISSUES.md E-02). 종전에는 없을 때 계산해 둔
@@ -68,7 +119,7 @@ export function DataValidation() {
       const run = addEvaluationRun({
         workspaceId,
         modelName: store.basicInfo.modelName || "Untitled model",
-        versionName: store.basicInfo.versionName || "v1.0.0",
+        versionName: reportData.evalScope.version,
         reportId: reportData.meta.reportId,
         workflowSnapshot,
         reportData,
@@ -109,6 +160,27 @@ export function DataValidation() {
           <AlertDescription>{submitError}</AlertDescription>
         </Alert>
       )}
+      {gaps.length > 0 && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <p>필수 입력이 비어 있어 성적서를 만들 수 없습니다. 아래 단계에서 채운 뒤 다시 오세요.</p>
+            <ul aria-label="비어 있는 필수 입력" className="mt-2 flex flex-col gap-1">
+              {gaps.map((gap) => (
+                <li key={gap.stepId}>
+                  <button
+                    type="button"
+                    onClick={() => flow.goTo(gap.stepId)}
+                    className="underline underline-offset-4"
+                  >
+                    {gap.label}에서 채우기
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
       {gateMessage && (
         <Alert variant="destructive" className="mb-6">
           <AlertTriangle className="h-4 w-4" />
@@ -116,6 +188,9 @@ export function DataValidation() {
         </Alert>
       )}
       <FileReuploadNotice />
+      {materialCheck && (
+        <MaterialCheckNotice check={materialCheck} onFix={handleFix} includedCards={includedCards} />
+      )}
 
       {/* 백엔드가 평가 데이터·매핑 단계에서 내려보낸 안내를 여기 합쳐 보여준다(ISSUES.md B-03·B-04·A-12).
           그 화면들에서 띄우면 사용자는 이미 다음 단계로 넘어간 뒤라 읽지 못한다. */}

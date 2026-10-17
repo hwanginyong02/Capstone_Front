@@ -19,6 +19,7 @@ import {
 import type { ValidateDataResponseData } from "../types/validation.types";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { DATA_VALIDATION_SHOWCASE } from "../data/dataValidationShowcase";
+import { resolveBeta } from "../utils/domain/validation";
 
 interface EvaluationResult {
   workflowSnapshot: MapWorkflowToReportInput;
@@ -74,7 +75,7 @@ export function useDataValidation(): UseDataValidationResult {
           class_distribution: store.metadata?.class_distribution || {},
         };
 
-        const beta = parseFloat(store.metricDetails?.["M5"]?.beta || "1.0");
+        const beta = resolveBeta(store.metricDetails);
 
         const payload = {
           task_type: store.taskType || "multiclass",
@@ -125,7 +126,9 @@ export function useDataValidation(): UseDataValidationResult {
   }, [store.rawFile, store.columnMapping, store.selectedMetricIds, store.taskType]);
 
   const buildEvaluationResult = (): EvaluationResult => {
-    const workflowSnapshot: MapWorkflowToReportInput = buildReportInput(store);
+    // 렌더 때 잡은 `store` 가 아니라 지금 값을 읽는다 — 검증 화면의 "다음"이 진행 기록을 남긴 직후
+    // 다시 부르기 때문이다(재료 선택 점검 6절).
+    const workflowSnapshot: MapWorkflowToReportInput = buildReportInput(useWorkflowStore.getState());
     const reportData = mapWorkflowToFinalReport(workflowSnapshot, validationData);
     return { workflowSnapshot, reportData };
   };

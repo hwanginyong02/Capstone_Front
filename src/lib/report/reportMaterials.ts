@@ -14,6 +14,7 @@
  * `reportLabels` 가 정한다 — 매핑표를 여기 또 적으면 두 벌이 된다.
  */
 import { getCard } from "../../data/reportComposer";
+import { josaEuroRo } from "./koreanJosa";
 import type { TaskType } from "../../data/evaluationData";
 import {
   MONTH_RANGE_KEYS,
@@ -49,7 +50,7 @@ function fieldOf(cardId: ComposerCardId, fieldId: string) {
 }
 
 /** 고른 선택지 하나를 성적서 이름으로. "기타"면 적은 내용을 괄호로 붙인다. */
-function choiceLabel(
+export function choiceLabel(
   cardId: ComposerCardId,
   fieldId: string,
   choice: string,
@@ -85,11 +86,14 @@ export function describeValue(
   if (!value || value.unknown) return null;
   const field = fieldOf(cardId, fieldId);
 
+  // "기타"를 고르고 무엇인지 적지 않았으면 내용이 없다 — 그 선택지는 답으로 세지 않는다.
+  const emptyOther = (choice: string) => field.otherChoice === choice && !value.otherText?.trim();
+
   let main: string | null = null;
   if (field.input === "single") {
-    main = value.text ? choiceLabel(cardId, fieldId, value.text, value.otherText) : null;
+    main = value.text && !emptyOther(value.text) ? choiceLabel(cardId, fieldId, value.text, value.otherText) : null;
   } else if (field.input === "multi") {
-    const chosen = value.choices ?? [];
+    const chosen = (value.choices ?? []).filter((choice) => !emptyOther(choice));
     main = chosen.length
       ? chosen.map((choice) => choiceLabel(cardId, fieldId, choice, value.otherText)).join(", ")
       : null;
@@ -109,9 +113,12 @@ export function describeValue(
   return main;
 }
 
-/** 2층 보고 항목 — 카드를 껐거나 값이 없으면 "제공되지 않음". */
-function required(label: string, included: boolean, value: string | null): MaterialRow {
-  return { label, value: included ? value : null };
+/**
+ * 2층 보고 항목 — 카드를 껐거나 값이 없으면 "제공되지 않음". `item` 은 그 줄이 속한 TS 4213 보고
+ * 항목 번호(재료 선택 점검 4.2)다.
+ */
+function required(item: number, label: string, included: boolean, value: string | null): MaterialRow {
+  return { label, value: included ? value : null, item };
 }
 
 /** 선택 항목 — 값이 있을 때만 줄을 만든다. */
@@ -140,14 +147,16 @@ function trainingRows(c: ReportComposerInput): MaterialRow[] {
       .join(" / ") || null;
 
   return [
-    required("학습 데이터셋명", on, describe("trainingDatasetName")),
-    required("학습 데이터 출처", on, describe("trainingDataSource")),
-    required("학습 샘플 수", on, count("Training")),
-    required("검증 샘플 수", on, count("Validation")),
-    required("학습 클래스 분포", on, classDistribution),
-    required("채널 효과", on, describe("channelEffects")),
-    required("편향 감소 노력", on, describe("imbalanceHandling")),
+    required(1, "학습 데이터셋명", on, describe("trainingDatasetName")),
+    required(1, "학습 데이터 출처", on, describe("trainingDataSource")),
+    required(1, "학습 샘플 수", on, count("Training")),
+    required(1, "검증 샘플 수", on, count("Validation")),
+    required(1, "학습 클래스 분포", on, classDistribution),
+    required(9, "채널 효과", on, describe("channelEffects")),
+    required(3, "편향 감소 노력", on, describe("imbalanceHandling")),
     ...optional("수집 기간", on, describe("trainingPeriod")),
+    // 학습·평가 전처리 일치(서술 설계 D44) — 점검 밖 선택 항목. 3절에 찍고, 같은 줄이 AI 로 간다.
+    ...optional("학습·평가 전처리 일치", on, describe("preprocessingMatch")),
     ...optional("학습 데이터 형식", on, describe("trainingDataFormat")),
     ...optional("학습 데이터 설명", on, describe("trainingDescription")),
     ...optional("비고", on, describe("trainingNotes")),
@@ -158,8 +167,9 @@ function testRows(c: ReportComposerInput): MaterialRow[] {
   const on = c.cards.testData;
   const describe = (fieldId: string) => describeValue("testData", fieldId, c.testData[fieldId]);
   return [
-    required("평가 데이터 출처", on, describe("testDataSource")),
-    required("학습 데이터와의 관계", on, describe("testSourceRelation")),
+    required(2, "평가 데이터 출처", on, describe("testDataSource")),
+    // 목록 밖 권장 필드라 2번(테스트 데이터의 출처)에 합친다(세션 2 점검 표 1.0).
+    required(2, "학습 데이터와의 관계", on, describe("testSourceRelation")),
     ...optional("평가 데이터 수집 기간", on, describe("testPeriod")),
   ];
 }
@@ -169,8 +179,8 @@ function groundTruthRows(c: ReportComposerInput): MaterialRow[] {
   const v = c.groundTruth;
   const describe = (fieldId: string) => describeValue("groundTruth", fieldId, v[fieldId]);
   const rows = [
-    required("정답 라벨 구축 방법", on, describe("labelAuthor")),
-    required("정답 라벨 신뢰성", on, describe("labelReview")),
+    required(4, "정답 라벨 구축 방법", on, describe("labelAuthor")),
+    required(5, "정답 라벨 신뢰성", on, describe("labelReview")),
   ];
 
   // 라벨러 수·일치도는 "복수 라벨러 합의"일 때만 받는다(신뢰성의 일부).
@@ -178,7 +188,7 @@ function groundTruthRows(c: ReportComposerInput): MaterialRow[] {
   if (!several) return rows;
 
   const count = countOf(v.labelReviewerCount?.text ?? "");
-  rows.push({ label: "라벨러 수", value: count === null ? null : `${count}명` });
+  rows.push({ label: "라벨러 수", value: count === null ? null : `${count}명`, item: 5 });
 
   const kind = v.labelAgreementKind;
   let agreement: string | null = null;
@@ -192,7 +202,7 @@ function groundTruthRows(c: ReportComposerInput): MaterialRow[] {
         kind.text === "Percent agreement" ? `${name} ${percentToRatio(value)}` : `${name} ${value}`;
     }
   }
-  rows.push({ label: "라벨 일치도", value: agreement });
+  rows.push({ label: "라벨 일치도", value: agreement, item: 5 });
   return rows;
 }
 
@@ -217,8 +227,8 @@ function environmentRows(c: ReportComposerInput): MaterialRow[] {
     return choiceLabel("modelEnv", "gpuUsage", answer);
   };
   return [
-    { label: "학습 가속", value: accel("Training") },
-    { label: "추론 가속", value: accel("Inference") },
+    { label: "학습 가속", value: accel("Training"), item: 11 },
+    { label: "추론 가속", value: accel("Inference"), item: 11 },
   ];
 }
 
@@ -246,8 +256,11 @@ function declarationRows(c: ReportComposerInput, taskType: TaskType): MaterialRo
   ];
 }
 
-/** 클래스 중요도 → 평균 방식(서술 설계 D28: 동등 = 매크로, 다수 우선 = 가중, 샘플 단위 = 마이크로). */
-const AVERAGING_BY_PRIORITY: Record<string, string> = {
+/**
+ * 클래스 중요도 → 평균 방식(서술 설계 D28: 동등 = 매크로, 다수 우선 = 가중, 샘플 단위 = 마이크로).
+ * 5절 평균 방식 문장과 재료 선택 점검(3번 줄)이 같은 표를 쓴다.
+ */
+export const AVERAGING_BY_PRIORITY: Record<string, string> = {
   "All equal": "매크로 평균",
   "Larger classes first": "가중 평균",
   "Individual samples first": "마이크로 평균",
@@ -264,7 +277,7 @@ function averagingSentence(c: ReportComposerInput, taskType: TaskType): string |
   if (!averaging) return undefined;
   // 따옴표 안에는 선언 값(선택지의 성적서 이름)만 — 덧붙인 글은 의뢰자 선언 표에 있다.
   const declared = choiceLabel("perspective", "classPriority", answer!.text!);
-  return `다중 클래스 지표의 평균 방식은 ${averaging}을 기준으로 한다. 의뢰자가 클래스 중요도를 "${declared}"으로 밝혔기 때문이다.`;
+  return `다중 클래스 지표의 평균 방식은 ${averaging}을 기준으로 한다. 의뢰자가 클래스 중요도를 "${declared}"${josaEuroRo(declared)} 밝혔기 때문이다.`;
 }
 
 /** 성적서 구성 카드의 값 → 성적서 자리별 줄. */
@@ -314,14 +327,10 @@ export interface ClientInputsSource {
  * AI 에 넘길 고객 입력(서술 설계 D25 — 고객 입력은 모두 넘긴다).
  *
  * 식별 정보는 모델명과 버전만 넘긴다. 회사 정보와 과제 정보는 넘기지 않는다(D34).
- * 성적서에 찍지 않는 값도 넘긴다 — 학습·평가 전처리 일치(인쇄 위치는 아직 정하지 않음).
+ * 학습 데이터는 3절에 찍는 줄을 그대로 넘긴다 — 학습·평가 전처리 일치도 그 줄에 있다.
  */
 export function buildClientInputs(source: ClientInputsSource): ClientInputs {
-  const { composer, materials } = source;
-  // 학습·평가 전처리 일치는 ⑥ 학습 데이터 카드가 받는다(서술 설계 D44, persist v13).
-  const preprocessing = composer.cards.trainingData
-    ? describeValue("trainingData", "preprocessingMatch", composer.trainingData.preprocessingMatch)
-    : null;
+  const { materials } = source;
   const descriptions = Object.fromEntries(
     Object.entries(source.classLabelDescriptions).filter(([, text]) => text.trim() !== ""),
   );
@@ -341,10 +350,7 @@ export function buildClientInputs(source: ClientInputsSource): ClientInputs {
       ? { metric_rationale: materials.metricRationale ?? NOT_PROVIDED }
       : {}),
     core_metrics: source.coreMetrics,
-    training_data: {
-      ...rowsToObject(materials.training),
-      ...(preprocessing ? { "학습·평가 전처리 일치": preprocessing } : {}),
-    },
+    training_data: rowsToObject(materials.training),
     test_data: rowsToObject(materials.test),
     ground_truth: rowsToObject(materials.groundTruth),
     environment: {

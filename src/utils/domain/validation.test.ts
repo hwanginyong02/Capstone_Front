@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { metricNeedsTargetValue, resolveTargetValue } from "./validation";
+import { metricNeedsTargetValue, resolveBeta, resolveTargetValue } from "./validation";
 import { computeVerdict } from "../../lib/report/computeVerdict";
 import { getRecommendedMetricIds } from "../../data/evaluationData";
 import type { KpiResult } from "../../types/finalReport.types";
@@ -91,5 +91,15 @@ describe("resolveTargetValue", () => {
     );
     expect(res.judgedCount).toBe(2);
     expect(res.verdict).toBe("CONDITIONAL_PASS");
+  });
+});
+
+describe("resolveBeta — 평가 요청과 재료 선택 점검이 같은 β", () => {
+  it("비었거나 M5 가 없으면 1.0, 적은 값은 숫자로", () => {
+    expect(resolveBeta({})).toBe(1);
+    expect(resolveBeta(undefined)).toBe(1);
+    expect(resolveBeta({ M5: { beta: "" } })).toBe(1);
+    expect(resolveBeta({ M5: { beta: "2" } })).toBe(2);
+    expect(resolveBeta({ M5: { beta: "0.5" } })).toBe(0.5);
   });
 });

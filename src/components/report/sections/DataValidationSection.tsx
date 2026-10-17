@@ -1,6 +1,7 @@
 import { CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 import type {
   KpiResult,
+  MaterialCheckResult,
   ValidationResult,
   ValidationSummary,
 } from "../../../types/finalReport.types";
@@ -29,6 +30,8 @@ interface DataValidationSectionProps {
   kpiResults: KpiResult[];
   totalSamples: number;
   validationSummary?: ValidationSummary;
+  /** 재료 선택 점검 결과. 있으면 6.0 에 세 줄(보고 항목·목적별 점검·생성 전 안내 확인)을 더한다. */
+  materialCheck?: MaterialCheckResult;
 }
 
 function GroupBlock({ group, items }: { group: ValidationGroup; items: ValidationResult[] }) {
@@ -89,6 +92,7 @@ export function DataValidationSection({
   kpiResults,
   totalSamples,
   validationSummary,
+  materialCheck,
 }: DataValidationSectionProps) {
   const failCount    = dataValidation.filter((r) => r.status === "fail").length;
   const warningCount = dataValidation.filter((r) => r.status === "warning").length;
@@ -153,6 +157,14 @@ export function DataValidationSection({
                 )}
               </td>
             </tr>
+            {/* 재료 선택 점검(고정 문구 14 · 2.1 "한눈에 보기") — 생성 때 만든 문구를 그대로 찍는다. */}
+            {materialCheck?.printed.summary.map((row) => (
+              <tr key={row.label} className="border-b border-slate-100">
+                <td className="py-2.5 pr-4 font-semibold text-slate-700">{row.label}</td>
+                <td className="py-2.5 pr-4 text-slate-900">{row.value}</td>
+                <td className="py-2.5 text-slate-500 text-xs">{row.note}</td>
+              </tr>
+            ))}
             <tr>
               <td className="py-2.5 pr-4 font-semibold text-slate-700">데이터 검증 결과</td>
               <td className="py-2.5 pr-4 text-slate-900">

@@ -1,35 +1,34 @@
-import type { ApplicantInfo, EvalScope, FinalReportMeta, PerformerInfo } from "../../../types/finalReport.types";
-import { REPORT_PURPOSE_LABEL, REPORT_PURPOSE_OVERVIEW } from "../../../lib/report/reportConstants";
+import type {
+  ApplicantInfo,
+  EvalScope,
+  FinalReportMeta,
+  MaterialCheckResult,
+  PerformerInfo,
+} from "../../../types/finalReport.types";
+import { REPORT_PURPOSE_LABEL, REPORT_PURPOSE_OVERVIEW, constraintsFor } from "../../../lib/report/reportConstants";
 import { SectionTitle } from "../shared/SectionTitle";
 import { TwoColTable } from "../shared/TwoColTable";
-
-const CONSTRAINTS = [
-  {
-    title: "데이터 기반 평가의 국한성",
-    body: "본 시험은 평가 대상 모델 자체가 아닌, 의뢰자가 당사 평가 시스템에 업로드한 추론 결과 데이터셋(Inference Result Dataset)을 기반으로 정량적 지표를 산출하였다. 따라서 본 결과서는 모델의 내부 아키텍처, 소스코드, 원본 학습 데이터의 무결성에 대한 직접적인 검증 결과를 포함하지 않는다.",
-  },
-  {
-    title: "결과서 효력의 한계",
-    body: "산출된 평가지표 및 종합 소견은 의뢰자가 제출한 특정 테스트 데이터셋 환경에 국한된 성능을 증명하며, 실제 서비스 배포 이후 발생하는 데이터 분포 변화(Data Drift)나 환경적 요인에 따른 성능 변동을 보장하지 않는다.",
-  },
-  {
-    title: "자동화 진단 소견에 대한 면책",
-    body: "종합 분석 소견은 산출된 통계 지표를 바탕으로 한 성능 해석 및 기술적 권고안으로, 모델 개선을 위한 보조적 참고 자료이다. 최종적인 서비스 운영 및 상용화 의사결정의 책임은 전적으로 평가 의뢰자에게 있다.",
-  },
-  {
-    title: "LLM 생성 소견에 대한 면책",
-    body: "본 결과서의 서술형 분석 소견(7절 이후)은 산출된 정량 지표를 바탕으로 LLM(Large Language Model) 및 RAG(Retrieval-Augmented Generation) 기술을 활용하여 자동 생성되었다. 해당 소견은 참고용이며, 전문가의 추가 검토를 권장한다.",
-  },
-];
 
 interface CompanyInfoSectionProps {
   applicant: ApplicantInfo;
   performer: PerformerInfo;
   evalScope: EvalScope;
   meta: FinalReportMeta;
+  /** 재료 선택 점검 결과. 있으면 1.4 에 점검 결과 문구를 더한다(없는 옛 성적서는 종전 4항목). */
+  materialCheck?: MaterialCheckResult;
+  /** 신뢰구간을 찍은 성적서인지(`confidenceIntervalNote` 키). 그렇다면 1.4 에 고정 문구 3 을 더한다. */
+  hasConfidenceIntervals?: boolean;
 }
 
-export function CompanyInfoSection({ applicant, performer, evalScope, meta }: CompanyInfoSectionProps) {
+export function CompanyInfoSection({
+  applicant,
+  performer,
+  evalScope,
+  meta,
+  materialCheck,
+  hasConfidenceIntervals = false,
+}: CompanyInfoSectionProps) {
+  const projectNumber = evalScope.projectNumber ?? evalScope.projectInfo?.projectNumber;
   return (
     <section className="space-y-8 border-t border-slate-200 py-10">
       <SectionTitle number={1} title="개요" />
@@ -63,8 +62,10 @@ export function CompanyInfoSection({ applicant, performer, evalScope, meta }: Co
                 { label: "대표자",         value: applicant.representative },
                 { label: "사업자등록번호", value: applicant.businessNumber },
                 { label: "전화번호",       value: applicant.contact },
-                { label: "FAX번호",        value: applicant.fax },
-                { label: "홈페이지",       value: applicant.homepage },
+                // 선택 항목은 값이 있을 때만 줄을 만든다(재료 목록 1절). 이전 보관본의 "—" 는
+                // 값으로 보고 발급 당시처럼 찍는다.
+                ...(applicant.fax ? [{ label: "FAX번호", value: applicant.fax }] : []),
+                ...(applicant.homepage ? [{ label: "홈페이지", value: applicant.homepage }] : []),
                 { label: "주소",           value: applicant.address },
                 ...(meta.contractDate ? [{ label: "계약일자", value: meta.contractDate }] : []),
               ]}
@@ -98,13 +99,12 @@ export function CompanyInfoSection({ applicant, performer, evalScope, meta }: Co
             },
             ...(evalScope.projectInfo
               ? [
-                  { label: "프로젝트명", value: evalScope.projectInfo.name },
-                  { label: "주관기관", value: evalScope.projectInfo.agency },
-                  ...(evalScope.projectInfo.projectNumber
-                    ? [{ label: "과제번호", value: evalScope.projectInfo.projectNumber }]
-                    : []),
+                  { label: "과제명", value: evalScope.projectInfo.name },
+                  { label: "과제 기관", value: evalScope.projectInfo.agency },
                 ]
               : []),
+            // 과제 번호는 용도와 무관하다. 이 칸이 생기기 전 보관본은 projectInfo 안에 적었다.
+            ...(projectNumber ? [{ label: "과제 번호", value: projectNumber }] : []),
           ]}
         />
       </div>
@@ -116,12 +116,21 @@ export function CompanyInfoSection({ applicant, performer, evalScope, meta }: Co
           본 시험결과서에서 기술한 내용은 다음의 전제 및 명시적 한계를 지닌다.
         </p>
         <ol className="space-y-3">
-          {CONSTRAINTS.map((c, i) => (
+          {constraintsFor(materialCheck, hasConfidenceIntervals).map((c, i) => (
             <li key={i} className="flex gap-3 text-sm">
               <span className="shrink-0 font-semibold text-slate-700">{i + 1}.</span>
-              <span className="text-slate-600 leading-relaxed">
-                <strong className="text-slate-700">{c.title}:</strong> {c.body}
-              </span>
+              <div className="space-y-1.5 text-slate-600 leading-relaxed">
+                <p>
+                  <strong className="text-slate-700">{c.title}:</strong> {c.body}
+                </p>
+                {c.details && c.details.length > 0 && (
+                  <ul aria-label={`${c.title} 세부`} className="list-disc space-y-1 pl-5">
+                    {c.details.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </li>
           ))}
         </ol>

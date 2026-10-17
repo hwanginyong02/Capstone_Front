@@ -67,7 +67,7 @@ export const STEP_CATALOG: StepDefinition[] = [
     path: "/app/data-info",
     requiresCards: ["trainingData", "testData", "groundTruth"],
   },
-  // 평가 관점은 지표 바로 앞이라 지표 추천의 근거가 된다(§3).
+  // 평가 관점은 지표 바로 앞이다 — 지표 화면의 목적별 점검·추천 지표가 이 답을 읽는다(§3).
   { id: "perspective", label: "평가 관점", path: "/app/perspective" },
   { id: "metrics", label: "지표와 합격 기준", path: "/app/metrics" },
   { id: "validation", label: "검증", path: "/app/data-validation" },

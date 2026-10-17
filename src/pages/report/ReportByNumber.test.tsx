@@ -9,10 +9,15 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const getReportContent = vi.fn();
+const getIssuance = vi.fn();
 
 vi.mock("../../lib/report/issuanceApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../lib/report/issuanceApi")>();
-  return { ...actual, getReportContent: (...args: unknown[]) => getReportContent(...args) };
+  return {
+    ...actual,
+    getReportContent: (...args: unknown[]) => getReportContent(...args),
+    getIssuance: (...args: unknown[]) => getIssuance(...args),
+  };
 });
 
 vi.mock("../../components/report/ReportSections", () => ({
@@ -42,7 +47,11 @@ function renderAt(path: string) {
   );
 }
 
-beforeEach(() => getReportContent.mockReset());
+beforeEach(() => {
+  getReportContent.mockReset();
+  getIssuance.mockReset();
+  getIssuance.mockResolvedValue(null);
+});
 afterEach(() => vi.clearAllMocks());
 
 describe("번호로 성적서 복원", () => {
@@ -100,5 +109,36 @@ describe("라우팅", () => {
       </MemoryRouter>
     );
     expect(screen.getByTestId("number-route")).toBeInTheDocument();
+  });
+});
+
+/**
+ * 발급 때 보낸 원본은 번호를 받기 전 데이터다(meta.reportId 가 비어 있다). 그대로 그리면 표지에
+ * "(미발급)", 서명란에 "초안 — 미발급"이 찍혔다. 그릴 때 서버의 발급 기록을 덧입힌다.
+ */
+describe("보관본에 발급 기록을 덧입힌다", () => {
+  const PRE_ISSUE = { ...SNAPSHOT, content: { meta: { reportId: "", issuedAt: "" } } };
+
+  it("발급 기록이 있으면 번호·발급 정보를 그것으로 채운다", async () => {
+    getReportContent.mockResolvedValue(PRE_ISSUE);
+    getIssuance.mockResolvedValue({
+      reportNo: "RPT-2026-0001",
+      version: "v1.1",
+      issuedAt: "2026-07-04T08:10:52+00:00",
+      issuer: "평가기관",
+      organization: { orgName: "평가기관", evaluator: "평가자", contact: "010" },
+      history: [{ version: "v1.0", issuedAt: "2026-07-01T00:00:00+00:00", note: "" }],
+    });
+    renderAt("/report/no/RPT-2026-0001");
+
+    await waitFor(() => expect(screen.getByTestId("sections")).toHaveTextContent("RPT-2026-0001"));
+    expect(getIssuance).toHaveBeenCalledWith("RPT-2026-0001");
+  });
+
+  it("발급 기록을 못 받아도 번호는 채운다", async () => {
+    getReportContent.mockResolvedValue(PRE_ISSUE);
+    renderAt("/report/no/RPT-2026-0001");
+
+    await waitFor(() => expect(screen.getByTestId("sections")).toHaveTextContent("RPT-2026-0001"));
   });
 });

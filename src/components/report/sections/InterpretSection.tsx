@@ -18,6 +18,16 @@ interface InterpretSectionProps {
   derivedPrediction?: DerivedPredictionFact;
   /** TP·TN·FP·FN 건수. 7.1 에 찍는다(재료 목록 9절). 이 키가 생기기 전 성적서에는 없다. */
   confusionCounts?: ConfusionCounts | null;
+  /**
+   * 경계·확신 오류 비율 한 문장(설계 D30). 생성 때 저장한 문장을 그대로 찍는다 — 이 키가 생기기 전
+   * 성적서와 확률이 없는 평가에는 없다.
+   */
+  errorRatioSentence?: string;
+  /**
+   * 정답 라벨 주의 고정 문구 12. 생성 때 저장한 문장을 7.2 에 그대로 찍는다 — 걸리지 않았거나 이 키가
+   * 생기기 전 성적서에는 없다.
+   */
+  labelCautionSentence?: string;
 }
 
 const PLACEHOLDER =
@@ -117,6 +127,8 @@ export function InterpretSection({
   source,
   derivedPrediction,
   confusionCounts,
+  errorRatioSentence,
+  labelCautionSentence,
 }: InterpretSectionProps) {
   // 구버전 persist 데이터 등으로 interpretation 이 객체가 아닐 수 있어 방어적으로 정규화한다.
   const interp: InterpretationData =
@@ -136,11 +148,15 @@ export function InterpretSection({
 
       <NarrativeBlock title="혼동 행렬 기반 클래스 간 간섭 분석" text={interp.confusionAnalysis}>
         {confusionCounts && <ConfusionCountsTable counts={confusionCounts} />}
+        {errorRatioSentence && <p className="text-sm text-slate-700">{errorRatioSentence}</p>}
       </NarrativeBlock>
       <NarrativeBlock
         title="데이터 분포 유의성 및 클래스 편향성 평가"
         text={interp.distributionAnalysis}
-      />
+      >
+        {/* 7.2 고정 문구 12 — 정답 라벨 주의 */}
+        {labelCautionSentence && <p className="text-sm text-slate-700">{labelCautionSentence}</p>}
+      </NarrativeBlock>
     </section>
   );
 }

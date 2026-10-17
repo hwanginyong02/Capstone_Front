@@ -29,12 +29,14 @@ export function ReportPrint() {
   return (
     <PrintLayout>
       <div ref={containerRef}>
-        <ReportCoverSection meta={data.meta} performer={data.performer} />
+        <ReportCoverSection meta={data.meta} performer={data.performer} materialCheck={data.materialCheck} />
         <CompanyInfoSection
           applicant={data.applicant}
           performer={data.performer}
           evalScope={data.evalScope}
           meta={data.meta}
+          materialCheck={data.materialCheck}
+          hasConfidenceIntervals={data.confidenceIntervalNote !== undefined}
         />
         <EvalScopeSection meta={data.meta} evalScope={data.evalScope} />
         <PageBreak>
@@ -56,6 +58,7 @@ export function ReportPrint() {
             kpiResults={data.kpiResults}
             totalSamples={data.datasetInfo.sampleCount}
             validationSummary={data.validationSummary}
+            materialCheck={data.materialCheck}
           />
           <KpiResultSection
             kpiResults={data.kpiResults}
@@ -65,11 +68,12 @@ export function ReportPrint() {
             meta={data.meta}
             // 판정 규칙 문구는 그 규칙(D19)으로 판정한 성적서에만 — judgedCount 가 그 표시다.
             showVerdictRule={data.conclusion.judgedCount !== undefined}
+          confidenceIntervalNote={data.confidenceIntervalNote}
           />
         </PageBreak>
         <PageBreak>
           <ChartSection charts={data.charts} />
-          <LatencySection latency={data.latency} />
+          <LatencySection latency={data.latency} materialCheck={data.materialCheck} />
         </PageBreak>
         <PageBreak>
           <InterpretSection
@@ -78,12 +82,20 @@ export function ReportPrint() {
             // 파생 예측 사실은 7.1 앞에 찍는다. 판 2 이전 보관본은 6.0 일러두기에 찍었다.
             derivedPrediction={isLegacyLayout(data) ? undefined : data.meta.derivedPrediction}
             confusionCounts={data.confusionCounts}
+            errorRatioSentence={data.errorRatioSentence}
+            labelCautionSentence={data.labelCautionSentence}
           />
-          <ConclusionSection conclusion={data.conclusion} source={data.narrativeSource} />
+          <ConclusionSection
+            conclusion={data.conclusion}
+            source={data.narrativeSource}
+            nearTargetNote={data.nearTargetNote}
+            sourceRelationSentence={data.sourceRelationSentence}
+          />
           <RecommendSection
             recommendations={data.recommendations}
             narrative={data.recommendationNarrative}
             source={data.narrativeSource}
+            problems={data.problems}
           />
           <SignatureSection
             signature={data.signature}
