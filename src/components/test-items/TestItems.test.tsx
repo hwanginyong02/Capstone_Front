@@ -105,3 +105,66 @@ describe("계산할 수 없는 지표 (docs/MATERIAL_PICKER.md §3)", () => {
     expect(onSelectedMetricsChange).toHaveBeenLastCalledWith(["M1"]);
   });
 });
+
+describe("목적별 점검 미리보기와 추천 (재료 선택 점검 6절)", () => {
+  const unmetCurve = {
+    id: "curveImbalance" as const,
+    met: false,
+    title: "큰 불균형 → AUPRC",
+    declared: "불균형 비율 19.00",
+    recommended: ["M10"],
+    shortfall: "",
+  };
+
+  it("맞지 않는 줄의 '추가'는 추천 지표를 선택에 더한다", async () => {
+    const onSelectedMetricsChange = vi.fn();
+    render(
+      <TestItems
+        taskType="binary"
+        selectedMetricIds={["M9"]}
+        onSelectedMetricsChange={onSelectedMetricsChange}
+        purposeLines={[unmetCurve]}
+      />,
+    );
+    expect(screen.getByRole("list", { name: "목적별 점검" })).toHaveTextContent("큰 불균형 → AUPRC");
+    await userEvent.click(screen.getByRole("button", { name: /^추가:/ }));
+    expect(onSelectedMetricsChange).toHaveBeenLastCalledWith(["M9", "M10"]);
+  });
+
+  it("추천 지표를 지금 매핑으로 계산할 수 없으면 버튼 대신 이유를 적는다", () => {
+    render(
+      <TestItems
+        taskType="binary"
+        selectedMetricIds={["M9"]}
+        purposeLines={[unmetCurve]}
+        unavailableReasons={{ M10: "확률 컬럼이 필요합니다" }}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /^추가:/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/지금 매핑으로 계산할 수 없습니다/)).toBeInTheDocument();
+  });
+
+  it("맞는 줄에는 버튼이 없고, 줄이 없으면 카드를 그리지 않는다", () => {
+    const { unmount } = render(
+      <TestItems taskType="binary" selectedMetricIds={["M9", "M10"]} purposeLines={[{ ...unmetCurve, met: true }]} />,
+    );
+    expect(screen.queryByRole("button", { name: /^추가:/ })).not.toBeInTheDocument();
+    unmount();
+    render(<TestItems taskType="binary" selectedMetricIds={["M1"]} purposeLines={[]} />);
+    expect(screen.queryByRole("list", { name: "목적별 점검" })).not.toBeInTheDocument();
+  });
+
+  it("'추천 지표'는 넘겨받은 세트(선언·IR 반영)를 고른다", async () => {
+    const onSelectedMetricsChange = vi.fn();
+    render(
+      <TestItems
+        taskType="binary"
+        selectedMetricIds={[]}
+        onSelectedMetricsChange={onSelectedMetricsChange}
+        recommendedMetricIds={["M1", "M9", "M10"]}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "추천 지표" }));
+    expect(onSelectedMetricsChange).toHaveBeenLastCalledWith(["M1", "M9", "M10"]);
+  });
+});

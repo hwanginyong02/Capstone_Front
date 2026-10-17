@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Info, Search } from "lucide-react";
+import { CheckCircle2, Info, Search, TriangleAlert } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -10,6 +10,7 @@ import { getCardFields } from "../../data/reportComposer";
 import { cn } from "../../utils/styling/styles";
 import type { ComposerFieldValue, ComposerValueMap } from "../../types/reportComposer.types";
 import type { FieldIssue } from "../../utils/domain/composerFieldGate";
+import type { MaterialCheckLine } from "../../types/finalReport.types";
 import {
   getAvailableMetrics,
   getMetricDisplayId,
@@ -55,6 +56,16 @@ interface TestItemsProps {
   unavailableReasons?: Record<string, string>;
   /** 제목 아래에 붙일 안내(들어올 때 선택에서 뺀 지표 알림). */
   notice?: ReactNode;
+  /**
+   * "추천 지표"가 고를 지표. 평가 관점의 답과 불균형 비율을 반영한 세트다(`recommendedMetricIdsFor`).
+   * 넘기지 않으면 유형별 기본 세트.
+   */
+  recommendedMetricIds?: string[];
+  /**
+   * 목적별 점검 미리보기 — 지금 고른 지표로 본 재료 선택 점검 3층 줄(적용되는 줄만). 판정은 하지 않고
+   * 결과를 읽기만 한다. 넘기지 않거나 비어 있으면 그리지 않는다.
+   */
+  purposeLines?: MaterialCheckLine[];
 }
 
 export function TestItems({
@@ -70,6 +81,8 @@ export function TestItems({
   passCriteria,
   unavailableReasons = {},
   notice,
+  recommendedMetricIds,
+  purposeLines = [],
 }: TestItemsProps) {
   const availableMetrics = useMemo(() => getAvailableMetrics(taskType), [taskType]);
   const resolvedTaskType = taskType || "";
@@ -139,7 +152,12 @@ export function TestItems({
   };
 
   const handleRecommended = () =>
-    setSelected(getRecommendedMetricIds(taskType).filter((id) => !isUnavailable(id)));
+    setSelected((recommendedMetricIds ?? getRecommendedMetricIds(taskType)).filter((id) => !isUnavailable(id)));
+
+  /** 목적별 점검 줄의 "추가" — 계산할 수 있는 추천 지표만 넣는다. */
+  const handleAddMetrics = (ids: string[]) =>
+    setSelected([...selectedMetrics, ...ids.filter((id) => !isUnavailable(id) && !selectedMetrics.includes(id))]);
+  const metricLabel = (id: string) => availableMetrics.find((metric) => metric.id === id)?.name ?? id;
 
   const handleSelectAll = () =>
     setSelected(availableMetrics.map((m) => m.id).filter((id) => !isUnavailable(id)));
@@ -189,6 +207,54 @@ export function TestItems({
             </Button>
           </div>
         </div>
+
+        {purposeLines.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold">목적별 점검</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <p className="text-muted-foreground">
+                평가 관점에서 답한 내용에 맞는 지표가 있는지 봅니다. 맞지 않아도 진행할 수 있지만, 성적서
+                1.4에 부족한 점으로 적힙니다.
+              </p>
+              <ul aria-label="목적별 점검" className="flex flex-col">
+                {purposeLines.map((line) => {
+                  const addable = line.recommended.filter((id) => !isUnavailable(id));
+                  return (
+                    <li
+                      key={line.id}
+                      className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-border py-3 first:border-t-0"
+                    >
+                      <span className="flex items-center gap-2">
+                        {line.met ? (
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-success" aria-label="맞음" />
+                        ) : (
+                          <TriangleAlert className="h-4 w-4 shrink-0 text-warning" aria-label="맞지 않음" />
+                        )}
+                        <span className="text-foreground">
+                          {line.title} <span className="text-muted-foreground">({line.declared})</span>
+                        </span>
+                      </span>
+                      {!line.met &&
+                        (line.recommended.length === 0 ? (
+                          <span className="text-muted-foreground">컬럼 매핑에서 응답시간(latency) 컬럼을 지정해야 채워집니다.</span>
+                        ) : addable.length > 0 ? (
+                          <Button variant="outline" size="sm" onClick={() => handleAddMetrics(addable)}>
+                            추가: {addable.map(metricLabel).join(", ")}
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            추천 지표({line.recommended.map(metricLabel).join(", ")})는 지금 매핑으로 계산할 수 없습니다.
+                          </span>
+                        ))}
+                    </li>
+                  );
+                })}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
 
         <div>
           <span className="text-sm text-muted-foreground">분류 유형: </span>

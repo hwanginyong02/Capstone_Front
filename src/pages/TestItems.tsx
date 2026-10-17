@@ -11,6 +11,7 @@ import { getCard, getCardFields } from "../data/reportComposer";
 import { getFieldIssue, type FieldIssue } from "../utils/domain/composerFieldGate";
 import { passCriteriaState } from "../utils/domain/passCriteria";
 import { isBetaValid } from "../utils/domain/validation";
+import { materialCheckFor, recommendedMetricIdsFor } from "../utils/domain/purposeRecommendation";
 import { unavailableMetricReasons } from "../utils/domain/metricAvailability";
 import { METRICS } from "../data/evaluationData";
 import { Alert, AlertDescription } from "../components/ui/alert";
@@ -50,6 +51,11 @@ export function TestItems() {
     store.setSelectedMetricIds(selected.filter((id) => !(id in unavailableReasons)));
     setDroppedMetricIds(dropped);
   }, []);
+  // 목적별 점검 미리보기와 추천 지표 — 성적서와 같은 점검 결과를 읽는다. 검증 전이라 불균형 비율은
+  // 업로드 분석의 분포로 센다(검증 화면에서는 평가와 같은 프레임의 분포로 다시 본다).
+  const purposeLines = materialCheckFor(store)?.purpose.lines ?? [];
+  const recommendedMetricIds = recommendedMetricIdsFor(store);
+
   const droppedNames = droppedMetricIds
     .map((id) => METRICS.find((metric) => metric.id === id)?.name ?? id)
     .join(", ");
@@ -153,6 +159,8 @@ export function TestItems() {
         }
         metricCardIssues={metricCardIssues}
         unavailableReasons={unavailableReasons}
+        recommendedMetricIds={recommendedMetricIds}
+        purposeLines={purposeLines}
         notice={
           droppedMetricIds.length > 0 ? (
             <Alert role="status">
