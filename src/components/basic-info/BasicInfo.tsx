@@ -168,13 +168,16 @@ export function ClientInfoForm({ formData, onFormDataChange, picks }: ClientInfo
                 <Field label="과제 기관" required>
                   <Input value={formData.projectAgency} onChange={(e) => update("projectAgency", e.target.value)} />
                 </Field>
-                {show.projectNumber && (
-                  <Field label="과제 번호">
-                    <Input value={formData.projectNumber} onChange={(e) => update("projectNumber", e.target.value)} />
-                  </Field>
-                )}
               </div>
             </div>
+          )}
+
+          {/* 과제 번호는 용도와 무관한 선택 항목이다(재료 목록 1절 — 점검 밖, 1절 인쇄). 재료 고르기에서
+              골랐을 때만 받는다. */}
+          {show.projectNumber && (
+            <Field label="과제 번호">
+              <Input value={formData.projectNumber} onChange={(e) => update("projectNumber", e.target.value)} />
+            </Field>
           )}
         </CardContent>
       </Card>

@@ -296,11 +296,7 @@ function buildEvalScope(basicInfo: BasicInfoFormData): EvalScope {
   const purposeKey = normalizeReportPurpose(basicInfo.reportPurpose);
   const projectInfo =
     purposeKey === "project" && basicInfo.projectName
-      ? {
-          name: basicInfo.projectName,
-          agency: basicInfo.projectAgency || "—",
-          projectNumber: basicInfo.projectNumber || undefined,
-        }
+      ? { name: basicInfo.projectName, agency: basicInfo.projectAgency || "—" }
       : undefined;
 
   return {
@@ -312,6 +308,7 @@ function buildEvalScope(basicInfo: BasicInfoFormData): EvalScope {
     modelPurpose: basicInfo.modelPurpose || undefined,
     modelCategory: basicInfo.modelCategory || undefined,
     purposeNote: basicInfo.reportPurposeNote?.trim() || undefined,
+    projectNumber: basicInfo.projectNumber?.trim() || undefined,
     projectInfo,
   };
 }

@@ -238,3 +238,33 @@ describe("4절 실행 환경의 빈 칸", () => {
     expect(Object.values(report.evalEnv.systemSpec)).toEqual(Array(5).fill("제공되지 않음"));
   });
 });
+
+describe("1절 과제 번호 — 용도와 무관한 선택 항목(재료 목록 1절)", () => {
+  it("외부 제출이어도 과제 번호를 싣고, 과제명·과제 기관은 없다", () => {
+    const report = mapWorkflowToFinalReport(
+      baseInput({
+        basicInfo: { ...DEFAULT_BASIC_INFO, reportPurpose: "external", projectNumber: " ML-1 " },
+      }),
+    );
+
+    expect(report.evalScope.projectNumber).toBe("ML-1");
+    expect(report.evalScope.projectInfo).toBeUndefined();
+  });
+
+  it("과제 산출물이면 과제명·과제 기관과 과제 번호를 함께 싣는다", () => {
+    const report = mapWorkflowToFinalReport(
+      baseInput({
+        basicInfo: {
+          ...DEFAULT_BASIC_INFO,
+          reportPurpose: "project",
+          projectName: "AI 과제",
+          projectAgency: "기관",
+          projectNumber: "P-1",
+        },
+      }),
+    );
+
+    expect(report.evalScope.projectInfo).toEqual({ name: "AI 과제", agency: "기관" });
+    expect(report.evalScope.projectNumber).toBe("P-1");
+  });
+});

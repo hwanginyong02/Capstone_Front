@@ -30,6 +30,7 @@ interface CompanyInfoSectionProps {
 }
 
 export function CompanyInfoSection({ applicant, performer, evalScope, meta }: CompanyInfoSectionProps) {
+  const projectNumber = evalScope.projectNumber ?? evalScope.projectInfo?.projectNumber;
   return (
     <section className="space-y-8 border-t border-slate-200 py-10">
       <SectionTitle number={1} title="개요" />
@@ -98,13 +99,12 @@ export function CompanyInfoSection({ applicant, performer, evalScope, meta }: Co
             },
             ...(evalScope.projectInfo
               ? [
-                  { label: "프로젝트명", value: evalScope.projectInfo.name },
-                  { label: "주관기관", value: evalScope.projectInfo.agency },
-                  ...(evalScope.projectInfo.projectNumber
-                    ? [{ label: "과제번호", value: evalScope.projectInfo.projectNumber }]
-                    : []),
+                  { label: "과제명", value: evalScope.projectInfo.name },
+                  { label: "과제 기관", value: evalScope.projectInfo.agency },
                 ]
               : []),
+            // 과제 번호는 용도와 무관하다. 이 칸이 생기기 전 보관본은 projectInfo 안에 적었다.
+            ...(projectNumber ? [{ label: "과제 번호", value: projectNumber }] : []),
           ]}
         />
       </div>

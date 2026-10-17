@@ -62,9 +62,13 @@ export interface EvalScope {
   modelCategory?: string;
   /** 성적서 용도에 덧붙인 글. 1.3 개요 칸에 "의뢰자 제공"으로 싣는다(서술 설계 D26). */
   purposeNote?: string;
+  /** 과제 번호 — 용도와 무관한 선택 항목(재료 목록 1절). 1.3 용도 표에 값이 있을 때 찍는다. */
+  projectNumber?: string;
+  /** 과제명·과제 기관 — 용도가 과제 산출물일 때만. */
   projectInfo?: {
     name: string;
     agency: string;
+    /** 이 키 이전(evalScope.projectNumber 가 생기기 전) 보관본 전용. 새 성적서는 위 칸에 적는다. */
     projectNumber?: string;
   };
 }
