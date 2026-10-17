@@ -352,6 +352,12 @@ export type MaterialValue = string | null;
 export interface MaterialRow {
   label: string;
   value: MaterialValue;
+  /**
+   * 이 줄이 속한 TS 4213 보고 항목 번호(재료 선택 점검 4.2 의 표, 2층). 재료 선택 점검이 이 번호로
+   * 항목별 제공 여부를 센다 — 한 항목에 줄이 여럿이면 모든 줄이 있어야 제공이다. 선택 항목 줄과
+   * 선언 줄에는 없다. 이 키가 생기기 전 성적서에는 없다.
+   */
+  item?: number;
 }
 
 /** 고객 재료를 성적서 자리별로 모은 것. 같은 값을 AI 에도 넘긴다(서술 설계 D25). */

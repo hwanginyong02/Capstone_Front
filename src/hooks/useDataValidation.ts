@@ -19,6 +19,7 @@ import {
 import type { ValidateDataResponseData } from "../types/validation.types";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { DATA_VALIDATION_SHOWCASE } from "../data/dataValidationShowcase";
+import { resolveBeta } from "../utils/domain/validation";
 
 interface EvaluationResult {
   workflowSnapshot: MapWorkflowToReportInput;
@@ -74,7 +75,7 @@ export function useDataValidation(): UseDataValidationResult {
           class_distribution: store.metadata?.class_distribution || {},
         };
 
-        const beta = parseFloat(store.metricDetails?.["M5"]?.beta || "1.0");
+        const beta = resolveBeta(store.metricDetails);
 
         const payload = {
           task_type: store.taskType || "multiclass",

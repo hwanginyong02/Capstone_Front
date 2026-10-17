@@ -106,3 +106,12 @@ export function resolveTargetValue(metricId: string, raw: string | undefined): n
   if (value === null) return null;
   return getTargetValueRule(metricId).validate(value) === null ? value : null;
 }
+
+/**
+ * Fβ(M5)의 β. 입력이 비었으면 1.0 이다 — 평가 요청과 재료 선택 점검(2번 줄: β > 1 이면 재현율 쪽,
+ * β < 1 이면 정밀도 쪽)이 이 함수 하나로 같은 값을 쓴다. 숫자가 아니면 NaN 이 그대로 나온다
+ * (지표 화면이 그 값을 막는다).
+ */
+export function resolveBeta(metricDetails: Record<string, { beta?: string } | undefined> | null | undefined): number {
+  return parseFloat(metricDetails?.["M5"]?.beta || "1.0");
+}

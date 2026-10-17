@@ -6,6 +6,26 @@
  * 기반으로 사실만 서술한다. (LLM 아님 — 규칙 기반 사실 진술)
  */
 
+/**
+ * 클래스 분포의 불균형 비율(IR = 최다 클래스 수 ÷ 최소 클래스 수). 3절 진단과 재료 선택 점검(4번 줄,
+ * IR > 9)이 이 함수 하나로 같은 값을 쓴다.
+ *
+ * 클래스가 2종 미만이거나 최소 수가 0 이면 정의되지 않으므로 `null` 이다.
+ */
+export function imbalanceRatioOf(distribution: Record<string, number> | null | undefined): number | null {
+  const counts = Object.values(distribution ?? {}).filter(
+    (count): count is number => typeof count === "number" && Number.isFinite(count),
+  );
+  if (counts.length < 2) return null;
+  const min = Math.min(...counts);
+  return min > 0 ? Math.max(...counts) / min : null;
+}
+
+/** 3절이 찍는 IR 자릿수(소수 둘째 자리). 경계 비교도 찍힌 값으로 한다 — 9.004 는 "9.00" 이다. */
+export function printedImbalanceRatio(ratio: number): number {
+  return Number(ratio.toFixed(2));
+}
+
 export function buildDatasetDiagnosis(
   metadata: { class_distribution?: Record<string, number> } | null | undefined,
   imbalanceRatio?: number,
@@ -42,14 +62,8 @@ export function buildDatasetDiagnosis(
       
     parts.push(`평가 데이터셋은 총 ${total.toLocaleString()}건이며, 클래스(레이블)별 분포는 ${distText}이다.`);
 
-    const counts = entries.map(([, count]) => count);
-    const minCount = Math.min(...counts);
     const ratio =
-      typeof imbalanceRatio === "number"
-        ? imbalanceRatio
-        : minCount > 0
-          ? Math.max(...counts) / minCount
-          : 0;
+      typeof imbalanceRatio === "number" ? imbalanceRatio : (imbalanceRatioOf(dist) ?? 0);
 
     if (entries.length < 2) {
       // 클래스가 1종이면 '가장 많은 클래스 / 가장 적은 클래스' 가 자기 자신이라 비율이

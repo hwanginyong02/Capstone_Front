@@ -296,3 +296,45 @@ describe("⑥ 학습·평가 전처리 일치 — 3절 학습 데이터 표에 �
     expect(labelsOf(rowsWith({ text: "Same" }, false))).not.toContain("학습·평가 전처리 일치");
   });
 });
+
+describe("2층 보고 항목 번호 (재료 선택 점검 4.2 — MaterialRow.item)", () => {
+  const filled = buildReportMaterials(
+    composer({
+      cards: ALL_ON,
+      groundTruth: { labelReview: { text: "Several reviewers" } },
+    }),
+    "binary",
+  );
+  const itemsByLabel = (rows: MaterialRow[]) => Object.fromEntries(rows.map((row) => [row.label, row.item]));
+
+  it("학습 데이터 줄: 1번 다섯 줄, 채널 효과 9번, 편향 감소 노력 3번", () => {
+    expect(itemsByLabel(filled.training)).toMatchObject({
+      "학습 데이터셋명": 1,
+      "학습 데이터 출처": 1,
+      "학습 샘플 수": 1,
+      "검증 샘플 수": 1,
+      "학습 클래스 분포": 1,
+      "채널 효과": 9,
+      "편향 감소 노력": 3,
+    });
+  });
+
+  it("평가 데이터 출처와 학습 데이터와의 관계는 2번(목록 밖 권장 필드를 합침)", () => {
+    expect(itemsByLabel(filled.test)).toEqual({ "평가 데이터 출처": 2, "학습 데이터와의 관계": 2 });
+  });
+
+  it("정답 라벨: 구축 방법 4번, 신뢰성·라벨러 수·일치도 5번", () => {
+    expect(itemsByLabel(filled.groundTruth)).toEqual({
+      "정답 라벨 구축 방법": 4,
+      "정답 라벨 신뢰성": 5,
+      "라벨러 수": 5,
+      "라벨 일치도": 5,
+    });
+  });
+
+  it("가속 두 줄은 11번, 선언 줄에는 번호가 없다", () => {
+    expect(itemsByLabel(filled.environment)).toEqual({ "학습 가속": 11, "추론 가속": 11 });
+    expect(filled.declarations.length).toBeGreaterThan(0);
+    expect(filled.declarations.every((row) => row.item === undefined)).toBe(true);
+  });
+});

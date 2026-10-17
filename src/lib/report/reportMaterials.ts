@@ -109,9 +109,12 @@ export function describeValue(
   return main;
 }
 
-/** 2층 보고 항목 — 카드를 껐거나 값이 없으면 "제공되지 않음". */
-function required(label: string, included: boolean, value: string | null): MaterialRow {
-  return { label, value: included ? value : null };
+/**
+ * 2층 보고 항목 — 카드를 껐거나 값이 없으면 "제공되지 않음". `item` 은 그 줄이 속한 TS 4213 보고
+ * 항목 번호(재료 선택 점검 4.2)다.
+ */
+function required(item: number, label: string, included: boolean, value: string | null): MaterialRow {
+  return { label, value: included ? value : null, item };
 }
 
 /** 선택 항목 — 값이 있을 때만 줄을 만든다. */
@@ -140,13 +143,13 @@ function trainingRows(c: ReportComposerInput): MaterialRow[] {
       .join(" / ") || null;
 
   return [
-    required("학습 데이터셋명", on, describe("trainingDatasetName")),
-    required("학습 데이터 출처", on, describe("trainingDataSource")),
-    required("학습 샘플 수", on, count("Training")),
-    required("검증 샘플 수", on, count("Validation")),
-    required("학습 클래스 분포", on, classDistribution),
-    required("채널 효과", on, describe("channelEffects")),
-    required("편향 감소 노력", on, describe("imbalanceHandling")),
+    required(1, "학습 데이터셋명", on, describe("trainingDatasetName")),
+    required(1, "학습 데이터 출처", on, describe("trainingDataSource")),
+    required(1, "학습 샘플 수", on, count("Training")),
+    required(1, "검증 샘플 수", on, count("Validation")),
+    required(1, "학습 클래스 분포", on, classDistribution),
+    required(9, "채널 효과", on, describe("channelEffects")),
+    required(3, "편향 감소 노력", on, describe("imbalanceHandling")),
     ...optional("수집 기간", on, describe("trainingPeriod")),
     // 학습·평가 전처리 일치(서술 설계 D44) — 점검 밖 선택 항목. 3절에 찍고, 같은 줄이 AI 로 간다.
     ...optional("학습·평가 전처리 일치", on, describe("preprocessingMatch")),
@@ -160,8 +163,9 @@ function testRows(c: ReportComposerInput): MaterialRow[] {
   const on = c.cards.testData;
   const describe = (fieldId: string) => describeValue("testData", fieldId, c.testData[fieldId]);
   return [
-    required("평가 데이터 출처", on, describe("testDataSource")),
-    required("학습 데이터와의 관계", on, describe("testSourceRelation")),
+    required(2, "평가 데이터 출처", on, describe("testDataSource")),
+    // 목록 밖 권장 필드라 2번(테스트 데이터의 출처)에 합친다(세션 2 점검 표 1.0).
+    required(2, "학습 데이터와의 관계", on, describe("testSourceRelation")),
     ...optional("평가 데이터 수집 기간", on, describe("testPeriod")),
   ];
 }
@@ -171,8 +175,8 @@ function groundTruthRows(c: ReportComposerInput): MaterialRow[] {
   const v = c.groundTruth;
   const describe = (fieldId: string) => describeValue("groundTruth", fieldId, v[fieldId]);
   const rows = [
-    required("정답 라벨 구축 방법", on, describe("labelAuthor")),
-    required("정답 라벨 신뢰성", on, describe("labelReview")),
+    required(4, "정답 라벨 구축 방법", on, describe("labelAuthor")),
+    required(5, "정답 라벨 신뢰성", on, describe("labelReview")),
   ];
 
   // 라벨러 수·일치도는 "복수 라벨러 합의"일 때만 받는다(신뢰성의 일부).
@@ -180,7 +184,7 @@ function groundTruthRows(c: ReportComposerInput): MaterialRow[] {
   if (!several) return rows;
 
   const count = countOf(v.labelReviewerCount?.text ?? "");
-  rows.push({ label: "라벨러 수", value: count === null ? null : `${count}명` });
+  rows.push({ label: "라벨러 수", value: count === null ? null : `${count}명`, item: 5 });
 
   const kind = v.labelAgreementKind;
   let agreement: string | null = null;
@@ -194,7 +198,7 @@ function groundTruthRows(c: ReportComposerInput): MaterialRow[] {
         kind.text === "Percent agreement" ? `${name} ${percentToRatio(value)}` : `${name} ${value}`;
     }
   }
-  rows.push({ label: "라벨 일치도", value: agreement });
+  rows.push({ label: "라벨 일치도", value: agreement, item: 5 });
   return rows;
 }
 
@@ -219,8 +223,8 @@ function environmentRows(c: ReportComposerInput): MaterialRow[] {
     return choiceLabel("modelEnv", "gpuUsage", answer);
   };
   return [
-    { label: "학습 가속", value: accel("Training") },
-    { label: "추론 가속", value: accel("Inference") },
+    { label: "학습 가속", value: accel("Training"), item: 11 },
+    { label: "추론 가속", value: accel("Inference"), item: 11 },
   ];
 }
 
@@ -248,8 +252,11 @@ function declarationRows(c: ReportComposerInput, taskType: TaskType): MaterialRo
   ];
 }
 
-/** 클래스 중요도 → 평균 방식(서술 설계 D28: 동등 = 매크로, 다수 우선 = 가중, 샘플 단위 = 마이크로). */
-const AVERAGING_BY_PRIORITY: Record<string, string> = {
+/**
+ * 클래스 중요도 → 평균 방식(서술 설계 D28: 동등 = 매크로, 다수 우선 = 가중, 샘플 단위 = 마이크로).
+ * 5절 평균 방식 문장과 재료 선택 점검(3번 줄)이 같은 표를 쓴다.
+ */
+export const AVERAGING_BY_PRIORITY: Record<string, string> = {
   "All equal": "매크로 평균",
   "Larger classes first": "가중 평균",
   "Individual samples first": "마이크로 평균",

@@ -26,7 +26,7 @@ import { normalizeReportContent } from "../lib/report/normalizeReportContent";
 import { evaluateStatus } from "../lib/report/evaluateStatus";
 import { fetchNarrative } from "../lib/report/fetchNarrative";
 import { translateRoleToBackend } from "../lib/mapping/translateRoleToBackend";
-import { resolveTargetValue } from "../utils/domain/validation";
+import { resolveBeta, resolveTargetValue } from "../utils/domain/validation";
 
 interface UseReportDataResult {
   data: FinalReportData | null;
@@ -101,7 +101,7 @@ export function useReportData(id: string): UseReportDataResult {
           class_distribution: workflowState.metadata?.class_distribution || {},
         };
 
-        const beta = parseFloat(workflowState.metricDetails["M5"]?.beta || "1.0");
+        const beta = resolveBeta(workflowState.metricDetails);
 
         const payload = {
           task_type: workflowState.taskType || "multiclass",
@@ -369,7 +369,7 @@ export function useReportData(id: string): UseReportDataResult {
           evaluationWarnings: Array.isArray(result.warnings) ? result.warnings : [],
           kpiResults: updatedKpiResults,
           // 클래스별 표(M22) — 평균 줄까지. M22 만 골라도 보인다.
-          classReport: buildClassReportTable(success_metrics.M22, classLabels),
+          classReport: buildClassReportTable(success_metrics.M22, classLabels, workflowState.taskType || undefined),
           confusionCounts,
           conclusion: ruleConclusion,  // full ConclusionData (verdict/score + 빈 서술)
           datasetDiagnosis,

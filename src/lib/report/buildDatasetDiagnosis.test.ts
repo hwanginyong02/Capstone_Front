@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildDatasetDiagnosis } from "./buildDatasetDiagnosis";
+import { buildDatasetDiagnosis, imbalanceRatioOf, printedImbalanceRatio } from "./buildDatasetDiagnosis";
 
 /**
  * ISSUES.md C-04 (2026-09-07 ★확정된 제품 결정 6-②).
@@ -67,5 +67,23 @@ describe("3절 데이터셋 진단 — 백엔드 값을 우선한다", () => {
     const text = buildDatasetDiagnosis({ class_distribution: { A: 50, B: 50 } }, 1, 3, 100, "binary");
 
     expect(text).toContain("3개 샘플이 평가에서 제외");
+  });
+});
+
+describe("불균형 비율 — 3절과 재료 선택 점검이 같은 값 (imbalanceRatioOf)", () => {
+  it("최다 ÷ 최소, 클래스 2종 미만이거나 최소가 0 이면 null", () => {
+    expect(imbalanceRatioOf({ a: 90, b: 10 })).toBe(9);
+    expect(imbalanceRatioOf({ a: 5 })).toBeNull();
+    expect(imbalanceRatioOf({ a: 5, b: 0 })).toBeNull();
+    expect(imbalanceRatioOf(undefined)).toBeNull();
+  });
+
+  it("경계 비교는 3절이 찍는 자릿수로 — 9.004 는 9.00, 9.006 은 9.01", () => {
+    expect(printedImbalanceRatio(9.004)).toBe(9);
+    expect(printedImbalanceRatio(9.006)).toBe(9.01);
+  });
+
+  it("M23 이 없으면 3절 문장도 같은 함수 값을 찍는다", () => {
+    expect(buildDatasetDiagnosis({ class_distribution: { a: 90, b: 10 } })).toContain("9.00");
   });
 });
