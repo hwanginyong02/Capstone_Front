@@ -584,7 +584,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         choices: ["Same", "Different", "Unknown"],
         allowsNote: true,
         help: "학습 데이터와 평가 데이터를 같은 방식으로 전처리했는지입니다.",
-        reportSection: "정할 것",
+        reportSection: "3절",
         sentToAi: true,
         reportLabels: { Same: "같음", Different: "다름", Unknown: "모름" },
       },

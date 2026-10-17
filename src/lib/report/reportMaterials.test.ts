@@ -48,6 +48,7 @@ describe("카드를 끄면", () => {
 
   it("선택 항목은 줄을 만들지 않는다", () => {
     expect(labelsOf(materials.training)).not.toContain("수집 기간");
+    expect(labelsOf(materials.training)).not.toContain("학습·평가 전처리 일치");
     expect(labelsOf(materials.training)).not.toContain("학습 데이터 설명");
     expect(labelsOf(materials.test)).not.toContain("평가 데이터 수집 기간");
   });
@@ -225,7 +226,7 @@ describe("AI 에 넘기는 고객 입력 (서술 설계 D25, D34)", () => {
     expect((inputs.training_data as Record<string, string>)["학습 데이터셋명"]).toBe(NOT_PROVIDED);
   });
 
-  it("성적서에 찍지 않는 전처리 일치도 넘기고, 덧붙인 글은 의뢰자 덧붙임으로 표시한다", () => {
+  it("3절에 찍는 전처리 일치 줄을 그대로 넘기고, 덧붙인 글은 의뢰자 덧붙임으로 표시한다", () => {
     // ⑥ 학습 데이터가 받는다(persist v13) — ⑦ 을 넣지 않아도 학습 데이터와 함께 간다.
     expect((inputs.training_data as Record<string, string>)["학습·평가 전처리 일치"]).toBe(
       "다름 (의뢰자 덧붙임: Extra outlier filtering)",
@@ -266,5 +267,32 @@ describe("5절 평균 방식 문장", () => {
   it("다중 클래스가 아니거나 답하지 않았으면 문장이 없다", () => {
     expect(sentence({ text: "All equal" }, "multilabel")).toBeUndefined();
     expect(sentence({ unknown: true })).toBeUndefined();
+  });
+});
+
+describe("⑥ 학습·평가 전처리 일치 — 3절 학습 데이터 표에 찍는다(DESIGN_GAPS R1)", () => {
+  const rowsWith = (value: Record<string, unknown>, on = true) =>
+    buildReportMaterials(
+      composer({
+        cards: { ...ALL_ON, trainingData: on },
+        trainingData: { trainingPeriod: { entries: [{ key: "From", value: "2023-01" }, { key: "To", value: "2024-12" }] }, preprocessingMatch: value },
+      }),
+      "binary",
+    ).training;
+
+  it("값이 있으면 수집 기간 다음 줄에 찍는다", () => {
+    const rows = rowsWith({ text: "Different", note: "정규화 다름" });
+    const labels = labelsOf(rows);
+
+    expect(valueOf(rows, "학습·평가 전처리 일치")).toBe("다름 (의뢰자 덧붙임: 정규화 다름)");
+    expect(labels.indexOf("학습·평가 전처리 일치")).toBe(labels.indexOf("수집 기간") + 1);
+  });
+
+  it('"모름"을 고르면 그 답을 그대로 찍는다(점검 밖 선택 항목이라 제공되지 않음 대상이 아니다)', () => {
+    expect(valueOf(rowsWith({ text: "Unknown" }), "학습·평가 전처리 일치")).toBe("모름");
+  });
+
+  it("⑥ 을 껐으면 줄이 없다", () => {
+    expect(labelsOf(rowsWith({ text: "Same" }, false))).not.toContain("학습·평가 전처리 일치");
   });
 });

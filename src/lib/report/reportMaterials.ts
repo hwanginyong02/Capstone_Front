@@ -148,6 +148,8 @@ function trainingRows(c: ReportComposerInput): MaterialRow[] {
     required("채널 효과", on, describe("channelEffects")),
     required("편향 감소 노력", on, describe("imbalanceHandling")),
     ...optional("수집 기간", on, describe("trainingPeriod")),
+    // 학습·평가 전처리 일치(서술 설계 D44) — 점검 밖 선택 항목. 3절에 찍고, 같은 줄이 AI 로 간다.
+    ...optional("학습·평가 전처리 일치", on, describe("preprocessingMatch")),
     ...optional("학습 데이터 형식", on, describe("trainingDataFormat")),
     ...optional("학습 데이터 설명", on, describe("trainingDescription")),
     ...optional("비고", on, describe("trainingNotes")),
@@ -314,14 +316,10 @@ export interface ClientInputsSource {
  * AI 에 넘길 고객 입력(서술 설계 D25 — 고객 입력은 모두 넘긴다).
  *
  * 식별 정보는 모델명과 버전만 넘긴다. 회사 정보와 과제 정보는 넘기지 않는다(D34).
- * 성적서에 찍지 않는 값도 넘긴다 — 학습·평가 전처리 일치(인쇄 위치는 아직 정하지 않음).
+ * 학습 데이터는 3절에 찍는 줄을 그대로 넘긴다 — 학습·평가 전처리 일치도 그 줄에 있다.
  */
 export function buildClientInputs(source: ClientInputsSource): ClientInputs {
-  const { composer, materials } = source;
-  // 학습·평가 전처리 일치는 ⑥ 학습 데이터 카드가 받는다(서술 설계 D44, persist v13).
-  const preprocessing = composer.cards.trainingData
-    ? describeValue("trainingData", "preprocessingMatch", composer.trainingData.preprocessingMatch)
-    : null;
+  const { materials } = source;
   const descriptions = Object.fromEntries(
     Object.entries(source.classLabelDescriptions).filter(([, text]) => text.trim() !== ""),
   );
@@ -341,10 +339,7 @@ export function buildClientInputs(source: ClientInputsSource): ClientInputs {
       ? { metric_rationale: materials.metricRationale ?? NOT_PROVIDED }
       : {}),
     core_metrics: source.coreMetrics,
-    training_data: {
-      ...rowsToObject(materials.training),
-      ...(preprocessing ? { "학습·평가 전처리 일치": preprocessing } : {}),
-    },
+    training_data: rowsToObject(materials.training),
     test_data: rowsToObject(materials.test),
     ground_truth: rowsToObject(materials.groundTruth),
     environment: {
