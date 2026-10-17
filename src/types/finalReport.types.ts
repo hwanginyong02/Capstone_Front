@@ -161,6 +161,30 @@ export interface ConfusionCounts {
   rows: ConfusionCountRow[];
 }
 
+/** 경계·확신 오류 한 칸 — 건수와 오분류 대비 비율(오분류가 0이면 null). */
+export interface ErrorRatioCount {
+  count: number;
+  ratio: number | null;
+}
+
+/**
+ * 경계·확신 오류 비율(서술 설계 D30, 재료 목록 9절). 백엔드 `success_metrics.error_ratios` 를
+ * 그대로 받는다 — AI 사실 시트에도 같은 모양(snake_case)으로 실어 보낸다.
+ * 분모는 확률이 있는 오분류(멀티레이블은 틀린 레이블 칸)다.
+ */
+export interface ErrorRatios {
+  unit: "sample" | "label_cell";
+  misclassified: number;
+  /** 임계값을 모르면(예측값을 직접 제출) null — 그 이유가 boundary_note 다. */
+  boundary: ErrorRatioCount | null;
+  boundary_note: "threshold_unknown" | null;
+  confident: ErrorRatioCount;
+  boundary_margin: number;
+  confident_level: number;
+  /** 경계 판정에 쓴 임계값. 이진은 숫자, 멀티레이블은 컬럼별 값 또는 숫자, 다중은 null. */
+  threshold: number | Record<string, number> | null;
+}
+
 /** 8.1 벤치마크 비교 한 줄 — 서버가 계산한 값 그대로(내부 참조 기준치). */
 export interface BenchmarkRef {
   metric: string;
@@ -325,6 +349,12 @@ export interface FinalReportData {
   classReport?: ClassReportTable | null;
   /** TP·TN·FP·FN 건수. 7.1 에 찍는다(재료 목록 9절). 이 키가 생기기 전 성적서에는 없다. */
   confusionCounts?: ConfusionCounts | null;
+  /**
+   * 경계·확신 오류 비율과 그 7.1 문장(서술 설계 D30). 문장은 생성 때 만들어 저장한다 — 발급본은
+   * 나중에 문안을 바꿔도 그대로다. 이 키가 생기기 전 성적서와 확률이 없는 평가에는 없다.
+   */
+  errorRatios?: ErrorRatios;
+  errorRatioSentence?: string;
   charts: {
     confusionMatrix: ConfusionMatrixData | null;
     rocCurve: { fpr: number[]; tpr: number[]; auroc?: number } | null;

@@ -88,3 +88,19 @@ describe("7.1 TP·TN·FP·FN 건수", () => {
     expect(screen.getByText(/그 클래스를 양성, 나머지를 음성으로 본 건수/)).toBeInTheDocument();
   });
 });
+
+describe("7.1 경계·확신 오류 문장 (설계 D30)", () => {
+  const sentence =
+    "확률이 있는 오분류 12건 중 경계 오류(확률과 결정 임계값 0.5의 차가 0.1 미만)는 5건(41.7%), " +
+    "확신 오류(틀린 쪽 확률 0.9 이상)는 2건(16.7%)이다.";
+
+  it("저장된 문장이 있으면 7.1 에 그대로 찍는다", () => {
+    render(<InterpretSection interpretation={empty} errorRatioSentence={sentence} />);
+    expect(screen.getByText(sentence)).toBeInTheDocument();
+  });
+
+  it("문장이 없으면(옛 성적서·확률 없음) 찍지 않는다", () => {
+    render(<InterpretSection interpretation={empty} />);
+    expect(screen.queryByText(/경계 오류/)).not.toBeInTheDocument();
+  });
+});

@@ -80,6 +80,7 @@ export function ReportPrint() {
             // 파생 예측 사실은 7.1 앞에 찍는다. 판 2 이전 보관본은 6.0 일러두기에 찍었다.
             derivedPrediction={isLegacyLayout(data) ? undefined : data.meta.derivedPrediction}
             confusionCounts={data.confusionCounts}
+            errorRatioSentence={data.errorRatioSentence}
           />
           <ConclusionSection conclusion={data.conclusion} source={data.narrativeSource} />
           <RecommendSection

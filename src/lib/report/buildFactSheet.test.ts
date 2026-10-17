@@ -163,3 +163,23 @@ describe("TP·TN·FP·FN 건수와 파생 예측 사실", () => {
     expect(fs.confusion_counts).toEqual([]);
   });
 });
+
+describe("경계·확신 오류 비율 (설계 D30)", () => {
+  it("error_ratios 를 응답 모양 그대로 싣는다", () => {
+    const errorRatios = {
+      unit: "sample" as const,
+      misclassified: 12,
+      boundary: null,
+      boundary_note: "threshold_unknown" as const,
+      confident: { count: 2, ratio: 0.1667 },
+      boundary_margin: 0.1,
+      confident_level: 0.9,
+      threshold: null,
+    };
+    expect(buildFactSheet(input({ errorRatios })).error_ratios).toEqual(errorRatios);
+  });
+
+  it("없으면 null", () => {
+    expect(buildFactSheet(input()).error_ratios).toBeNull();
+  });
+});

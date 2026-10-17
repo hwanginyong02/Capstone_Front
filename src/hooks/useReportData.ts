@@ -22,6 +22,7 @@ import { buildDatasetDiagnosis } from "../lib/report/buildDatasetDiagnosis";
 import { buildFactSheet } from "../lib/report/buildFactSheet";
 import { buildClassReportTable } from "../lib/report/classReportTable";
 import { parseConfusionCounts } from "../lib/report/confusionCounts";
+import { errorRatioSentence, parseErrorRatios } from "../lib/report/errorRatios";
 import { normalizeReportContent } from "../lib/report/normalizeReportContent";
 import { evaluateStatus } from "../lib/report/evaluateStatus";
 import { fetchNarrative } from "../lib/report/fetchNarrative";
@@ -328,6 +329,9 @@ export function useReportData(id: string): UseReportDataResult {
         // 파생 예측 사실(SPEC §0 기재 의무) — 7.1 앞 고정 문구와 AI 사실 시트에 쓴다. 백엔드는 실제로
         // 파생이 일어났을 때만 이 키를 내려보낸다(ISSUES.md A-01).
         const derivedPrediction = success_metrics.derived_prediction ?? undefined;
+        // 경계·확신 오류 비율(설계 D30) — 확률이 있는 평가에만 백엔드가 싣는다. 7.1 문장은 지금 만들어
+        // 저장한다(발급본은 나중에 문안이 바뀌어도 그대로).
+        const errorRatios = parseErrorRatios(success_metrics.error_ratios);
 
         const factSheet = buildFactSheet({
           kpiResults: updatedKpiResults,
@@ -346,6 +350,7 @@ export function useReportData(id: string): UseReportDataResult {
           positiveClass: workflowState.metadata?.positive_class ?? null,
           confusionCounts,
           derivedPrediction,
+          errorRatios,
         });
 
         // ── Stage 1: 서술과 무관한 결정론적 결과(KPI·차트·규칙 verdict)를 즉시 렌더한다.
@@ -371,6 +376,9 @@ export function useReportData(id: string): UseReportDataResult {
           // 클래스별 표(M22) — 평균 줄까지. M22 만 골라도 보인다.
           classReport: buildClassReportTable(success_metrics.M22, classLabels, workflowState.taskType || undefined),
           confusionCounts,
+          ...(errorRatios
+            ? { errorRatios, errorRatioSentence: errorRatioSentence(errorRatios, taskTypeResolved) }
+            : {}),
           conclusion: ruleConclusion,  // full ConclusionData (verdict/score + 빈 서술)
           datasetDiagnosis,
           charts: { confusionMatrix, rocCurve, prCurve },

@@ -10,6 +10,7 @@
 import type {
   ConfusionCounts,
   DerivedPredictionFact,
+  ErrorRatios,
   KpiResult,
   LatencyStats,
 } from "../../types/finalReport.types";
@@ -53,6 +54,8 @@ export interface FactSheet {
     threshold: number | Record<string, number> | null;
     source_columns: string[];
   } | null;
+  /** 경계·확신 오류 비율(서술 설계 D30) — 백엔드 응답 모양 그대로. 확률이 없는 평가는 null. */
+  error_ratios: ErrorRatios | null;
   distribution: {
     class_distribution: Record<string, number>;
     imbalance_ratio: number | null;
@@ -110,6 +113,8 @@ export interface BuildFactSheetInput {
   confusionCounts?: ConfusionCounts | null;
   /** 파생 예측 사실(백엔드 derived_prediction). */
   derivedPrediction?: DerivedPredictionFact | null;
+  /** 경계·확신 오류 비율(백엔드 error_ratios 를 `parseErrorRatios` 로 읽은 값). */
+  errorRatios?: ErrorRatios | null;
 }
 
 function num(v: unknown): number | null {
@@ -173,6 +178,7 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
     positiveClass,
     confusionCounts,
     derivedPrediction,
+    errorRatios,
   } = input;
 
   // 지표: 목표값이 없으면(null) 정보 제공(info)으로 표기한다.
@@ -209,6 +215,7 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
           source_columns: derivedPrediction.source_columns,
         }
       : null,
+    error_ratios: errorRatios ?? null,
     distribution: hasDistribution
       ? {
           class_distribution: classDistribution,
