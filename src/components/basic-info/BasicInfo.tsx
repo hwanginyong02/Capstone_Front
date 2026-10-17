@@ -30,32 +30,8 @@ type FormDataSetter = (
   value: BasicInfoFormData | ((prev: BasicInfoFormData) => BasicInfoFormData),
 ) => void;
 
-/** ③ 의뢰자 정보 — 회사·성적서 용도·과제. */
-export function isClientInfoValid(formData: BasicInfoFormData): boolean {
-  const baseValid = Boolean(
-    formData.companyName &&
-      formData.representative &&
-      formData.businessNumber &&
-      formData.phone &&
-      formData.address &&
-      formData.contractDate &&
-      formData.reportPurpose,
-  );
-  if (formData.reportPurpose === "project") {
-    return baseValid && Boolean(formData.projectName && formData.projectAgency);
-  }
-  return baseValid;
-}
-
-/** ④ 평가 대상 모델 — 이름·버전·용도·분류. 이름·버전은 run 을 식별하는 이름표이기도 하다. */
-export function isModelInfoValid(formData: BasicInfoFormData): boolean {
-  return Boolean(
-    formData.modelName.trim() &&
-      formData.versionName.trim() &&
-      formData.modelPurpose.trim() &&
-      formData.modelCategory.trim(),
-  );
-}
+// 1층 검사는 검증 화면의 "다음"도 다시 하므로 utils 로 옮겼다. 이 화면 파일에서 계속 꺼내 쓸 수 있게 둔다.
+export { isClientInfoValid, isModelInfoValid } from "../../utils/domain/basicInfoValidity";
 
 /** ③ 의 선택 항목을 재료 고르기에서 받기로 했는지. */
 function clientPicks(picks: readonly string[] | undefined) {

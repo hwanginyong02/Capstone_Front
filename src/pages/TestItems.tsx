@@ -10,6 +10,7 @@ import { focusFirstIssue } from "../components/composer-input/focusFirstIssue";
 import { getCard, getCardFields } from "../data/reportComposer";
 import { getFieldIssue, type FieldIssue } from "../utils/domain/composerFieldGate";
 import { passCriteriaState } from "../utils/domain/passCriteria";
+import { isBetaValid } from "../utils/domain/validation";
 import { unavailableMetricReasons } from "../utils/domain/metricAvailability";
 import { METRICS } from "../data/evaluationData";
 import { Alert, AlertDescription } from "../components/ui/alert";
@@ -61,9 +62,7 @@ export function TestItems() {
     .filter((issue): issue is FieldIssue => issue !== null);
 
   const beta = store.metricDetails["M5"]?.beta ?? "1.0";
-  const betaInvalid =
-    store.selectedMetricIds.includes("M5") &&
-    (beta.trim() === "" || !Number.isFinite(Number(beta)) || Number(beta) <= 0);
+  const betaInvalid = store.selectedMetricIds.includes("M5") && !isBetaValid(beta);
 
   const handleBetaChange = (value: string) => {
     store.setMetricDetails((prev) => {

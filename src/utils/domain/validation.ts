@@ -115,3 +115,9 @@ export function resolveTargetValue(metricId: string, raw: string | undefined): n
 export function resolveBeta(metricDetails: Record<string, { beta?: string } | undefined> | null | undefined): number {
   return parseFloat(metricDetails?.["M5"]?.beta || "1.0");
 }
+
+/** β 입력이 쓸 수 있는 값인가(0 보다 큰 숫자). 지표 화면과 검증 화면의 1층 재확인이 같은 규칙을 쓴다. */
+export function isBetaValid(raw: string | undefined): boolean {
+  const beta = raw ?? "1.0";
+  return beta.trim() !== "" && Number.isFinite(Number(beta)) && Number(beta) > 0;
+}
