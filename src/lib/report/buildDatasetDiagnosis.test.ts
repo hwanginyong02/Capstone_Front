@@ -168,13 +168,46 @@ describe("3절 데이터셋 진단 — 백엔드 D20 판정을 따른다 (imbala
     expect(text).toContain("허용 기준(< 1.50) 이내의 균형 상태이다.");
   });
 
-  it("백엔드 판정이 숫자 비교와 다르면 판정을 따른다(판정 지점은 하나)", () => {
-    // 분포로 다시 계산하면 1.4 라 경미지만, 엔진이 affected 라고 했으면 3절도 불균형이라고 말한다.
+  it("백엔드 판정이 있으면 판정과 같은 출처의 IR 을 찍는다 — 숫자와 문장이 어긋나지 않는다", () => {
+    // 넘겨받은 M23(1.4)이 엔진 판정(affected, IR 1.6)과 다르더라도 3절은 엔진 IR 을 찍는다.
+    // 종전에는 "1.40로, 허용 기준(1.50 미만)을 벗어나" 처럼 숫자와 문장이 서로 반대였다.
     const text = buildDatasetDiagnosis(
       { class_distribution: { A: 70, B: 50 } }, 1.4, 0, 120, "binary", effect("affected", 1.6),
     );
 
+    expect(text).toContain("1.60로");
+    expect(text).not.toContain("1.40");
     expect(text).toContain("허용 기준(1.50 미만)을 벗어나");
+  });
+
+  it("mild 판정이면 넘겨받은 M23 이 아니라 엔진 IR 로 찍는다", () => {
+    const text = buildDatasetDiagnosis(
+      { class_distribution: { A: 60, B: 40 } }, 1.6, 0, 100, "binary", effect("mild", 1.497),
+    );
+
+    expect(text).toContain("1.497로");
+    expect(text).toContain("허용 기준(< 1.50) 이내의 균형 상태이다.");
+  });
+
+  it("불균형 판정인데 둘째 자리가 1.5 아래로 읽히면 값 그대로 찍는다", () => {
+    // 엔진에서는 생기지 않는 조합이지만 막아 둔다 — "1.50 미만을 벗어나" 앞에 1.5 아래로 반올림한 숫자를 찍지 않는다.
+    // 1.49996 은 둘째 자리가 이미 "1.50" 이라 그대로 둘째 자리다.
+    const rounded = buildDatasetDiagnosis(
+      { class_distribution: { A: 60, B: 40 } }, undefined, 0, 100, "binary", effect("affected", 1.49996),
+    );
+    expect(rounded).toContain("1.50로");
+
+    const twoDecimalsBelow = buildDatasetDiagnosis(
+      { class_distribution: { A: 60, B: 40 } }, undefined, 0, 100, "binary", effect("affected", 1.4912),
+    );
+    expect(twoDecimalsBelow).toContain("1.4912로");
+    expect(twoDecimalsBelow).not.toContain("1.49로");
+
+    const asIs = buildDatasetDiagnosis(
+      { class_distribution: { A: 60, B: 40 } }, undefined, 0, 100, "binary", effect("affected", 1.4),
+    );
+    expect(asIs).toContain("1.4로");
+    expect(asIs).not.toContain("1.40로");
   });
 });
 

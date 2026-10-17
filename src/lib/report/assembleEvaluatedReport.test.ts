@@ -202,6 +202,40 @@ describe("새 키가 있는 응답(백엔드 골든 이진) — 성적서 저장
   });
 });
 
+describe("3절 진단 — 엔진 판정(imbalance_effect)이 조립을 거쳐 3절까지 간다", () => {
+  /** M23 과 imbalance_effect 를 바꾼 응답. 둘이 다르게 오면 3절은 엔진 판정을 따라야 한다. */
+  function withImbalance(m23: number, level: "mild" | "affected", ratio: number) {
+    const copy = structuredClone(GOLDEN_BINARY);
+    copy.results.success_metrics.M23 = m23;
+    copy.results.success_metrics.imbalance_effect = {
+      ...copy.results.success_metrics.imbalance_effect,
+      level,
+      imbalance_ratio: ratio,
+    };
+    return assembleEvaluatedReport(baseReport(), copy, inputs()).stage1Report.datasetDiagnosis;
+  }
+
+  it("mild·IR 1.497 이면 '1.497로' 균형 문장이다", () => {
+    const text = withImbalance(1.497, "mild", 1.497);
+    expect(text).toContain("1.497로");
+    expect(text).toContain("균형 상태이다.");
+  });
+
+  it("M23(1.6)과 판정(mild, 1.497)이 다르면 판정을 따른다", () => {
+    // 조립이 imbalanceEffect 를 넘기지 않으면 M23 1.6 으로 "1.60로 … 벗어나" 가 된다.
+    const text = withImbalance(1.6, "mild", 1.497);
+    expect(text).toContain("1.497로");
+    expect(text).toContain("균형 상태이다.");
+  });
+
+  it("M23(1.4)과 판정(affected, 1.6)이 다르면 판정을 따른다", () => {
+    const text = withImbalance(1.4, "affected", 1.6);
+    expect(text).toContain("1.60로");
+    expect(text).toContain("허용 기준(1.50 미만)을 벗어나");
+    expect(text).not.toContain("균형 상태");
+  });
+});
+
 describe("옛 모양 응답(새 키 없음) — 선택 키를 두지 않는다", () => {
   // 목표값을 넉넉히 둬 근소 지표가 없고, 구성 카드 값도 없다.
   const { stage1Report, factSheet } = assembleEvaluatedReport(

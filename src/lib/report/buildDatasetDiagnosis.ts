@@ -48,13 +48,18 @@ export function isBalancedImbalance(ratio: number, imbalanceEffect?: ImbalanceEf
 const MAX_IMBALANCE_DECIMALS = 4;
 
 /**
- * 3절에 찍는 IR 문자열. 평소에는 소수 둘째 자리다. 균형 판정인데 둘째 자리 반올림이 "1.50" 이 되면
- * (예: 1.497) 판정과 어긋나는 숫자를 찍지 않도록 1.5 아래로 읽힐 때까지 자릿수를 늘린다(최대 넷째 자리,
- * 그래도 안 되면 넷째 자리에서 버린다 — 1.49999 → "1.4999").
+ * 3절에 찍는 IR 문자열. 평소에는 소수 둘째 자리다. 찍힌 숫자가 판정과 어긋나지 않게 자릿수를 고른다.
+ * - 균형 판정인데 둘째 자리 반올림이 "1.50" 이 되면(예: 1.497) 1.5 아래로 읽힐 때까지 자릿수를 늘린다
+ *   (최대 넷째 자리, 그래도 안 되면 넷째 자리에서 버린다 — 1.49999 → "1.4999").
+ * - 불균형 판정인데 둘째 자리가 1.5 아래로 읽히면(엔진 판정에서는 생기지 않지만 막아 둔다) 값을 그대로
+ *   찍는다(숫자를 지어내지 않는다). 둘째 자리가 1.5 아래면 값이 1.495 미만이라 자릿수를 늘려도 1.5 이상으로
+ *   읽히지 않는다(1.49996 은 둘째 자리가 이미 "1.50" 이다).
  */
 export function formatImbalanceRatio(ratio: number, balanced: boolean): string {
   const twoDecimals = ratio.toFixed(2);
-  if (!balanced || Number(twoDecimals) < BALANCED_IMBALANCE_RATIO) return twoDecimals;
+  const readsBalanced = Number(twoDecimals) < BALANCED_IMBALANCE_RATIO;
+  if (readsBalanced === balanced) return twoDecimals;
+  if (!balanced) return String(ratio);
   for (let digits = 3; digits <= MAX_IMBALANCE_DECIMALS; digits += 1) {
     const printed = ratio.toFixed(digits);
     if (Number(printed) < BALANCED_IMBALANCE_RATIO) return printed;
@@ -101,8 +106,13 @@ export function buildDatasetDiagnosis(
       
     parts.push(`평가 데이터셋은 총 ${total.toLocaleString()}건이며, 클래스(레이블)별 분포는 ${distText}이다.`);
 
-    const ratio =
-      typeof imbalanceRatio === "number" ? imbalanceRatio : (imbalanceRatioOf(dist) ?? 0);
+    // 엔진 판정(imbalance_effect)이 있으면 판정과 같은 출처의 IR(M23 과 같은 값, 넷째 자리)을 찍는다 —
+    // 찍는 숫자와 문장이 같은 값에서 나온다. 없으면(옛 응답·예측 없음) M23, 그것도 없으면 분포로 계산한다.
+    const ratio = imbalanceEffect
+      ? imbalanceEffect.imbalance_ratio
+      : typeof imbalanceRatio === "number"
+        ? imbalanceRatio
+        : (imbalanceRatioOf(dist) ?? 0);
 
     if (entries.length < 2) {
       // 클래스가 1종이면 '가장 많은 클래스 / 가장 적은 클래스' 가 자기 자신이라 비율이
