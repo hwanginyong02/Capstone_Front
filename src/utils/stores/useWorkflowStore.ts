@@ -337,31 +337,49 @@ function migrateMaterialPicksV12(next: any): any {
  * v12 → v13 — 학습·평가 전처리 일치(`preprocessingMatch`)가 ⑦ 테스트 데이터에서 ⑥ 학습 데이터 카드로
  * 옮겨 갔다. 적어 둔 값과 재료 고르기의 체크를 함께 옮긴다. ⑥ 에 이미 값이 있으면 그것을 둔다.
  * ⑦ 에 그 체크만 있었다면 ⑦ 은 고른 항목이 없어져 빠진다(선택 카드는 항목이 있어야 들어간다).
+ *
+ * ⑦ 에서 이 항목을 썼다는 신호가 있으면 ⑥ 에 체크하고 ⑥ 카드를 켠다 — 카드를 옮긴 것은 우리이고
+ * 사용자는 이 항목을 고른 것이므로, 옮긴 뒤에도 입력이 보여야 한다(DESIGN_GAPS R2).
+ * - v12 저장분: ⑦ 의 체크(`materialPicks.testData`)가 신호다. ⑥ 을 저장하지 않았거나 "넣지 않음"(`[]`)
+ *   으로 저장했어도 따른다.
+ * - v11 이하 저장분: v12 단계가 **지금** 레지스트리로 체크를 만들어 ⑦ 에는 이 항목이 없고, ⑥ 은 값이
+ *   아직 ⑦ 에 있어 체크되지 않는다. 그래서 "⑦ 카드가 켜져 있었고 값이 있었는지"가 신호다(v12 시절
+ *   선택 항목은 값이 있으면 체크된다는 규칙과 같다).
  */
-function migratePreprocessingV13(next: any): any {
+function migratePreprocessingV13(next: any, fromVersion: number): any {
   const test: ComposerValueMap = { ...(next.composerTestData ?? {}) };
   const training: ComposerValueMap = { ...(next.composerTrainingData ?? {}) };
-  if (test.preprocessingMatch !== undefined) {
-    if (training.preprocessingMatch === undefined) training.preprocessingMatch = test.preprocessingMatch;
+  const moved = test.preprocessingMatch;
+  if (moved !== undefined) {
+    if (training.preprocessingMatch === undefined) training.preprocessingMatch = moved;
     delete test.preprocessingMatch;
   }
 
   const picks: MaterialPicks = { ...(next.materialPicks ?? {}) };
   const cards: ComposerSelection = { ...DEFAULT_COMPOSER_SELECTION, ...(next.composerCards ?? {}) };
-  if (picks.testData?.includes("preprocessingMatch")) {
-    picks.testData = picks.testData.filter((id) => id !== "preprocessingMatch");
+  const pickedIn7 = picks.testData?.includes("preprocessingMatch") ?? false;
+  const usedIn7 = fromVersion < 12 && cards.testData && hasAnyValue(moved);
+  let changed = false;
+  if (pickedIn7) {
+    picks.testData = (picks.testData ?? []).filter((id) => id !== "preprocessingMatch");
     cards.testData = picks.testData.length > 0;
-    if (picks.trainingData && !picks.trainingData.includes("preprocessingMatch")) {
-      picks.trainingData = [...picks.trainingData, "preprocessingMatch"];
+    changed = true;
+  }
+  if (pickedIn7 || usedIn7) {
+    const trainingPicks = picks.trainingData ?? [];
+    if (!trainingPicks.includes("preprocessingMatch")) {
+      picks.trainingData = [...trainingPicks, "preprocessingMatch"];
     }
+    cards.trainingData = true;
+    changed = true;
   }
 
   return {
     ...next,
     composerTestData: test,
     composerTrainingData: training,
-    ...(next.materialPicks ? { materialPicks: picks } : {}),
-    ...(next.composerCards ? { composerCards: cards } : {}),
+    ...(next.materialPicks || changed ? { materialPicks: picks } : {}),
+    ...(next.composerCards || changed ? { composerCards: cards } : {}),
   };
 }
 
@@ -537,7 +555,7 @@ export function migrateWorkflowState(persisted: any, version: number): any {
 
   // v12 → v13 — 전처리 일치를 ⑦ 에서 ⑥ 으로.
   if (version < 13) {
-    next = migratePreprocessingV13(next);
+    next = migratePreprocessingV13(next, version);
   }
 
   return next;
