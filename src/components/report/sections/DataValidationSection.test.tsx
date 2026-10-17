@@ -97,4 +97,20 @@ describe("화면 ↔ 인쇄본 배선", () => {
 
     expect(sectionsIn(PRINT)).toEqual(sectionsIn(SCREEN));
   });
+
+  // 섹션에 prop 을 더할 때 한쪽만 고치면 화면과 인쇄본이 갈린다. 처음에는 DataValidation 만
+  // 대조했으나, 설계 차이 수정 라운드가 여러 섹션에 prop 을 더하므로 모든 섹션으로 넓힌다.
+  const screenSections = [
+    ...new Set(
+      [...readFileSync(resolve(__dirname, SCREEN), "utf-8").matchAll(/<(\w+Section)\b/g)].map((m) => m[1]),
+    ),
+  ];
+
+  it("대조할 섹션이 실제로 있다(빈 목록이면 아래 대조가 아무것도 검사하지 않는다)", () => {
+    expect(screenSections.length).toBeGreaterThan(10);
+  });
+
+  it.each(screenSections)("인쇄본이 화면과 같은 prop 을 %s 에 넘긴다", (section) => {
+    expect(propsPassedTo(section, PRINT)).toEqual(propsPassedTo(section, SCREEN));
+  });
 });
