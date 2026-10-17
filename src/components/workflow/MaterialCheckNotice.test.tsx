@@ -36,9 +36,29 @@ describe("MaterialCheckNotice", () => {
     );
     expect(screen.getByText(/보고 항목 11개 중 2개가/)).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "맞지 않는 목적별 점검" })).toHaveTextContent("사용 방식 → 지연시간");
-    screen.getAllByRole("button", { name: "넣으러 가기" })[0].click();
+    // 넣지 않은 카드: 재료 고르기만(입력 화면에는 칸이 없다).
+    expect(screen.queryByRole("button", { name: "입력 화면에서 고치기" })).not.toBeInTheDocument();
+    screen.getByRole("button", { name: "재료 고르기에서 넣기" }).click();
     expect(onFix).toHaveBeenCalledWith({ kind: "card", cardId: "groundTruth" });
+    // 지연시간(8번)은 컬럼 매핑 단계로.
+    screen.getByRole("button", { name: "넣으러 가기" }).click();
+    expect(onFix).toHaveBeenLastCalledWith({ kind: "step", stepId: "mapping" });
     screen.getByRole("button", { name: "컬럼 매핑으로" }).click();
     expect(onFix).toHaveBeenLastCalledWith({ kind: "step", stepId: "mapping" });
+  });
+});
+
+describe("넣은 카드의 항목", () => {
+  it("재료 고르기와 입력 화면 두 갈래를 모두 준다", () => {
+    const onFix = vi.fn();
+    render(
+      <MaterialCheckNotice
+        check={materialCheckFixture({ missingLatencyAndLabel: true })}
+        onFix={onFix}
+        includedCards={new Set(["groundTruth"])}
+      />,
+    );
+    screen.getByRole("button", { name: "입력 화면에서 고치기" }).click();
+    expect(onFix).toHaveBeenCalledWith({ kind: "cardInput", cardId: "groundTruth" });
   });
 });

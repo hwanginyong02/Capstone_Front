@@ -454,3 +454,34 @@ describe("6.0 세 줄과 결정성", () => {
     expect(checkMaterialSelection(one)).toEqual(checkMaterialSelection(structuredClone(one)));
   });
 });
+
+describe("문구 다듬기 (검토 반영)", () => {
+  it("선언 이름의 받침에 맞춰 '으로/로' — 샘플 단위로 중요\"로", () => {
+    const result = checkMaterialSelection(
+      input({ taskType: "multiclass", perspective: answer({ classPriority: "Individual samples first" }), selectedMetricIds: ["M11"] }),
+    );
+    expect(result.printed.purposeShortfalls[0]).toContain('"샘플 단위로 중요"로 밝혔으나');
+    expect(result.printed.averagingSentence).toContain('"샘플 단위로 중요"로 밝혔으나');
+  });
+
+  it("IR 숫자의 끝자리에 맞춰 — 12.30으로", () => {
+    const result = checkMaterialSelection(input({ selectedMetricIds: ["M9"], imbalanceRatio: 12.3 }));
+    expect(result.printed.purposeShortfalls[0]).toContain("불균형 비율(IR)이 12.30으로 9를 넘고");
+  });
+
+  it("9번 영향 문장이 문장이 된다", () => {
+    const result = checkMaterialSelection(
+      input({ composer: { trainingData: { ...FULL_COMPOSER.trainingData, channelEffects: { choices: [] } } } }),
+    );
+    expect(result.printed.impacts).toEqual([
+      "학습 데이터의 채널 효과: 모델이 내용 대신 수집 방식을 배웠는지 판단할 수 없다.",
+    ]);
+  });
+
+  it("멀티레이블 지표 선택 이유를 '기타'로 고르고 글을 비우면 12번 빠짐", () => {
+    const result = checkMaterialSelection(
+      input({ taskType: "multilabel", composer: { metrics: { metricRationale: { text: "Other (own words)" } } } }),
+    );
+    expect(result.warningIds).toEqual(["reporting:12"]);
+  });
+});

@@ -371,3 +371,34 @@ describe("재료 선택 점검 연결 (판정은 checkMaterialSelection 한 곳)
     );
   });
 });
+
+describe("지연시간(8번)은 6.4 에 실제로 찍힐지로 센다 (검토 반영)", () => {
+  const composer = (): ReportComposerInput => ({ ...withTraining({}, false).composer, perspective: { usageMode: { text: "Real-time" } } });
+  const latencyRow = [{ confirmedRole: "latency" } as MapWorkflowToReportInput["columnMapping"][number]];
+  const validation = (names: string[]) => ({
+    task_type: "binary",
+    selected_metric_ids: ["M1"],
+    execution_summary: [],
+    validation_details: names.map((name) => ({ name, result: "", handling: "", status: "pass" as const, group: "latency" as const })),
+    error_count: 0,
+    warning_count: 0,
+  });
+
+  it("매핑했어도 숫자 값이 없어 검증에 통계 항목이 없으면 빠짐(대화형 줄도 미충족)", () => {
+    const check = mapWorkflowToFinalReport(
+      baseInput({ composer: composer(), columnMapping: latencyRow }),
+      validation(["Latency non-numeric values"]),
+    ).materialCheck!;
+    expect(check.warningIds).toContain("reporting:8");
+    expect(check.warningIds).toContain("purpose:latency");
+  });
+
+  it("검증에 통계 항목이 있으면 제공", () => {
+    const check = mapWorkflowToFinalReport(
+      baseInput({ composer: composer(), columnMapping: latencyRow }),
+      validation(["Latency statistics (ms)"]),
+    ).materialCheck!;
+    expect(check.warningIds).not.toContain("reporting:8");
+    expect(check.warningIds).not.toContain("purpose:latency");
+  });
+});

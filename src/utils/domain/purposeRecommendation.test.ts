@@ -55,3 +55,23 @@ describe("미리보기", () => {
     ]);
   });
 });
+
+describe("지난 파일의 검증 결과를 쓰지 않는다 (검토 반영)", () => {
+  it("스토어에 남은 검증 분포(IR 19)가 아니라 지금 파일의 업로드 분포(IR 1)로 본다", () => {
+    binary({ "0": 50, "1": 50 }, "Similar");
+    useWorkflowStore.setState({
+      selectedMetricIds: ["M9"],
+      validationResult: {
+        task_type: "binary",
+        selected_metric_ids: ["M9"],
+        execution_summary: [],
+        validation_details: [],
+        error_count: 0,
+        warning_count: 0,
+        class_distribution: { "0": 950, "1": 50 },
+      },
+    });
+    expect(materialCheckFor(state())!.purpose.lines).toEqual([]);
+    expect(recommendedMetricIdsFor(state())).not.toContain("M10");
+  });
+});

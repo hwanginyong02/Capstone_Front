@@ -71,7 +71,7 @@ export function ReportPrint() {
         </PageBreak>
         <PageBreak>
           <ChartSection charts={data.charts} />
-          <LatencySection latency={data.latency} />
+          <LatencySection latency={data.latency} materialCheck={data.materialCheck} />
         </PageBreak>
         <PageBreak>
           <InterpretSection

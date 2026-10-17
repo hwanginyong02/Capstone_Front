@@ -110,6 +110,24 @@ describe("검증 단계 상단 안내 (ISSUES.md B-03·B-04·A-12)", () => {
 describe("생성 전 안내와 '다음' (재료 선택 점검 6절)", () => {
   const addEvaluationRun = vi.fn(() => ({ id: "run-1" }));
 
+  /** 매퍼처럼 **부를 때의** 스토어 기록으로 점검한다 — 기록 → 재생성 순서가 성적서에 닿는지 본다. */
+  async function setupLive(options: Parameters<typeof import("../test/materialCheckFixture").materialCheckFixture>[0]) {
+    const { materialCheckFixture } = await import("../test/materialCheckFixture");
+    const { FILLED_LAYER_ONE } = await import("../test/layerOneFixture");
+    const { useWorkspaceStore } = await import("../utils/stores/useWorkspaceStore");
+    useWorkspaceStore.setState({ addEvaluationRun } as never);
+    useWorkflowStore.setState({ ...FILLED_LAYER_ONE, materialCheckAck: null });
+    const buildEvaluationResult = vi.fn(() => ({
+      workflowSnapshot: {},
+      reportData: {
+        evalScope: { version: "v1" },
+        meta: { reportId: "R" },
+        materialCheck: materialCheckFixture(options, useWorkflowStore.getState().materialCheckAck),
+      },
+    }));
+    return renderPage({ validationData: { error_count: 0 }, buildEvaluationResult });
+  }
+
   async function setup(materialCheck: unknown) {
     const { FILLED_LAYER_ONE } = await import("../test/layerOneFixture");
     const { useWorkspaceStore } = await import("../utils/stores/useWorkspaceStore");
@@ -167,5 +185,13 @@ describe("생성 전 안내와 '다음' (재료 선택 점검 6절)", () => {
     next.click();
     expect(useWorkflowStore.getState().materialCheckAck).toBeNull();
     expect(addEvaluationRun).toHaveBeenCalledTimes(1);
+  });
+
+  it("저장되는 성적서에 '확인 후 진행'이 실린다(기록을 남긴 뒤 다시 만든 결과)", async () => {
+    const next = await setupLive({ missingLatencyAndLabel: true });
+    next.click();
+    const saved = (addEvaluationRun.mock.calls[0] as unknown as [{ reportData: { materialCheck: { acknowledgement: unknown; printed: { summary: Array<{ value: string }> } } } }])[0];
+    expect(saved.reportData.materialCheck.acknowledgement).not.toBeNull();
+    expect(saved.reportData.materialCheck.printed.summary[2].value).toMatch(/^확인 후 진행 \(/);
   });
 });

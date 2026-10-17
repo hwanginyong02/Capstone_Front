@@ -25,6 +25,7 @@ import type {
 import { printedImbalanceRatio } from "./buildDatasetDiagnosis";
 import { formatKstDateTime } from "./issuanceApi";
 import { AVERAGING_BY_PRIORITY, NOT_PROVIDED, choiceLabel } from "./reportMaterials";
+import { josaEunNeun, josaEuroRo } from "./koreanJosa";
 
 export const MATERIAL_CHECK_VERSION = "1.0";
 
@@ -46,7 +47,7 @@ export const REPORTING_ITEMS: ReadonlyArray<{ item: number; name: string; impact
   { item: 6, name: "대표 작동 지점의 TP·FP 건수", impact: "오류 건수를 확인할 수 있는지" },
   { item: 7, name: "추론 환경", impact: "결과가 어떤 하드웨어·소프트웨어에서 나왔는지" },
   { item: 8, name: "추론 효율성(지연시간)", impact: "응답 속도가 용도에 맞는지" },
-  { item: 9, name: "학습 데이터의 채널 효과", impact: "모델이 내용 대신 수집 방식을 배웠을 가능성" },
+  { item: 9, name: "학습 데이터의 채널 효과", impact: "모델이 내용 대신 수집 방식을 배웠는지" },
   { item: 10, name: "하이퍼파라미터", impact: "같은 조건으로 모델을 다시 만들거나 공정하게 비교할 수 있는지" },
   { item: 11, name: "가속 사용", impact: "응답 시간이 어떤 조건에서 나온 값인지" },
   { item: 12, name: "멀티레이블 지표 선택 기준", impact: "고른 지표가 무엇을 확인하기 위한 것인지", multilabelOnly: true },
@@ -93,12 +94,6 @@ export interface MaterialCheckInput {
   distributionSource: "validation" | "upload" | null;
   /** 생성 전 안내 확인 기록. */
   ack?: MaterialCheckAck | null;
-}
-
-function josaEunNeun(word: string): string {
-  const hangul = [...word].reverse().find((ch) => ch >= "가" && ch <= "힣");
-  if (!hangul) return "은(는)";
-  return (hangul.charCodeAt(0) - 0xac00) % 28 === 0 ? "는" : "은";
 }
 
 function reportingItems(input: MaterialCheckInput): MaterialCheckItem[] {
@@ -169,7 +164,7 @@ function purposeLines(input: MaterialCheckInput, latencyProvided: boolean): Mate
       title: "사용 방식 → 지연시간",
       declared,
       recommended: [],
-      shortfall: `의뢰자가 사용 방식을 "${declared}"으로 밝혔으나 응답시간(latency) 자료가 제공되지 않아, 응답 속도가 용도에 맞는지 판단할 수 없다.`,
+      shortfall: `의뢰자가 사용 방식을 "${declared}"${josaEuroRo(declared)} 밝혔으나 응답시간(latency) 자료가 제공되지 않아, 응답 속도가 용도에 맞는지 판단할 수 없다.`,
     });
   }
 
@@ -186,8 +181,8 @@ function purposeLines(input: MaterialCheckInput, latencyProvided: boolean): Mate
       declared,
       recommended: [fn ? "M3" : "M2"],
       shortfall: fn
-        ? `의뢰자가 위험 방향을 "${declared}"으로 밝혔으나, 이에 맞는 재현율(Recall) 또는 β가 1보다 큰 Fβ가 시험 항목에 없다.`
-        : `의뢰자가 위험 방향을 "${declared}"으로 밝혔으나, 이에 맞는 정밀도(Precision) 또는 β가 1보다 작은 Fβ가 시험 항목에 없다.`,
+        ? `의뢰자가 위험 방향을 "${declared}"${josaEuroRo(declared)} 밝혔으나, 이에 맞는 재현율(Recall) 또는 β가 1보다 큰 Fβ가 시험 항목에 없다.`
+        : `의뢰자가 위험 방향을 "${declared}"${josaEuroRo(declared)} 밝혔으나, 이에 맞는 정밀도(Precision) 또는 β가 1보다 작은 Fβ가 시험 항목에 없다.`,
     });
   }
 
@@ -202,7 +197,7 @@ function purposeLines(input: MaterialCheckInput, latencyProvided: boolean): Mate
       title: "클래스 중요도 → 평균 방식",
       declared,
       recommended: [AVERAGING_RECOMMENDATION[taskType][priority]],
-      shortfall: `의뢰자가 클래스 중요도를 "${declared}"으로 밝혔으나, 이에 맞는 ${averaging} 지표가 시험 항목에 없다.`,
+      shortfall: `의뢰자가 클래스 중요도를 "${declared}"${josaEuroRo(declared)} 밝혔으나, 이에 맞는 ${averaging} 지표가 시험 항목에 없다.`,
     });
   }
 
@@ -221,7 +216,7 @@ function purposeLines(input: MaterialCheckInput, latencyProvided: boolean): Mate
       title: "큰 불균형 → AUPRC",
       declared: `불균형 비율 ${shown}`,
       recommended: ["M10"],
-      shortfall: `불균형 비율(IR)이 ${shown}로 9를 넘고 곡선 지표를 골랐으나, AUPRC가 시험 항목에 없다. AUROC만으로는 불균형이 큰 데이터의 성능을 충분히 보여 주지 못한다.`,
+      shortfall: `불균형 비율(IR)이 ${shown}${josaEuroRo(shown)} 9를 넘고 곡선 지표를 골랐으나, AUPRC가 시험 항목에 없다. AUROC만으로는 불균형이 큰 데이터의 성능을 충분히 보여 주지 못한다.`,
     });
   }
   return lines;
@@ -304,7 +299,7 @@ export function checkMaterialSelection(input: MaterialCheckInput): MaterialCheck
       ],
       ...(averaging
         ? {
-            averagingSentence: `의뢰자가 클래스 중요도를 "${averagingLine!.declared}"으로 밝혔으나, 이에 맞는 ${averaging} 지표는 시험 항목에 없다(1.4 참조).`,
+            averagingSentence: `의뢰자가 클래스 중요도를 "${averagingLine!.declared}"${josaEuroRo(averagingLine!.declared)} 밝혔으나, 이에 맞는 ${averaging} 지표는 시험 항목에 없다(1.4 참조).`,
           }
         : {}),
     },

@@ -14,6 +14,7 @@
  * `reportLabels` 가 정한다 — 매핑표를 여기 또 적으면 두 벌이 된다.
  */
 import { getCard } from "../../data/reportComposer";
+import { josaEuroRo } from "./koreanJosa";
 import type { TaskType } from "../../data/evaluationData";
 import {
   MONTH_RANGE_KEYS,
@@ -85,11 +86,14 @@ export function describeValue(
   if (!value || value.unknown) return null;
   const field = fieldOf(cardId, fieldId);
 
+  // "기타"를 고르고 무엇인지 적지 않았으면 내용이 없다 — 그 선택지는 답으로 세지 않는다.
+  const emptyOther = (choice: string) => field.otherChoice === choice && !value.otherText?.trim();
+
   let main: string | null = null;
   if (field.input === "single") {
-    main = value.text ? choiceLabel(cardId, fieldId, value.text, value.otherText) : null;
+    main = value.text && !emptyOther(value.text) ? choiceLabel(cardId, fieldId, value.text, value.otherText) : null;
   } else if (field.input === "multi") {
-    const chosen = value.choices ?? [];
+    const chosen = (value.choices ?? []).filter((choice) => !emptyOther(choice));
     main = chosen.length
       ? chosen.map((choice) => choiceLabel(cardId, fieldId, choice, value.otherText)).join(", ")
       : null;
@@ -273,7 +277,7 @@ function averagingSentence(c: ReportComposerInput, taskType: TaskType): string |
   if (!averaging) return undefined;
   // 따옴표 안에는 선언 값(선택지의 성적서 이름)만 — 덧붙인 글은 의뢰자 선언 표에 있다.
   const declared = choiceLabel("perspective", "classPriority", answer!.text!);
-  return `다중 클래스 지표의 평균 방식은 ${averaging}을 기준으로 한다. 의뢰자가 클래스 중요도를 "${declared}"으로 밝혔기 때문이다.`;
+  return `다중 클래스 지표의 평균 방식은 ${averaging}을 기준으로 한다. 의뢰자가 클래스 중요도를 "${declared}"${josaEuroRo(declared)} 밝혔기 때문이다.`;
 }
 
 /** 성적서 구성 카드의 값 → 성적서 자리별 줄. */

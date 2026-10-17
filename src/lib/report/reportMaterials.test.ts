@@ -338,3 +338,18 @@ describe("2층 보고 항목 번호 (재료 선택 점검 4.2 — MaterialRow.it
     expect(filled.declarations.every((row) => row.item === undefined)).toBe(true);
   });
 });
+
+describe("'기타'를 고르고 글을 비우면 답이 아니다 (검토 반영)", () => {
+  it("한 개 고르기는 제공되지 않음, 여러 개 고르기는 그 선택지만 뺀다", () => {
+    const materials = buildReportMaterials(
+      composer({
+        cards: ALL_ON,
+        metrics: { metricRationale: { text: "Other (own words)" } },
+        trainingData: { imbalanceHandling: { choices: ["Did nothing", "Other (free text)"] } },
+      }),
+      "multilabel",
+    );
+    expect(materials.metricRationale).toBeNull();
+    expect(valueOf(materials.training, "편향 감소 노력")).toBe("수행 안 함");
+  });
+});

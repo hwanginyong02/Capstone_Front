@@ -3,12 +3,13 @@
  * 손으로 만든 결과를 그리면 점검 함수와 인쇄가 어긋나도 모른다.
  */
 import { checkMaterialSelection } from "../lib/report/materialCheck";
-import type { MaterialCheckResult, ReportMaterials } from "../types/finalReport.types";
+import type { MaterialCheckAck, MaterialCheckResult, ReportMaterials } from "../types/finalReport.types";
 
 const row = (item: number, label: string, value: string | null = "있음") => ({ label, value, item });
 
 export function materialCheckFixture(
   options: { missingLatencyAndLabel?: boolean; realTime?: boolean } = {},
+  ack: MaterialCheckAck | null = null,
 ): MaterialCheckResult {
   const materials: ReportMaterials = {
     declarations: [],
@@ -31,6 +32,6 @@ export function materialCheckFixture(
     beta: 1,
     imbalanceRatio: 2,
     distributionSource: "validation",
-    ack: null,
+    ack,
   });
 }

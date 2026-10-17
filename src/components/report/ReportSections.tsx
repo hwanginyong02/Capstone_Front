@@ -65,7 +65,7 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         showVerdictRule={data.conclusion.judgedCount !== undefined}
       />
       <ChartSection charts={data.charts} />
-      <LatencySection latency={data.latency} />
+      <LatencySection latency={data.latency} materialCheck={data.materialCheck} />
       <InterpretSection
         interpretation={data.interpretation}
         source={data.narrativeSource}

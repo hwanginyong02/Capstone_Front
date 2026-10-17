@@ -19,6 +19,7 @@ import { MaterialCheckNotice, type MaterialCheckTarget } from "../components/wor
 import { layerOneGaps, type LayerOneGap } from "../utils/domain/layerOne";
 import { getCard } from "../data/reportComposer";
 import type { MaterialCheckResult } from "../types/finalReport.types";
+import type { ComposerCardId } from "../types/reportComposer.types";
 
 /** 평가 실행(성적서 생성) 중 발생한 예외를 사용자가 읽을 수 있는 문장으로 바꾼다. */
 function describeSubmitError(err: unknown): string {
@@ -76,13 +77,18 @@ export function DataValidation() {
       flow.goTo(target.stepId);
       return;
     }
-    // 넣은 카드면 그 입력 화면, 넣지 않은 카드면 재료 고르기에서 그 카드를 연다.
-    if (store.composerCards[target.cardId as keyof typeof store.composerCards]) {
+    if (target.kind === "cardInput") {
       flow.goTo(getCard(target.cardId).steps[0]);
-    } else {
-      navigate("/app/composer", { state: { cardId: target.cardId } });
+      return;
     }
+    // 재료 고르기에서 그 카드를 연다 — 넣지 않은 카드나 체크하지 않은 항목은 입력 화면에 칸이 없다.
+    navigate("/app/composer", { state: { cardId: target.cardId } });
   };
+  const includedCards = new Set(
+    (Object.entries(store.composerCards) as Array<[ComposerCardId, boolean]>)
+      .filter(([, on]) => on)
+      .map(([cardId]) => cardId),
+  );
 
   // 이 핸들러에서 예외가 나면 React 는 잡아주지 않는다(ErrorBoundary 도 없음).
   // 감싸지 않으면 "버튼을 눌러도 아무 일도 안 일어나는" 무증상 실패가 된다.
@@ -182,7 +188,9 @@ export function DataValidation() {
         </Alert>
       )}
       <FileReuploadNotice />
-      {materialCheck && <MaterialCheckNotice check={materialCheck} onFix={handleFix} />}
+      {materialCheck && (
+        <MaterialCheckNotice check={materialCheck} onFix={handleFix} includedCards={includedCards} />
+      )}
 
       {/* 백엔드가 평가 데이터·매핑 단계에서 내려보낸 안내를 여기 합쳐 보여준다(ISSUES.md B-03·B-04·A-12).
           그 화면들에서 띄우면 사용자는 이미 다음 단계로 넘어간 뒤라 읽지 못한다. */}

@@ -11,8 +11,14 @@ import type { MaterialCheckLine, MaterialCheckResult } from "../../types/finalRe
 import type { ComposerCardId } from "../../types/reportComposer.types";
 import type { StepId } from "../../types/workflow.types";
 
-/** 빠진 재료를 고칠 곳 — 선택 카드(재료 고르기 또는 그 입력 화면) 또는 단계. */
-export type MaterialCheckTarget = { kind: "card"; cardId: ComposerCardId } | { kind: "step"; stepId: StepId };
+/**
+ * 빠진 재료를 고칠 곳. 선택 카드는 두 갈래다 — 재료 고르기(카드를 넣지 않았거나 그 항목을 체크하지
+ * 않았으면 입력 화면에 칸이 없다)와 그 카드의 입력 화면("모름"으로 답했거나 비워 둔 경우).
+ */
+export type MaterialCheckTarget =
+  | { kind: "card"; cardId: ComposerCardId }
+  | { kind: "cardInput"; cardId: ComposerCardId }
+  | { kind: "step"; stepId: StepId };
 
 /** 2층 보고 항목 → 그 값을 받는 곳(재료 선택 점검 4.2 "받는 입력"). */
 export function targetOfItem(item: number): MaterialCheckTarget {
@@ -34,9 +40,13 @@ const metricName = (id: string) => METRICS.find((metric) => metric.id === id)?.n
 interface MaterialCheckNoticeProps {
   check: MaterialCheckResult;
   onFix: (target: MaterialCheckTarget) => void;
+  /** 넣은 선택 카드 — 이 카드의 항목에는 "입력 화면에서 고치기"도 보인다. */
+  includedCards?: ReadonlySet<ComposerCardId>;
 }
 
-export function MaterialCheckNotice({ check, onFix }: MaterialCheckNoticeProps) {
+const LINK = "text-sm text-foreground-secondary underline underline-offset-4 hover:text-foreground";
+
+export function MaterialCheckNotice({ check, onFix, includedCards = new Set() }: MaterialCheckNoticeProps) {
   if (check.warningIds.length === 0) return null;
   const missing = check.reporting.items.filter((item) => !item.provided);
   const unmet = check.purpose.lines.filter((line) => !line.met);
@@ -69,13 +79,28 @@ export function MaterialCheckNotice({ check, onFix }: MaterialCheckNoticeProps) 
                     빠진 칸: {item.missing.join(" · ")}. {item.impact} 판단할 수 없게 됩니다.
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onFix(targetOfItem(item.item))}
-                  className="text-sm text-foreground-secondary underline underline-offset-4 hover:text-foreground"
-                >
-                  넣으러 가기
-                </button>
+{(() => {
+                  const target = targetOfItem(item.item);
+                  if (target.kind !== "card") {
+                    return (
+                      <button type="button" onClick={() => onFix(target)} className={LINK}>
+                        넣으러 가기
+                      </button>
+                    );
+                  }
+                  return (
+                    <span className="flex flex-col items-end gap-1">
+                      <button type="button" onClick={() => onFix(target)} className={LINK}>
+                        재료 고르기에서 넣기
+                      </button>
+                      {includedCards.has(target.cardId) && (
+                        <button type="button" onClick={() => onFix({ kind: "cardInput", cardId: target.cardId })} className={LINK}>
+                          입력 화면에서 고치기
+                        </button>
+                      )}
+                    </span>
+                  );
+                })()}
               </li>
             ))}
           </ul>

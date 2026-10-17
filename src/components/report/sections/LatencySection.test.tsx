@@ -3,11 +3,18 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { LatencySection } from "./LatencySection";
+import { materialCheckFixture } from "../../../test/materialCheckFixture";
 
 describe("응답시간 지표", () => {
   it("지연시간이 없으면 '제공되지 않음'을 찍는다", () => {
-    render(<LatencySection latency={null} />);
+    render(<LatencySection latency={null} materialCheck={materialCheckFixture()} />);
     expect(screen.getByText("제공되지 않음")).toBeInTheDocument();
+  });
+
+  it("점검 결과가 없는 옛 성적서는 발급 당시 문장 그대로", () => {
+    render(<LatencySection latency={null} />);
+    expect(screen.getByText(/지연시간\(latency\) 컬럼이 매핑되지 않아 측정되지 않았습니다/)).toBeInTheDocument();
+    expect(screen.queryByText("제공되지 않음")).not.toBeInTheDocument();
   });
 
   it("있으면 통계 표를 찍는다", () => {

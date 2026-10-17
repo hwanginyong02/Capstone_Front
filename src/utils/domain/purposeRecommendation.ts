@@ -4,6 +4,10 @@
  *
  * 판정을 새로 하지 않는다. 성적서를 만드는 같은 경로(매퍼 → `checkMaterialSelection`)에 지금 입력을
  * 넣어 결과를 읽는다. 그래서 "추천대로 고르면 점검은 통과한다"가 생성 전 안내와 같은 규칙으로 성립한다.
+ *
+ * 검증 응답은 넘기지 않는다 — 지표 화면은 검증 앞이고, 스토어에 남은 검증 결과는 파일을 바꿔 올려도
+ * 비워지지 않아 지난 파일의 분포일 수 있다. 불균형 비율은 지금 파일의 업로드 분석 분포로 센다(검증
+ * 화면이 평가와 같은 프레임의 분포로 다시 본다).
  */
 import { getRecommendedMetricIds } from "../../data/evaluationData";
 import {
@@ -12,19 +16,15 @@ import {
   type ReportInputSource,
 } from "../../lib/report/mapWorkflowToFinalReport";
 import type { MaterialCheckResult } from "../../types/finalReport.types";
-import type { ValidateDataResponseData } from "../../types/validation.types";
 
-export type PurposeSource = ReportInputSource & { validationResult?: ValidateDataResponseData | null };
+export type PurposeSource = ReportInputSource;
 
 /** 지금 입력(또는 지표 선택만 바꾼 입력)의 재료 선택 점검 결과. 카드 값이 없으면 undefined. */
 export function materialCheckFor(
   state: PurposeSource,
   selectedMetricIds: string[] = state.selectedMetricIds,
 ): MaterialCheckResult | undefined {
-  return mapWorkflowToFinalReport(
-    buildReportInput({ ...state, selectedMetricIds }),
-    state.validationResult ?? null,
-  ).materialCheck;
+  return mapWorkflowToFinalReport(buildReportInput({ ...state, selectedMetricIds }), null).materialCheck;
 }
 
 /**

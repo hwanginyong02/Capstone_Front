@@ -273,6 +273,24 @@ export function mapWorkflowToFinalReport(
 }
 
 /**
+ * 지연시간(보고 항목 8)이 성적서 6.4 에 실제로 찍힐지. latency 를 매핑했어도 값이 하나도 숫자가 아니면
+ * 평가가 통계를 내지 않아 6.4 는 "제공되지 않음"이다. 검증 응답의 "Latency statistics (ms)" 항목은
+ * 평가와 같은 프레임·같은 조건(숫자 값 1개 이상)으로 나오므로 그것으로 본다. 검증 전(지표 화면
+ * 미리보기)에는 매핑만 본다.
+ */
+function latencyWillBeMeasured(
+  input: MapWorkflowToReportInput,
+  validationResult: ValidateDataResponseData | null | undefined,
+): boolean {
+  const mapped = input.columnMapping.some((row) => row.confirmedRole === "latency");
+  if (!mapped || !validationResult) return mapped;
+  return validationResult.validation_details.some((item) => item.name === LATENCY_STATS_CHECK);
+}
+
+/** 백엔드 `validation_checks.check_latency` 가 숫자 지연시간이 있을 때만 내는 항목 이름. */
+const LATENCY_STATS_CHECK = "Latency statistics (ms)";
+
+/**
  * 재료 선택 점검을 이 성적서의 값으로 부른다(판정은 `checkMaterialSelection` 한 곳).
  *
  * 불균형 비율은 검증 응답의 분포(평가와 같은 프레임)를 먼저 쓰고, 없으면 업로드 분석의 분포를 쓴다.
@@ -297,7 +315,7 @@ function runMaterialCheck(
     taskType,
     materials,
     systemSpec: evalEnv.systemSpec,
-    latencyMapped: input.columnMapping.some((row) => row.confirmedRole === "latency"),
+    latencyMapped: latencyWillBeMeasured(input, validationResult),
     perspective: input.composer!.perspective,
     selectedMetricIds: input.selectedMetricIds,
     beta: resolveBeta(input.metricDetails),
