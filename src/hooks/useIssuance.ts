@@ -11,6 +11,7 @@ import { useState } from "react";
 
 import type { FinalReportData } from "../types/finalReport.types";
 import { useWorkspaceStore } from "../utils/stores/useWorkspaceStore";
+import { ISSUE_CONTENT_MAX_BYTES, exceedsIssueLimit, jsonBytes } from "../utils/image/examplePreview";
 import {
   formatKstDate,
   formatKstDateTime,
@@ -85,8 +86,21 @@ export function useIssuance(
     }));
   }
 
+  /** 서버 상한(1 MiB)을 넘으면 서버의 422 대신 이유와 고칠 곳을 알린다(예전에 원본으로 올린 예시 이미지 대비). */
+  function tooLargeToIssue(content: FinalReportData): boolean {
+    if (!exceedsIssueLimit(content)) return false;
+    const bytes = jsonBytes(content);
+    alert(
+      `성적서 데이터가 발급 용량 한도를 넘습니다(${Math.round(bytes / 1024).toLocaleString()} KB / ` +
+        `${ISSUE_CONTENT_MAX_BYTES / 1024} KB). 대개 학습 데이터 예시 이미지 때문입니다. ` +
+        "데이터 정보 단계에서 예시 이미지를 지우고 다시 올리면 인쇄용 크기로 줄어듭니다.",
+    );
+    return true;
+  }
+
   async function issue() {
     if (!data || busy || !id) return;
+    if (tooLargeToIssue(data)) return;
     const run = useWorkspaceStore
       .getState()
       .evaluationRuns.find((r) => r.id === id);
@@ -110,6 +124,7 @@ export function useIssuance(
 
   async function reissue(note: string) {
     if (!data || busy || !issued) return;
+    if (tooLargeToIssue(data)) return;
     setBusy(true);
     try {
       // run 식별자는 소지 증명으로 필수다(G-02). 라우트의 id 가 발급 때 보낸 runId 와 같다.
