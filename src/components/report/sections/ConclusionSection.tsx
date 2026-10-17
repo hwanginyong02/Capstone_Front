@@ -46,6 +46,11 @@ interface ConclusionSectionProps {
    * 표시하였다"가 가리키는 자리다. 아슬아슬 지표가 없거나 이 키가 생기기 전 성적서에는 없다.
    */
   nearTargetNote?: string;
+  /**
+   * 8.2 일반화 고정 문구 11a·11b(평가 데이터가 학습과 같은/다른 출처). 생성 때 저장한 문장을 서술
+   * 아래 찍는다. 의뢰자가 출처 관계를 답하지 않았거나 이 키가 생기기 전 성적서에는 없다.
+   */
+  sourceRelationSentence?: string;
 }
 
 /** 서술 블록: LLM이 채울 텍스트가 있으면 인용, 없으면 "생성 예정" 플레이스홀더 표시 */
@@ -67,7 +72,12 @@ function NarrativeBlock({ title, text }: { title: string; text: string }) {
   );
 }
 
-export function ConclusionSection({ conclusion, source, nearTargetNote }: ConclusionSectionProps) {
+export function ConclusionSection({
+  conclusion,
+  source,
+  nearTargetNote,
+  sourceRelationSentence,
+}: ConclusionSectionProps) {
   const config = VERDICT_CONFIG[conclusion.verdict];
   const Icon = config.icon;
 
@@ -116,8 +126,13 @@ export function ConclusionSection({ conclusion, source, nearTargetNote }: Conclu
         <NarrativeBlock title="도메인 성능 벤치마크" text={conclusion.benchmark} />
       </div>
 
-      {/* 8.2 전반적 성능 및 일반화 능력 총평 */}
-      <NarrativeBlock title="전반적 성능 및 일반화 능력 총평" text={conclusion.narrative} />
+      {/* 8.2 전반적 성능 및 일반화 능력 총평 — 일반화 고정 문구(11a·11b)는 의뢰자 답으로 정해 서술 아래 찍는다. */}
+      <div className="space-y-3">
+        <NarrativeBlock title="전반적 성능 및 일반화 능력 총평" text={conclusion.narrative} />
+        {sourceRelationSentence && (
+          <p className="text-sm leading-relaxed text-slate-700">{sourceRelationSentence}</p>
+        )}
+      </div>
 
       {/* 8.3 기술적 취약점 및 잠재적 리스크 요약 — 아슬아슬 지표 표시는 규칙으로 정해 서술 아래 찍는다. */}
       <div className="space-y-3">

@@ -83,11 +83,13 @@ export function ReportPrint() {
             derivedPrediction={isLegacyLayout(data) ? undefined : data.meta.derivedPrediction}
             confusionCounts={data.confusionCounts}
             errorRatioSentence={data.errorRatioSentence}
+            labelCautionSentence={data.labelCautionSentence}
           />
           <ConclusionSection
             conclusion={data.conclusion}
             source={data.narrativeSource}
             nearTargetNote={data.nearTargetNote}
+            sourceRelationSentence={data.sourceRelationSentence}
           />
           <RecommendSection
             recommendations={data.recommendations}

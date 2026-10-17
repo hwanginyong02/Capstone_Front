@@ -202,3 +202,25 @@ describe("8.3 아슬아슬 지표 표시", () => {
     expect(screen.queryByText(/근소 차이/)).not.toBeInTheDocument();
   });
 });
+
+/** 8.2 일반화 고정 문구 11a·11b — 생성 때 저장한 문장을 그대로 찍는다. */
+describe("8.2 일반화 고정 문구", () => {
+  const same =
+    "평가 데이터는 학습 데이터와 동일한 출처에서 수집되었다. 본 결과는 동일 분포 내 성능을 나타내며, 다른 운영 환경에서의 일반화 성능을 보증하지 않는다.";
+
+  it("저장된 문장이 있으면 8.2 총평 아래 찍는다", () => {
+    render(<ConclusionSection conclusion={{ ...conclusion, narrative: "총평 서술" }} sourceRelationSentence={same} />);
+    const line = screen.getByText(same);
+    const heading = screen.getByText("전반적 성능 및 일반화 능력 총평");
+    expect(heading.parentElement?.parentElement?.contains(line)).toBe(true);
+    expect(heading.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // 8.3 묶음보다 앞이다.
+    const risks = screen.getByText("기술적 취약점 및 잠재적 리스크 요약");
+    expect(line.compareDocumentPosition(risks) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("없으면(답 없음·'모름'·옛 성적서) 찍지 않는다", () => {
+    render(<ConclusionSection conclusion={conclusion} />);
+    expect(screen.queryByText(/출처에서 수집되었다/)).not.toBeInTheDocument();
+  });
+});

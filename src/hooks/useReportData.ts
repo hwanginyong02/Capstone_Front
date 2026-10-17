@@ -29,6 +29,7 @@ import {
   parseConfidenceIntervals,
 } from "../lib/report/confidenceIntervals";
 import { attachNearTarget, nearTargetNote } from "../lib/report/nearTarget";
+import { labelCautionSentence, sourceRelationSentence } from "../lib/report/dataCautionPhrases";
 import {
   buildProblemList,
   parseF1ThresholdGain,
@@ -373,6 +374,11 @@ export function useReportData(id: string): UseReportDataResult {
           composer: reportInput.composer,
         });
 
+        // 7.2 고정 문구 12(9절 "정답 라벨 주의"와 같은 판정)와 8.2 고정 문구 11a·11b. 의뢰자 답은
+        // client_inputs 로 이미 AI 에 가므로 사실 시트에 따로 싣지 않는다.
+        const labelSentence = labelCautionSentence(reportInput.composer);
+        const sourceSentence = sourceRelationSentence(reportInput.composer);
+
         const factSheet = buildFactSheet({
           kpiResults: updatedKpiResults,
           confusionMatrix,
@@ -425,6 +431,8 @@ export function useReportData(id: string): UseReportDataResult {
             : {}),
           ...(ciNote ? { confidenceIntervalNote: ciNote } : {}),
           ...(nearNote ? { nearTargetNote: nearNote } : {}),
+          ...(labelSentence ? { labelCautionSentence: labelSentence } : {}),
+          ...(sourceSentence ? { sourceRelationSentence: sourceSentence } : {}),
           problems,
           conclusion: ruleConclusion,  // full ConclusionData (verdict/score + 빈 서술)
           datasetDiagnosis,
