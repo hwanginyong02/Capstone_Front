@@ -37,4 +37,10 @@ export interface ValidateDataResponseData {
   validation_details: ValidationDetailItem[];
   error_count: number;
   warning_count: number;
+  /**
+   * 평가 프레임 기준 클래스(레이블)별 등장 횟수. 평가 응답과 같은 함수·같은 프레임으로 센다 —
+   * 재료 선택 점검의 불균형 비율이 성적서 3절과 같아진다. 이 키가 생기기 전 백엔드와, 프레임을
+   * 만들지 못한 응답(필수 컬럼 누락 등)에는 없다.
+   */
+  class_distribution?: Record<string, number> | null;
 }

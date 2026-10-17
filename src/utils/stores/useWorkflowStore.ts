@@ -18,6 +18,7 @@ import { getAvailableMetrics, type TaskType } from "../../data/evaluationData";
 import type { ColumnNote, MappingWarning } from "../../lib/report/backendNotices";
 import type { MappingRow } from "../../types/mapping.types";
 import type { ValidateDataResponseData } from "../../types/validation.types";
+import type { MaterialCheckAck } from "../../types/finalReport.types";
 import {
   DEFAULT_BASIC_INFO,
   type BasicInfoFormData,
@@ -633,6 +634,15 @@ interface WorkflowState {
   lastRunId: string | null;
 
   /**
+   * 재료 선택 점검의 생성 전 안내를 보고도 진행한 기록(재료 선택 점검 6절). 검증 화면의 "다음"이
+   * 남기고, 성적서 6.0 이 "확인 후 진행"으로 찍는다(`checkMaterialSelection` 이 인정 여부를 정함).
+   *
+   * 최상위 새 키라 persist 판(13)을 올리지 않는다 — 옛 저장분에는 없고, 얕은 병합으로 초기값
+   * null 이 남는다. 작업 유형을 바꾸면 비운다.
+   */
+  materialCheckAck: MaterialCheckAck | null;
+
+  /**
    * 선택 카드(⑥~⑨)가 성적서에 들어가는지.
    *
    * 필수 카드(①~⑤)는 늘 들어가 상태로 들지 않는다. 이 값이 **걸을 단계 목록을 정한다**
@@ -710,6 +720,7 @@ interface WorkflowState {
   // Actions — Step 6
   setValidationResult: (result: ValidateDataResponseData | null) => void;
   setLastRunId: (runId: string | null) => void;
+  setMaterialCheckAck: (ack: MaterialCheckAck | null) => void;
 
   // Actions — 재료 고르기
   /**
@@ -761,6 +772,7 @@ const INITIAL_STATE = {
   validationResult: null as ValidateDataResponseData | null,
   needsFileReupload: false,
   lastRunId: null as string | null,
+  materialCheckAck: null as MaterialCheckAck | null,
   ...INITIAL_COMPOSER_STATE,
 };
 
@@ -825,6 +837,8 @@ export const useWorkflowStore = create<WorkflowState>()(
           // 값이라 아래 `EMPTY_COMPOSER_INPUTS` 가 함께 비운다.
           completedStepIds: [],
           needsFileReupload: false,
+          // 진행 기록은 그때의 경고에 대한 것이다. 유형이 바뀌면 점검 줄 자체가 달라진다.
+          materialCheckAck: null,
           // basicInfo 는 유지한다 — 작업 유형만 바꿨는데 1단계 입력까지 날아가면 안 된다.
           /**
            * 성적서 구성의 **입력값은 비우고 카드 선택은 남긴다.**
@@ -895,6 +909,7 @@ export const useWorkflowStore = create<WorkflowState>()(
       setValidationResult: (result) => set({ validationResult: result }),
 
       setLastRunId: (runId) => set({ lastRunId: runId }),
+      setMaterialCheckAck: (ack) => set({ materialCheckAck: ack }),
 
       // 재료 고르기
       saveMaterialPick: (cardId, ids) =>

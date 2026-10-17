@@ -25,6 +25,7 @@ import type {
   EvalScope,
   FinalReportData,
   FinalReportMeta,
+  MaterialCheckAck,
   MetricFormula,
   ReportPurposeKey,
   SignatureData,
@@ -37,7 +38,9 @@ import type { ValidateDataResponseData } from "../../types/validation.types";
 import { mapValidationResultToReport } from "./mapValidationResultToReport";
 import { buildConclusion } from "./computeVerdict";
 import { REPORT_CONTENT_SCHEMA } from "./normalizeReportContent";
-import { resolveTargetValue } from "../../utils/domain/validation";
+import { resolveBeta, resolveTargetValue } from "../../utils/domain/validation";
+import { checkMaterialSelection } from "./materialCheck";
+import { imbalanceRatioOf } from "./buildDatasetDiagnosis";
 import type {
   BasicInfoFormData,
   MetricDetailStateMap,
@@ -94,6 +97,11 @@ export interface MapWorkflowToReportInput {
    * 없으면 카드를 모두 끈 것과 같다.
    */
   composer?: ReportComposerInput;
+  /**
+   * 생성 전 안내를 보고도 진행한 기록(검증 화면 "다음"이 남김). 재료 선택 점검이 이 기록을 인정할지
+   * 정해 6.0 에 찍는다. 이 키가 생기기 전 스냅샷에는 없다.
+   */
+  materialCheckAck?: MaterialCheckAck | null;
 }
 
 /** `buildReportInput` 이 읽는 워크플로우 상태. 스토어를 그대로 넘겨도 된다. */
@@ -188,6 +196,7 @@ export function buildReportInput(state: ReportInputSource): MapWorkflowToReportI
     columnMapping: state.columnMapping,
     classLabelDescriptions: state.classLabelDescriptions,
     metadata: state.metadata,
+    materialCheckAck: state.materialCheckAck ?? null,
     composer: {
       cards: state.composerCards,
       metrics: pickedValues("metrics", state.composerMetrics, picks),
@@ -216,6 +225,15 @@ export function mapWorkflowToFinalReport(
     ? mapValidationResultToReport(validationResult, 0)
     : null;
 
+  const evalEnv = buildEvalEnv(input.basicInfo);
+  const materials = input.composer ? buildReportMaterials(input.composer, resolvedTaskType) : undefined;
+  const materialCheck = materials && input.composer ? runMaterialCheck(input, validationResult, materials, evalEnv) : undefined;
+  // 3번 줄(클래스 중요도 → 평균 방식)이 미충족이면 5절 평균 방식 문장을 점검 결과의 문장으로 바꿔 찍는다.
+  const printedMaterials =
+    materials && materialCheck?.printed.averagingSentence
+      ? { ...materials, averagingSentence: materialCheck.printed.averagingSentence }
+      : materials;
+
   return {
     contentSchema: REPORT_CONTENT_SCHEMA,
     meta: buildMeta(input, resolvedTaskType),
@@ -228,7 +246,7 @@ export function mapWorkflowToFinalReport(
     // datasetDiagnosis 는 실제 클래스 분포 기반으로 useReportData 에서 채운다(가짜 MOCK 제거).
     datasetDiagnosis: "",
     trainingDatasetInfo: buildTrainingDatasetInfo(input),
-    evalEnv: buildEvalEnv(input.basicInfo),
+    evalEnv,
     metricList: buildMetricList(resolvedTaskType, input.selectedMetricIds, input.metricDetails),
     metricFormulas: buildMetricFormulas(resolvedTaskType, input.selectedMetricIds),
     dataValidation: mappedValidation ? mappedValidation.dataValidation : [],
@@ -248,8 +266,45 @@ export function mapWorkflowToFinalReport(
     // 서명/발급 이력은 발급 시점에 백엔드 IssuanceOut 으로 채운다(초안은 빈 값 → "미발급" 표기).
     signature: { issuer: "", signedAt: "", history: [] },
     // 고객 재료 — 재료 목록의 인쇄 위치대로 각 절이 찍는다. 옛 스냅샷에는 카드 값이 없다.
-    materials: input.composer ? buildReportMaterials(input.composer, resolvedTaskType) : undefined,
+    materials: printedMaterials,
+    // 재료 선택 점검 — 표지·1.4·5절·6.0 이 읽는다. 옛 스냅샷(카드 값 없음)에는 없다.
+    ...(materialCheck ? { materialCheck } : {}),
   };
+}
+
+/**
+ * 재료 선택 점검을 이 성적서의 값으로 부른다(판정은 `checkMaterialSelection` 한 곳).
+ *
+ * 불균형 비율은 검증 응답의 분포(평가와 같은 프레임)를 먼저 쓰고, 없으면 업로드 분석의 분포를 쓴다.
+ * 어느 쪽을 썼는지 결과에 남는다.
+ */
+function runMaterialCheck(
+  input: MapWorkflowToReportInput,
+  validationResult: ValidateDataResponseData | null | undefined,
+  materials: ReturnType<typeof buildReportMaterials>,
+  evalEnv: EvalEnvironment,
+) {
+  const taskType: TaskType = input.taskType || "binary";
+  const fromValidation = validationResult?.class_distribution;
+  const fromUpload = input.metadata?.class_distribution;
+  const [distribution, distributionSource] =
+    fromValidation && Object.keys(fromValidation).length > 0
+      ? [fromValidation, "validation" as const]
+      : fromUpload && Object.keys(fromUpload).length > 0
+        ? [fromUpload, "upload" as const]
+        : [null, null];
+  return checkMaterialSelection({
+    taskType,
+    materials,
+    systemSpec: evalEnv.systemSpec,
+    latencyMapped: input.columnMapping.some((row) => row.confirmedRole === "latency"),
+    perspective: input.composer!.perspective,
+    selectedMetricIds: input.selectedMetricIds,
+    beta: resolveBeta(input.metricDetails),
+    imbalanceRatio: distribution ? imbalanceRatioOf(distribution) : null,
+    distributionSource: distribution ? distributionSource : null,
+    ack: input.materialCheckAck ?? null,
+  });
 }
 
 // ---------- helpers ----------
