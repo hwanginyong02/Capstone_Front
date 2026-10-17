@@ -286,8 +286,9 @@ function buildApplicant(basicInfo: BasicInfoFormData): ApplicantInfo {
     representative: basicInfo.representative || "—",
     businessNumber: basicInfo.businessNumber || "—",
     contact: basicInfo.phone || "—",
-    fax: basicInfo.fax || "—",
-    homepage: basicInfo.website || "—",
+    // 팩스·홈페이지는 점검 밖 선택 항목 — 비면 "—" 줄 대신 줄을 빼도록 빈 문자열로 둔다(재료 목록 1절).
+    fax: basicInfo.fax?.trim() ?? "",
+    homepage: basicInfo.website?.trim() ?? "",
     address: basicInfo.address || "—",
   };
 }

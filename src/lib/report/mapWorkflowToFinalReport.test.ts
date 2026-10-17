@@ -268,3 +268,17 @@ describe("1절 과제 번호 — 용도와 무관한 선택 항목(재료 목록
     expect(report.evalScope.projectNumber).toBe("P-1");
   });
 });
+
+describe("1절 팩스·홈페이지 — 비면 빈 값(줄을 만들지 않음)", () => {
+  it("비었거나 공백뿐이면 빈 문자열, 값이 있으면 그대로", () => {
+    const empty = mapWorkflowToFinalReport(baseInput({ basicInfo: { ...DEFAULT_BASIC_INFO, fax: "  ", website: "" } }));
+    expect(empty.applicant.fax).toBe("");
+    expect(empty.applicant.homepage).toBe("");
+
+    const filled = mapWorkflowToFinalReport(
+      baseInput({ basicInfo: { ...DEFAULT_BASIC_INFO, fax: "02-1", website: "https://a.example" } }),
+    );
+    expect(filled.applicant.fax).toBe("02-1");
+    expect(filled.applicant.homepage).toBe("https://a.example");
+  });
+});

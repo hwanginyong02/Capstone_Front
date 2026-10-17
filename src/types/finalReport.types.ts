@@ -41,6 +41,7 @@ export interface ApplicantInfo {
   representative: string;
   businessNumber: string;
   contact: string;
+  /** 선택 항목. 비었으면 "" 이고 1절 신청인 표에 줄을 만들지 않는다. 이전 보관본은 "—" 를 적었다. */
   fax: string;
   homepage: string;
   address: string;

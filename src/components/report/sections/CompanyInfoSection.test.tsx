@@ -86,3 +86,27 @@ describe("1.3 시험결과서 용도 — 과제 번호 (재료 목록 1절: 용�
     expect(rowValue("과제 번호")).toBeNull();
   });
 });
+
+describe("1.2 신청인 표 — 팩스·홈페이지 (재료 목록 1절: 점검 밖 선택 항목)", () => {
+  it("비었으면 줄을 만들지 않는다", () => {
+    renderSection({ applicant: { fax: "", homepage: "" } });
+
+    expect(rowValue("FAX번호")).toBeNull();
+    expect(rowValue("홈페이지")).toBeNull();
+    expect(rowValue("회사명")).toBe("테스트기업"); // 표 자체는 그려졌다
+  });
+
+  it("값이 있는 것만 찍는다", () => {
+    renderSection({ applicant: { fax: "", homepage: "https://a.example" } });
+
+    expect(rowValue("FAX번호")).toBeNull();
+    expect(rowValue("홈페이지")).toBe("https://a.example");
+  });
+
+  it("이전 보관본의 '—' 는 발급 당시처럼 줄을 찍는다", () => {
+    renderSection({ applicant: { fax: "—", homepage: "—" } });
+
+    expect(rowValue("FAX번호")).toBe("—");
+    expect(rowValue("홈페이지")).toBe("—");
+  });
+});

@@ -64,8 +64,10 @@ export function CompanyInfoSection({ applicant, performer, evalScope, meta }: Co
                 { label: "대표자",         value: applicant.representative },
                 { label: "사업자등록번호", value: applicant.businessNumber },
                 { label: "전화번호",       value: applicant.contact },
-                { label: "FAX번호",        value: applicant.fax },
-                { label: "홈페이지",       value: applicant.homepage },
+                // 선택 항목은 값이 있을 때만 줄을 만든다(재료 목록 1절). 이전 보관본의 "—" 는
+                // 값으로 보고 발급 당시처럼 찍는다.
+                ...(applicant.fax ? [{ label: "FAX번호", value: applicant.fax }] : []),
+                ...(applicant.homepage ? [{ label: "홈페이지", value: applicant.homepage }] : []),
                 { label: "주소",           value: applicant.address },
                 ...(meta.contractDate ? [{ label: "계약일자", value: meta.contractDate }] : []),
               ]}
