@@ -39,9 +39,10 @@ export const DEFAULT_EVAL_ENV_CONSTANTS: Pick<EvalEnvironment, "method" | "outpu
   tools: ["Python 3.11", "scikit-learn 1.4.0", "pandas 2.2.0", "numpy 1.26.0"],
 };
 
+/** 성적서 용도 이름 — 화면 선택지·재료 목록 1절과 같은 이름을 쓴다(DESIGN_GAPS R6). */
 export const REPORT_PURPOSE_LABEL: Record<ReportPurposeKey, string> = {
-  internal: "내부 검증용",
-  external: "외부 제출용",
+  internal: "내부 검증",
+  external: "외부 제출",
   project: "과제 산출물",
 };
 

@@ -110,3 +110,25 @@ describe("1.2 신청인 표 — 팩스·홈페이지 (재료 목록 1절: 점검
     expect(rowValue("홈페이지")).toBe("—");
   });
 });
+
+describe("1.3 용도 이름 — 화면 선택지와 같은 이름(DESIGN_GAPS R6)", () => {
+  it.each([
+    ["internal", "내부 검증"],
+    ["external", "외부 제출"],
+    ["project", "과제 산출물"],
+  ] as const)("%s 는 '%s'", (key, label) => {
+    renderSection({ evalScope: { reportPurposeKey: key } });
+
+    expect(rowValue("용도")).toBe(label);
+  });
+
+  it("재료 등록부의 선택지 이름과 성적서 이름이 같다", async () => {
+    const { getCard } = await import("../../../data/reportComposer");
+    const { REPORT_PURPOSE_LABEL } = await import("../../../lib/report/reportConstants");
+    const field = getCard("clientInfo").fields.find((f) => f.id === "reportPurpose");
+    const screenNames = Object.values(field?.choiceLabels ?? {}).sort();
+
+    expect(screenNames.length).toBe(3);
+    expect(Object.values(REPORT_PURPOSE_LABEL).sort()).toEqual(screenNames);
+  });
+});
