@@ -446,13 +446,14 @@ export function TestItems({
           </div>
         )}
 
-        {/* 고른 지표 바로 아래에서 고른 이유를 묻는다. 다음을 누른 뒤에만 빈 칸을 칠한다. */}
+        {/* 고른 지표 바로 아래에서 고른 이유를 묻는다. 재료 선택 점검 2층이라 빈 칸은 막지 않고 알리기만
+            한다(빨갛게 칠하지 않는다). */}
         {onMetricCardChange && metricCardFields.length > 0 && (
           <Card className="gap-0 rounded-lg border-border bg-card">
             <CardContent className="space-y-5 p-6">
               {metricCardFields.map((field) => {
                 const issue = metricCardIssues.find((item) => item.fieldId === field.id);
-                const showMissing = showErrors && issue?.reason === "missing";
+                const missing = issue?.reason === "missing";
                 return (
                   <div key={field.id}>
                     <ComposerFieldInput
@@ -460,10 +461,12 @@ export function TestItems({
                       value={metricCardValues?.[field.id]}
                       onChange={(next) => onMetricCardChange(field.id, next)}
                       siblingValues={metricCardValues}
-                      invalid={showMissing}
+                      invalid={showErrors && Boolean(issue) && !missing}
                     />
-                    {showMissing && (
-                      <p className="mt-1 text-body-small text-destructive">필수 항목입니다.</p>
+                    {missing && (
+                      <p className="mt-1 text-body-small text-muted-foreground">
+                        비어 있으면 성적서에 "제공되지 않음"으로 표시됩니다. 진행은 막지 않습니다.
+                      </p>
                     )}
                   </div>
                 );

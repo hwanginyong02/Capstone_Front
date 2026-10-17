@@ -151,3 +151,27 @@ describe("매핑으로 계산할 수 없는 지표 (docs/MATERIAL_PICKER.md §3)
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 });
+
+describe("지표 선택 이유 — 재료 선택 점검 2층(12번): 비어도 막지 않는다", () => {
+  beforeEach(() => {
+    useWorkflowStore.setState({
+      composerMetrics: {},
+      metricDetails: withTargets(["M2", "M4", "M17"]),
+    });
+  });
+
+  it("비어 있어도 '다음'으로 진행하고, 성적서에 '제공되지 않음'으로 표시된다고 알린다", async () => {
+    renderPage();
+
+    expect(screen.getByText(/비어 있으면 성적서에 "제공되지 않음"으로 표시됩니다/)).toBeInTheDocument();
+    const next = screen.getByRole("button", { name: /^다음$/ });
+    expect(next).toBeEnabled();
+    await userEvent.click(next);
+    expect(useWorkflowStore.getState().completedStepIds).toContain("metrics");
+  });
+
+  it("'모름'을 고를 수 있다", () => {
+    renderPage();
+    expect(screen.getByRole("checkbox", { name: /모름/ })).toBeInTheDocument();
+  });
+});

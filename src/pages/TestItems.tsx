@@ -60,12 +60,17 @@ export function TestItems() {
     .map((id) => METRICS.find((metric) => metric.id === id)?.name ?? id)
     .join(", ");
 
-  /** ② 카드 중 레지스트리로 그리는 필드(멀티레이블의 지표 선택 이유)만 검사한다. */
+  /**
+   * ② 카드 중 레지스트리로 그리는 필드(멀티레이블의 지표 선택 이유)만 검사한다. 이 필드는 재료 선택
+   * 점검 2층이라 **비어 있어도 막지 않는다** — 막는 것은 틀린 값(배타 선택 등)뿐이다. 빈 칸은
+   * 화면에 안내만 하고, 성적서에 "제공되지 않음"으로 찍혀 생성 전 안내에 나온다.
+   */
   const metricCard = getCard("metrics");
   const metricCardIssues = getCardFields("metrics", store.taskType)
     .filter((field) => field.step === "metrics")
     .map((field) => getFieldIssue(metricCard, field, store.composerMetrics))
     .filter((issue): issue is FieldIssue => issue !== null);
+  const blockingMetricCardIssues = metricCardIssues.filter((issue) => issue.reason !== "missing");
 
   const beta = store.metricDetails["M5"]?.beta ?? "1.0";
   const betaInvalid = store.selectedMetricIds.includes("M5") && !isBetaValid(beta);
@@ -119,9 +124,9 @@ export function TestItems() {
   };
 
   const handleNext = () => {
-    if (metricCardIssues.length > 0) {
+    if (blockingMetricCardIssues.length > 0) {
       setShowErrors(true);
-      focusFirstIssue(metricCardIssues);
+      focusFirstIssue(blockingMetricCardIssues);
       return;
     }
     flow.goNext();
@@ -144,7 +149,7 @@ export function TestItems() {
       }
       previousLabel="이전"
       nextLabel="다음"
-      rightAction={<RemainingNotice issues={metricCardIssues} />}
+      rightAction={<RemainingNotice issues={blockingMetricCardIssues} />}
     >
       <TestItemsContent
         taskType={store.taskType}
