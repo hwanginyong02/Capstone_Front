@@ -340,7 +340,87 @@ export interface FinalReportData {
    * 이 키가 생기기 전 저장된 성적서에는 없다. 없으면 각 절이 종전처럼 그린다.
    */
   materials?: ReportMaterials;
+  /**
+   * 재료 선택 점검 결과(입력 설계 › 재료 선택 점검). 표지·1.4·5절·6.0 이 읽는다. 이 키가 생기기 전
+   * 성적서(와 옛 입력 스냅샷으로 만든 성적서)에는 없고, 없으면 각 절이 종전처럼 그린다.
+   */
+  materialCheck?: MaterialCheckResult;
   signature: SignatureData;
+}
+
+/**
+ * 생성 전 안내를 보고도 진행한 기록(재료 선택 점검 6절 "경고를 보고도 진행한 사실을 결과 파일에
+ * 남긴다"). 검증 화면의 "다음"이 남긴다.
+ */
+export interface MaterialCheckAck {
+  /** 진행한 시각(ISO). */
+  at: string;
+  /** 그때의 점검 표 버전. */
+  version: string;
+  /** 그때 보여 준 경고 id(`MaterialCheckResult.warningIds`). */
+  warningIds: string[];
+}
+
+/** 2층 보고 항목 하나의 판정(재료 선택 점검 4.2). */
+export interface MaterialCheckItem {
+  /** TS 4213 보고 항목 번호(4.2 표의 #). */
+  item: number;
+  /** 성적서에 적는 항목 이름. */
+  name: string;
+  provided: boolean;
+  /** 빠진 줄의 이름(성적서 표의 이름표). 제공이면 빈 배열. */
+  missing: string[];
+  /** 빠졌을 때 판단할 수 없게 되는 것(고정 문구 2.2). */
+  impact: string;
+}
+
+/** 3층 목적별 점검 줄(재료 선택 점검 4.3). 이 성적서에 적용되는 줄만 담는다. */
+export interface MaterialCheckLine {
+  id: "latency" | "riskDirection" | "averaging" | "curveImbalance";
+  met: boolean;
+  /** 화면에 보이는 짧은 이름. */
+  title: string;
+  /** 고객 선언(성적서 이름) 또는 조건 값. */
+  declared: string;
+  /** 넣으면 이 줄이 충족되는 지표. 지표로 채울 수 없는 줄(지연시간)은 빈 배열. */
+  recommended: string[];
+  /** 미충족일 때 1.4 에 찍는 문장. */
+  shortfall: string;
+}
+
+/**
+ * 재료 선택 점검 결과(입력 설계 › 재료 선택 점검). 성적서 생성 때 만들어 성적서 데이터에 저장한다 —
+ * 발급본은 나중에 문안이나 규칙이 바뀌어도 그대로다. AI·심판에는 보내지 않는다.
+ */
+export interface MaterialCheckResult {
+  /** 점검 표 버전("주.부"). */
+  version: string;
+  /** 2층 — 분모는 이진·다중 11, 멀티레이블 12. */
+  reporting: { total: number; provided: number; items: MaterialCheckItem[] };
+  /** 3층 — 분모는 적용되는 줄 수(0 이면 해당 없음). */
+  purpose: { applicable: number; met: number; lines: MaterialCheckLine[] };
+  /** 지금 판정의 경고 id. `reporting:<번호>`·`purpose:<줄 id>`. */
+  warningIds: string[];
+  /** 4번 줄에 쓴 불균형 비율(3절과 같은 자릿수 전의 값)과 그 분포의 출처. */
+  imbalanceRatio: number | null;
+  distributionSource: "validation" | "upload" | null;
+  /** 생성 전 안내 확인 기록. 버전이 같고 지금 경고를 모두 담은 기록만 인정한다. */
+  acknowledgement: { at: string; version: string } | null;
+  /** 성적서에 찍는 문구(고정 문구 14 · 2절). */
+  printed: {
+    /** 표지 표준 문구(2.3). */
+    cover: string;
+    /** 1.4 "제공되지 않은 정보" 문장. 다 제공됐으면 없음. */
+    notProvided?: string;
+    /** 1.4 영향 문장 — 빠진 항목마다 한 줄(2.2). */
+    impacts: string[];
+    /** 1.4 목적별 점검 미충족 줄. */
+    purposeShortfalls: string[];
+    /** 6.0 세 줄. */
+    summary: Array<{ label: string; value: string; note: string }>;
+    /** 5절 평균 방식 문장을 바꿔 찍을 때(3번 줄 미충족, 다중 클래스). */
+    averagingSentence?: string;
+  };
 }
 
 /**

@@ -49,7 +49,7 @@ function fieldOf(cardId: ComposerCardId, fieldId: string) {
 }
 
 /** 고른 선택지 하나를 성적서 이름으로. "기타"면 적은 내용을 괄호로 붙인다. */
-function choiceLabel(
+export function choiceLabel(
   cardId: ComposerCardId,
   fieldId: string,
   choice: string,
