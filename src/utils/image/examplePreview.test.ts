@@ -4,7 +4,7 @@
  * 캔버스 그리기는 jsdom 에 없어 여기서 그리지 않는다. 크기 계산과 판단은 순수 함수로 고정하고,
  * 실제 축소는 브라우저 확인(큰 사진을 올려 발급)으로 본다.
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -65,14 +65,12 @@ describe("예산과 발급 용량", () => {
     expect(exceedsIssueLimit(filler(ISSUE_CONTENT_MAX_BYTES * 0.96))).toBe(true);
   });
 
-  it("발급 상한은 백엔드 MAX_CONTENT_BYTES 와 같다", () => {
-    const backend = readFileSync(
-      resolve(__dirname, "../../../../Capstone_Back/app/issuance/schemas.py"),
-      "utf-8",
-    );
-    const match = backend.match(/MAX_CONTENT_BYTES\s*=\s*([\d_]+)/);
-    // 백엔드 저장소가 옆에 없으면(프론트만 받은 CI) 대조를 건너뛴다.
-    if (!match) return;
-    expect(Number(match[1].replaceAll("_", ""))).toBe(ISSUE_CONTENT_MAX_BYTES);
+  // 백엔드 저장소가 옆에 없으면(프론트만 받은 CI) 대조를 건너뛴다. 파일을 읽기 전에 확인해야 한다 —
+  // 종전에는 readFileSync 가 먼저 예외를 내 CI 에서 실패했다.
+  const backendSchemas = resolve(__dirname, "../../../../Capstone_Back/app/issuance/schemas.py");
+  it.skipIf(!existsSync(backendSchemas))("발급 상한은 백엔드 MAX_CONTENT_BYTES 와 같다", () => {
+    const match = readFileSync(backendSchemas, "utf-8").match(/MAX_CONTENT_BYTES\s*=\s*([\d_]+)/);
+    expect(match).not.toBeNull();
+    expect(Number(match![1].replaceAll("_", ""))).toBe(ISSUE_CONTENT_MAX_BYTES);
   });
 });
