@@ -26,6 +26,9 @@ export function printedImbalanceRatio(ratio: number): number {
   return Number(ratio.toFixed(2));
 }
 
+/** 3절 진단의 균형 기준(서술 설계 D20). IR 이 이 값 **미만**이어야 균형(경미)이다. */
+export const BALANCED_IMBALANCE_RATIO = 1.5;
+
 export function buildDatasetDiagnosis(
   metadata: { class_distribution?: Record<string, number> } | null | undefined,
   imbalanceRatio?: number,
@@ -76,12 +79,16 @@ export function buildDatasetDiagnosis(
           `분류 성능 지표의 해석에도 주의가 필요하다.`,
       );
     } else if (ratio > 0) {
-      const balanced = ratio <= 1.5;
+      // 서술 설계 D20: IR 1.5 미만이 '경미'다. 꼭 1.5 는 불균형 쪽이다(종전 `<= 1.5` 는
+      // 1.5 를 균형으로 찍어 9절 불균형 판정과 어긋났다). 비교는 찍힌 값(소수 둘째 자리)으로
+      // 한다 — 1.497 을 "1.50" 으로 찍고 "1.50 미만"이라고 말하지 않기 위해서다.
+      // 이 문장은 생성 때 만들어 저장하므로 이미 발행된 성적서의 3절은 바뀌지 않는다.
+      const balanced = printedImbalanceRatio(ratio) < BALANCED_IMBALANCE_RATIO;
       parts.push(
         `클래스 불균형 비율(Imbalance Ratio)은 ${ratio.toFixed(2)}로, ` +
           (balanced
-            ? "허용 기준(≤ 1.50) 이내의 균형 상태이다."
-            : "허용 기준(1.50)을 초과하여 클래스 불균형에 따른 성능 지표 해석에 주의가 필요하다."),
+            ? "허용 기준(< 1.50) 이내의 균형 상태이다."
+            : "허용 기준(1.50 미만)을 벗어나 클래스 불균형에 따른 성능 지표 해석에 주의가 필요하다."),
       );
     }
   }

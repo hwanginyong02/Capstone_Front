@@ -40,7 +40,7 @@ describe("3절 데이터셋 진단 — 백엔드 값을 우선한다", () => {
     );
 
     expect(text).toContain("9.00");
-    expect(text).toContain("초과");
+    expect(text).toContain("벗어나");
   });
 
   it("백엔드 값이 없으면 분포에서 계산한다(2종 이상일 때만)", () => {
@@ -67,6 +67,41 @@ describe("3절 데이터셋 진단 — 백엔드 값을 우선한다", () => {
     const text = buildDatasetDiagnosis({ class_distribution: { A: 50, B: 50 } }, 1, 3, 100, "binary");
 
     expect(text).toContain("3개 샘플이 평가에서 제외");
+  });
+});
+
+/**
+ * 서술 설계 D20: IR 1.5 미만이 '경미'(균형)다. 종전 `<= 1.5` 는 꼭 1.5 를 균형으로 찍어
+ * 9절 불균형 판정(백엔드 imbalance_effect, IR ≥ 1.5 부터 불균형)과 어긋났다.
+ */
+describe("3절 데이터셋 진단 — 불균형 경계 1.5 (D20)", () => {
+  it("IR 이 꼭 1.5 면 불균형 쪽이다", () => {
+    const text = buildDatasetDiagnosis({ class_distribution: { A: 60, B: 40 } }, 1.5, 0, 100, "binary");
+
+    expect(text).toContain("1.50로");
+    expect(text).not.toContain("균형 상태");
+    expect(text).toContain("주의가 필요하다");
+  });
+
+  it("분포에서 계산한 IR 이 꼭 1.5 여도 불균형 쪽이다", () => {
+    const text = buildDatasetDiagnosis({ class_distribution: { A: 60, B: 40 } }, undefined, 0, 100, "binary");
+
+    expect(text).toContain("1.50로");
+    expect(text).not.toContain("균형 상태");
+  });
+
+  it("IR 1.49 는 균형(경미)이다", () => {
+    const text = buildDatasetDiagnosis({ class_distribution: { A: 149, B: 100 } }, 1.49, 0, 249, "binary");
+
+    expect(text).toContain("1.49로");
+    expect(text).toContain("허용 기준(< 1.50) 이내의 균형 상태이다.");
+  });
+
+  it("찍힌 값이 1.50 이면(1.497) 불균형 쪽이다 — '1.50 … 미만'이라고 말하지 않는다", () => {
+    const text = buildDatasetDiagnosis({ class_distribution: { A: 60, B: 40 } }, 1.497, 0, 100, "binary");
+
+    expect(text).toContain("1.50로");
+    expect(text).not.toContain("균형 상태");
   });
 });
 
