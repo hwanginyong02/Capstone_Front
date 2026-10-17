@@ -41,6 +41,11 @@ const VERDICT_CONFIG = {
 interface ConclusionSectionProps {
   conclusion: ConclusionData;
   source?: NarrativeSource;
+  /**
+   * 아슬아슬 지표 한 줄(생성 때 저장, 설계 D12). 있으면 8.3 에 찍는다 — 6.1 판정 규칙의 "8.3에 별도
+   * 표시하였다"가 가리키는 자리다. 아슬아슬 지표가 없거나 이 키가 생기기 전 성적서에는 없다.
+   */
+  nearTargetNote?: string;
 }
 
 /** 서술 블록: LLM이 채울 텍스트가 있으면 인용, 없으면 "생성 예정" 플레이스홀더 표시 */
@@ -62,7 +67,7 @@ function NarrativeBlock({ title, text }: { title: string; text: string }) {
   );
 }
 
-export function ConclusionSection({ conclusion, source }: ConclusionSectionProps) {
+export function ConclusionSection({ conclusion, source, nearTargetNote }: ConclusionSectionProps) {
   const config = VERDICT_CONFIG[conclusion.verdict];
   const Icon = config.icon;
 
@@ -114,8 +119,15 @@ export function ConclusionSection({ conclusion, source }: ConclusionSectionProps
       {/* 8.2 전반적 성능 및 일반화 능력 총평 */}
       <NarrativeBlock title="전반적 성능 및 일반화 능력 총평" text={conclusion.narrative} />
 
-      {/* 8.3 기술적 취약점 및 잠재적 리스크 요약 */}
-      <NarrativeBlock title="기술적 취약점 및 잠재적 리스크 요약" text={conclusion.risks} />
+      {/* 8.3 기술적 취약점 및 잠재적 리스크 요약 — 아슬아슬 지표 표시는 규칙으로 정해 서술 아래 찍는다. */}
+      <div className="space-y-3">
+        <NarrativeBlock title="기술적 취약점 및 잠재적 리스크 요약" text={conclusion.risks} />
+        {nearTargetNote && (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">
+            {nearTargetNote}
+          </p>
+        )}
+      </div>
     </section>
   );
 }

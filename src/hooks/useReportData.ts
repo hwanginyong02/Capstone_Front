@@ -28,6 +28,7 @@ import {
   confidenceIntervalNote,
   parseConfidenceIntervals,
 } from "../lib/report/confidenceIntervals";
+import { attachNearTarget, nearTargetNote } from "../lib/report/nearTarget";
 import { normalizeReportContent } from "../lib/report/normalizeReportContent";
 import { evaluateStatus } from "../lib/report/evaluateStatus";
 import { fetchNarrative } from "../lib/report/fetchNarrative";
@@ -230,8 +231,13 @@ export function useReportData(id: string): UseReportDataResult {
         // 95% 신뢰구간(설계 D29) — 엔진은 고른 지표 전부를 계산하고, 판정 대상 지표에만 붙인다(`isJudged`).
         // 6.0 방식 한 줄은 지금 만들어 저장한다. 판정 대상에 붙은 구간이 없으면 키를 두지 않는다.
         const confidenceIntervals = parseConfidenceIntervals(success_metrics.confidence_intervals);
-        const updatedKpiResults = attachConfidenceIntervals(kpiResultsWithoutCi, confidenceIntervals);
+        // 아슬아슬(설계 D12) — 판정 대상 지표에 margin·nearTarget 을 붙인다(`computeVerdict.ts` 한 곳의 식).
+        // 8.3 한 줄은 지금 만들어 저장한다. 아슬아슬 지표가 없으면 키를 두지 않는다.
+        const updatedKpiResults = attachNearTarget(
+          attachConfidenceIntervals(kpiResultsWithoutCi, confidenceIntervals),
+        );
         const ciNote = confidenceIntervalNote(updatedKpiResults, confidenceIntervals);
+        const nearNote = nearTargetNote(updatedKpiResults);
 
         // 2. 오차 행렬(Confusion Matrix) 치환
         let confusionMatrix = null;
@@ -392,6 +398,7 @@ export function useReportData(id: string): UseReportDataResult {
             ? { errorRatios, errorRatioSentence: errorRatioSentence(errorRatios, taskTypeResolved) }
             : {}),
           ...(ciNote ? { confidenceIntervalNote: ciNote } : {}),
+          ...(nearNote ? { nearTargetNote: nearNote } : {}),
           conclusion: ruleConclusion,  // full ConclusionData (verdict/score + 빈 서술)
           datasetDiagnosis,
           charts: { confusionMatrix, rocCurve, prCurve },

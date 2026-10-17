@@ -16,7 +16,7 @@ import type {
 } from "../../types/finalReport.types";
 import type { ConfusionMatrixData } from "../../types/report.types";
 import { buildClassReportTable } from "./classReportTable";
-import { isJudged } from "./computeVerdict";
+import { computeMargin, isJudged, isNearTarget } from "./computeVerdict";
 
 export interface FactSheetMetric {
   metric_id: string;
@@ -29,6 +29,12 @@ export interface FactSheetMetric {
   /** 95% 신뢰구간(설계 D29). 판정 대상 지표(`isJudged`)에 구간이 붙었을 때만 숫자, 아니면 null. */
   ci_low: number | null;
   ci_high: number | null;
+  /**
+   * 목표값과의 차이(설계 D12) — 0 이상이면 충족 쪽(낮을수록 좋은 지표는 목표 − 값). 판정 대상 지표만
+   * 숫자(소수 4자리), 아니면 null. near_target 은 |margin| < |목표값| × 3% 이고, 판정 대상이 아니면 false.
+   */
+  margin: number | null;
+  near_target: boolean;
 }
 
 export interface FactSheetPerClass {
@@ -129,6 +135,12 @@ function num(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
+/** 소수 4자리 반올림. 숫자가 아니면 null. */
+function round4(v: number | null): number | null {
+  const n = num(v);
+  return n === null ? null : Math.round(n * 1e4) / 1e4;
+}
+
 /**
  * fact_sheet 의 혼동행렬 — 멀티레이블은 **전 레이블 합계**로 보낸다 (ISSUES.md C-08).
  *
@@ -206,6 +218,10 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
       // 판정 대상 여부는 판정과 같은 식 하나로 본다 — 구간은 판정 대상 지표에만 싣는다.
       ci_low: r.ci && isJudged(r) ? r.ci.low : null,
       ci_high: r.ci && isJudged(r) ? r.ci.high : null,
+      // 아슬아슬도 판정과 같은 식으로 본다. 마진은 뺄셈 끝자리 잡음(0.02399999…)이 서술로 새지 않게
+      // 4자리로 반올림해 싣는다 — 아슬아슬 판정은 반올림 전 값으로 이미 했다.
+      margin: round4(computeMargin(r)),
+      near_target: isNearTarget(r),
     };
   });
 

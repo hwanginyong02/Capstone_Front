@@ -254,6 +254,13 @@ export interface KpiResult {
    * 이 키가 생기기 전 성적서에는 없다.
    */
   ci?: KpiConfidenceInterval;
+  /**
+   * 목표값과의 차이(높을수록 좋은 지표는 값 − 목표, 낮을수록 좋은 지표는 목표 − 값)와 아슬아슬 여부
+   * (서술 설계 D12, `computeVerdict.ts` 의 `computeMargin`·`isNearTarget`). 판정 대상 지표에만 붙는다.
+   * **이 키가 있는 성적서만** 6.1 판정 규칙에 3% 문장을 찍는다. 이 키가 생기기 전 성적서에는 없다.
+   */
+  margin?: number;
+  nearTarget?: boolean;
 }
 
 /** 지표 하나의 95% 신뢰구간. method 는 백엔드 표기 그대로(wilson·bootstrap_multinomial·bootstrap·delong·logit·normal). */
@@ -373,6 +380,11 @@ export interface FinalReportData {
    * 판정 대상 지표에 구간이 하나도 없으면 두지 않는다.
    */
   confidenceIntervalNote?: string;
+  /**
+   * 8.3 에 찍는 아슬아슬 지표 한 줄(서술 설계 D12). 생성 때 만들어 저장한다. 아슬아슬 지표가 없거나
+   * 이 키가 생기기 전 성적서에는 없다.
+   */
+  nearTargetNote?: string;
   charts: {
     confusionMatrix: ConfusionMatrixData | null;
     rocCurve: { fpr: number[]; tpr: number[]; auroc?: number } | null;

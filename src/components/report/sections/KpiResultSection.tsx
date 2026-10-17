@@ -7,6 +7,7 @@ import type {
 import { MetricRow } from "../shared/MetricRow";
 import { PassBadge } from "../shared/PassBadge";
 import { verdictRuleText } from "../../../lib/report/reportConstants";
+import { hasNearTargetMarks } from "../../../lib/report/nearTarget";
 import { describeDerivation } from "../../../lib/report/derivationText";
 
 import type { TaskType } from "../../../data/evaluationData";
@@ -129,8 +130,10 @@ export function KpiResultSection({
         </table>
         {showVerdictRule && (
           <p className="text-xs leading-5 text-slate-500">
+            {/* 3% 문장은 아슬아슬 표시(nearTarget)를 붙인 성적서에만 — 8.3 에 표시한 적 없는 옛 성적서는 종전 문안. */}
             {verdictRuleText(
               kpiResults.filter((r) => r.isCore).map((r) => `${r.name}(${r.metricId})`),
+              hasNearTargetMarks(kpiResults),
             )}
           </p>
         )}

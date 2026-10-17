@@ -76,7 +76,11 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         confusionCounts={data.confusionCounts}
         errorRatioSentence={data.errorRatioSentence}
       />
-      <ConclusionSection conclusion={data.conclusion} source={data.narrativeSource} />
+      <ConclusionSection
+        conclusion={data.conclusion}
+        source={data.narrativeSource}
+        nearTargetNote={data.nearTargetNote}
+      />
       <RecommendSection
         recommendations={data.recommendations}
         narrative={data.recommendationNarrative}

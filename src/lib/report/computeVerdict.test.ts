@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { computeVerdict, isJudged, resolveCoreMetricIds } from "./computeVerdict";
+import {
+  computeMargin,
+  computeVerdict,
+  isJudged,
+  isNearTarget,
+  resolveCoreMetricIds,
+} from "./computeVerdict";
 import type { KpiResult } from "../../types/finalReport.types";
 
 function kpi(p: Partial<KpiResult>): KpiResult {
@@ -175,5 +181,62 @@ describe("isJudged — 판정 대상 한 곳 (신뢰구간 등도 이 식을 본
       kpi({ metricId: "M3", threshold: 0.5, status: "unavailable" }),
     ];
     expect(computeVerdict(rows, "binary", []).judgedCount).toBe(rows.filter(isJudged).length);
+  });
+});
+
+/**
+ * 아슬아슬(근소 차이) — 서술 설계 D12, 고정 문구 10 마지막 문장. |마진| < |목표값| × 3% (엄격 미만).
+ * 설계 원문의 "목표값 × 3%" 를 목표값 절댓값으로 고쳤다 — 목표가 음수(MCC)여도 폭이 양수다.
+ * 경계값 테스트는 부동소수 오차가 없는 수(목표 100 → 폭 3)로 고정한다.
+ */
+describe("computeMargin·isNearTarget — 아슬아슬 한 곳 (D12)", () => {
+  it("높을수록 좋은 지표: 마진 = 값 − 목표(미달이면 음수)", () => {
+    expect(computeMargin(kpi({ value: 103, threshold: 100 }))).toBe(3);
+    expect(computeMargin(kpi({ value: 97, threshold: 100, status: "fail" }))).toBe(-3);
+  });
+
+  it("낮을수록 좋은 지표: 마진 = 목표 − 값(충족이면 양수)", () => {
+    expect(computeMargin(kpi({ value: 97, threshold: 100, higherIsBetter: false }))).toBe(3);
+    expect(computeMargin(kpi({ value: 103, threshold: 100, higherIsBetter: false, status: "fail" }))).toBe(-3);
+  });
+
+  it("판정 대상이 아니면 마진 null, 아슬아슬 아님", () => {
+    const noTarget = kpi({ value: 0.8, threshold: null });
+    const unavailable = kpi({ value: 0, threshold: 0.8, status: "unavailable" });
+    expect(computeMargin(noTarget)).toBeNull();
+    expect(computeMargin(unavailable)).toBeNull();
+    expect(isNearTarget(noTarget)).toBe(false);
+    // 측정 불가 지표는 value 0 이라 목표 0 근처면 아슬아슬처럼 보일 수 있다 — 판정 대상이 아니다.
+    expect(isNearTarget(kpi({ value: 0, threshold: 0.001, status: "unavailable" }))).toBe(false);
+  });
+
+  it("경계: |마진| 이 꼭 목표의 3% 이면 아슬아슬이 아니다(엄격 미만) — 합격·미달 양쪽", () => {
+    expect(isNearTarget(kpi({ value: 103, threshold: 100 }))).toBe(false);
+    expect(isNearTarget(kpi({ value: 97, threshold: 100, status: "fail" }))).toBe(false);
+    expect(isNearTarget(kpi({ value: 102.99, threshold: 100 }))).toBe(true);
+    expect(isNearTarget(kpi({ value: 97.01, threshold: 100, status: "fail" }))).toBe(true);
+  });
+
+  it("3% 안팎 — 목표 0.8 에서 차이 0.02 는 아슬아슬, 0.032(4%)는 아니다", () => {
+    expect(isNearTarget(kpi({ value: 0.82, threshold: 0.8 }))).toBe(true);
+    expect(isNearTarget(kpi({ value: 0.78, threshold: 0.8, status: "fail" }))).toBe(true);
+    expect(isNearTarget(kpi({ value: 0.832, threshold: 0.8 }))).toBe(false);
+    expect(isNearTarget(kpi({ value: 0.768, threshold: 0.8, status: "fail" }))).toBe(false);
+  });
+
+  it("음수 목표(MCC −0.1)에서도 폭은 |목표| × 3% = 0.003 이다", () => {
+    expect(isNearTarget(kpi({ metricId: "M5", value: -0.0985, threshold: -0.1 }))).toBe(true);
+    expect(isNearTarget(kpi({ metricId: "M5", value: -0.1015, threshold: -0.1, status: "fail" }))).toBe(true);
+    expect(isNearTarget(kpi({ metricId: "M5", value: -0.09, threshold: -0.1 }))).toBe(false);
+  });
+
+  it("낮을수록 좋은 지표(FPR 목표 0.1): 0.102 미달도 아슬아슬, 0.09 는 아니다", () => {
+    expect(isNearTarget(kpi({ metricId: "M8", value: 0.102, threshold: 0.1, higherIsBetter: false, status: "fail" }))).toBe(true);
+    expect(isNearTarget(kpi({ metricId: "M8", value: 0.09, threshold: 0.1, higherIsBetter: false }))).toBe(false);
+  });
+
+  it("목표 0 이면 폭이 0 이라 아슬아슬이 나오지 않는다", () => {
+    expect(isNearTarget(kpi({ value: 0, threshold: 0 }))).toBe(false);
+    expect(isNearTarget(kpi({ value: 0.0001, threshold: 0 }))).toBe(false);
   });
 });

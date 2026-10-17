@@ -122,8 +122,20 @@ describe("6.1 판정 규칙 문구", () => {
     const rule = screen.getByText(/^판정 규칙:/);
     expect(rule.textContent).toContain("핵심 지표는 의뢰자가 지정하였다(Accuracy(M1))");
     expect(rule.textContent).toContain("판정 불가");
-    // 근소 차이 표시(8.3)는 아직 구현되지 않아 그 문장을 찍지 않는다.
+    // 아슬아슬 표시 키가 없는 성적서(옛 성적서)는 8.3 에 표시한 적이 없어 3% 문장을 찍지 않는다.
     expect(rule.textContent).not.toContain("8.3");
+  });
+
+  it("아슬아슬 표시(nearTarget)를 붙인 성적서는 고정 문구 10 의 마지막 문장을 찍는다", () => {
+    const marked: KpiResult[] = [
+      { ...withCore[0], margin: 0.1, nearTarget: false },
+      { ...withCore[1], margin: -0.1, nearTarget: false },
+    ];
+    render(<KpiResultSection kpiResults={marked} taskType="binary" meta={meta()} showVerdictRule />);
+    const rule = screen.getByText(/^판정 규칙:/);
+    expect(rule.textContent).toMatch(
+      /측정 불확도는 반영하지 않았다\. 목표값과의 차이가 목표값의 3% 미만인 지표는 8\.3에 별도 표시하였다\.$/,
+    );
   });
 
   it("옛 규칙으로 판정한 성적서에는 찍지 않는다", () => {

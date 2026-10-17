@@ -56,20 +56,24 @@ export const REPORT_PURPOSE_OVERVIEW: Record<ReportPurposeKey, string> = {
 /**
  * 판정 규칙 — 성적서 고정 문구 10(서술 설계 D19, D32). 6.1 종합 핵심 성능 표에 인쇄한다.
  *
- * 문구의 마지막 문장("목표값과의 차이가 목표값의 3% 미만인 지표는 8.3에 별도 표시하였다")은
- * 뺐다. 그 표시가 아직 구현되지 않아, 넣으면 성적서가 하지 않은 일을 했다고 적게 된다.
- * 근소 차이 표시를 구현할 때 함께 되살린다.
+ * 문구의 마지막 문장(`NEAR_TARGET_SENTENCE`)은 아슬아슬 표시(`KpiResult.nearTarget`, 서술 설계 D12)를
+ * 붙인 성적서에만 찍는다(`nearTargetMarked`). 그 표시가 생기기 전 성적서는 8.3 에 표시한 적이 없어,
+ * 넣으면 성적서가 하지 않은 일을 했다고 적게 된다 — 그 성적서는 종전 문안 그대로다.
  */
-export function verdictRuleText(coreMetrics: string[]): string {
+export function verdictRuleText(coreMetrics: string[], nearTargetMarked = false): string {
   const core = coreMetrics.length > 0 ? coreMetrics.join(", ") : "지정 없음";
   return (
     "판정 규칙: 목표값이 설정되고 산출에 성공한 지표를 판정 대상으로 하며, 핵심 지표는 의뢰자가 " +
     `지정하였다(${core}). 핵심 지표가 하나라도 목표에 미달하면 불합격, 핵심 지표가 산출되지 ` +
     "않았거나 판정 대상 지표가 없으면 판정 불가, 핵심 지표는 모두 충족하였으나 그 외 지표 중 " +
     "미달이 있으면 조건부 합격, 모든 판정 대상 지표가 목표를 충족하면 합격으로 판정한다. 판정은 " +
-    "측정값을 목표값과 직접 비교하였으며 측정 불확도는 반영하지 않았다."
+    "측정값을 목표값과 직접 비교하였으며 측정 불확도는 반영하지 않았다." +
+    (nearTargetMarked ? ` ${NEAR_TARGET_SENTENCE}` : "")
   );
 }
+
+/** 고정 문구 10 의 마지막 문장 — 아슬아슬 표시를 한 성적서만(`verdictRuleText`). */
+export const NEAR_TARGET_SENTENCE = "목표값과의 차이가 목표값의 3% 미만인 지표는 8.3에 별도 표시하였다.";
 
 /** 1.4 제약사항 한 항목. `details` 는 그 항목 아래 줄(영향 문장·목적별 미충족 문장). */
 export interface ConstraintItem {

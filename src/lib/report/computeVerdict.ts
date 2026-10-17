@@ -74,6 +74,32 @@ export function isJudged(r: KpiResult): boolean {
   return r.threshold !== null && r.status !== "unavailable";
 }
 
+/**
+ * 아슬아슬(근소 차이)의 폭 — 목표값 크기의 3%(서술 설계 D12, 성적서 고정 문구 10 마지막 문장).
+ * 설계 원문은 "목표값 × 3%" 였으나 목표 0 이하(MCC 등)에서 폭이 음수가 되어 **목표값 절댓값**으로 고쳤다.
+ */
+export const NEAR_TARGET_RATIO = 0.03;
+
+/**
+ * 목표값과의 차이(마진). 판정 대상 지표만 숫자, 아니면 null.
+ * 높을수록 좋은 지표는 값 − 목표, 낮을수록 좋은 지표는 목표 − 값 — 즉 0 이상이면 충족 쪽이다.
+ */
+export function computeMargin(r: KpiResult): number | null {
+  if (!isJudged(r) || r.threshold === null) return null;
+  return r.higherIsBetter === false ? r.threshold - r.value : r.value - r.threshold;
+}
+
+/**
+ * 아슬아슬 = 판정 대상이고 |마진| < |목표값| × 3% (엄격 미만 — 꼭 3% 는 아니다).
+ * 합격·미달을 가리지 않는다. 목표 0 이면 폭이 0 이라 아슬아슬이 나오지 않는다.
+ * 6.1 문장·8.3 표시·9절 문제·AI 사실 시트가 모두 이 식 하나를 본다.
+ */
+export function isNearTarget(r: KpiResult): boolean {
+  const margin = computeMargin(r);
+  if (margin === null || r.threshold === null) return false;
+  return Math.abs(margin) < Math.abs(r.threshold) * NEAR_TARGET_RATIO;
+}
+
 export function computeVerdict(
   kpiResults: KpiResult[],
   taskType: TaskType,

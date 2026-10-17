@@ -182,3 +182,23 @@ describe("8.1 목표값 열", () => {
     expect(screen.queryByText("목표값 수준")).not.toBeInTheDocument();
   });
 });
+
+/** 8.3 아슬아슬 지표 한 줄(서술 설계 D12) — 생성 때 저장한 문장을 그대로 찍는다. */
+describe("8.3 아슬아슬 지표 표시", () => {
+  const note =
+    "목표값과의 차이가 목표값의 3% 미만인 지표(근소 차이): F1 Score(M4) 0.812(목표 0.800 이상, 충족).";
+
+  it("저장된 한 줄이 있으면 8.3 리스크 요약 아래 찍는다", () => {
+    render(<ConclusionSection conclusion={{ ...conclusion, risks: "리스크 서술" }} nearTargetNote={note} />);
+    const line = screen.getByText(note);
+    const heading = screen.getByText("기술적 취약점 및 잠재적 리스크 요약");
+    // 8.3 제목과 같은 묶음 안, 제목 뒤에 있다.
+    expect(heading.parentElement?.parentElement?.contains(line)).toBe(true);
+    expect(heading.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("없으면(아슬아슬 지표 없음·옛 성적서) 찍지 않는다", () => {
+    render(<ConclusionSection conclusion={conclusion} />);
+    expect(screen.queryByText(/근소 차이/)).not.toBeInTheDocument();
+  });
+});

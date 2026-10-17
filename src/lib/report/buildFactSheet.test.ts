@@ -215,3 +215,35 @@ describe("95% 신뢰구간 (설계 D29)", () => {
     expect(buildFactSheet(input()).ci_method_note).toBeNull();
   });
 });
+
+/** 아슬아슬(설계 D12) — 판정과 같은 식(computeMargin·isNearTarget)으로 margin·near_target 을 싣는다. */
+describe("아슬아슬 margin·near_target (설계 D12)", () => {
+  const metric = (p: Partial<KpiResult>): KpiResult => ({
+    metricId: "M1", name: "Accuracy", value: 0.8, threshold: 0.7, status: "pass", ...p,
+  });
+
+  it("판정 대상 지표는 margin(4자리)과 near_target, 아니면 null·false", () => {
+    const fs = buildFactSheet(
+      input({
+        kpiResults: [
+          metric({ metricId: "M4", value: 0.81234, threshold: 0.8 }),
+          metric({ metricId: "M8", value: 0.102, threshold: 0.1, higherIsBetter: false, status: "fail" }),
+          metric({ metricId: "M1", value: 0.9, threshold: 0.8 }),
+          metric({ metricId: "M2", threshold: null }),
+        ],
+      }),
+    );
+    expect(fs.metrics.map((m) => [m.metric_id, m.margin, m.near_target])).toEqual([
+      ["M4", 0.0123, true], // 싣는 값은 4자리 — 뺄셈 끝자리 잡음이 서술로 새지 않는다
+      ["M8", -0.002, true],
+      ["M1", 0.1, false],
+      ["M2", null, false],
+    ]);
+  });
+
+  it("음수 목표(MCC −0.1)", () => {
+    const fs = buildFactSheet(input({ kpiResults: [metric({ metricId: "M5", value: -0.0985, threshold: -0.1 })] }));
+    expect(fs.metrics[0].margin).toBe(0.0015);
+    expect(fs.metrics[0].near_target).toBe(true);
+  });
+});
