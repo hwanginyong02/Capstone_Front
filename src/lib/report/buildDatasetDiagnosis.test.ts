@@ -193,21 +193,41 @@ describe("3절 데이터셋 진단 — 백엔드 D20 판정을 따른다 (imbala
     // 엔진에서는 생기지 않는 조합이지만 막아 둔다 — "1.50 미만을 벗어나" 앞에 1.5 아래로 반올림한 숫자를 찍지 않는다.
     // 1.49996 은 둘째 자리가 이미 "1.50" 이라 그대로 둘째 자리다.
     const rounded = buildDatasetDiagnosis(
-      { class_distribution: { A: 60, B: 40 } }, undefined, 0, 100, "binary", effect("affected", 1.49996),
+      { class_distribution: { A: 70, B: 50 } }, undefined, 0, 120, "binary", effect("affected", 1.49996),
     );
     expect(rounded).toContain("1.50로");
 
     const twoDecimalsBelow = buildDatasetDiagnosis(
-      { class_distribution: { A: 60, B: 40 } }, undefined, 0, 100, "binary", effect("affected", 1.4912),
+      { class_distribution: { A: 70, B: 50 } }, undefined, 0, 120, "binary", effect("affected", 1.4912),
     );
     expect(twoDecimalsBelow).toContain("1.4912로");
     expect(twoDecimalsBelow).not.toContain("1.49로");
 
     const asIs = buildDatasetDiagnosis(
-      { class_distribution: { A: 60, B: 40 } }, undefined, 0, 100, "binary", effect("affected", 1.4),
+      { class_distribution: { A: 70, B: 50 } }, undefined, 0, 120, "binary", effect("affected", 1.4),
     );
     expect(asIs).toContain("1.4로");
     expect(asIs).not.toContain("1.40로");
+  });
+
+  it("엔진이 반올림해 실은 IR 이 판정과 어긋나면(1.49995 이상 1.5 미만) 반올림 전 M23 을 찍는다", () => {
+    // 37499 ÷ 25000 = 1.49996 — 엔진은 반올림 전 값으로 경미라 판정하고 IR 을 넷째 자리 1.5 로 싣는다.
+    // 실린 1.5 를 찍으면 "1.5000로, … 균형 상태"가 되어 숫자와 문장이 어긋난다.
+    const text = buildDatasetDiagnosis(
+      { class_distribution: { A: 37499, B: 25000 } }, 37499 / 25000, 0, 62499, "binary", effect("mild", 1.5),
+    );
+
+    expect(text).toContain("1.4999로");
+    expect(text).not.toContain("1.5000");
+    expect(text).toContain("허용 기준(< 1.50) 이내의 균형 상태이다.");
+  });
+
+  it("M23 이 없어도 분포로 계산한 반올림 전 값으로 찍는다", () => {
+    const text = buildDatasetDiagnosis(
+      { class_distribution: { A: 37499, B: 25000 } }, undefined, 0, 62499, "binary", effect("mild", 1.5),
+    );
+
+    expect(text).toContain("1.4999로");
   });
 });
 

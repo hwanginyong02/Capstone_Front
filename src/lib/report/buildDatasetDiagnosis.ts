@@ -108,11 +108,16 @@ export function buildDatasetDiagnosis(
 
     // 엔진 판정(imbalance_effect)이 있으면 판정과 같은 출처의 IR(M23 과 같은 값, 넷째 자리)을 찍는다 —
     // 찍는 숫자와 문장이 같은 값에서 나온다. 없으면(옛 응답·예측 없음) M23, 그것도 없으면 분포로 계산한다.
-    const ratio = imbalanceEffect
-      ? imbalanceEffect.imbalance_ratio
-      : typeof imbalanceRatio === "number"
-        ? imbalanceRatio
-        : (imbalanceRatioOf(dist) ?? 0);
+    // 단, 엔진은 반올림 전 값으로 판정하고 넷째 자리로 반올림해 싣는다. 1.49995 이상 1.5 미만은 경미인데
+    // 실린 값이 1.5 가 된다 — 그때만 반올림 전 값(M23, 없으면 분포로 계산)을 찍는다.
+    const rawRatio = typeof imbalanceRatio === "number" ? imbalanceRatio : (imbalanceRatioOf(dist) ?? 0);
+    const engineRatio = imbalanceEffect?.imbalance_ratio;
+    const engineRatioContradicts =
+      imbalanceEffect != null &&
+      engineRatio != null &&
+      (engineRatio < BALANCED_IMBALANCE_RATIO) !== (imbalanceEffect.level === "mild") &&
+      (rawRatio < BALANCED_IMBALANCE_RATIO) === (imbalanceEffect.level === "mild");
+    const ratio = imbalanceEffect && engineRatio != null && !engineRatioContradicts ? engineRatio : rawRatio;
 
     if (entries.length < 2) {
       // 클래스가 1종이면 '가장 많은 클래스 / 가장 적은 클래스' 가 자기 자신이라 비율이
