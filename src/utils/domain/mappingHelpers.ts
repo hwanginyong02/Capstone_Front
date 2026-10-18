@@ -28,6 +28,10 @@ export function getRoleStatusLabel(role: RequiredColumnDisplay, matchedCount: nu
  * Determine the visual match state for a single mapping row.
  */
 export function getRowMatchState(row: MappingRow, duplicate: boolean) {
+  // 평가 흐름에 놓지 않은 항목의 역할을 맡아 둔 행 — 사용자가 고친 것도, 확인할 문제도 아니다.
+  if (row.heldRole) {
+    return { label: "맡아 둠", tone: "outline" as const };
+  }
   if (duplicate) {
     return { label: "겹침", tone: "destructive" as const };
   }

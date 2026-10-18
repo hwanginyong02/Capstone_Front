@@ -4,7 +4,6 @@ import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import {
   TASK_TYPE_LABELS_KO,
-  MAPPABLE_ROLES_BY_TASK,
   PREDICTION_ROLE_ALTERNATIVES,
   resolveMissingRoleCodes,
   type TaskType,
@@ -12,6 +11,8 @@ import {
 } from "../../data/evaluationData";
 import type { MappingRole, MappingRow } from "../../types/mapping.types";
 import { applyRoleChange } from "../../utils/domain/applyRoleChange";
+import { buildRoleOptions } from "../../utils/domain/mappingPicks";
+import { isLeafReceived } from "../../data/reportComposer";
 import {
   describeMappingValidity,
   getMappingValidityReason,
@@ -46,26 +47,13 @@ interface ColumnMappingProps {
   /** 결정 임계값(확률→예측 파생 기준). 성적서 합격 목표값과 다른 개념이다(A-01). */
   decisionThreshold?: number | Record<string, number> | null;
   onDecisionThresholdChange?: (value: number | Record<string, number> | null) => void;
-}
-
-/**
- * 드롭다운 선택지를 task_type 에 맞는 역할로 좁힌다.
- *
- * 이미 배정된 역할(assignedRoles)은 목록에서 빠지지 않도록 합집합으로 둔다.
- * task_type 을 나중에 바꾸면 기존 매핑이 초기화되지 않아, 필터링만 하면 Select 가
- * 값에 해당하는 항목을 못 찾아 빈 칸으로 렌더되기 때문이다.
- */
-function buildRoleOptions(
-  taskType: TaskType,
-  assignedRoles: Iterable<MappingRole>,
-): Array<{ value: MappingRole; label: string }> {
-  const codes: MappingRole[] = [...MAPPABLE_ROLES_BY_TASK[taskType]];
-  for (const role of assignedRoles) {
-    if (role !== "ignore" && !codes.includes(role)) {
-      codes.push(role);
-    }
-  }
-  return [...codes, "ignore" as const].map((value) => ({ value, label: value }));
+  /**
+   * 평가 흐름에서 ① 평가 데이터에 넣은 항목. 넣지 않은 샘플 ID·지연시간 역할은 선택지에 없고,
+   * 클래스 레이블 설명 카드는 넣었을 때만 보인다. 없으면(평가 흐름 이전·시연) 모두 받는다.
+   */
+  evalDataPicks?: readonly string[];
+  /** 맡아 둔 행의 "평가 흐름 만들기에서 넣기" — 그 역할을 받는 ① 항목 id 를 넘긴다. */
+  onPlaceLeaf?: (leafId: string) => void;
 }
 
 export function ColumnMapping({
@@ -83,6 +71,8 @@ export function ColumnMapping({
   onGoBackToUpload = () => {},
   decisionThreshold = null,
   onDecisionThresholdChange = () => {},
+  evalDataPicks,
+  onPlaceLeaf,
 }: ColumnMappingProps) {
   const resolvedTaskType: TaskType = taskType || "multiclass";
   /**
@@ -96,9 +86,10 @@ export function ColumnMapping({
     () =>
       buildRoleOptions(
         resolvedTaskType,
+        evalDataPicks,
         rows.map((row) => row.confirmedRole).filter((role): role is MappingRole => role !== null),
       ),
-    [resolvedTaskType, rows],
+    [resolvedTaskType, evalDataPicks, rows],
   );
 
   const yTrueRow = useMemo(() => rows.find((r) => r.confirmedRole === "y_true"), [rows]);
@@ -238,7 +229,8 @@ export function ColumnMapping({
           onDecisionThresholdChange={onDecisionThresholdChange}
         />
 
-        {onClassLabelDescriptionsChange && (
+        {/* 클래스 레이블 설명은 선택 항목이다 — 평가 흐름에 넣었을 때만 받는다. */}
+        {isLeafReceived("evalData", "classLabelDescriptions", evalDataPicks) && (
           <ClassLabelDescriptionCard
             yTrueRow={yTrueRow}
             yTrueValues={yTrueValues}
@@ -252,6 +244,7 @@ export function ColumnMapping({
           roleCounts={roleCounts}
           handleRoleChange={handleRoleChange}
           roleOptions={roleOptions}
+          onPlaceLeaf={onPlaceLeaf}
         />
 
         <MappingStatusPanel

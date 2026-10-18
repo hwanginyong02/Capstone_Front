@@ -175,3 +175,12 @@ describe("isLeafReceived", () => {
     expect(isLeafReceived("evalData", "nope", undefined)).toBe(false);
   });
 });
+
+describe("getRowMatchState — 맡아 둔 행", () => {
+  it("'맡아 둠'이고 고친 것·문제로 보지 않는다", async () => {
+    const { getRowMatchState } = await import("./mappingHelpers");
+    const held = row("l", "ignore", { inferredRole: "latency", heldRole: "latency" });
+    expect(getRowMatchState(held, false)).toEqual({ label: "맡아 둠", tone: "outline" });
+    expect(getRowMatchState(row("l", "ignore"), false).label).not.toBe("맡아 둠");
+  });
+});

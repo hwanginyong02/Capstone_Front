@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { useStepFlow } from "../hooks/useStepFlow";
 import { WorkflowShell } from "../layout/WorkflowShell";
 import { ColumnMapping as ColumnMappingContent } from "../components/column-mapping/ColumnMapping";
 import { confirmMapping } from "../lib/report/confirmMappingApi";
 import { FileReuploadNotice } from "../components/workflow/FileReuploadNotice";
+import type { FlowEntryState } from "../types/reportComposer.types";
 
 /**
  * 컬럼 매핑 — ① 평가 데이터의 두 번째 화면. 업로드 다음이다(docs/MATERIAL_PICKER.md §3).
@@ -24,6 +26,13 @@ export function ColumnMapping() {
   const [isValid, setIsValid] = useState(false);
 
   const [isConfirming, setIsConfirming] = useState(false);
+  const navigate = useNavigate();
+
+  /** 맡아 둔 행의 항목을 평가 흐름에서 넣고 "다음"으로 이 화면에 돌아온다. */
+  const handlePlaceLeaf = (leafId: string) => {
+    const entry: FlowEntryState = { cardId: "evalData", leafIds: [leafId], returnStep: "mapping" };
+    navigate("/app/composer", { state: entry });
+  };
 
   const handleNext = async () => {
     setIsConfirming(true);
@@ -96,6 +105,8 @@ export function ColumnMapping() {
             : store.metadata?.detected_labels
         }
         columnUniqueValues={store.metadata?.column_unique_values}
+        evalDataPicks={store.materialPicks.evalData}
+        onPlaceLeaf={handlePlaceLeaf}
       />
     </WorkflowShell>
   );

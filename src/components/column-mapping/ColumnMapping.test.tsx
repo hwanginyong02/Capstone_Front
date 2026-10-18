@@ -121,3 +121,41 @@ describe("지표 제외는 없다 (docs/MATERIAL_PICKER.md §3)", () => {
     expect(screen.queryByRole("button", { name: /지표/ })).not.toBeInTheDocument();
   });
 });
+
+describe("평가 흐름에 놓지 않은 항목 (docs/MATERIAL_PICKER.md §12.4)", () => {
+  const base = { taskType: "multiclass" as const, rows: [row("t", "y_true"), row("p", "y_pred")], onRowsChange: vi.fn() };
+
+  it("클래스 레이블 설명 카드는 넣었을 때만 — picks 가 없으면(평가 흐름 이전) 보인다", () => {
+    const { unmount } = render(<ColumnMapping {...base} evalDataPicks={[]} />);
+    expect(screen.queryByText("클래스 레이블 설명")).not.toBeInTheDocument();
+    unmount();
+
+    const second = render(<ColumnMapping {...base} evalDataPicks={["classLabelDescriptions"]} />);
+    expect(screen.getByText("클래스 레이블 설명")).toBeInTheDocument();
+    second.unmount();
+
+    render(<ColumnMapping {...base} />);
+    expect(screen.getByText("클래스 레이블 설명")).toBeInTheDocument();
+  });
+
+  it("맡아 둔 행은 '맡아 둠'과 돌아올 항목을 보이고, 넣기 버튼은 그 항목 id 를 넘긴다", () => {
+    const onPlaceLeaf = vi.fn();
+    const held: MappingRow = {
+      ...row("latency_ms", "ignore"),
+      inferredRole: "latency",
+      heldRole: "latency",
+    };
+    render(<ColumnMapping {...base} rows={[...base.rows, held]} evalDataPicks={[]} onPlaceLeaf={onPlaceLeaf} />);
+    expect(screen.getByText("맡아 둠")).toBeInTheDocument();
+    expect(screen.getByText(/평가 흐름에 '지연시간 컬럼'을 넣으면 이 역할로 돌아옵니다/)).toBeInTheDocument();
+    // 맡아 둔 행은 "자동 매핑:" 줄 대신 맡아 둔 안내를 보인다.
+    expect(screen.queryByText(/자동 매핑:/)).not.toBeInTheDocument();
+    screen.getByRole("button", { name: "평가 흐름 만들기에서 넣기" }).click();
+    expect(onPlaceLeaf).toHaveBeenCalledWith("latencyColumn");
+  });
+
+  it("맡아 둔 행은 진행 판정에 영향이 없다 — 숨길 수 있는 역할은 매핑 필수가 아니다", () => {
+    const held: MappingRow = { ...row("sid", "ignore"), inferredRole: "id", heldRole: "id" };
+    expect(validityOf({ ...base, rows: [...base.rows, held], evalDataPicks: [] })).toBe(true);
+  });
+});
