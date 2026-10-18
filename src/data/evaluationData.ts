@@ -206,6 +206,29 @@ export const PREDICTION_ROLE_ALTERNATIVES: Record<
 export const MULTI_COLUMN_ROLES: readonly RequiredColumnCode[] = ["prob_class_*", "prob_label_*"];
 
 /**
+ * 확률 컬럼 이름의 접두어 — 백엔드 `PROB_COLUMN_PREFIXES`(Capstone_Back/app/evaluation/preprocessor.py)의
+ * 사본이다(테스트가 대조한다). 다중 클래스·다중 레이블에서 예측 컬럼 없이 확률로 예측을 만들 때, 백엔드는
+ * 컬럼 이름에서 접두어를 떼어 낸 나머지를 클래스·레이블 이름으로 본다. 이름이 데이터의 클래스·레이블과
+ * 맞지 않으면 검증 화면에서 "확률 컬럼 이름" 오류로 막힌다(M3).
+ */
+export const PROBABILITY_COLUMN_PREFIXES = ["prob_", "probability_", "score_", "p_"] as const;
+
+/**
+ * 확률 컬럼 이름 규칙 안내 한 문장(M3). 업로드 화면의 컬럼 안내와 매핑 화면이 같이 쓴다. 이진은 확률
+ * 컬럼이 하나라 이름을 보지 않으므로 null 이다.
+ */
+export function probabilityColumnNameRule(taskType: TaskType): string | null {
+  if (taskType === "binary") return null;
+  const kind = taskType === "multiclass" ? "클래스" : "레이블";
+  const example = taskType === "multiclass" ? "prob_cat, prob_dog" : "score_sports, score_news";
+  const prefixes = PROBABILITY_COLUMN_PREFIXES.join(" · ");
+  return (
+    `확률 컬럼 이름은 접두어(${prefixes}) 뒤에 데이터의 ${kind} 이름을 그대로 붙입니다. 예: ${example}. ` +
+    `예측 컬럼 없이 확률만 매핑하면 이 이름으로 ${kind}를 찾으므로, 이름이 맞지 않으면 검증 화면에서 막힙니다.`
+  );
+}
+
+/**
  * 요구 역할 중 실제로 배정되지 않은 것.
  *
  * 예측 역할은 확률 역할이 배정돼 있으면 충족된 것으로 본다 — 백엔드가 확률에서
@@ -266,7 +289,7 @@ const COLUMN_DISPLAY: Record<RequiredColumnCode, RequiredColumnDisplay> = {
   "prob_label_*": {
     code: "prob_label_*",
     label: "레이블별 확률",
-    description: "레이블마다 확률 컬럼이 하나씩 있습니다.",
+    description: "레이블마다 확률 컬럼이 하나씩 있습니다. 예: score_sports, score_news",
   },
   latency: {
     code: "latency",

@@ -2,7 +2,7 @@ import { Info } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Alert, AlertDescription } from "../ui/alert";
-import type { RequiredColumnDisplay, TaskType } from "../../data/evaluationData";
+import { probabilityColumnNameRule, type RequiredColumnDisplay, type TaskType } from "../../data/evaluationData";
 import type { MappingRole } from "../../types/mapping.types";
 import { getRoleStatusLabel } from "../../utils/domain/mappingHelpers";
 
@@ -17,6 +17,7 @@ export function RequiredColumnsCard({
   requiredRoles,
   roleCounts,
 }: RequiredColumnsCardProps) {
+  const nameRule = probabilityColumnNameRule(taskType);
   return (
     <Card>
       <CardHeader>
@@ -34,6 +35,14 @@ export function RequiredColumnsCard({
             지표 화면에서 고를 수 없습니다.
           </AlertDescription>
         </Alert>
+
+        {/* 확률 컬럼 이름 규칙(M3) — 업로드 화면 안내와 같은 문장. 이진은 확률 컬럼이 하나라 없다. */}
+        {nameRule && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>{nameRule}</AlertDescription>
+          </Alert>
+        )}
 
         {requiredRoles.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

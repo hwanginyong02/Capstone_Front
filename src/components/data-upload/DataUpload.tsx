@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import {
   getColumnDisplay,
+  probabilityColumnNameRule,
   TASK_TYPE_LABELS_KO,
   type RequiredColumnCode,
   type TaskType,
@@ -252,10 +253,11 @@ function getColumnHelpText(code: string, fallback: string) {
     return "확신 점수를 담는 컬럼입니다. 이진 분류에서는 보통 양성 클래스의 점수입니다.";
   }
   if (code === "prob_class_*") {
-    return "클래스마다 확률 컬럼을 하나씩 둡니다. 예: prob_cat, prob_dog, prob_bird";
+    // 이름 규칙(M3)은 매핑 화면과 같은 문장이다 — 접두어는 백엔드 PROB_COLUMN_PREFIXES 의 사본.
+    return `클래스마다 확률 컬럼을 하나씩 둡니다. ${probabilityColumnNameRule("multiclass")}`;
   }
   if (code === "prob_label_*") {
-    return "멀티레이블에서는 레이블마다 확률 컬럼을 하나씩 둡니다.";
+    return `${TASK_TYPE_LABELS_KO.multilabel}에서는 레이블마다 확률 컬럼을 하나씩 둡니다. ${probabilityColumnNameRule("multilabel")}`;
   }
   if (code === "latency") {
     // 이름은 latency_ms 하나로 안내한다(M4) — 자동 매핑과 규칙 폴백이 이 이름을 알아본다.
