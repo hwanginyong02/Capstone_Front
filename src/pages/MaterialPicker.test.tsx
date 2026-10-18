@@ -73,12 +73,12 @@ describe("화면 구조", () => {
     expect(within(node("지표와 합격 기준")).getByText("5")).toBeInTheDocument();
   });
 
-  it("필수 카드는 저장 없이 들어가 있고, 고르지 않은 선택 항목은 받지 않는다", () => {
+  it("저장 버튼이 없고, 들어오기만 해서는 아무것도 넣지 않는다", () => {
     renderPage();
 
     expect(screen.queryByRole("button", { name: "저장" })).not.toBeInTheDocument();
-    // 필수 카드의 키가 채워져 입력 화면이 홈페이지·팩스를 묻지 않는다.
-    expect(useWorkflowStore.getState().materialPicks.clientInfo).toEqual([]);
+    // 키는 사용자가 항목을 넣을 때만 생긴다(persist v15) — 들어오기만 한 사용자의 입력 화면은 그대로다.
+    expect(useWorkflowStore.getState().materialPicks).toEqual({});
   });
 
   it("재료 목록에서 카드를 고르면 가운데 아래에 필드가 구분별로 나오고, 이름·형식·설명이 마우스 없이 보인다", async () => {

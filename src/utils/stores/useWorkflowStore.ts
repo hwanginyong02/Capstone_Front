@@ -38,7 +38,6 @@ import {
 import {
   COMPOSER_CARDS,
   OPTIONAL_CARD_IDS,
-  REQUIRED_CARD_IDS,
   fieldOfLeaf,
   leafKind,
   pickKind,
@@ -741,7 +740,7 @@ interface WorkflowState {
    * 재료 선택 점검의 생성 전 안내를 보고도 진행한 기록(재료 선택 점검 6절). 검증 화면의 "다음"이
    * 남기고, 성적서 6.0 이 "확인 후 진행"으로 찍는다(`checkMaterialSelection` 이 인정 여부를 정함).
    *
-   * 최상위 새 키라 persist 판(13)을 올리지 않는다 — 옛 저장분에는 없고, 얕은 병합으로 초기값
+   * 최상위 새 키라 persist 판을 올리지 않았다 — 옛 저장분에는 없고, 얕은 병합으로 초기값
    * null 이 남는다. 작업 유형을 바꾸면 비운다.
    */
   materialCheckAck: MaterialCheckAck | null;
@@ -750,15 +749,21 @@ interface WorkflowState {
    * 선택 카드(⑥~⑨)가 성적서에 들어가는지.
    *
    * 필수 카드(①~⑤)는 늘 들어가 상태로 들지 않는다. 이 값이 **걸을 단계 목록을 정한다**
-   * (`utils/domain/workflowSteps.ts` 의 `buildStepList`). 재료 고르기에서 선택 카드의 항목을
+   * (`utils/domain/workflowSteps.ts` 의 `buildStepList`). 평가 흐름 만들기에서 선택 카드의 항목을
    * 바꿀 때 함께 맞춘다(`setMaterialPick`) — 항목이 하나라도 들어가면 켜진다.
    */
   composerCards: ComposerSelection;
 
   /**
-   * 재료 고르기에서 카드마다 받기로 한 권장·선택 항목(docs/MATERIAL_PICKER.md §11). 넣고 빼는
-   * 즉시 바뀐다. 키가 없으면 재료 고르기를 지나기 전의 상태다 — 입력 화면은 그 카드의 필드를 모두
-   * 받는다(`isFieldPicked`). 재료 고르기에 들어오면 필수 카드의 키를 채운다(`initRequiredPicks`).
+   * 평가 흐름 만들기에서 카드마다 넣은 항목(docs/MATERIAL_PICKER.md §12.2). 필수 항목도 넣어야
+   * 들어 있다. 넣고 빼는 즉시 바뀐다.
+   *
+   * 두 쪽이 다르게 읽는다.
+   * - 입력 쪽(`isFieldPicked`): 키가 없으면 그 카드의 필드를 모두 받는다. 필수는 늘 받는다.
+   * - 흐름 쪽(`isLeafPlaced`): 키가 없으면 아무것도 놓이지 않았다.
+   *
+   * 키는 사용자가 항목을 넣거나 블록을 비울 때만 생긴다 — 화면에 들어오기만 해서는 만들지 않는다.
+   * 잠긴 카드의 `[]` 는 사용자가 비운 것 하나의 뜻이다(persist v15).
    */
   materialPicks: MaterialPicks;
 
@@ -771,13 +776,9 @@ interface WorkflowState {
   /**
    * 카드별 입력값. 키는 재료 레지스트리의 `field.id` 다(`data/reportComposer.ts`).
    *
-   * **대부분 저장까지만 한다** — 백엔드로 보내거나 성적서에 인쇄하지 않는다.
-   * ⑨ 실행 환경은 기존 `basicInfo.env*` 와 내용이 겹치는데, 그쪽은 지금도 성적서를 그리는 데
-   * 쓰이므로 건드리지 않았다. 중복 정리는 별도 작업이다.
-   *
-   * 예외 둘: ② 핵심 지표는 판정에 쓰이고(`resolveCoreMetricIds`), ⑥ 학습 데이터는 성적서
-   * 학습 데이터 절이 직접 읽는다(`buildTrainingDatasetInfo`). ⑥ 은 Details 의 학습 데이터 폼을
-   * 흡수해 유일한 입력처다(persist v10).
+   * 성적서 매퍼가 받는 필드의 값만 골라 인쇄하고(`pickedValues`), 레지스트리의 `sentToAi` 필드는
+   * AI 서술 요청에도 실린다. ② 핵심 지표는 판정에도 쓰인다(`resolveCoreMetricIds`). ⑥ 은 Details 의
+   * 학습 데이터 폼을 흡수해 유일한 입력처다(persist v10).
    */
   composerMetrics: ComposerValueMap;
   composerPerspective: ComposerValueMap;
@@ -839,10 +840,8 @@ interface WorkflowState {
    * 선택 카드는 그 레인 맨 아래로 간다(`orderAfterPlacing`).
    */
   setMaterialPick: (cardId: ComposerCardId, ids: string[]) => void;
-  /** 여러 카드의 항목을 한 번에 바꾼다(추천 세트, 되돌리기). 준 카드만 바뀐다. */
+  /** 여러 카드의 항목을 한 번에 바꾼다(옛 화면의 추천 세트·되돌리기 — S3 에서 화면과 함께 지운다). */
   setMaterialPicks: (picks: MaterialPicks) => void;
-  /** 필수 카드 중 키가 없는 것을 빈 배열로 채운다 — 고르지 않은 선택 항목을 받지 않게 한다. */
-  initRequiredPicks: () => void;
   setCardOrder: (order: ComposerCardId[]) => void;
   setComposerMetrics: (
     value: ComposerValueMap | ((prev: ComposerValueMap) => ComposerValueMap),
@@ -1053,18 +1052,6 @@ export const useWorkflowStore = create<WorkflowState>()(
       setMaterialPick: (cardId, ids) => set((state) => applyMaterialPicks(state, { [cardId]: ids })),
 
       setMaterialPicks: (picks) => set((state) => applyMaterialPicks(state, picks)),
-
-      initRequiredPicks: () =>
-        set((state) => {
-          const missing = REQUIRED_CARD_IDS.filter((id) => state.materialPicks[id] === undefined);
-          if (missing.length === 0) return {};
-          return {
-            materialPicks: {
-              ...state.materialPicks,
-              ...Object.fromEntries(missing.map((id) => [id, [] as string[]])),
-            },
-          };
-        }),
 
       setCardOrder: (order) => set({ cardOrder: normalizeCardOrder(order) }),
 

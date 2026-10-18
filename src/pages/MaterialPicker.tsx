@@ -57,7 +57,6 @@ export function MaterialPicker() {
   const setMaterialPick = useWorkflowStore((s) => s.setMaterialPick);
   const setMaterialPicks = useWorkflowStore((s) => s.setMaterialPicks);
   const setCardOrder = useWorkflowStore((s) => s.setCardOrder);
-  const initRequiredPicks = useWorkflowStore((s) => s.initRequiredPicks);
 
   // 확인과 생성의 "재료 고르기에서 넣기"는 그 카드를 필드 패널에 연 채 들어온다.
   const focusCardId = (location.state as { cardId?: ComposerCardId } | null)?.cardId ?? null;
@@ -69,11 +68,6 @@ export function MaterialPicker() {
   const [undo, setUndo] = useState<{ label: string; picks: MaterialPicks; order: ComposerCardId[] } | null>(
     null,
   );
-
-  // 필수 카드는 처음부터 들어가 있다 — 고르지 않은 선택 항목(홈페이지·팩스 등)을 받지 않게 키를 채운다.
-  useEffect(() => {
-    initRequiredPicks();
-  }, [initRequiredPicks]);
 
   useEffect(() => {
     if (!scrollToPanel) return;
