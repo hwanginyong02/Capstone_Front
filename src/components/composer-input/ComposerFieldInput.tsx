@@ -17,7 +17,13 @@ import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { TEXTAREA_CLASS } from "../data-upload/shared";
 import { cn } from "../../utils/styling/styles";
 import { isFieldRequired, isOtherChosen } from "../../utils/domain/composerFieldGate";
-import { choiceLabel, entryLabel } from "../../data/reportComposer";
+import {
+  NOTE_MAX_LENGTH,
+  OTHER_TEXT_MAX_LENGTH,
+  choiceLabel,
+  entryLabel,
+} from "../../data/reportComposer";
+import { CharCount } from "./CharCount";
 import {
   MONTH_RANGE_KEYS,
   type ComposerField,
@@ -164,10 +170,12 @@ export function ComposerFieldInput({
             aria-label={field.label + " 기타 내용"}
             placeholder="무엇인지 적어 주세요"
             aria-invalid={(invalid && otherText.trim() === "") || undefined}
+            maxLength={OTHER_TEXT_MAX_LENGTH}
             value={otherText}
             onChange={(event) => onChange({ ...value, otherText: event.target.value, unknown: false })}
           />
         )}
+        {otherChosen && <CharCount length={otherText.length} max={OTHER_TEXT_MAX_LENGTH} />}
 
         {/* 덧붙이는 글(서술 설계 D26). 맞는 선택지가 없으면 글만 써도 답한 것으로 센다. */}
         {field.allowsNote && (
@@ -177,10 +185,12 @@ export function ComposerFieldInput({
             rows={2}
             aria-label={field.label + " 덧붙이는 글"}
             placeholder="덧붙이는 글 (선택)"
+            maxLength={NOTE_MAX_LENGTH}
             value={value?.note ?? ""}
             onChange={(event) => onChange({ ...value, note: event.target.value, unknown: false })}
           />
         )}
+        {field.allowsNote && <CharCount length={(value?.note ?? "").length} max={NOTE_MAX_LENGTH} multiline />}
 
         {field.input === "monthRange" && (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -343,9 +353,13 @@ export function ComposerFieldInput({
             aria-invalid={invalid || undefined}
             rows={3}
             placeholder={field.inputExample}
+            maxLength={field.maxLength}
             value={value?.text ?? ""}
             onChange={(event) => setText(event.target.value)}
           />
+        )}
+        {field.input === "textarea" && field.maxLength && (
+          <CharCount length={(value?.text ?? "").length} max={field.maxLength} multiline />
         )}
 
         {(field.input === "text" || field.input === "number" || field.input === "date") && (
@@ -361,9 +375,13 @@ export function ComposerFieldInput({
             }
             aria-invalid={invalid || undefined}
             placeholder={field.inputExample}
+            maxLength={field.input === "text" ? field.maxLength : undefined}
             value={value?.text ?? ""}
             onChange={(event) => setText(event.target.value)}
           />
+        )}
+        {field.input === "text" && field.maxLength && (
+          <CharCount length={(value?.text ?? "").length} max={field.maxLength} />
         )}
       </fieldset>
 

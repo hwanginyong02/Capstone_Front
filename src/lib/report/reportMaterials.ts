@@ -330,6 +330,10 @@ export interface ClientInputsSource {
  * 학습 데이터는 3절에 찍는 줄을 그대로 넘긴다 — 학습·평가 전처리 일치도 그 줄에 있다.
  */
 export function buildClientInputs(source: ClientInputsSource): ClientInputs {
+  return fitClientInputs(rawClientInputs(source));
+}
+
+function rawClientInputs(source: ClientInputsSource): ClientInputs {
   const { materials } = source;
   const descriptions = Object.fromEntries(
     Object.entries(source.classLabelDescriptions).filter(([, text]) => text.trim() !== ""),
@@ -365,4 +369,74 @@ export function buildClientInputs(source: ClientInputsSource): ClientInputs {
     },
     ...(Object.keys(descriptions).length > 0 ? { class_label_descriptions: descriptions } : {}),
   };
+}
+
+/**
+ * 백엔드가 받는 고객 입력의 직렬화 길이 상한 — `Capstone_Back/app/narrative/schemas.py` 의
+ * `MAX_CLIENT_INPUTS_CHARS`(테스트가 대조한다). 넘으면 서술 요청이 422 로 통째로 거절되어 성적서에
+ * AI 서술이 하나도 실리지 않는다(B7).
+ */
+export const CLIENT_INPUTS_MAX_CHARS = 20_000;
+
+/**
+ * 프론트가 맞추는 길이 — 상한의 90%. 백엔드는 `json.dumps` 의 기본 구분자(", "·": ")로 재어 프론트의
+ * `JSON.stringify` 보다 공백만큼 길게 센다. 그 차이와 배포 순서를 이 여유가 덮는다.
+ */
+export const CLIENT_INPUTS_TARGET_CHARS = Math.floor(CLIENT_INPUTS_MAX_CHARS * 0.9);
+
+/** 잘린 글 끝에 붙이는 표시. */
+export const TRUNCATED_MARK = "…(이하 생략)";
+
+/** 잘라도 남기는 앞부분 — 무슨 내용인지 알아볼 만큼. */
+const MIN_KEPT_CHARS = 40;
+
+/**
+ * 고객 입력이 `target` 자를 넘으면 **가장 긴 글부터** 잘라 맞춘다. 같은 입력에는 늘 같은 결과다
+ * (길이가 같으면 먼저 나온 글부터 자른다). 넘지 않으면 그대로 돌려준다.
+ *
+ * 입력 칸마다 글자 수 상한이 있어(`maxLength`) 보통은 자를 일이 없다. 상한이 생기기 전에 적어 둔 글,
+ * 클래스가 아주 많은 파일의 클래스 설명처럼 칸 상한으로 막을 수 없는 경우의 마지막 안전장치다. 모든
+ * 글을 줄여도 넘으면 클래스 설명을 통째로 빼고, 그래도 넘으면 그대로 보낸다(백엔드가 거절한다).
+ */
+export function fitClientInputs(
+  inputs: ClientInputs,
+  target: number = CLIENT_INPUTS_TARGET_CHARS,
+): ClientInputs {
+  if (JSON.stringify(inputs).length <= target) return inputs;
+  const fitted = structuredClone(inputs) as Record<string, unknown>;
+
+  for (;;) {
+    const excess = JSON.stringify(fitted).length - target;
+    if (excess <= 0) return fitted;
+    const longest = longestCuttable(fitted);
+    if (!longest) break;
+    const { holder, key, text } = longest;
+    const keep = Math.max(MIN_KEPT_CHARS, text.length - excess - TRUNCATED_MARK.length);
+    holder[key] = text.slice(0, keep) + TRUNCATED_MARK;
+  }
+
+  if ("class_label_descriptions" in fitted) {
+    delete fitted.class_label_descriptions;
+    if (JSON.stringify(fitted).length <= target) return fitted;
+  }
+  return fitted;
+}
+
+/** 아직 줄일 수 있는 글 중 가장 긴 것. 배열 안의 글(지표 이름 등)은 건드리지 않는다. */
+function longestCuttable(
+  node: Record<string, unknown>,
+): { holder: Record<string, unknown>; key: string; text: string } | null {
+  let best: { holder: Record<string, unknown>; key: string; text: string } | null = null;
+  const visit = (holder: Record<string, unknown>) => {
+    for (const [key, value] of Object.entries(holder)) {
+      if (typeof value === "string") {
+        if (value.length <= MIN_KEPT_CHARS + TRUNCATED_MARK.length) continue;
+        if (!best || value.length > best.text.length) best = { holder, key, text: value };
+      } else if (value && typeof value === "object" && !Array.isArray(value)) {
+        visit(value as Record<string, unknown>);
+      }
+    }
+  };
+  visit(node);
+  return best;
 }

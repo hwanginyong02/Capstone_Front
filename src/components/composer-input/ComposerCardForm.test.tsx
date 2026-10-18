@@ -65,6 +65,27 @@ describe("⑤ 평가 관점 — 유형별 질문", () => {
   });
 });
 
+describe("글자 수 상한 (B7)", () => {
+  it("긴 설명 칸은 상한을 넘겨 받지 않고 남은 글자를 늘 보인다", () => {
+    renderForm("trainingData", { values: { trainingDescription: { text: "가".repeat(1_990) } } });
+
+    expect(screen.getByLabelText("학습 데이터 설명")).toHaveAttribute("maxLength", "2000");
+    expect(screen.getByText("10자 남음")).toBeInTheDocument();
+  });
+
+  it("한 줄 칸은 상한의 80% 를 넘었을 때만 남은 글자를 보인다", () => {
+    // 여러 줄 칸(설명·비고·덧붙이는 글)은 늘 보이므로, 이 칸의 남은 수(50자)만 본다.
+    renderForm("trainingData", { values: { trainingDatasetName: { text: "가".repeat(150) } } });
+    expect(screen.queryByText("50자 남음")).not.toBeInTheDocument();
+  });
+
+  it("한 줄 칸이 상한에 닿으면 그렇다고 알린다", () => {
+    renderForm("trainingData", { values: { trainingDatasetName: { text: "가".repeat(200) } } });
+    expect(screen.getByRole("textbox", { name: /^데이터 이름/ })).toHaveAttribute("maxLength", "200");
+    expect(screen.getByText("최대 200자까지 적을 수 있어요")).toBeInTheDocument();
+  });
+});
+
 describe("전용 화면이 받는 필드는 그리지 않는다", () => {
   it("⑥ 예시 파일 두 칸은 학습 데이터 화면의 예시 파일 칸이 받는다", () => {
     renderForm("trainingData");

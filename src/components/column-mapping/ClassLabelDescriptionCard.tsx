@@ -4,6 +4,12 @@ import { Input } from "../ui/input";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import type { MappingRow } from "../../types/mapping.types";
+import { getCard } from "../../data/reportComposer";
+
+/** 클래스 하나의 설명 글자 수 상한 — 레지스트리 ① 클래스 레이블 설명(B7). */
+const DESCRIPTION_MAX_LENGTH = getCard("evalData").fields.find(
+  (field) => field.id === "classLabelDescriptions",
+)?.maxLength;
 
 interface ClassLabelDescriptionCardProps {
   yTrueRow: MappingRow | undefined;
@@ -53,6 +59,7 @@ export function ClassLabelDescriptionCard({
                   </Badge>
                   <Input
                     value={classLabelDescriptions[value] ?? ""}
+                    maxLength={DESCRIPTION_MAX_LENGTH}
                     onChange={(event) => handleChange(value, event.target.value)}
                     placeholder="이 클래스 레이블 설명"
                   />

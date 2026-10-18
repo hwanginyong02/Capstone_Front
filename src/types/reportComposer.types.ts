@@ -208,6 +208,13 @@ export interface ComposerField {
    * 글이다. 둘을 같은 칸으로 그리면 글자를 숫자 키패드로 치게 된다.
    */
   numeric?: boolean;
+  /**
+   * 글 칸의 글자 수 상한(`text`·`textarea` 의 값, 클래스마다 받는 글이면 칸마다). 입력 칸이 이 수를
+   * 넘겨 받지 않고 남은 글자를 보인다. AI 에 넘기는 고객 입력 전체에도 상한이 있어(백엔드 2만 자),
+   * 칸 하나가 그 몫을 다 쓰지 못하게 한다(B7). 덧붙이는 글·기타 칸은 `NOTE_MAX_LENGTH`·
+   * `OTHER_TEXT_MAX_LENGTH` 를 쓴다.
+   */
+  maxLength?: number;
   /** "모름"을 고를 수 있다. 고르면 필수 점검을 통과하고 성적서에는 "제공되지 않음"이 된다. */
   allowsUnknown?: boolean;
   /** 입력 화면에 붙이는 한 줄 도움말. */

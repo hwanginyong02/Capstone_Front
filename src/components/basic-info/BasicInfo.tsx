@@ -23,7 +23,8 @@ import { CalendarIcon } from "lucide-react";
 import { cn } from "../../utils/styling/styles";
 import type { BasicInfoFormData } from "../../types/workflow.types";
 import { fromIsoDate, toIsoDate } from "../../utils/domain/isoDate";
-import { choiceLabel, getCard, isFieldPicked, isPartPicked } from "../../data/reportComposer";
+import { NOTE_MAX_LENGTH, choiceLabel, getCard, isFieldPicked, isPartPicked } from "../../data/reportComposer";
+import { CharCount } from "../composer-input/CharCount";
 import { TEXTAREA_CLASS } from "../data-upload/shared";
 
 type FormDataSetter = (
@@ -46,6 +47,10 @@ function clientPicks(picks: readonly string[] | undefined) {
 
 /** 성적서 용도의 선택지 — 저장값·이름·설명 모두 레지스트리 한 벌이다. */
 const PURPOSE_FIELD = getCard("clientInfo").fields.find((item) => item.id === "reportPurpose")!;
+
+/** 레지스트리에 적힌 글자 수 상한(B7). */
+const maxLengthOf = (cardId: "clientInfo" | "model", fieldId: string) =>
+  getCard(cardId).fields.find((item) => item.id === fieldId)?.maxLength;
 
 interface ClientInfoFormProps {
   formData: BasicInfoFormData;
@@ -135,10 +140,12 @@ export function ClientInfoForm({ formData, onFormDataChange, picks }: ClientInfo
             <textarea
               className={TEXTAREA_CLASS}
               rows={2}
+              maxLength={NOTE_MAX_LENGTH}
               value={formData.reportPurposeNote ?? ""}
               onChange={(e) => update("reportPurposeNote", e.target.value)}
               placeholder="이 성적서를 왜 발급하는지 읽는 사람이 알아야 할 것 (선택)"
             />
+            <CharCount length={(formData.reportPurposeNote ?? "").length} max={NOTE_MAX_LENGTH} multiline />
           </Field>
 
           {formData.reportPurpose === "project" && (
@@ -158,7 +165,11 @@ export function ClientInfoForm({ formData, onFormDataChange, picks }: ClientInfo
               골랐을 때만 받는다. */}
           {show.projectNumber && (
             <Field label="과제 번호">
-              <Input value={formData.projectNumber} onChange={(e) => update("projectNumber", e.target.value)} />
+              <Input
+                value={formData.projectNumber}
+                maxLength={maxLengthOf("clientInfo", "projectNumber")}
+                onChange={(e) => update("projectNumber", e.target.value)}
+              />
             </Field>
           )}
         </CardContent>
@@ -209,6 +220,7 @@ export function ModelInfoForm({ formData, onFormDataChange }: ModelInfoFormProps
           <Field label="모델 용도" required>
             <Input
               value={formData.modelPurpose}
+              maxLength={maxLengthOf("model", "modelPurpose")}
               onChange={(e) => update("modelPurpose", e.target.value)}
               placeholder="예: 영상 기반 표면 결함 예측"
             />
@@ -216,6 +228,7 @@ export function ModelInfoForm({ formData, onFormDataChange }: ModelInfoFormProps
           <Field label="모델 분류" required>
             <Input
               value={formData.modelCategory}
+              maxLength={maxLengthOf("model", "modelCategory")}
               onChange={(e) => update("modelCategory", e.target.value)}
               placeholder="예: 분류 모델 (신경망)"
             />

@@ -26,6 +26,20 @@ import {
 import type { StepId } from "../types/workflow.types";
 
 /**
+ * 글 칸의 글자 수 상한(B7). AI 에 넘기는 고객 입력 전체가 백엔드 상한(2만 자)을 넘으면 서술 요청이
+ * 통째로 거절되므로, 칸 하나가 그 몫을 다 쓰지 못하게 한다. 긴 설명 칸(⑥ 학습 데이터 설명·비고)은
+ * 필드에 따로 적는다.
+ */
+/** 한 줄 글(이름·출처·형식·과제 번호·클래스 설명·기타 직접 입력). */
+export const SHORT_TEXT_MAX_LENGTH = 200;
+/** 1절 대상 문장 안에 끼워 찍히는 한 줄(모델 용도·모델 분류). */
+export const LINE_TEXT_MAX_LENGTH = 100;
+/** 선택지에 덧붙이는 글(allowsNote). */
+export const NOTE_MAX_LENGTH = 500;
+/** "기타"를 고르고 직접 적는 칸(otherChoice). */
+export const OTHER_TEXT_MAX_LENGTH = SHORT_TEXT_MAX_LENGTH;
+
+/**
  * 카드 9개. 배열 순서는 카드 번호 순(①~⑨)이다. 화면과 입력 순서는 `MATERIAL_CATEGORIES` 가 정한다.
  *
  * 카드와 필드를 나눈 기준(COMPOSER_COMPONENTS "카드를 나눈 기준"):
@@ -153,6 +167,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "cat = 집고양이 사진 (클래스마다 한 줄)",
         kind: "optional",
         input: "entries",
+        maxLength: SHORT_TEXT_MAX_LENGTH,
         entryKeysFrom: "classes",
         description: "클래스 값이 무엇을 뜻하는지입니다. 예: cat = 집고양이 사진",
         step: "mapping",
@@ -364,6 +379,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "2026-PRJ-001",
         kind: "optional",
         input: "text",
+        maxLength: SHORT_TEXT_MAX_LENGTH,
         description: "과제의 관리 번호입니다. 예: 2026-PRJ-001",
         mono: true,
         reportSection: "1절",
@@ -416,6 +432,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "통신사 고객 이탈 예측",
         kind: "required",
         input: "text",
+        maxLength: LINE_TEXT_MAX_LENGTH,
         description: "모델이 하는 일입니다. 예: 통신사 고객의 이탈 여부 예측",
         reportSection: "2절",
         sentToAi: true,
@@ -429,6 +446,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "분류 모델 (신경망)",
         kind: "required",
         input: "text",
+        maxLength: LINE_TEXT_MAX_LENGTH,
         description: "모델이 어떤 종류인지 한 줄로 적습니다. 예: 분류 모델(신경망), 텍스트 분류",
         reportSection: "1절",
         sentToAi: true,
@@ -544,6 +562,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "고객 로그 2024",
         kind: "required",
         input: "text",
+        maxLength: SHORT_TEXT_MAX_LENGTH,
         description: "모델을 학습시킨 데이터셋의 이름입니다. 예: 고객 로그 2024",
         allowsUnknown: true,
         reportSection: "7절",
@@ -561,6 +580,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "사내 CRM 로그 (직접 입력)",
         kind: "required",
         input: "text",
+        maxLength: SHORT_TEXT_MAX_LENGTH,
         description: "학습 데이터를 어디서 얻었는지입니다. 예: 사내 CRM 로그, AI Hub 공개 데이터",
         allowsUnknown: true,
         reportSection: "7절",
@@ -698,6 +718,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "데이터에 무엇이 들었고 어떻게 모았는지 (직접 입력)",
         kind: "optional",
         input: "textarea",
+        maxLength: 2_000,
         description: "학습 데이터에 무엇이 들었고 어떻게 모았는지입니다. 예: 2024년 가입 고객의 월별 사용 로그",
         reportSection: "7절",
       },
@@ -708,6 +729,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "정형 CSV, 이미지(JPG/PNG), 텍스트",
         kind: "optional",
         input: "text",
+        maxLength: SHORT_TEXT_MAX_LENGTH,
         description: "학습 데이터의 파일 형식이나 구조입니다. 예: 정형 CSV, 이미지(JPG/PNG), 텍스트",
         reportSection: "7절",
       },
@@ -717,6 +739,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "학습 데이터에 대해 그 밖에 알릴 것 (직접 입력)",
         kind: "optional",
         input: "textarea",
+        maxLength: 1_000,
         description: "학습 데이터에 대해 그 밖에 알릴 내용입니다. 예: 개인정보는 가명 처리함",
         reportSection: "7절",
       },
@@ -795,6 +818,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "2025년 1분기 고객 로그 (직접 입력)",
         kind: "required",
         input: "text",
+        maxLength: SHORT_TEXT_MAX_LENGTH,
         description: "성능을 잰 테스트 데이터를 어디서 얻었는지입니다. 예: 2025년 1분기 고객 로그",
         allowsUnknown: true,
         reportSection: "4절",
@@ -1028,6 +1052,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "XGBoost",
         kind: "required",
         input: "text",
+        maxLength: SHORT_TEXT_MAX_LENGTH,
         description: "모델 학습에 쓴 알고리즘입니다. 예: 랜덤포레스트, XGBoost",
         mono: true,
         allowsUnknown: true,

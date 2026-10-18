@@ -288,6 +288,28 @@ describe("① 평가 데이터 — 컬럼 매핑 항목", () => {
   });
 });
 
+describe("글자 수 상한 (B7)", () => {
+  it("칸이 나뉘지 않은 글 칸은 모두 상한이 있다 — 클래스마다 받는 글도", () => {
+    const textFields = COMPOSER_CARDS.flatMap((card) => card.fields).filter(
+      (field) =>
+        ((field.input === "text" || field.input === "textarea") && !field.parts) ||
+        (field.entryKeysFrom === "classes" && !field.numeric),
+    );
+    expect(textFields.length).toBeGreaterThan(0);
+    for (const field of textFields) expect(field.maxLength, field.id).toBeGreaterThan(0);
+  });
+
+  it("긴 설명 칸, 1절 문장 안의 한 줄, 그 밖의 한 줄", () => {
+    const of = (id: string) => COMPOSER_CARDS.flatMap((card) => card.fields).find((field) => field.id === id);
+    expect(of("trainingDescription")?.maxLength).toBe(2_000);
+    expect(of("trainingNotes")?.maxLength).toBe(1_000);
+    expect(of("modelPurpose")?.maxLength).toBe(100);
+    expect(of("modelCategory")?.maxLength).toBe(100);
+    expect(of("trainingDataSource")?.maxLength).toBe(200);
+    expect(of("classLabelDescriptions")?.maxLength).toBe(200);
+  });
+});
+
 describe("③ 의뢰자 정보·④ 평가 대상 모델", () => {
   const fieldOf = (cardId: "clientInfo" | "model", fieldId: string) => {
     const field = getCard(cardId).fields.find((item) => item.id === fieldId);
