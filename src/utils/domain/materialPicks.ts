@@ -10,6 +10,7 @@
  */
 import type { TaskType } from "../../data/evaluationData";
 import {
+  MATERIAL_CATEGORIES,
   catalogCards,
   conditionTriggerIds,
   fieldFormat,
@@ -31,6 +32,7 @@ import type {
   FieldPart,
   FlowEntryState,
   FlowLeaf,
+  MaterialCategory,
   MaterialPicks,
   PickKind,
 } from "../../types/reportComposer.types";
@@ -484,4 +486,91 @@ export function focusLeafIds(entry: FlowEntryState, taskType: TaskType | "", pic
   return flowLeaves(entry.cardId, taskType)
     .filter((leaf) => (leaf.kind === "required" || leaf.kind === "recommended") && !isLeafPlaced(leaf, picks))
     .map((leaf) => leaf.leafId);
+}
+
+/** 트리의 항목 한 줄. 함께 들어감 항목은 조건을 정하는 항목 아래(`companions`)에 붙는다. */
+export interface TreeLeaf extends FlowLeaf {
+  placed: boolean;
+  companions: Array<FlowLeaf & { placed: boolean }>;
+}
+
+/** 블록째 넣기(⊕)가 넣을 구분. 필수·권장이 있으면 그것, 없으면 선택. */
+export type BlockFillKinds = "required+recommended" | "required" | "recommended" | "optional";
+
+/** 트리의 블록 한 줄. */
+export interface TreeBlock {
+  card: ComposerCard;
+  leaves: TreeLeaf[];
+  /** 필수 항목 놓임/전체. 필수가 없는 블록은 total 0. */
+  required: { placed: number; total: number };
+  /** 흐름도에 있는가 — 함께 들어감이 아닌 항목이 하나라도 놓였을 때(`isBlockShown` 과 같은 뜻). */
+  onFlow: boolean;
+  /** 블록째 넣기가 넣을 항목(`blockFillIds`)과 그 구분. */
+  fillIds: string[];
+  fillKinds: BlockFillKinds;
+  /** 블록째 넣기로 더 넣을 것이 있는가. */
+  addable: boolean;
+}
+
+export interface TreeStage {
+  category: MaterialCategory;
+  blocks: TreeBlock[];
+}
+
+/** 조건부 항목이 매달릴 필드 — 조건을 정하는 필드를 따라 올라가 처음 만나는 조건부가 아닌 필드. */
+function companionRoot(card: ComposerCard, fieldId: string, seen = new Set<string>()): string | undefined {
+  const field = card.fields.find((item) => item.id === fieldId);
+  if (!field || seen.has(fieldId)) return undefined;
+  if (field.kind !== "conditional") return field.id;
+  seen.add(fieldId);
+  for (const triggerId of conditionTriggerIds(field)) {
+    const root = companionRoot(card, triggerId, seen);
+    if (root) return root;
+  }
+  return undefined;
+}
+
+/**
+ * 트리(단계 > 블록 > 항목)를 카탈로그 순서로. 수는 `flowStatus` 의 결과에서만 읽는다 — 블록 줄의
+ * "필수 p/t", 하단 바, 막힘 안내가 따로 세지 않게 한다.
+ */
+export function flowTree(taskType: TaskType | "", status: FlowStatus): TreeStage[] {
+  const visible = new Set(getVisibleCards(taskType).map((card) => card.id));
+  return MATERIAL_CATEGORIES.map((category) => ({
+    category,
+    blocks: category.cardIds
+      .filter((id) => visible.has(id))
+      .map((cardId): TreeBlock => {
+        const card = getCard(cardId);
+        const all = status.leaves.filter((leaf) => leaf.cardId === cardId);
+        const leaves: TreeLeaf[] = all
+          .filter((leaf) => leaf.kind !== "conditional")
+          .map((leaf) => ({ ...leaf, companions: [] }));
+        for (const companion of all.filter((leaf) => leaf.kind === "conditional")) {
+          const root = companionRoot(card, companion.fieldId);
+          const host = leaves.find((leaf) => leaf.fieldId === root);
+          if (host) host.companions.push(companion);
+        }
+        const required = all.filter((leaf) => leaf.kind === "required");
+        const fillIds = blockFillIds(cardId, taskType);
+        const fillKindSet = new Set(all.filter((leaf) => fillIds.includes(leaf.leafId)).map((leaf) => leaf.kind));
+        const fillKinds: BlockFillKinds =
+          fillKindSet.has("required") && fillKindSet.has("recommended")
+            ? "required+recommended"
+            : fillKindSet.has("required")
+              ? "required"
+              : fillKindSet.has("recommended")
+                ? "recommended"
+                : "optional";
+        return {
+          card,
+          leaves,
+          required: { placed: required.filter((leaf) => leaf.placed).length, total: required.length },
+          onFlow: leaves.some((leaf) => leaf.placed),
+          fillIds,
+          fillKinds,
+          addable: all.some((leaf) => fillIds.includes(leaf.leafId) && !leaf.placed),
+        };
+      }),
+  }));
 }

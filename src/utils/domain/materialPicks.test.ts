@@ -9,6 +9,7 @@ import {
   describeMissingRequired,
   flowLeaves,
   flowStatus,
+  flowTree,
   focusLeafIds,
   isBlockShown,
   orderPlaced,
@@ -382,5 +383,68 @@ describe("[B2] 트리의 '함께 들어감'과 입력 쪽 '받는가'가 같은 
         expect(isFieldReceived(card, field, ids), `${field.id} ${ids}`).toBe(leaf.placed);
       }
     }
+  });
+});
+
+describe("flowTree — 트리 모델(단계 > 블록 > 항목)", () => {
+  const tree = (taskType: "binary" | "multiclass" | "multilabel", picks: MaterialPicks = {}) =>
+    flowTree(taskType, flowStatus(taskType, picks));
+  const block = (stages: ReturnType<typeof tree>, cardId: string) => {
+    const found = stages.flatMap((stage) => stage.blocks).find((item) => item.card.id === cardId);
+    if (!found) throw new Error(cardId);
+    return found;
+  };
+
+  it("단계 넷을 카탈로그 순서로, 블록도 카탈로그 순서로 둔다", () => {
+    const stages = tree("binary");
+    expect(stages.map((stage) => stage.category.name)).toEqual(["의뢰 정보", "모델", "데이터", "평가 기준"]);
+    expect(stages[2].blocks.map((item) => item.card.id)).toEqual(["evalData", "trainingData", "testData", "groundTruth"]);
+  });
+
+  it("함께 들어감 항목은 조건을 정하는 항목 아래에 붙고, 블록의 항목 줄에는 없다", () => {
+    const stages = tree("binary");
+    const companionsOf = (cardId: string, leafId: string) =>
+      block(stages, cardId).leaves.find((leaf) => leaf.leafId === leafId)?.companions.map((leaf) => leaf.leafId);
+
+    expect(companionsOf("clientInfo", "reportPurpose")).toEqual(["projectInfo"]);
+    // 사슬(일치도 값 ← 일치도 종류 ← 신뢰성)도 뿌리 항목 하나 아래에 모인다.
+    expect(companionsOf("groundTruth", "labelReview")).toEqual([
+      "labelReviewerCount",
+      "labelAgreementKind",
+      "labelAgreementValue",
+    ]);
+    expect(companionsOf("metrics", "selectedMetrics")).toEqual(["beta"]);
+    expect(companionsOf("evalData", "predictionColumns")).toEqual(["decisionThreshold"]);
+    for (const stage of stages) {
+      for (const item of stage.blocks) {
+        expect(item.leaves.every((leaf) => leaf.kind !== "conditional")).toBe(true);
+      }
+    }
+  });
+
+  it("블록의 필수 수는 flowStatus 의 항목에서 읽고, 함께 들어감은 세지 않는다", () => {
+    const picks: MaterialPicks = { clientInfo: ["companyInfo", "reportPurpose"] };
+    const status = flowStatus("binary", picks);
+    const clientInfo = block(flowTree("binary", status), "clientInfo");
+    const required = status.leaves.filter((leaf) => leaf.cardId === "clientInfo" && leaf.kind === "required");
+
+    expect(required.length).toBeGreaterThan(0);
+    expect(clientInfo.required).toEqual({ placed: 2, total: required.length });
+    // 과제 정보는 성적서 용도와 함께 놓였지만 필수 수에 들지 않는다.
+    expect(clientInfo.leaves.find((leaf) => leaf.leafId === "reportPurpose")?.companions[0].placed).toBe(true);
+    expect(clientInfo.onFlow).toBe(true);
+    expect(block(flowTree("binary", status), "model").onFlow).toBe(false);
+  });
+
+  it("블록째 넣기의 구분과, 다 넣으면 더 넣을 것이 없다", () => {
+    const empty = tree("binary");
+    expect(block(empty, "clientInfo").fillKinds).toBe("required");
+    expect(block(empty, "evalData").fillKinds).toBe("required+recommended");
+    expect(block(empty, "modelEnv").fillKinds).toBe("recommended");
+    expect(block(empty, "modelEnv").addable).toBe(true);
+
+    const filled = tree("binary", { modelEnv: blockFillIds("modelEnv", "binary") });
+    expect(block(filled, "modelEnv").addable).toBe(false);
+    expect(block(filled, "modelEnv").onFlow).toBe(true);
   });
 });
