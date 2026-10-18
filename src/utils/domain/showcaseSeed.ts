@@ -116,6 +116,6 @@ export function seedShowcaseData(store: WorkflowStore, step: StepId) {
   ]);
   // 시연은 어느 단계로 들어와도 화면이 채워져 보여야 하므로 전 단계를 완료로 둔다.
   // 목록은 고른 카드에서 계산한다 — 단계가 늘거나 줄어도 여기가 따라간다.
-  buildStepList(store.composerCards).forEach((id) => store.markStepIdCompleted(id));
+  buildStepList(store.composerCards, store.cardOrder).forEach((id) => store.markStepIdCompleted(id));
   store.setCurrentStepId(step);
 }

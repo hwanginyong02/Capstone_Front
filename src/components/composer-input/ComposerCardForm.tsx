@@ -2,11 +2,11 @@
  * 카드 하나의 입력 폼.
  *
  * 재료 고르기에서 고른 그 카드가 여기서 실제 입력란이 된다. 필수 필드는 늘 보이고, 권장·선택
- * 필드는 재료 고르기에서 체크해 저장한 것만 보인다(`picks`, docs/MATERIAL_PICKER.md §5). 받기로
+ * 필드는 재료 고르기에서 고른 것만 보인다(`picks`, docs/MATERIAL_PICKER.md §5). 받기로
  * 한 선택 필드는 접지 않고 바로 보인다 — 고른 것 자체가 그 칸을 쓰겠다는 뜻이다. 카드의 도움말은
  * 아래에 둔다.
  *
- * 넣지 않은 카드는 **아예 그리지 않는다** — 데이터 정보는 ⑥ ⑦ ⑧ 중 넣은 카드만 받는다.
+ * 넣지 않은 카드는 **아예 그리지 않는다** — 그 카드의 단계 자체가 생기지 않는다.
  */
 import { Info } from "lucide-react";
 import { Card, CardContent, CardHeader } from "../ui/card";
@@ -43,7 +43,7 @@ interface ComposerCardFormProps {
    * 켜지 않으면 막힌 이유가 하단 한 줄에만 남아, 긴 폼에서는 어느 칸인지 못 찾는다.
    */
   showErrors?: boolean;
-  /** 재료 고르기에서 이 카드에 저장한 체크. 없으면 모든 필드를 그린다. */
+  /** 재료 고르기에서 이 카드에 고른 항목. 없으면 모든 필드를 그린다. */
   picks?: readonly string[];
 }
 

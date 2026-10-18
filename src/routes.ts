@@ -6,7 +6,12 @@ import { MaterialPicker } from "./pages/MaterialPicker";
 import { ClientInfo } from "./pages/ClientInfo";
 import { ModelInfo } from "./pages/ModelInfo";
 import { ModelEnv } from "./pages/ModelEnv";
-import { DataInfo } from "./pages/DataInfo";
+import {
+  GroundTruthStep,
+  LegacyDataInfoRedirect,
+  TestDataStep,
+  TrainingDataStep,
+} from "./pages/DataInfo";
 import { Perspective } from "./pages/Perspective";
 import { TestItems } from "./pages/TestItems";
 import { DataUpload } from "./pages/DataUpload";
@@ -48,15 +53,19 @@ export const routes = [
     path: "/workspaces/:workspaceId/models/:modelName",
     Component: redirectWithParams(({ workspaceId }) => "/workspaces/" + (workspaceId ?? "")),
   },
-  // 재료 입력. **이 배열의 순서는 단계 순서가 아니다** — 걸을 순서는 고른 카드에서
-  // 계산되고, 정본 순서는 `data/workflowSteps.ts` 의 STEP_CATALOG 에 있다(카드 순서,
-  // docs/MATERIAL_PICKER.md §3). run 은 검증에서 생기므로 그 앞의 화면은 모두 `/app/*` 다.
+  // 재료 입력. **이 배열의 순서는 단계 순서가 아니다** — 걸을 순서는 사용자가 재료 고르기
+  // 다이어그램에서 정한 카드 순서에서 계산된다(`buildStepList`, docs/MATERIAL_PICKER.md §11).
+  // run 은 검증에서 생기므로 그 앞의 화면은 모두 `/app/*` 다.
   { path: "/app/client-info", Component: ClientInfo },
   { path: "/app/model", Component: ModelInfo },
   { path: "/app/model-env", Component: ModelEnv },
   { path: "/app/data-upload", Component: DataUpload },
   { path: "/app/column-mapping", Component: ColumnMapping },
-  { path: "/app/data-info", Component: DataInfo },
+  { path: "/app/training-data", Component: TrainingDataStep },
+  { path: "/app/test-data", Component: TestDataStep },
+  { path: "/app/ground-truth", Component: GroundTruthStep },
+  // ⑥ ⑦ ⑧ 을 묶던 데이터 정보 단계는 카드마다 나뉘었다. 옛 링크는 넣은 첫 데이터 카드로 보낸다.
+  { path: "/app/data-info", Component: LegacyDataInfoRedirect },
   { path: "/app/perspective", Component: Perspective },
   { path: "/app/metrics", Component: TestItems },
   { path: "/app/data-validation", Component: DataValidation },

@@ -34,8 +34,9 @@ interface GoOptions {
 export function useStepFlow(stepId: StepId) {
   const navigate = useNavigate();
   const composerCards = useWorkflowStore((s) => s.composerCards);
+  const cardOrder = useWorkflowStore((s) => s.cardOrder);
 
-  const steps = buildStepList(composerCards);
+  const steps = buildStepList(composerCards, cardOrder);
   const next = nextStepId(stepId, steps);
   const previous = prevStepId(stepId, steps);
 
@@ -58,8 +59,16 @@ export function useStepFlow(stepId: StepId) {
       useWorkflowStore.getState().markStepIdCompleted(stepId);
       goTo(next, options);
     },
-    /** 이전 단계로 돌아간다. 완료 표시는 건드리지 않는다(마친 것을 되돌리지 않는다). */
-    goPrevious: (options: GoOptions = {}) => goTo(previous, options),
+    /**
+     * 이전 단계로 돌아간다. 완료 표시는 건드리지 않는다(마친 것을 되돌리지 않는다).
+     *
+     * 첫 단계의 이전은 재료 고르기다. 첫 단계는 사용자가 정한 순서에 따라 달라지므로 화면이 직접
+     * 정하지 않는다.
+     */
+    goPrevious: (options: GoOptions = {}) => {
+      if (previous) goTo(previous, options);
+      else navigate("/app/composer");
+    },
     goTo,
   };
 }

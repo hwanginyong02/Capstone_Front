@@ -2,7 +2,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { MaterialCheckNotice, targetOfItem, targetOfLine } from "./MaterialCheckNotice";
+import { MaterialCheckNotice, groupByTarget, targetOfItem, targetOfLine } from "./MaterialCheckNotice";
 import { materialCheckFixture } from "../../test/materialCheckFixture";
 
 describe("고칠 곳", () => {
@@ -13,6 +13,14 @@ describe("고칠 곳", () => {
     expect([7, 10, 11].map(targetOfItem)).toEqual(Array(3).fill({ kind: "card", cardId: "modelEnv" }));
     expect(targetOfItem(8)).toEqual({ kind: "step", stepId: "mapping" });
     expect(targetOfItem(12)).toEqual({ kind: "step", stepId: "metrics" });
+  });
+
+  it("고칠 곳이 같은 항목은 한 묶음이다 — 묶음 순서는 첫 항목 순서", () => {
+    const item = (n: number) => ({ item: n, name: "항목 " + n, provided: false, missing: [], impact: "" });
+    const groups = groupByTarget([1, 7, 3, 8, 10, 9].map(item));
+    expect(groups.map((group) => group.key)).toEqual(["card:trainingData", "card:modelEnv", "step:mapping"]);
+    expect(groups[0].items.map((entry) => entry.item)).toEqual([1, 3, 9]);
+    expect(groups[1].items.map((entry) => entry.item)).toEqual([7, 10]);
   });
 
   it("3층 줄은 지연시간만 컬럼 매핑, 나머지는 지표 화면", () => {

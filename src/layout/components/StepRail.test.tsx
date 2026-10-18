@@ -9,8 +9,8 @@
  * 미리보기가 떴다. 게다가 방금 만든 run 의 id 는 어디에도 보관되지 않아, '탭을 활성화한다'가
  * 아니라 **run id 를 상태에 남기는 것**이 선행이었다.
  *
- * 단계는 번호가 아니라 이름으로 가리킨다. 단계 수도 고정이 아니다 — 고른 카드에 따라 8~10개가
- * 되므로, 그것까지 여기서 고정한다.
+ * 단계는 번호가 아니라 이름으로 가리킨다. 단계 수도 순서도 고정이 아니다 — 고른 카드에 따라
+ * 8~12개가 되고 순서는 재료 고르기에서 정하므로, 그것까지 여기서 고정한다.
  */
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -20,6 +20,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { StepRail } from "./StepRail";
 import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
 import { buildStepList } from "../../utils/domain/workflowSteps";
+import { DEFAULT_CARD_ORDER, moveLane } from "../../utils/domain/cardOrder";
 import { DEFAULT_COMPOSER_SELECTION } from "../../types/reportComposer.types";
 
 /** 선택 카드 넷을 모두 넣은 상태 — 재료 고르기에서 넷 다 항목을 골라 저장한 것과 같다. */
@@ -35,11 +36,15 @@ function renderRail() {
       <Routes>
         <Route path="/report/:id" element={<div data-testid="run-report" />} />
         <Route path="/workspaces" element={<div data-testid="workspace-list" />} />
+        <Route path="/app/composer" element={<div data-testid="material-picker" />} />
         <Route path="*" element={<div />} />
       </Routes>
     </MemoryRouter>
   );
 }
+
+/** 단계 버튼만 — 목록 위의 "재료 고르기" 버튼은 단계가 아니다. */
+const stepButtons = () => within(screen.getByRole("list", { name: "입력 단계" })).getAllByRole("button");
 
 /** 걸을 전 단계를 완료로 표시한다(이름을 직접 쓰지 않는다). */
 function completeAllSteps() {
@@ -88,35 +93,36 @@ describe("단계 수는 고른 카드에서 나온다", () => {
   it("기본(필수 카드만)이면 8개다", () => {
     renderRail();
 
-    expect(screen.getAllByRole("button")).toHaveLength(8);
+    expect(stepButtons()).toHaveLength(8);
   });
 
-  it("전체를 넣으면 10개가 된다", () => {
+  it("전체를 넣으면 12개가 된다 — ⑥ ⑦ ⑧ 은 카드마다 한 단계다", () => {
     useWorkflowStore.setState({ composerCards: ALL_OPTIONAL_ON });
 
     renderRail();
 
-    expect(screen.getAllByRole("button")).toHaveLength(10);
-    expect(screen.getByRole("button", { name: /데이터 정보/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /모델 설정과 실행 환경/ })).toBeInTheDocument();
+    expect(stepButtons()).toHaveLength(12);
+    for (const name of [/학습 데이터/, /테스트 데이터/, /정답 라벨/, /모델 설정과 실행 환경/]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
   });
 
-  it("평가 관점은 지표와 합격 기준 바로 앞이다 (docs/MATERIAL_PICKER.md §3)", () => {
+  it("기본 순서에서 평가 관점은 지표와 합격 기준 바로 앞이다", () => {
     renderRail();
 
-    const labels = screen.getAllByRole("button").map((button) => button.textContent);
+    const labels = stepButtons().map((button) => button.textContent);
     const perspective = labels.findIndex((label) => label?.includes("평가 관점"));
     expect(perspective).toBeGreaterThan(-1);
     expect(labels[perspective + 1]).toContain("지표와 합격 기준");
   });
 
-  it("⑥ 하나만 넣으면 데이터 정보가 생긴다", () => {
-    useWorkflowStore.getState().saveMaterialPick("trainingData", ["trainingDatasetName"]);
+  it("⑥ 하나만 넣으면 학습 데이터 단계가 생긴다", () => {
+    useWorkflowStore.getState().setMaterialPick("trainingData", ["trainingDatasetName"]);
 
     renderRail();
 
-    expect(screen.getAllByRole("button")).toHaveLength(9);
-    expect(screen.getByRole("button", { name: /데이터 정보/ })).toBeInTheDocument();
+    expect(stepButtons()).toHaveLength(9);
+    expect(screen.getByRole("button", { name: /학습 데이터/ })).toBeInTheDocument();
   });
 
   it("뒤 단계도 처음부터 보이되 비활성이다", () => {
@@ -126,8 +132,28 @@ describe("단계 수는 고른 카드에서 나온다", () => {
     renderRail();
 
     // 앞으로 무엇이 있는지는 보여준다.
-    expect(screen.getByRole("button", { name: /데이터 정보/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /학습 데이터/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: /지표와 합격 기준/ })).toBeDisabled();
+  });
+
+  it("재료 고르기에서 정한 순서를 따른다 — 모델 레인을 앞으로 옮기면 평가 대상 모델이 첫 단계다", () => {
+    useWorkflowStore.setState({ cardOrder: moveLane(DEFAULT_CARD_ORDER, "model", "info", "before") });
+
+    renderRail();
+
+    expect(stepButtons()[0]).toHaveTextContent("평가 대상 모델");
+    expect(stepButtons()[1]).toHaveTextContent("의뢰자 정보");
+  });
+});
+
+describe("재료 고르기로 돌아가기", () => {
+  it("목록 위의 버튼은 언제든 재료 고르기로 간다 — 순서와 넣을 항목을 다시 본다", async () => {
+    useWorkflowStore.getState().setCurrentStepId("upload");
+
+    renderRail();
+    await userEvent.click(screen.getByRole("button", { name: "재료 고르기" }));
+
+    expect(screen.getByTestId("material-picker")).toBeInTheDocument();
   });
 });
 
@@ -155,7 +181,7 @@ describe("현재·완료·미래 구분", () => {
 
   it("카드 선택이 바뀌면 같은 단계의 위치가 당겨진다", () => {
     const position = (name: string) =>
-      screen.getAllByRole("button").findIndex((button) => button.textContent?.includes(name));
+      stepButtons().findIndex((button) => button.textContent?.includes(name));
 
     useWorkflowStore.setState({ composerCards: ALL_OPTIONAL_ON });
     const { unmount } = render(

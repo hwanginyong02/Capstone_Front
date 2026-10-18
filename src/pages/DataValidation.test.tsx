@@ -6,6 +6,7 @@
  * 이 결함은 rawFile 이 멀쩡히 살아 있어도 서버가 500 을 내거나 네트워크가 끊기면
  * 발동하므로 E-01(상태 비영속)의 자식이 아니다 — 독립적으로 막아야 한다.
  */
+import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,8 +17,11 @@ vi.mock("../hooks/useDataValidation", () => ({
   useDataValidation: () => mockUseDataValidation(),
 }));
 
+// 안내는 본문 칸 안(제목 아래)에 그려지도록 본문 컴포넌트에 넘긴다 — 대역도 그 자리를 그린다.
 vi.mock("../components/data-validation/DataValidation", () => ({
-  DataValidation: () => <div data-testid="validation-content" />,
+  DataValidation: ({ notices }: { notices?: ReactNode }) => (
+    <div data-testid="validation-content">{notices}</div>
+  ),
 }));
 
 import { DataValidation } from "./DataValidation";

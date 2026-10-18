@@ -244,9 +244,10 @@ describe("재료 선택 점검의 진행 기록(materialCheckAck) — persist �
     expect(useWorkflowStore.getState().materialCheckAck).toBeNull();
   });
 
-  it("이 키가 없던 옛 저장분을 읽어도 null 로 남는다(판 13 그대로)", async () => {
+  it("이 키가 없던 옛 저장분을 읽어도 null 로 남는다(이 키 때문에 판을 올리지 않음)", async () => {
+    // 판 14 는 재료 고르기의 입력 순서(cardOrder) 때문에 올렸다 — 이 키와 무관하다.
     const { WORKFLOW_PERSIST_VERSION } = await import("./useWorkflowStore");
-    expect(WORKFLOW_PERSIST_VERSION).toBe(13);
+    expect(WORKFLOW_PERSIST_VERSION).toBe(14);
     useWorkflowStore.getState().setMaterialCheckAck(ack);
     const raw = JSON.parse(localStorage.getItem(WORKFLOW_STORAGE_KEY)!);
     delete raw.state.materialCheckAck;

@@ -1,9 +1,9 @@
 /**
- * 단계 목록 계산과 단계 간 이동 — 고른 카드에서 걸을 길을 유도한다.
+ * 단계 목록 계산과 단계 간 이동 — 고른 카드와 그 순서에서 걸을 길을 유도한다.
  *
- * 종전에는 단계가 고정 6개였고 번호(`STEP` 상수)가 단일 출처였다. 이제 재료 고르기에서
- * 넣은 선택 카드에 따라 데이터 정보·모델 설정과 실행 환경이 생기고 사라지므로, 단계 목록은 **상수가 아니라 계산 결과**다
- * (docs/MATERIAL_PICKER.md §3).
+ * 종전에는 단계가 고정 6개였고 번호(`STEP` 상수)가 단일 출처였다. 이제 재료 고르기에서 넣은
+ * 선택 카드에 따라 단계가 생기고 사라지고, 순서도 사용자가 다이어그램에서 정하므로 단계 목록은
+ * **상수가 아니라 계산 결과**다(docs/MATERIAL_PICKER.md §11).
  *
  * 번호를 쓰지 않는 이유: 카드를 토글할 때마다 같은 번호가 다른 단계를 가리키게 된다.
  * 저장된 진행 표시가 조용히 어긋나는 바로 그 상황이다(docs/WORKFLOW_REDESIGN.md §3.3).
@@ -13,21 +13,26 @@
  * 테스트가 카드 조합을 직접 넣어볼 수 있고, 진입 가드가 어떤 목록을 기준으로 판단했는지가
  * 호출하는 쪽에 드러난다.
  */
-import { STEP_CATALOG, getStepDefinition } from "../../data/workflowSteps";
-import type { ComposerSelection } from "../../types/reportComposer.types";
+import { STEP_CATALOG, TRAILING_STEP_IDS, getStepDefinition } from "../../data/workflowSteps";
+import type { ComposerCardId, ComposerSelection } from "../../types/reportComposer.types";
 import type { StepId } from "../../types/workflow.types";
+import { DEFAULT_CARD_ORDER, includedCardsInOrder } from "./cardOrder";
 
 /**
- * 걸을 단계 목록. 카탈로그 순서를 유지하고, 조건이 성립하지 않는 단계만 뺀다.
+ * 걸을 단계 목록. 들어간 카드를 입력 순서대로 그 카드의 단계(`card.steps`)로 펼치고, 끝에 검증과
+ * 확인과 생성을 붙인다. ① 평가 데이터는 업로드와 컬럼 매핑 두 단계가 된다.
  *
- * 최소 구성(선택 카드를 하나도 넣지 않음)이면 8개, 전체면 10개다.
+ * 최소 구성(선택 카드를 하나도 넣지 않음)이면 8개, 전체면 12개다. 순서를 넘기지 않으면 카탈로그
+ * 순서다.
  */
-export function buildStepList(selection: ComposerSelection): StepId[] {
-  return STEP_CATALOG.filter((step) => {
-    if (!step.requiresCards) return true;
-    // 하나라도 넣었으면 그 단계가 필요하다 — 데이터 정보는 ⑥ ⑦ ⑧ 중 넣은 카드만 받는다.
-    return step.requiresCards.some((cardId) => selection[cardId]);
-  }).map((step) => step.id);
+export function buildStepList(
+  selection: ComposerSelection,
+  order: readonly ComposerCardId[] = DEFAULT_CARD_ORDER,
+): StepId[] {
+  return [
+    ...includedCardsInOrder(order, selection).flatMap((card) => card.steps),
+    ...TRAILING_STEP_IDS,
+  ];
 }
 
 /** 목록에서의 위치(1-based). 화면에 번호를 보여줄 때만 쓴다. 없으면 0. */

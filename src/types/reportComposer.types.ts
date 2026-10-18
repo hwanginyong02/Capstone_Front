@@ -254,8 +254,8 @@ export interface ComposerCard {
 /**
  * 선택 카드가 성적서에 들어가는지. 스토어에 저장된다.
  *
- * 재료 고르기 화면에서는 직접 켜고 끄지 않는다 — 선택 카드를 **항목을 하나 이상 체크해 저장하면**
- * 켜진다(`saveMaterialPick`). 단계 목록과 필수 점검은 이 값을 그대로 읽는다.
+ * 재료 고르기 화면에서는 직접 켜고 끄지 않는다 — 선택 카드에 **항목이 하나라도 들어가면** 켜진다
+ * (`setMaterialPick`). 단계 목록과 필수 점검은 이 값을 그대로 읽는다.
  */
 export type ComposerSelection = Record<OptionalCardId, boolean>;
 
@@ -270,9 +270,9 @@ export interface MaterialCategory {
 }
 
 /**
- * 카드마다 저장한 체크(docs/MATERIAL_PICKER.md §7). 키가 없으면 그 카드를 **저장하지 않은**
- * 것이고, 빈 배열이면 "아무것도 넣지 않기로 확정"한 것이다. 값은 체크한 필드 id, 쪼갠 항목이면
- * `필드id:key` 다.
+ * 카드마다 받기로 고른 권장·선택 항목(docs/MATERIAL_PICKER.md §11). 넣고 빼는 즉시 바뀐다. 키가
+ * 없으면 재료 고르기를 지나기 전의 상태라 그 카드의 필드를 모두 받는다(`isFieldPicked`). 빈 배열이면
+ * 고른 항목이 없는 것이다. 값은 고른 필드 id, 쪼갠 항목이면 `필드id:key` 다.
  */
 export type MaterialPicks = Partial<Record<ComposerCardId, string[]>>;
 
