@@ -194,6 +194,14 @@ export const PREDICTION_ROLE_ALTERNATIVES: Record<
 };
 
 /**
+ * 여러 컬럼에 배정돼도 겹침이 아닌 역할 — 확률 컬럼은 클래스·레이블마다 하나씩이다. 백엔드
+ * `MULTI_COLUMN_ROLES`(Capstone_Back/app/core/schemas.py, ignore 포함)의 사본이다(ignore 는 화면이 따로
+ * 센다). 이진의 score 는 양성 클래스 점수 **한 컬럼**이라 여기 없다 — 두 컬럼에 주면 겹침으로 막는다(B13).
+ * 매핑 화면의 겹침 판정·표·배지가 이 표 하나를 쓴다.
+ */
+export const MULTI_COLUMN_ROLES: readonly RequiredColumnCode[] = ["prob_class_*", "prob_label_*"];
+
+/**
  * 요구 역할 중 실제로 배정되지 않은 것.
  *
  * 예측 역할은 확률 역할이 배정돼 있으면 충족된 것으로 본다 — 백엔드가 확률에서

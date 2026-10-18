@@ -2,16 +2,18 @@ import { Info } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Alert, AlertDescription } from "../ui/alert";
-import type { RequiredColumnDisplay } from "../../data/evaluationData";
+import type { RequiredColumnDisplay, TaskType } from "../../data/evaluationData";
 import type { MappingRole } from "../../types/mapping.types";
 import { getRoleStatusLabel } from "../../utils/domain/mappingHelpers";
 
 interface RequiredColumnsCardProps {
+  taskType: TaskType;
   requiredRoles: RequiredColumnDisplay[];
   roleCounts: Partial<Record<MappingRole, number>>;
 }
 
 export function RequiredColumnsCard({
+  taskType,
   requiredRoles,
   roleCounts,
 }: RequiredColumnsCardProps) {
@@ -36,8 +38,7 @@ export function RequiredColumnsCard({
         {requiredRoles.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {requiredRoles.map((role) => {
-              const count = roleCounts[role.code] ?? 0;
-              const status = getRoleStatusLabel(role, count);
+              const status = getRoleStatusLabel(taskType, role, roleCounts);
 
               return (
                 <div key={role.code} className="rounded-xl border border-border bg-card p-5 flex flex-col h-full">

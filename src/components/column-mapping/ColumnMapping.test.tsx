@@ -159,3 +159,28 @@ describe("평가 흐름에 놓지 않은 항목 (docs/MATERIAL_PICKER.md §12.4)
     expect(validityOf({ ...base, rows: [...base.rows, held], evalDataPicks: [] })).toBe(true);
   });
 });
+
+describe("확률 역할 (B12·B13)", () => {
+  it("이진 score 두 컬럼은 화면도 막는다 — 백엔드가 거절하는 매핑을 통과시키지 않는다", () => {
+    const base = { taskType: "binary" as const, detectedClasses: ["0", "1"], positiveClass: "1" };
+    expect(validityOf({ ...base, rows: [row("t", "y_true"), row("s1", "score"), row("s2", "score")] })).toBe(false);
+  });
+
+  it("확률만 매핑해도 유효하고 y_pred 배지는 '확률로 대신'", () => {
+    const valid = validityOf({
+      taskType: "binary",
+      detectedClasses: ["0", "1"],
+      positiveClass: "1",
+      rows: [row("t", "y_true"), row("s", "score")],
+    });
+    expect(valid).toBe(true);
+    expect(screen.getByText("확률로 대신")).toBeInTheDocument();
+    expect(screen.queryByText("없음")).not.toBeInTheDocument();
+  });
+
+  it("다중 클래스 확률 세 컬럼은 겹침이 아니다", () => {
+    expect(
+      validityOf({ taskType: "multiclass", rows: [row("t", "y_true"), row("a", "prob_class_*"), row("b", "prob_class_*"), row("c", "prob_class_*")] }),
+    ).toBe(true);
+  });
+});

@@ -3,7 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { cn } from "../../utils/styling/styles";
 import type { MappingRole, MappingRow } from "../../types/mapping.types";
-import { getRowMatchState } from "../../utils/domain/mappingHelpers";
+import { getRowMatchState, isDuplicateRole } from "../../utils/domain/mappingHelpers";
 import { leafOfRole } from "../../utils/domain/mappingPicks";
 import { fieldOfLeaf } from "../../data/reportComposer";
 import { Badge } from "../ui/badge";
@@ -51,13 +51,7 @@ export function DetectedMappingTable({
             </TableHeader>
             <TableBody>
               {rows.map((row) => {
-                const duplicate = Boolean(
-                  row.confirmedRole &&
-                  row.confirmedRole !== "ignore" &&
-                  row.confirmedRole !== "prob_class_*" &&
-                  row.confirmedRole !== "prob_label_*" &&
-                  (roleCounts[row.confirmedRole] ?? 0) > 1
-                );
+                const duplicate = isDuplicateRole(row.confirmedRole, roleCounts);
                 const needsAttention = duplicate || row.warnings.length > 0;
                 const matchState = getRowMatchState(row, duplicate);
 

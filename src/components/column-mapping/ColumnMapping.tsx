@@ -4,7 +4,6 @@ import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import {
   TASK_TYPE_LABELS_KO,
-  PREDICTION_ROLE_ALTERNATIVES,
   resolveMissingRoleCodes,
   type TaskType,
   getBaseRequiredColumns,
@@ -12,6 +11,7 @@ import {
 import type { MappingRole, MappingRow } from "../../types/mapping.types";
 import { applyRoleChange } from "../../utils/domain/applyRoleChange";
 import { buildRoleOptions } from "../../utils/domain/mappingPicks";
+import { countDuplicateRoles } from "../../utils/domain/mappingHelpers";
 import { isLeafReceived } from "../../data/reportComposer";
 import {
   describeMappingValidity,
@@ -124,20 +124,10 @@ export function ColumnMapping({
     return counts;
   }, [rows]);
 
-  /** 여러 컬럼에 배정돼도 중복이 아닌 역할 — 확률 역할은 클래스·레이블마다 하나씩이다. */
-  const multiColumnRoles = useMemo(
-    () => new Set<string>(PREDICTION_ROLE_ALTERNATIVES[resolvedTaskType].alternatives),
-    [resolvedTaskType],
-  );
-
   const mappingSummary = useMemo(() => {
     const editedCount = rows.filter((row) => row.modified).length;
-    const duplicateCount = Object.entries(roleCounts).filter(([role, count]) => {
-      if (!count || count < 2) {
-        return false;
-      }
-      return !multiColumnRoles.has(role);
-    }).length;
+    // 겹침 판정은 표·배지와 같은 한 규칙(`MULTI_COLUMN_ROLES`) — 이진 score 두 컬럼은 겹침이다(B13).
+    const duplicateCount = countDuplicateRoles(roleCounts);
 
     // 예측 역할은 확률 역할이 배정돼 있으면 충족된 것으로 본다 — 백엔드가 확률에서
     // 예측을 파생하기 때문이다(ISSUES.md A-01·A-02). 규칙은 evaluationData 의
@@ -169,7 +159,7 @@ export function ColumnMapping({
       validityMessage: describeMappingValidity(validityReason, missingRoleCodes),
       isValid: validityReason === "ok",
     };
-  }, [requiredRoles, roleCounts, rows, taskType, resolvedTaskType, multiColumnRoles, positiveClass]);
+  }, [requiredRoles, roleCounts, rows, taskType, resolvedTaskType, positiveClass]);
 
   useEffect(() => {
     onValidationChange?.(mappingSummary.isValid);
@@ -211,7 +201,7 @@ export function ColumnMapping({
           </Alert>
         )}
 
-        <RequiredColumnsCard requiredRoles={requiredRoles} roleCounts={roleCounts} />
+        <RequiredColumnsCard taskType={resolvedTaskType} requiredRoles={requiredRoles} roleCounts={roleCounts} />
 
         <BinaryClassificationCard
           resolvedTaskType={resolvedTaskType}
