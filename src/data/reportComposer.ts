@@ -552,7 +552,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     locked: false,
     steps: ["trainingData"],
     help:
-      "수집 환경 차이는 같은 클래스의 데이터가 서로 다른 장비, 처리 방식, 사람, 환경에서 " +
+      "수집 방식 차이는 같은 클래스의 데이터가 서로 다른 장비, 처리 방식, 사람, 환경에서 " +
       "모였는지(TS 4213 5.3.8 채널 효과)를 묻습니다. 불균형 보정은 한쪽 클래스에 몰린 " +
       "데이터를 어떻게 다뤘는지(TS 4213 8절)를 묻습니다.",
     fields: [
@@ -623,15 +623,16 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       },
       {
         id: "channelEffects",
-        label: "수집 환경 차이",
+        // 다섯째 선택지 '수집 환경 차이'와 이름이 겹쳐 칸 이름을 바꿨다(W2). 성적서는 '채널 효과'로 찍는다.
+        label: "수집 방식 차이(채널 효과)",
         inputExample:
-          "알려진 것 없음 / 장비 차이 / 전처리 차이 / 수집자 차이 / 수집 환경 차이 / 기타 (복수 선택)",
+          "알려진 것 없음 / 수집 장치 차이 / 전처리 차이 / 수집자 차이 / 수집 환경 차이 / 기타 (복수 선택)",
         kind: "required",
         input: "multi",
-        description: "같은 클래스의 데이터가 서로 다른 장비, 처리 방식, 사람, 환경에서 모였는지입니다. 예: 정상 사진은 병원 A, 이상 사진은 병원 B 장비로 찍었으면 장비 차이",
+        description: "같은 클래스의 데이터가 서로 다른 장비, 처리 방식, 사람, 환경에서 모였는지입니다. 예: 정상 사진은 병원 A, 이상 사진은 병원 B 장비로 찍었으면 수집 장치 차이",
         choiceLabels: {
           "None known": "알려진 것 없음",
-          "Different equipment": "장비 차이",
+          "Different equipment": "수집 장치 차이",
           "Different processing": "전처리 차이",
           "Different collectors": "수집자 차이",
           "Different surroundings": "수집 환경 차이",
@@ -828,13 +829,14 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       {
         id: "testSourceRelation",
         label: "학습 데이터와 출처 관계",
-        inputExample: "같음 / 다름",
+        inputExample: "같은 출처 / 다른 출처",
         kind: "required",
         input: "single",
-        description: "테스트 데이터가 학습 데이터와 같은 곳에서 왔는지입니다. 같은 곳이면 점수가 실제보다 좋게 나올 수 있습니다. 예: 같은 CRM 로그에서 나눴으면 같음",
+        description: "테스트 데이터가 학습 데이터와 같은 곳에서 왔는지입니다. 같은 곳이면 점수가 실제보다 좋게 나올 수 있습니다. 예: 같은 CRM 로그에서 나눴으면 같은 출처",
+        // 성적서 이름과 같다(W7). '같음/다름'은 무엇이 같은지 읽히지 않았다.
         choiceLabels: {
-          "Same source": "같음",
-          "Different source": "다름",
+          "Same source": "같은 출처",
+          "Different source": "다른 출처",
         },
         choices: ["Same source", "Different source"],
         reportLabels: { "Same source": "같은 출처", "Different source": "다른 출처" },

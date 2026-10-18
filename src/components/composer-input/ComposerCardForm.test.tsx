@@ -164,7 +164,7 @@ describe("⑥ 배타 선택지", () => {
       values: { channelEffects: { choices: ["None known"] } },
     });
 
-    await userEvent.click(screen.getByRole("checkbox", { name: "장비 차이" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "수집 장치 차이" }));
 
     expect(onChange).toHaveBeenCalledWith("channelEffects", {
       choices: ["Different equipment"],
@@ -366,7 +366,7 @@ describe("선택지 타일", () => {
   it("여럿 고르는 질문도 글자를 눌러 켜고 끈다 — 두 번 뒤집히지 않는다", async () => {
     const { onChange } = renderForm("trainingData");
 
-    await userEvent.click(screen.getByText("장비 차이"));
+    await userEvent.click(screen.getByText("수집 장치 차이"));
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith("channelEffects", {
@@ -414,13 +414,13 @@ describe("Other 직접 입력", () => {
     });
   });
 
-  it("여럿 고르기에서도 Other 를 고르면 칸이 나타난다 — ⑥ 수집 환경 차이", () => {
+  it("여럿 고르기에서도 Other 를 고르면 칸이 나타난다 — ⑥ 수집 방식 차이", () => {
     renderForm("trainingData", {
       values: { channelEffects: { choices: ["Different equipment", "Other (free text)"] } },
     });
 
     expect(
-      screen.getByRole("textbox", { name: "수집 환경 차이 기타 내용" }),
+      screen.getByRole("textbox", { name: "수집 방식 차이(채널 효과) 기타 내용" }),
     ).toBeInTheDocument();
   });
 });

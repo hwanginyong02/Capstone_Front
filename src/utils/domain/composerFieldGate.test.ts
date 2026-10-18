@@ -115,7 +115,7 @@ describe('"알려진 것 없음"은 "모름"과 다르다', () => {
       {
         cardId: "trainingData",
         fieldId: "channelEffects",
-        label: "수집 환경 차이",
+        label: "수집 방식 차이(채널 효과)",
         reason: "exclusive",
         // 이 필드의 탈출구는 "모름" 이 아니라 "알려진 것 없음" 이다.
         allowsUnknown: false,

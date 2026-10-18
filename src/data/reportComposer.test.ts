@@ -966,6 +966,17 @@ describe("재료 목록과 맞춘 형태", () => {
     expect(fieldOf("testData", "testPeriod")?.input).toBe("monthRange");
   });
 
+  it("⑥ 채널 효과 칸 이름은 선택지 이름과 겹치지 않고, ⑦ 출처 관계는 성적서 이름과 같다 (W2·W7)", () => {
+    const channel = fieldOf("trainingData", "channelEffects")!;
+    expect(channel.label).toBe("수집 방식 차이(채널 효과)");
+    expect((channel.choices ?? []).map((choice) => choiceLabel(channel, choice))).not.toContain(channel.label);
+    expect(choiceLabel(channel, "Different equipment")).toBe(channel.reportLabels?.["Different equipment"]);
+    const relation = fieldOf("testData", "testSourceRelation")!;
+    for (const choice of relation.choices ?? []) {
+      expect(choiceLabel(relation, choice), choice).toBe(relation.reportLabels?.[choice]);
+    }
+  });
+
   it("⑧ 정답 라벨 신뢰성의 화면 이름은 성적서 이름과 같다 (W1)", () => {
     const field = fieldOf("groundTruth", "labelReview")!;
     expect(field.label).toBe("정답 라벨 신뢰성");
