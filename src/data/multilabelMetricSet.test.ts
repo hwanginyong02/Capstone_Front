@@ -736,7 +736,7 @@ describe("persist 마이그레이션 v12 → v13 — 전처리 일치를 ⑥ 으
 
     expect(migrated.materialPicks.trainingData).toEqual(["preprocessingMatch"]);
     expect(migrated.composerCards.trainingData).toBe(true);
-    // 카드 켜짐과 체크가 맞는다(saveMaterialPick 의 불변식) — 카드마다 따로 본다.
+    // 카드 켜짐과 체크가 맞는다(setMaterialPick 의 불변식) — 카드마다 따로 본다.
     expect(migrated.composerCards.testData).toBe(migrated.materialPicks.testData.length > 0);
     expect(migrated.composerCards.trainingData).toBe(migrated.materialPicks.trainingData.length > 0);
   });

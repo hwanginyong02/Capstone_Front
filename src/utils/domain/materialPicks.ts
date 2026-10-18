@@ -1,12 +1,12 @@
 /**
- * 재료 고르기 화면의 규칙(docs/MATERIAL_PICKER.md §6·§11) — 순수 함수만 둔다.
+ * 평가 흐름 만들기의 규칙(docs/MATERIAL_PICKER.md §12.2) — 순수 함수만 둔다.
  *
- * 무엇을 받을지(`materialPicks`)는 넣고 빼는 즉시 반영된다. 저장 단계는 없다. 필수 카드와 그 안의
- * 필수·조건부 필드는 처음부터 들어가 있고, 사용자가 고르는 것은 권장·선택 항목과 선택 카드다.
- * 선택 카드는 항목이 하나라도 들어가면 들어간 것이다(스토어의 `setMaterialPick` 이 맞춘다).
+ * 무엇을 넣었는지(`materialPicks`)는 넣고 빼는 즉시 반영된다. 저장 단계는 없다. 빈 흐름에서 시작해
+ * 필수 항목도 넣어야 들어간다. 선택 카드는 항목이 하나라도 들어가면 켜진다(스토어의 `setMaterialPick`
+ * 이 맞춘다).
  *
- * 쓰는 곳: `pages/MaterialPicker.tsx`, `components/material-picker/*`, 확인과 생성의 빠진 권장
- * 항목 안내.
+ * 파일 앞쪽은 옛 재료 고르기 화면(`pages/MaterialPicker.tsx`, `components/material-picker/*`)이 쓰는
+ * 함수이고, 뒤쪽 "평가 흐름 만들기 규칙"이 새 화면의 규칙이다. 앞쪽은 S3 에서 화면과 함께 지운다.
  */
 import type { TaskType } from "../../data/evaluationData";
 import {
