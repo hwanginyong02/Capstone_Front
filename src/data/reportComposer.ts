@@ -753,7 +753,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
          * 쓸 수 있게 선택지로 받는다. 전처리가 채널 효과의 원인이면 ⑥ "Different processing"이 받는다.
          *
          * ⑥ 학습 데이터 카드에 둔다. 종전에는 ⑦ 테스트 데이터 카드에 있어, ⑦ 을 넣지 않으면 학습
-         * 데이터를 넣어도 이 값을 받을 수 없었다(재료 목록 4절 "AI 예", persist v13 이 옮긴다).
+         * 데이터를 넣어도 이 값을 받을 수 없었다(persist v13 이 옮긴다).
          */
         id: "preprocessingMatch",
         label: "학습과 같은 전처리",

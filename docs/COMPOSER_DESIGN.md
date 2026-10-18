@@ -6,7 +6,7 @@ Oct 3, 2026 · @인용
 
 ## 기준과 원칙
 
-이 문서는 [성적서 구성 컴포넌트 설계](https://claude.ai/code/artifact/91d77834-9f3b-4028-bd80-f06bb41f9c93)의 카드 9개를 화면에 그리는 규칙이다. 새 디자인 시스템을 만들지 않고 프론트 저장소의 기존 기준을 따른다. 기준 문서의 우선순위는 다음과 같다.
+이 문서는 성적서 구성 컴포넌트 설계(카드 9개와 필드는 [COMPOSER_COMPONENTS.md](COMPOSER_COMPONENTS.md))의 카드 9개를 화면에 그리는 규칙이다. 새 디자인 시스템을 만들지 않고 프론트 저장소의 기존 기준을 따른다. 기준 문서의 우선순위는 다음과 같다.
 
 1. `docs/imports/` — 색(`colors.md`), 간격·모서리(`spacing.md`), 글자(`typography.md`), 컴포넌트 패턴(`overview-components.md`), 전체 지침(`Guidelines.md`)
 2. README "디자인 시스템" 절
