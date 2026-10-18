@@ -945,7 +945,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         requiredWhen: { field: "labelReview", equals: "Several reviewers" },
         input: "number",
         description: "정답을 붙인 사람 수입니다. 예: 3",
-        numberRange: { min: 1, integer: true },
+        // 복수 라벨러 합의일 때만 받으므로 2명부터다(W10). 2명이면 Cohen, 3명 이상이면 Fleiss 의 카파와 맞물린다.
+        numberRange: { min: 2, integer: true },
         mono: true,
         reportSection: "4절",
         sentToAi: true,

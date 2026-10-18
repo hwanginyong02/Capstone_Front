@@ -450,7 +450,7 @@ describe("숫자 칸", () => {
       },
     });
 
-    expect(screen.getByText("1 이상의 정수를 넣으세요.")).toBeInTheDocument();
+    expect(screen.getByText("2 이상의 정수를 넣으세요.")).toBeInTheDocument();
     expect(screen.getByText("-1~1 사이의 숫자를 넣으세요.")).toBeInTheDocument();
   });
 

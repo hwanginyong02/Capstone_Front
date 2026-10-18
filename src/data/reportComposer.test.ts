@@ -980,12 +980,13 @@ describe("재료 목록과 맞춘 형태", () => {
     expect(field?.otherChoice).toBe("Other (free text)");
   });
 
-  it("⑧ 라벨러 수는 1 이상의 정수다", () => {
+  it("⑧ 라벨러 수는 2 이상의 정수다 — 복수 라벨러 합의일 때만 받는다 (W10)", () => {
     expect(fieldOf("groundTruth", "labelAgreement")).toBeUndefined();
     expect(fieldOf("groundTruth", "labelReviewerCount")?.numberRange).toEqual({
-      min: 1,
+      min: 2,
       integer: true,
     });
+    expect(fieldFormat(fieldOf("groundTruth", "labelReviewerCount")!)).toBe("숫자. 2 이상의 정수");
   });
 
   /** 서술 설계 D42 — 종류를 알아야 숫자를 읽을 수 있다(같은 0.8 이라도 일치율과 카파는 다르다). */

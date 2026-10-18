@@ -350,13 +350,14 @@ describe("숫자 범위", () => {
 
   it("범위 안이면 통과한다", () => {
     expect(reasonsOf(several("3", "82"))).toEqual([]);
-    expect(reasonsOf(several("1", "0"))).toEqual([]);
+    expect(reasonsOf(several("2", "0"))).toEqual([]);
     expect(reasonsOf(several("12", "100"))).toEqual([]);
     expect(reasonsOf(several("2", "82.5"))).toEqual([]);
   });
 
   it.each([
     ["0", "라벨러가 0명"],
+    ["1", "라벨러가 1명 — 복수 라벨러 합의는 2명부터다(W10)"],
     ["1.5", "라벨러 수가 정수가 아님"],
     ["three", "숫자가 아님"],
   ])("라벨러 수 %s 는 범위 밖이다 (%s)", (count) => {
