@@ -853,8 +853,6 @@ interface WorkflowState {
    * 선택 카드는 그 레인 맨 아래로 간다(`orderAfterPlacing`).
    */
   setMaterialPick: (cardId: ComposerCardId, ids: string[]) => void;
-  /** 여러 카드의 항목을 한 번에 바꾼다(옛 화면의 추천 세트·되돌리기 — S3 에서 화면과 함께 지운다). */
-  setMaterialPicks: (picks: MaterialPicks) => void;
   setCardOrder: (order: ComposerCardId[]) => void;
   setComposerMetrics: (
     value: ComposerValueMap | ((prev: ComposerValueMap) => ComposerValueMap),
@@ -1061,10 +1059,8 @@ export const useWorkflowStore = create<WorkflowState>()(
       setLastRunId: (runId) => set({ lastRunId: runId }),
       setMaterialCheckAck: (ack) => set({ materialCheckAck: ack }),
 
-      // 재료 고르기
+      // 평가 흐름 만들기
       setMaterialPick: (cardId, ids) => set((state) => applyMaterialPicks(state, { [cardId]: ids })),
-
-      setMaterialPicks: (picks) => set((state) => applyMaterialPicks(state, picks)),
 
       setCardOrder: (order) => set({ cardOrder: normalizeCardOrder(order) }),
 

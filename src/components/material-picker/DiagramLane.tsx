@@ -1,9 +1,9 @@
 /**
- * 다이어그램의 레인 하나 — 대분류 하나와 그 안의 들어간 카드(docs/MATERIAL_PICKER.md §11).
+ * 흐름도의 단계 하나와 그 안의 놓인 블록(docs/MATERIAL_PICKER.md §12.3).
  *
- * 레인 머리를 좌우로 끌거나 ◀▶ 버튼으로 대분류 순서를 바꾼다. 레인 사이의 순서는 머리 오른쪽의
- * 화살표로, 레인 안의 순서는 세로축을 따라 위에서 아래로 보인다. 레인 맨 아래의 빈 자리에 같은
- * 레인의 카드를 놓으면 맨 뒤로 간다.
+ * 단계 머리를 좌우로 끌거나 ◀▶ 버튼으로 단계 순서를 바꾼다. 단계 사이의 순서는 머리 오른쪽의
+ * 화살표로, 단계 안의 순서는 세로축을 따라 위에서 아래로 보인다. 단계 맨 아래의 빈 자리에 같은
+ * 단계의 블록을 놓으면 맨 뒤로 간다. 놓인 블록이 없으면 점선 빈 자리가 보인다.
  */
 import { useRef, useState, type ReactNode } from "react";
 import { useDrag, useDrop } from "react-dnd";
@@ -14,26 +14,22 @@ import type {
   ComposerCardId,
   MaterialCategory,
   MaterialCategoryId,
-  MaterialPicks,
 } from "../../types/reportComposer.types";
 import { categoryOf } from "../../data/reportComposer";
 import type { DropPosition } from "../../utils/domain/cardOrder";
+import type { TreeBlock } from "../../utils/domain/materialPicks";
 import { cn } from "../../utils/styling/styles";
 import { CardNode } from "./CardNode";
 import { DND, dropPosition, type CardDragItem, type LaneDragItem, type PickerActions } from "./dnd";
 
 interface DiagramLaneProps {
   lane: MaterialCategory;
-  /** 이 레인의 들어간 카드, 입력 순서대로. */
+  /** 이 단계에 놓인 블록, 입력 순서대로. */
   cards: ComposerCard[];
-  /** 카드의 입력 순서 번호. */
+  /** 블록의 입력 순서 번호. */
   numberOf: (cardId: ComposerCardId) => number;
   taskType: TaskType | "";
-  picks: MaterialPicks;
-  /** 필드 패널에 열려 있는 카드. */
-  selectedCardId: ComposerCardId;
-  /** 필드 패널에 그 카드를 연다. */
-  onSelectCard: (cardId: ComposerCardId) => void;
+  blocks: ReadonlyMap<ComposerCardId, TreeBlock>;
   previousLaneId?: MaterialCategoryId;
   nextLaneId?: MaterialCategoryId;
   actions: PickerActions;
@@ -44,9 +40,7 @@ export function DiagramLane({
   cards,
   numberOf,
   taskType,
-  picks,
-  selectedCardId,
-  onSelectCard,
+  blocks,
   previousLaneId,
   nextLaneId,
   actions,
@@ -81,7 +75,7 @@ export function DiagramLane({
   return (
     <li
       ref={ref}
-      aria-label={`${lane.name} 레인`}
+      aria-label={`${lane.name} 단계`}
       className={cn("relative flex min-w-0 flex-col gap-3", isDragging && "opacity-40")}
     >
       {showIndicator && (
@@ -129,16 +123,18 @@ export function DiagramLane({
         </LaneButton>
       </div>
 
-      <ol aria-label={`${lane.name} 카드`} className="flex flex-col gap-3">
+      {cards.length === 0 && (
+        <p className="flex min-h-20 items-center justify-center rounded-lg border-2 border-dashed border-border-strong px-3 text-center text-sm text-muted-foreground">
+          여기에 {lane.name} 항목을 끌어 놓으세요
+        </p>
+      )}
+      <ol aria-label={`${lane.name} 블록`} className="flex flex-col gap-3">
         {cards.map((card, index) => (
           <CardNode
             key={card.id}
             card={card}
             number={numberOf(card.id)}
-            taskType={taskType}
-            picks={picks[card.id] ?? []}
-            selected={card.id === selectedCardId}
-            onSelect={() => onSelectCard(card.id)}
+            block={blocks.get(card.id)}
             previousCardId={cards[index - 1]?.id}
             nextCardId={cards[index + 1]?.id}
             actions={actions}

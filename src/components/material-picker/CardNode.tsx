@@ -1,36 +1,31 @@
 /**
- * 다이어그램의 카드 노드 하나(docs/MATERIAL_PICKER.md §11).
+ * 흐름도의 블록 하나(docs/MATERIAL_PICKER.md §12.3).
  *
- * 왼쪽 세로축 위에 입력 순서 번호가 있고, 같은 레인의 다음 카드 번호까지 선으로 잇는다. 레인 안의
- * 순서는 화살표 없이 위에서 아래로 읽는다. 노드에는 카드 이름과 필수 표시, 받기로 고른 권장·선택
- * 항목의 칩만 붙는다 — 필드 수 같은 숫자는 두지 않는다. 칩은 ×로 뺀다.
+ * 왼쪽 세로축 위에 입력 순서 번호가 있고, 같은 단계의 다음 블록 번호까지 선으로 잇는다. 블록에는
+ * **넣은 모든 항목**(필수 포함)이 칩으로 붙는다. 함께 들어감 항목은 조건 항목 바로 뒤에 점선 칩으로
+ * 붙고 ✕가 없다. 칩은 ✕로 빼거나 트리로 끌어 뺀다.
  *
- * 노드를 누르면 가운데 아래 필드 패널에 이 카드가 열리고, 열린 노드는 강조 테두리로 보인다. 필드
- * 설명과 형식은 거기서 읽고 고른다. 같은 레인 안에서는 끌거나 ▲▼ 버튼으로 순서를 바꾼다.
+ * 블록 이름을 누르면 트리에서 그 블록을 펼쳐 보인다. 같은 단계 안에서는 끌거나 ▲▼로 순서를 바꾸고,
+ * ✕로 블록째 뺀다(필수 블록도 — 다시 "다음"이 막힐 뿐이다).
  */
 import { useRef, useState, type ReactNode } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { ChevronDown, ChevronUp, GripVertical, X } from "lucide-react";
-import type { TaskType } from "../../data/evaluationData";
-import type { ComposerCard, ComposerCardId } from "../../types/reportComposer.types";
+import type { ComposerCard, ComposerCardId, FlowLeaf } from "../../types/reportComposer.types";
 import type { DropPosition } from "../../utils/domain/cardOrder";
 import { categoryOf } from "../../data/reportComposer";
-import { pickItems, type PickItem } from "../../utils/domain/materialPicks";
-import { cn } from "../../utils/styling/styles";
-import { DND, dropPosition, type CardDragItem, type ItemDragItem, type PickerActions } from "./dnd";
-import { KIND_STYLE } from "./kindStyles";
+import type { TreeBlock } from "../../utils/domain/materialPicks";
+import { FOCUS_RING, cn } from "../../utils/styling/styles";
+import { DND, dropPosition, type CardDragItem, type LeafDragItem, type PickerActions } from "./dnd";
+import { KindMarker } from "./KindMarker";
 
 interface CardNodeProps {
   card: ComposerCard;
   /** 입력 순서 번호(1부터). */
   number: number;
-  taskType: TaskType | "";
-  picks: readonly string[];
-  /** 필드 패널에 열려 있는 카드인지. */
-  selected: boolean;
-  /** 필드 패널에 이 카드를 연다. */
-  onSelect: () => void;
-  /** 같은 레인의 위·아래 카드. 없으면 그쪽으로 옮기는 버튼을 끈다. */
+  /** 이 블록의 트리 모델. 놓인 항목이 칩이 된다. */
+  block: TreeBlock | undefined;
+  /** 같은 단계의 위·아래 카드. 없으면 그쪽으로 옮기는 버튼을 끈다. */
   previousCardId?: ComposerCardId;
   nextCardId?: ComposerCardId;
   actions: PickerActions;
@@ -39,18 +34,20 @@ interface CardNodeProps {
 export function CardNode({
   card,
   number,
-  taskType,
-  picks,
-  selected,
-  onSelect,
+  block,
   previousCardId,
   nextCardId,
   actions,
 }: CardNodeProps) {
   const ref = useRef<HTMLLIElement>(null);
   const [hoverPosition, setHoverPosition] = useState<DropPosition | null>(null);
-  const items = pickItems(card.id, taskType);
-  const picked = items.filter((item) => picks.includes(item.pickId));
+  // 넣은 항목과, 그 뒤에 함께 들어간 항목.
+  const chips = (block?.leaves ?? [])
+    .filter((leaf) => leaf.placed)
+    .flatMap((leaf) => [
+      { leaf, companion: false },
+      ...leaf.companions.filter((item) => item.placed).map((item) => ({ leaf: item, companion: true })),
+    ]);
 
   const [{ isDragging }, drag, preview] = useDrag<CardDragItem, unknown, { isDragging: boolean }>({
     type: DND.node,
@@ -101,14 +98,7 @@ export function CardNode({
         )}
       </div>
 
-      {/* 상자 어디를 눌러도 필드 패널에 연다. 키보드는 카드 이름 버튼으로 연다(클릭이 상자로 올라온다). */}
-      <div
-        onClick={onSelect}
-        className={cn(
-          "flex min-w-0 flex-1 cursor-pointer flex-col gap-2.5 rounded-lg border bg-card p-3 transition-colors",
-          selected ? "border-primary ring-1 ring-primary" : "border-border-strong hover:border-foreground-subtle",
-        )}
-      >
+      <div className="flex min-w-0 flex-1 flex-col gap-2.5 rounded-lg border border-border-strong bg-card p-3">
         <div className="flex items-start gap-1.5">
           <span
             ref={(element) => {
@@ -121,11 +111,10 @@ export function CardNode({
           </span>
           <button
             type="button"
-            aria-pressed={selected}
-            className="min-w-0 flex-1 pt-px text-left text-sm font-medium leading-5 text-foreground"
+            onClick={() => actions.onRevealBlock(card.id)}
+            className={cn("min-w-0 flex-1 rounded-sm pt-px text-left text-sm font-medium leading-5 text-foreground", FOCUS_RING)}
           >
             {card.name}
-            {card.locked && <span className="ml-1.5 text-xs font-normal text-muted-foreground">필수</span>}
           </button>
           <span className="-mr-1 -mt-1 flex shrink-0 items-center">
             <IconButton
@@ -142,20 +131,18 @@ export function CardNode({
             >
               <ChevronDown className="size-4" />
             </IconButton>
-            {!card.locked && (
-              <IconButton label={`${card.name} 빼기`} onClick={() => actions.onExcludeCard(card.id)}>
-                <X className="size-4" />
-              </IconButton>
-            )}
+            <IconButton label={`${card.name} 블록 빼기`} onClick={() => actions.onRemoveBlock(card.id)}>
+              <X className="size-4" />
+            </IconButton>
           </span>
         </div>
 
-        {picked.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {picked.map((item) => (
-              <PickChip key={item.pickId} cardId={card.id} item={item} actions={actions} />
+        {chips.length > 0 && (
+          <ul aria-label={`${card.name}에 넣은 항목`} className="flex flex-wrap items-center gap-1.5">
+            {chips.map(({ leaf, companion }) => (
+              <PickChip key={leaf.leafId} leaf={leaf} companion={companion} actions={actions} />
             ))}
-          </div>
+          </ul>
         )}
       </div>
     </li>
@@ -187,37 +174,46 @@ function IconButton({
   );
 }
 
-/** 받기로 한 권장·선택 항목 칩. ×로 빼거나 재료 목록으로 끌어 뺀다. */
+/** 넣은 항목 칩. ✕로 빼거나 트리로 끌어 뺀다. 함께 들어감 칩은 점선이고 ✕가 없다. */
 function PickChip({
-  cardId,
-  item,
+  leaf,
+  companion,
   actions,
 }: {
-  cardId: ComposerCardId;
-  item: PickItem;
+  leaf: FlowLeaf;
+  companion: boolean;
   actions: PickerActions;
 }) {
-  const [, drag] = useDrag<ItemDragItem>({ type: DND.chip, item: { cardId, pickId: item.pickId } });
+  const [, drag] = useDrag<LeafDragItem>({
+    type: DND.chip,
+    item: { cardId: leaf.cardId, leafId: leaf.leafId, label: leaf.label },
+    canDrag: () => !companion,
+  });
   return (
-    <span
+    <li
       ref={(element) => {
         drag(element);
       }}
       className={cn(
-        "inline-flex cursor-grab items-center gap-1.5 rounded-md border border-border-strong bg-card py-0.5 pl-2 pr-0.5 text-xs text-foreground",
+        "inline-flex items-center gap-1.5 rounded-md border bg-card py-0.5 pl-2 text-xs text-foreground",
+        companion ? "border-dashed border-border-strong pr-2 text-foreground-secondary" : "cursor-grab border-border-strong pr-0.5",
       )}
     >
-      {/* 구분 색 점 — 필드 패널의 배지와 같은 색이다(권장 앰버, 선택 회색). */}
-      <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full", KIND_STYLE[item.kind].dot)} />
-      {item.label}
-      <button
-        type="button"
-        aria-label={`${item.label} 빼기`}
-        onClick={() => actions.onTogglePick(cardId, item.pickId)}
-        className="flex size-4 items-center justify-center rounded text-foreground-subtle hover:bg-muted hover:text-foreground"
-      >
-        <X className="size-3" />
-      </button>
-    </span>
+      <KindMarker kind={leaf.kind} />
+      {leaf.label}
+      {!companion && (
+        <button
+          type="button"
+          aria-label={`${leaf.label} 빼기`}
+          onClick={() => actions.onToggleLeaf(leaf.cardId, leaf.leafId)}
+          className={cn(
+            "flex size-4 items-center justify-center rounded text-foreground-subtle hover:bg-muted hover:text-foreground",
+            FOCUS_RING,
+          )}
+        >
+          <X className="size-3" />
+        </button>
+      )}
+    </li>
   );
 }

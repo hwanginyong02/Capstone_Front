@@ -1,76 +1,109 @@
 /**
- * 재료 고르기 하단 바의 현황(docs/MATERIAL_PICKER.md §11).
+ * 평가 흐름 만들기 하단 바의 현황(docs/MATERIAL_PICKER.md §12.3).
  *
- * 무엇이 얼마나 들어갔는지(필수 카드, 권장, 선택)와 지금 품질 단계를 보이고, 표준에 못 미치면
- * 빠진 권장 항목을 경고한다. 빠진 항목은 펼쳐서 바로 넣을 수 있다.
+ * 구분마다 넣은 수와 전체 수(함께 들어감은 세지 않음)를 보이고, 빠진 필수·권장 항목을 알린다. 빠진
+ * 항목은 펼쳐서 바로 넣을 수 있다. 수는 모두 `flowStatus` 한 번의 결과다 — 트리의 블록 줄과 막힘
+ * 안내가 같은 결과를 읽는다.
  *
- * 품질 기준: **표준이 충분한 품질의 기준선이다** — 표준 보고 항목(권장)을 모두 받는다. 권장을
- * 빼도 성적서는 나오지만 그 자리가 "제공되지 않음"으로 찍힌다.
+ * 품질 배지(최소·표준·상세)는 없다 — 추천 세트가 없어졌고, 권장 p/t 와 빠진 권장 안내가 같은 정보를
+ * 준다.
  */
-import { TriangleAlert, CircleCheck } from "lucide-react";
+import { CircleCheck, TriangleAlert } from "lucide-react";
+import { getCard } from "../../data/reportComposer";
+import type { ComposerCardId, FlowLeaf } from "../../types/reportComposer.types";
+import type { FlowStatus } from "../../utils/domain/materialPicks";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { cn } from "../../utils/styling/styles";
-import { KIND_STYLE } from "./kindStyles";
-import type { ComposerCardId } from "../../types/reportComposer.types";
-import {
-  tierInfo,
-  type MissingRecommended,
-  type PickCoverage,
-  type PickTier,
-} from "../../utils/domain/materialPicks";
+import { KindMarker } from "./KindMarker";
 
 interface PickStatusBarProps {
-  coverage: PickCoverage;
-  tier: PickTier;
-  missing: MissingRecommended[];
-  onAddRecommended: (cardId: ComposerCardId, fieldId: string) => void;
+  counts: FlowStatus["counts"];
+  missingRequired: FlowLeaf[];
+  unplacedRecommended: FlowLeaf[];
+  /** "다음"이 막힌 동안은 안내 문장을 빼고 [빠진 항목 보기]만 남긴다(막힘 안내가 다음 버튼 옆에 있다). */
+  compact: boolean;
+  onPlaceLeaf: (cardId: ComposerCardId, leafId: string) => void;
 }
 
-export function PickStatusBar({ coverage, tier, missing, onAddRecommended }: PickStatusBarProps) {
-  const missingCount = coverage.recommended.total - coverage.recommended.picked;
-  const info = tierInfo(tier);
+export function PickStatusBar({ counts, missingRequired, unplacedRecommended, compact, onPlaceLeaf }: PickStatusBarProps) {
+  const anyMissing = missingRequired.length > 0 || unplacedRecommended.length > 0;
 
   return (
-    <div role="status" aria-label="재료 현황" className="flex min-w-0 flex-col gap-0.5">
+    <div role="status" aria-label="항목 현황" aria-atomic="true" className="flex min-w-0 flex-col gap-0.5">
       <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-foreground">
-        <span>필수 카드 {coverage.requiredCards}장</span>
-        <span aria-hidden="true" className="text-border-strong">|</span>
         <span className="flex items-center gap-1.5">
-          <span aria-hidden="true" className={cn("size-1.5 rounded-full", KIND_STYLE.recommended.dot)} />
-          권장 {coverage.recommended.picked}/{coverage.recommended.total}
+          <KindMarker kind="required" />
+          필수 항목 {counts.required.placed}/{counts.required.total}
         </span>
-        <span aria-hidden="true" className="text-border-strong">|</span>
+        <span aria-hidden="true" className="text-border-strong">·</span>
         <span className="flex items-center gap-1.5">
-          <span aria-hidden="true" className={cn("size-1.5 rounded-full", KIND_STYLE.optional.dot)} />
-          선택 {coverage.optional.picked}/{coverage.optional.total}
+          <KindMarker kind="recommended" />
+          권장 {counts.recommended.placed}/{counts.recommended.total}
         </span>
-        <span className="rounded-md bg-primary-subtle px-2 py-0.5 text-xs font-medium text-primary">
-          품질 {info.name}
+        <span aria-hidden="true" className="text-border-strong">·</span>
+        <span className="flex items-center gap-1.5">
+          <KindMarker kind="optional" />
+          선택 {counts.optional.placed}/{counts.optional.total}
         </span>
       </p>
-      {missingCount > 0 ? (
+      {anyMissing ? (
         <p className="flex flex-wrap items-center gap-x-2 text-sm text-foreground-secondary">
-          <TriangleAlert className="size-4 shrink-0 text-warning-strong" aria-hidden="true" />
-          <span>
-            표준까지 권장 {missingCount}개가 남았어요. 빠진 항목은 성적서에 "제공되지 않음"으로 찍혀요.
-          </span>
-          <Popover>
-            <PopoverTrigger className="text-sm underline underline-offset-4 hover:text-foreground">
-              빠진 항목 보기
-            </PopoverTrigger>
-            <PopoverContent side="top" align="start" className="w-80 p-0">
-              <ul aria-label="빠진 권장 항목" className="flex max-h-80 flex-col overflow-y-auto py-1">
-                {missing.map(({ card, fields }) => (
-                  <li key={card.id} className="border-t border-border px-4 py-2 first:border-t-0">
-                    <p className="text-sm font-medium text-foreground">{card.name}</p>
-                    <ul className="mt-1 flex flex-col">
-                      {fields.map((field) => (
-                        <li key={field.id} className="flex min-h-8 items-center justify-between gap-3">
-                          <span className="text-sm text-foreground-secondary">{field.label}</span>
+          {!compact && (
+            <>
+              <TriangleAlert className="size-4 shrink-0 text-warning-strong" aria-hidden="true" />
+              <span>
+                {missingRequired.length > 0
+                  ? `필수 항목 ${missingRequired.length}개를 더 넣어야 다음으로 갈 수 있어요.`
+                  : `권장 항목 ${unplacedRecommended.length}개가 빠졌어요. 빠진 항목은 성적서에 "제공되지 않음"으로 찍혀요.`}
+              </span>
+            </>
+          )}
+          <MissingPopover required={missingRequired} recommended={unplacedRecommended} onPlaceLeaf={onPlaceLeaf} />
+        </p>
+      ) : (
+        <p className="flex items-center gap-2 text-sm text-foreground-secondary">
+          <CircleCheck className="size-4 shrink-0 text-primary" aria-hidden="true" />
+          필수와 권장 항목을 모두 넣었어요.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** 빠진 항목 보기 — "필수 항목"·"권장 항목" 묶음을 블록별로. */
+function MissingPopover({
+  required,
+  recommended,
+  onPlaceLeaf,
+}: {
+  required: FlowLeaf[];
+  recommended: FlowLeaf[];
+  onPlaceLeaf: (cardId: ComposerCardId, leafId: string) => void;
+}) {
+  const groups = [
+    { title: "필수 항목", leaves: required },
+    { title: "권장 항목", leaves: recommended },
+  ].filter((group) => group.leaves.length > 0);
+
+  return (
+    <Popover>
+      <PopoverTrigger className="text-sm underline underline-offset-4 hover:text-foreground">빠진 항목 보기</PopoverTrigger>
+      <PopoverContent side="top" align="start" className="w-80 p-0">
+        <div aria-label="빠진 항목" role="group" className="flex max-h-80 flex-col overflow-y-auto py-1">
+          {groups.map((group) => (
+            <section key={group.title} aria-label={group.title} className="border-t border-border first:border-t-0">
+              <h3 className="px-4 pt-2 text-xs font-medium text-muted-foreground">{group.title}</h3>
+              <ul className="flex flex-col">
+                {byBlock(group.leaves).map(([cardId, leaves]) => (
+                  <li key={cardId} className="px-4 py-1.5">
+                    <p className="text-sm font-medium text-foreground">{getCard(cardId).name}</p>
+                    <ul className="mt-0.5 flex flex-col">
+                      {leaves.map((leaf) => (
+                        <li key={leaf.leafId} className="flex min-h-8 items-center justify-between gap-3">
+                          <span className="text-sm text-foreground-secondary">{leaf.label}</span>
                           <button
                             type="button"
-                            aria-label={`${card.name} ${field.label} 넣기`}
-                            onClick={() => onAddRecommended(card.id, field.id)}
+                            aria-label={`${getCard(cardId).name} ${leaf.label} 넣기`}
+                            onClick={() => onPlaceLeaf(cardId, leaf.leafId)}
                             className="text-xs text-primary underline underline-offset-4"
                           >
                             넣기
@@ -81,15 +114,16 @@ export function PickStatusBar({ coverage, tier, missing, onAddRecommended }: Pic
                   </li>
                 ))}
               </ul>
-            </PopoverContent>
-          </Popover>
-        </p>
-      ) : (
-        <p className="flex items-center gap-2 text-sm text-foreground-secondary">
-          <CircleCheck className="size-4 shrink-0 text-primary" aria-hidden="true" />
-          {info.description}
-        </p>
-      )}
-    </div>
+            </section>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
+}
+
+function byBlock(leaves: FlowLeaf[]): Array<[ComposerCardId, FlowLeaf[]]> {
+  const groups = new Map<ComposerCardId, FlowLeaf[]>();
+  for (const leaf of leaves) groups.set(leaf.cardId, [...(groups.get(leaf.cardId) ?? []), leaf]);
+  return [...groups];
 }
