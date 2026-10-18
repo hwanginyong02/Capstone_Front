@@ -447,4 +447,13 @@ AI 에 넘기는 클래스 설명도 같은 거른 값(`reportInput.classLabelDe
 - "컬럼 매핑에서 고치기"는 지연시간 컬럼이 **놓여 있을 때만** 보인다. 놓지 않았으면 매핑 화면에 latency 역할이 없어 막다른 길이다. 판정은 검증 화면의 `canFixInInput`(항목을 가리키면 `isLeafReceived`, 아니면 블록을 넣었는지) 하나다.
 - 블록만 가리키는 항목(학습 데이터·정답 라벨 등)은 종전처럼 "평가 흐름 만들기에서 넣기"와, 블록을 넣었으면 "입력 화면에서 고치기".
 
-코드: `utils/domain/mappingPicks.ts`, `utils/stores/useWorkflowStore.ts`(`setColumnMapping`·`applyMaterialPicks`), `utils/domain/applyRoleChange.ts`, `components/column-mapping/`, `lib/report/mapWorkflowToFinalReport.ts`(`pickedDedicatedValues`·`buildDatasetInfo`), `hooks/useReportData.ts`, `pages/DataInfo.tsx`, `components/workflow/MaterialCheckNotice.tsx`, `pages/DataValidation.tsx`, `data/reportComposer.ts`(`isLeafReceived`).
+**매핑 곁가지(P1, 같은 라운드).**
+- **'지정 안 함' 삭제(M7).** 역할 선택지는 "쓰지 않음 (ignore)" 하나로 남는 컬럼을 치운다. 역할 이름은 한국어 뒤에 코드(`roleOptionLabel`). 역할이 비어 있는(null) 옛 행은 "쓰지 않음"으로 보이고 백엔드로도 ignore 로 간다.
+- **필수 컬럼 배지·겹침(B12·B13).** 배지는 `resolveMissingRoleCodes` 한 규칙으로 정한다 — 확률만 매핑하면 y_pred 는 "확률로 대신", 확률 역할은 "n개". 여러 컬럼에 줄 수 있는 역할은 백엔드 `MULTI_COLUMN_ROLES` 의 사본(`prob_class_*`·`prob_label_*`) 한 벌이고 대조 테스트가 지킨다. 이진 score 두 컬럼은 화면에서도 겹침으로 막는다(백엔드가 거절하던 매핑).
+- **결정 임계값(B4).** 칸마다 입력 중인 글을 따로 들고 숫자일 때만 저장한다. 빈 칸은 저장하지 않는다(스칼라는 null, 레이블별은 그 키를 지움 = 기본 0.5). 0~1 밖이면 매핑 확정을 막는다. 카드가 보이는 조건과 확정 검사가 `thresholdApplies` 하나를 쓴다 — 쓰이지 않는 남은 값으로 막지 않는다. 이미 0 으로 저장된 진행분은 사용자의 선택인지 알 수 없어 옮기지 않는다.
+- **클래스 목록 한 곳(B5①).** 매핑 화면(설명 칸·양성 클래스 선택지)·학습 데이터 화면(클래스별 데이터 양)·성적서 3절이 `evaluationClassNames(taskType, columnMapping, metadata)`(`utils/domain/evaluationClasses.ts`) 하나를 쓴다. 출처 순서는 정답 컬럼의 전체 고유값 → 분석이 찾은 클래스 → 정답 컬럼 샘플값.
+- **양성 클래스 지키기(B5④·M5).** 매핑에서 정답 컬럼을 바꿔 고른 양성 클래스가 새 목록에 없으면 비운다(다시 골라야 확정). 파일을 다시 올리면 전에 고른 값이 새 파일의 클래스에 있으면 지키고, 없으면 새 자동 판단을 쓴다(`keepPositiveClass`). 자동 판단 규칙 자체는 백엔드 몫이다.
+- **옛 클래스 키(N1).** 클래스 레이블 설명은 지금 클래스의 키만 성적서·AI 에 싣는다(`currentClassEntries`). 다른 파일·다른 정답 컬럼에서 적어 둔 키가 AI 에 가던 것을 막는다.
+- **업로드 화면 안내(M2·M4)·용어(N2).** 업로드 화면의 "매핑할 수 있는 컬럼"은 매핑 선택지와 같은 `allowedMappingRoles` 로 만든다 — 다중 클래스의 확률·샘플 ID 가 빠지던 것을 고치고, 놓지 않은 항목은 안내하지 않는다. 따로 있던 추론 시간 카드는 지우고 지연시간 이름은 `latency_ms` 하나, 단위는 밀리초로 안내한다. 입력 화면 문구의 '응답시간'은 '지연시간'으로 바꿨다. 성적서 인쇄문(6절 응답시간 지표 표, 검증 절 항목 이름, 3층 점검 문장)은 판정 표 버전·발급본과 묶여 그대로 둔다.
+
+코드: `utils/domain/mappingPicks.ts`, `utils/stores/useWorkflowStore.ts`(`setColumnMapping`·`applyMaterialPicks`), `utils/domain/applyRoleChange.ts`, `components/column-mapping/`, `lib/report/mapWorkflowToFinalReport.ts`(`pickedDedicatedValues`·`buildDatasetInfo`), `hooks/useReportData.ts`, `pages/DataInfo.tsx`, `components/workflow/MaterialCheckNotice.tsx`, `pages/DataValidation.tsx`, `data/reportComposer.ts`(`isLeafReceived`), `utils/domain/evaluationClasses.ts`, `utils/domain/mappingHelpers.ts`, `components/data-upload/DataUpload.tsx`.
