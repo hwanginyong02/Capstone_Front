@@ -23,6 +23,7 @@ import {
   type OptionalCardId,
   type PickKind,
 } from "../types/reportComposer.types";
+import type { StepId } from "../types/workflow.types";
 
 /**
  * 카드 9개. 배열 순서는 카드 번호 순(①~⑨)이다. 화면과 입력 순서는 `MATERIAL_CATEGORIES` 가 정한다.
@@ -1309,6 +1310,87 @@ export function pickableIds(cardId: ComposerCardId, taskType: TaskType | ""): st
       return field.parts ? field.parts.map((part) => partPickId(field, part.key)) : [field.id];
     }
     return [];
+  });
+}
+
+// ─── 평가 흐름 만들기의 항목(leaf) ──────────────────────────────────────────────
+//
+// 항목 id 는 materialPicks 에 들어가는 값이다. 필수·권장은 필드 하나가 항목 하나이고, 고를 수 있는
+// 칸이 나뉜 선택 필드만 칸마다 항목이다(`필드id:key`). 조건부 필드는 저장하지 않는다 — 조건을 정하는
+// 필드를 넣으면 함께 들어간다(conditionTriggerIds).
+
+/**
+ * 평가 흐름 만들기의 항목 구분. `pickKind` 와 같되, 잠긴 카드의 선택 필드 중 2층 보고 항목
+ * (`standardBasis.reportingItem`)은 **권장**이다 — ① 지연시간 컬럼.
+ *
+ * `pickKind` 는 바꾸지 않는다. persist v12 이행이 그 뜻("권장이면 모두 넣음")으로 옛 저장분을 옮겨,
+ * 바꾸면 v12 의 결과가 달라진다.
+ */
+export function leafKind(card: ComposerCard, field: ComposerField): PickKind {
+  if (card.locked && field.kind === "optional" && field.standardBasis?.reportingItem !== undefined) {
+    return "recommended";
+  }
+  return pickKind(card, field);
+}
+
+/**
+ * 평가 흐름 만들기에서 넣을 수 있는 항목 id 를 화면 순서로. 조건부는 빠진다. `taskType` 이 `""` 면
+ * 모든 유형의 항목이다.
+ *
+ * persist v15 이행이 부를 함수다 — 뜻을 바꾸려면 새 함수를 더한다(`pickableIds` 와 같은 이유).
+ */
+export function placeableIds(cardId: ComposerCardId, taskType: TaskType | ""): string[] {
+  const card = getCard(cardId);
+  return getCardFields(cardId, taskType).flatMap((field) => {
+    const kind = pickKind(card, field);
+    if (kind === "conditional") return [];
+    if (kind === "optional" && field.parts) return field.parts.map((part) => partPickId(field, part.key));
+    return [field.id];
+  });
+}
+
+/**
+ * 조건부 필드의 **조건을 정하는 필드** id(같은 카드). 조건부가 아니면 빈 배열이다.
+ *
+ * `requiredWhen` 이 있으면 거기서, 없으면 `conditionField` 에서 읽는다 — 둘을 함께 적지 않는다
+ * (테스트가 막는다). 평가 흐름의 "함께 들어감"과 입력 쪽 `isFieldReceived` 가 이 함수 하나를 쓴다.
+ */
+export function conditionTriggerIds(field: ComposerField): string[] {
+  if (field.kind !== "conditional") return [];
+  if (field.requiredWhen) {
+    const conditions = Array.isArray(field.requiredWhen) ? field.requiredWhen : [field.requiredWhen];
+    return [...new Set(conditions.map((condition) => condition.field))];
+  }
+  return field.conditionField ? [field.conditionField] : [];
+}
+
+/** 항목 id 가 가리키는 필드. 칸 항목(`필드id:key`)이면 그 필드다. 모르는 id 면 `undefined`. */
+export function fieldOfLeaf(cardId: ComposerCardId, leafId: string): ComposerField | undefined {
+  const fieldId = leafId.split(":")[0];
+  return getCard(cardId).fields.find((field) => field.id === fieldId);
+}
+
+/** 항목을 받는 입력 단계 — 필드의 단계, 없으면 카드의 첫 단계. */
+export function stepOfLeaf(cardId: ComposerCardId, leafId: string): StepId {
+  return fieldOfLeaf(cardId, leafId)?.step ?? getCard(cardId).steps[0];
+}
+
+/**
+ * 입력 화면이 이 필드를 받는가 — `isFieldPicked` 에 더해, 조건부면 **조건을 정하는 필드도 받을 때만**
+ * 받는다(B2). 조건을 정하는 필드가 조건부면 그 조건도 따진다(⑧ 일치도 값 ← 일치도 종류 ← 검수 방식).
+ *
+ * `isFieldPicked` 의 뜻은 바꾸지 않는다 — 조건부를 늘 참으로 보는 곳(입력 화면·매퍼)은 S2 에서 이
+ * 함수로 옮긴다.
+ */
+export function isFieldReceived(
+  card: ComposerCard,
+  field: ComposerField,
+  picks: readonly string[] | undefined,
+): boolean {
+  if (!isFieldPicked(card, field, picks)) return false;
+  return conditionTriggerIds(field).every((triggerId) => {
+    const trigger = card.fields.find((item) => item.id === triggerId);
+    return trigger !== undefined && isFieldReceived(card, trigger, picks);
   });
 }
 

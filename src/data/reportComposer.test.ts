@@ -24,9 +24,16 @@ import {
   getCardFields,
   getSelectableMetrics,
   getVisibleCards,
+  conditionTriggerIds,
+  fieldOfLeaf,
+  isFieldPicked,
+  isFieldReceived,
   isStandardReportingField,
+  leafKind,
   pickKind,
   pickableIds,
+  placeableIds,
+  stepOfLeaf,
 } from "./reportComposer";
 import { MAPPABLE_ROLES_BY_TASK, getColumnDisplay, type TaskType } from "./evaluationData";
 import { REPORT_PURPOSE_LABEL } from "../lib/report/reportConstants";
@@ -610,6 +617,162 @@ describe("표준 근거 (standardBasis)", () => {
       expect(allFields.find((field) => field.id === id)?.standardBasis, id).toBeUndefined();
     }
     expect(allFields.filter((field) => field.standardBasis?.requirement)).toEqual([]);
+  });
+});
+
+/**
+ * 평가 흐름 만들기의 항목(leaf). 화면(S3~)과 흐름 규칙(S2)이 이 함수들만 읽는다.
+ */
+describe("평가 흐름 만들기의 항목", () => {
+  const allFields = COMPOSER_CARDS.flatMap((card) => card.fields);
+  const cardOf = (fieldId: string) => COMPOSER_CARDS.find((card) => card.fields.some((f) => f.id === fieldId))!;
+
+  it("항목 구분은 pickKind 와 같다 — 잠긴 카드의 2층 보고 항목(지연시간 컬럼)만 권장이다", () => {
+    const differs = COMPOSER_CARDS.flatMap((card) =>
+      card.fields.filter((field) => leafKind(card, field) !== pickKind(card, field)),
+    );
+    expect(differs.map((field) => field.id)).toEqual(["latencyColumn"]);
+    expect(leafKind(getCard("evalData"), differs[0])).toBe("recommended");
+  });
+
+  it("넣을 수 있는 항목: 조건부는 빠지고, 고를 수 있는 칸만 칸 단위다", () => {
+    expect(placeableIds("clientInfo", "binary")).toEqual([
+      "companyInfo",
+      "reportPurpose",
+      "contactExtra:website",
+      "contactExtra:fax",
+      "projectNumber",
+      "requestDate",
+    ]);
+    expect(placeableIds("evalData", "binary")).toEqual([
+      "resultFile",
+      "yTrueColumn",
+      "predictionColumns",
+      "positiveClass",
+      "latencyColumn",
+      "sampleIdColumn",
+      "classLabelDescriptions",
+    ]);
+    expect(placeableIds("evalData", "multiclass")).toEqual([
+      "resultFile",
+      "yTrueColumn",
+      "predictionColumns",
+      "latencyColumn",
+      "sampleIdColumn",
+      "classLabelDescriptions",
+    ]);
+    // "" 면 모든 유형의 항목이다(persist v15 가 유형을 모르는 저장분에 쓴다).
+    expect(placeableIds("perspective", "")).toEqual(["criticalErrorType", "classPriority", "usageMode"]);
+  });
+
+  /**
+   * 하단 바·"다음" 막힘이 셀 수의 정본. 바뀌면 docs/MATERIAL_PICKER.md §12.1 의 표도 함께 고친다.
+   * 필수 = ③3 + ④3 + ①4(이진만 양성 클래스) + ⑤2 + ②3(멀티는 지표 선택 이유 +1)
+   * 권장 = ⑨4 + ⑥6 + ⑦2 + ⑧2 + ① 지연시간 1
+   * 선택 = ③3(홈페이지·팩스·과제 번호) + ①2(샘플 ID·클래스 설명) + ⑥7 + ⑦1
+   */
+  it.each([
+    ["binary", { required: 15, recommended: 15, optional: 13 }],
+    ["multiclass", { required: 14, recommended: 15, optional: 13 }],
+    ["multilabel", { required: 15, recommended: 15, optional: 13 }],
+  ] as const)("%s 의 항목 수는 필수·권장·선택이 %o 이다", (taskType, expected) => {
+    const counts = { required: 0, recommended: 0, optional: 0 };
+    for (const card of COMPOSER_CARDS) {
+      for (const leafId of placeableIds(card.id, taskType)) {
+        const kind = leafKind(card, fieldOfLeaf(card.id, leafId)!);
+        if (kind === "conditional") throw new Error(leafId);
+        counts[kind] += 1;
+      }
+    }
+    expect(counts).toEqual(expected);
+  });
+
+  it("조건부 항목과 조건을 정하는 항목 — 여섯 개, 모두 같은 카드 안이다", () => {
+    const table = allFields
+      .filter((field) => field.kind === "conditional")
+      .map((field) => [cardOf(field.id).id, field.id, conditionTriggerIds(field)]);
+    expect(table).toEqual([
+      ["evalData", "decisionThreshold", ["predictionColumns"]],
+      ["metrics", "beta", ["selectedMetrics"]],
+      ["clientInfo", "projectInfo", ["reportPurpose"]],
+      ["groundTruth", "labelReviewerCount", ["labelReview"]],
+      ["groundTruth", "labelAgreementKind", ["labelReview"]],
+      ["groundTruth", "labelAgreementValue", ["labelReview", "labelAgreementKind"]],
+    ]);
+    for (const [cardId, , triggers] of table) {
+      for (const trigger of triggers as string[]) {
+        expect(getCard(cardId as "metrics").fields.map((field) => field.id), trigger).toContain(trigger);
+      }
+    }
+  });
+
+  it("조건은 한 곳에만 적는다 — requiredWhen 과 conditionField 를 함께 두지 않고, 조건부가 아닌 필드는 둘 다 없다", () => {
+    for (const field of allFields) {
+      expect(Boolean(field.requiredWhen && field.conditionField), field.id).toBe(false);
+      if (field.kind !== "conditional") {
+        expect(field.requiredWhen ?? field.conditionField, field.id).toBeUndefined();
+        expect(conditionTriggerIds(field), field.id).toEqual([]);
+      }
+    }
+  });
+
+  it("조건이 돌고 돌지 않고, 조건을 정하는 필드가 조건부면 그 조건도 이 필드의 조건에 적혀 있다", () => {
+    const conditional = allFields.filter((field) => field.kind === "conditional");
+    expect(conditional.length).toBeGreaterThan(0);
+    for (const field of conditional) {
+      const card = cardOf(field.id);
+      // 지나온 경로에 다시 나오면 순환이다. 두 경로로 같은 필드에 닿는 것(마름모)은 괜찮다.
+      const walk = (id: string, path: string[]) => {
+        expect(path, `${field.id} 순환`).not.toContain(id);
+        const current = card.fields.find((item) => item.id === id)!;
+        for (const next of conditionTriggerIds(current)) walk(next, [...path, id]);
+      };
+      walk(field.id, []);
+
+      const own = new Set(conditionTriggerIds(field));
+      for (const triggerId of own) {
+        const trigger = card.fields.find((item) => item.id === triggerId)!;
+        for (const inherited of conditionTriggerIds(trigger)) {
+          expect(own.has(inherited), `${field.id} ← ${triggerId} ← ${inherited}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("항목의 필드와 입력 단계", () => {
+    expect(fieldOfLeaf("clientInfo", "contactExtra:fax")?.id).toBe("contactExtra");
+    expect(fieldOfLeaf("clientInfo", "없는항목")).toBeUndefined();
+    expect(stepOfLeaf("evalData", "resultFile")).toBe("upload");
+    expect(stepOfLeaf("evalData", "latencyColumn")).toBe("mapping");
+    expect(stepOfLeaf("clientInfo", "contactExtra:fax")).toBe("clientInfo");
+  });
+});
+
+describe("입력 화면이 받는가 — isFieldReceived (B2)", () => {
+  const gt = getCard("groundTruth");
+  const field = (id: string) => gt.fields.find((item) => item.id === id)!;
+
+  it("받기로 한 것이 없는 상태(picks 없음)는 모두 받는다", () => {
+    for (const item of gt.fields) expect(isFieldReceived(gt, item, undefined), item.id).toBe(true);
+  });
+
+  it("검수 방식을 받지 않으면 라벨러 수·일치도도 받지 않는다 — isFieldPicked 는 그대로 참이다", () => {
+    for (const id of ["labelReviewerCount", "labelAgreementKind", "labelAgreementValue"]) {
+      expect(isFieldPicked(gt, field(id), ["labelAuthor"]), id).toBe(true);
+      expect(isFieldReceived(gt, field(id), ["labelAuthor"]), id).toBe(false);
+    }
+  });
+
+  it("검수 방식을 받으면 조건부 셋을 모두 받는다(일치도 값은 두 단계 위까지 따진다)", () => {
+    for (const id of ["labelReviewerCount", "labelAgreementKind", "labelAgreementValue"]) {
+      expect(isFieldReceived(gt, field(id), ["labelReview"]), id).toBe(true);
+    }
+  });
+
+  it("조건부가 아닌 필드는 isFieldPicked 와 같다", () => {
+    const picks = ["labelReview"];
+    expect(isFieldReceived(gt, field("labelAuthor"), picks)).toBe(isFieldPicked(gt, field("labelAuthor"), picks));
+    expect(isFieldReceived(gt, field("labelReview"), picks)).toBe(true);
   });
 });
 
