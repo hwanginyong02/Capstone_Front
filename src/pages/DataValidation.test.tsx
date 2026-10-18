@@ -245,4 +245,64 @@ describe("생성 전 안내 → 평가 흐름 만들기", () => {
       returnStep: getCard("groundTruth").steps[0],
     });
   });
+
+  it("지연시간은 평가 데이터 › 지연시간 컬럼을 펼치고 컬럼 매핑으로 돌아오게 한다 — 놓았으면 '컬럼 매핑에서 고치기'도", async () => {
+    const { MemoryRouter: Router, Routes, Route, useLocation } = await import("react-router");
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const { materialCheckFixture } = await import("../test/materialCheckFixture");
+    const { FILLED_LAYER_ONE } = await import("../test/layerOneFixture");
+    useWorkflowStore.setState({ ...FILLED_LAYER_ONE, materialCheckAck: null });
+    useWorkflowStore.setState({
+      materialPicks: { ...useWorkflowStore.getState().materialPicks, evalData: ["yTrueColumn", "predictionColumns"] },
+    });
+    mockUseDataValidation.mockReturnValue({
+      validationData: { error_count: 0 },
+      isLoading: false,
+      error: null,
+      buildEvaluationResult: vi.fn(() => ({
+        workflowSnapshot: {},
+        reportData: {
+          evalScope: { version: "v1" },
+          meta: { reportId: "R" },
+          materialCheck: materialCheckFixture({ missingLatencyAndLabel: true }),
+        },
+      })),
+    });
+    function Composer() {
+      return <pre data-testid="composer-state">{JSON.stringify(useLocation().state)}</pre>;
+    }
+    const view = render(
+      <Router initialEntries={["/app/data-validation"]}>
+        <Routes>
+          <Route path="/app/data-validation" element={<DataValidation />} />
+          <Route path="/app/composer" element={<Composer />} />
+        </Routes>
+      </Router>,
+    );
+
+    // 놓지 않았다 — 컬럼 매핑으로 보내는 갈래가 없다.
+    expect(screen.queryByRole("button", { name: "컬럼 매핑에서 고치기" })).not.toBeInTheDocument();
+    const list = screen.getByRole("list", { name: "빠진 보고 항목" });
+    const button = [...list.querySelectorAll("button")].find((item) =>
+      item.closest("li")?.textContent?.includes("평가 데이터 › 지연시간 컬럼"),
+    );
+    await userEvent.click(button!);
+    expect(JSON.parse(screen.getByTestId("composer-state").textContent!)).toEqual({
+      cardId: "evalData",
+      leafIds: ["latencyColumn"],
+      returnStep: "mapping",
+    });
+    view.unmount();
+
+    // 놓았으면 "컬럼 매핑에서 고치기"도 보인다.
+    useWorkflowStore.setState({
+      materialPicks: { ...useWorkflowStore.getState().materialPicks, evalData: ["latencyColumn"] },
+    });
+    render(
+      <Router initialEntries={["/app/data-validation"]}>
+        <DataValidation />
+      </Router>,
+    );
+    expect(screen.getByRole("button", { name: "컬럼 매핑에서 고치기" })).toBeInTheDocument();
+  });
 });

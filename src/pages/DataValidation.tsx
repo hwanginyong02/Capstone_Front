@@ -17,7 +17,7 @@ import {
 import { FileReuploadNotice } from "../components/workflow/FileReuploadNotice";
 import { MaterialCheckNotice, type MaterialCheckTarget } from "../components/workflow/MaterialCheckNotice";
 import { layerOneGaps, type LayerOneGap } from "../utils/domain/layerOne";
-import { getCard } from "../data/reportComposer";
+import { getCard, isLeafReceived, stepOfLeaf } from "../data/reportComposer";
 import type { MaterialCheckResult } from "../types/finalReport.types";
 import type { ComposerCardId, FlowEntryState } from "../types/reportComposer.types";
 
@@ -78,19 +78,21 @@ export function DataValidation() {
       return;
     }
     if (target.kind === "cardInput") {
-      flow.goTo(getCard(target.cardId).steps[0]);
+      flow.goTo(target.stepId ?? getCard(target.cardId).steps[0]);
       return;
     }
-    // 평가 흐름 만들기에서 그 블록을 펼친다 — 넣지 않은 항목은 입력 화면에 칸이 없다. 넣고 "다음"을
-    // 누르면 그 블록의 입력 화면으로 돌아간다(`composerNextStep`).
-    const entry: FlowEntryState = { cardId: target.cardId, returnStep: getCard(target.cardId).steps[0] };
+    // 평가 흐름 만들기에서 그 블록(항목을 가리키면 그 항목)을 펼친다 — 넣지 않은 항목은 입력 화면에 칸이
+    // 없다. 넣고 "다음"을 누르면 그 항목을 받는 입력 화면으로 돌아간다(`composerNextStep`).
+    const entry: FlowEntryState = target.leafIds?.length
+      ? { cardId: target.cardId, leafIds: target.leafIds, returnStep: stepOfLeaf(target.cardId, target.leafIds[0]) }
+      : { cardId: target.cardId, returnStep: getCard(target.cardId).steps[0] };
     navigate("/app/composer", { state: entry });
   };
-  const includedCards = new Set(
-    (Object.entries(store.composerCards) as Array<[ComposerCardId, boolean]>)
-      .filter(([, on]) => on)
-      .map(([cardId]) => cardId),
-  );
+  /** 입력 화면에서 고칠 수 있는가 — 항목을 가리키면 그 항목을 받는지, 아니면 블록을 넣었는지. */
+  const canFixInInput = (target: Extract<MaterialCheckTarget, { kind: "card" }>) =>
+    target.leafIds?.length
+      ? target.leafIds.every((leafId) => isLeafReceived(target.cardId, leafId, store.materialPicks[target.cardId]))
+      : Boolean((store.composerCards as Partial<Record<ComposerCardId, boolean>>)[target.cardId]);
 
   // 이 핸들러에서 예외가 나면 React 는 잡아주지 않는다(ErrorBoundary 도 없음).
   // 감싸지 않으면 "버튼을 눌러도 아무 일도 안 일어나는" 무증상 실패가 된다.
@@ -197,7 +199,7 @@ export function DataValidation() {
             )}
             <FileReuploadNotice />
             {materialCheck && (
-              <MaterialCheckNotice check={materialCheck} onFix={handleFix} includedCards={includedCards} />
+              <MaterialCheckNotice check={materialCheck} onFix={handleFix} canFixInInput={canFixInInput} />
             )}
             {/* 백엔드가 평가 데이터·매핑 단계에서 내려보낸 안내를 여기 합쳐 보여준다(ISSUES.md B-03·B-04·A-12).
                 그 화면들에서 띄우면 사용자는 이미 다음 단계로 넘어간 뒤라 읽지 못한다. */}
