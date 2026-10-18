@@ -1010,3 +1010,28 @@ describe("persist 사슬 — v11 저장분이 v15 까지", () => {
     });
   });
 });
+
+describe("persist v15 — 평가 관점이 지표 뒤인 저장 순서를 바로잡는다(D4)", () => {
+  const migrate = async (state: Record<string, unknown>) => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+    return migrateWorkflowState(state, 14);
+  };
+
+  it("지표가 관점보다 앞이면 관점을 지표 바로 앞으로 옮긴다 — 다른 레인 순서는 그대로", async () => {
+    const { moveCard, moveLane, DEFAULT_CARD_ORDER, orderViolation } = await import("../utils/domain/cardOrder");
+    const saved = moveCard(moveLane(DEFAULT_CARD_ORDER, "info", "criteria", "after"), "perspective", "metrics", "after");
+    expect(saved.slice(-3)).toEqual(["metrics", "perspective", "clientInfo"]);
+
+    const migrated = await migrate({ cardOrder: saved });
+    expect(migrated.cardOrder.slice(-3)).toEqual(["perspective", "metrics", "clientInfo"]);
+    expect(orderViolation(migrated.cardOrder)).toBeNull();
+  });
+
+  it("이미 맞는 순서와 순서가 없는 저장분은 건드리지 않는다", async () => {
+    const { DEFAULT_CARD_ORDER } = await import("../utils/domain/cardOrder");
+    const saved = { cardOrder: [...DEFAULT_CARD_ORDER] };
+    expect(await migrate(saved)).toBe(saved);
+    const none = { taskType: "binary" };
+    expect(await migrate(none)).toBe(none);
+  });
+});

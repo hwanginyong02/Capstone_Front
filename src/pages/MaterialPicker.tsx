@@ -12,7 +12,6 @@ import {
   laneOrder,
   moveCard,
   moveLane,
-  orderHints,
   orderViolation,
 } from "../utils/domain/cardOrder";
 import {
@@ -40,8 +39,7 @@ import type { ComposerCardId, MaterialPicks } from "../types/reportComposer.type
  * 바꿔 입력 순서를 정한다. 바꾼 것은 저장 버튼 없이 바로 스토어에 들어간다. 필수 카드는 처음부터
  * 들어가 있어 다음을 막을 일이 없다.
  *
- * 순서 규칙(`ORDER_RULES`)을 깨는 이동은 반영하지 않고 그 이유를 보인다. 막지 않는 권고
- * (`ORDER_HINTS`)는 다이어그램 위에 남겨 둔다.
+ * 순서 규칙(`ORDER_RULES`)을 깨는 이동은 반영하지 않고 그 이유를 보인다.
  *
  * 입력 단계에 들어가기 **전** 화면이라 단계 표시줄을 두지 않고(`showStepRail={false}`), 단계도
  * 아니다(`isStepPage={false}` — URL→단계 유도와 진입 가드를 끈다). 유형을 고르지 않고 URL 로
@@ -173,7 +171,6 @@ export function MaterialPicker() {
         onSelectCard={setSelectedCardId}
         onSelectInDiagram={selectInDiagram}
         blockedReason={blockedReason}
-        hints={orderHints(cards.map((card) => card.id))}
         currentSet={PICK_TIERS.find((tier) => matchesTier(tier.id, taskType, picks))?.id ?? null}
         onApplySet={handleApplySet}
         undo={undo ? { label: undo.label, onUndo: handleUndo } : null}

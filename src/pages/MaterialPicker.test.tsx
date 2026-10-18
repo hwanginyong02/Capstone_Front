@@ -274,12 +274,12 @@ describe("입력 순서 — 다이어그램에서 정한다", () => {
     expect(diagramCards().slice(2, 4)).toEqual(["평가 데이터", "학습 데이터"]);
   });
 
-  it("평가 관점을 지표 뒤로 옮기면 막지 않고 지표 추천에 대해 알린다", async () => {
+  it("평가 관점을 지표 뒤로 옮기면 막고 이유를 보인다(D4)", async () => {
     renderPage();
     await userEvent.click(screen.getByRole("button", { name: "평가 관점 아래로" }));
 
-    expect(diagramCards().slice(-2)).toEqual(["지표와 합격 기준", "평가 관점"]);
-    expect(within(diagram()).getByText(/관점에 맞는 지표를 추천받을 수 있어요/)).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("지표와 합격 기준은 평가 관점 뒤에 둬야 해요");
+    expect(diagramCards().slice(-2)).toEqual(["평가 관점", "지표와 합격 기준"]);
   });
 });
 

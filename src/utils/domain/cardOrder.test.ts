@@ -13,7 +13,6 @@ import {
   moveCard,
   moveLane,
   normalizeCardOrder,
-  orderHints,
   orderAfterPlacing,
   orderViolation,
   placeAtLaneEnd,
@@ -162,15 +161,14 @@ describe("순서 규칙 — 깨면 놓지 못한다", () => {
   });
 });
 
-describe("순서 권고 — 막지 않는다", () => {
-  it("평가 관점이 지표보다 뒤면 지표 추천을 받을 수 없다고 알린다", () => {
+describe("[D4] 평가 관점은 지표보다 앞이다 — 권고가 아니라 규칙", () => {
+  it("평가 관점을 지표 뒤로 옮기면 막는다 — 지표 추천이 관점의 답을 읽는다", () => {
     const order = moveCard(DEFAULT_CARD_ORDER, "perspective", "metrics", "after");
     const included = ids(includedCardsInOrder(order, DEFAULT_COMPOSER_SELECTION));
-    expect(orderViolation(included)).toBeNull();
-    expect(orderHints(included)).toEqual([expect.stringMatching(/지표를 추천받을 수 있어요/)]);
+    expect(orderViolation(included)).toMatch(/지표와 합격 기준은 평가 관점 뒤/);
   });
 
-  it("기본 순서에는 권고가 없다", () => {
-    expect(orderHints(ids(includedCardsInOrder(DEFAULT_CARD_ORDER, DEFAULT_COMPOSER_SELECTION)))).toEqual([]);
+  it("기본 순서는 규칙을 지킨다", () => {
+    expect(orderViolation(ids(includedCardsInOrder(DEFAULT_CARD_ORDER, DEFAULT_COMPOSER_SELECTION)))).toBeNull();
   });
 });

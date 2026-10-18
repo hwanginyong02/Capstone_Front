@@ -46,7 +46,7 @@ import {
   placeableIds,
 } from "../../data/reportComposer";
 import { orderPlaced } from "../domain/materialPicks";
-import { DEFAULT_CARD_ORDER, normalizeCardOrder, orderAfterPlacing } from "../domain/cardOrder";
+import { DEFAULT_CARD_ORDER, moveCard, normalizeCardOrder, orderAfterPlacing } from "../domain/cardOrder";
 
 /**
  * 단계 번호·경로 상수는 이 파일을 떠났다.
@@ -433,6 +433,10 @@ function migrateCardOrderV14(next: any): any {
  *
  * 합집합이라 여러 번 돌려도 같다. 결과는 레지스트리 순서다(`orderPlaced`).
  * `placeableIds`·`leafKind` 의 뜻을 바꾸면 이 이행의 결과가 달라진다 — 바꾸려면 새 함수를 더한다.
+ *
+ * 같은 판에서 순서도 바로잡는다: 평가 관점 → 지표가 권고에서 규칙이 됐다(D4). 지표가 관점보다 앞인
+ * 저장분은 그대로 두면 어떤 순서 이동도 `orderViolation` 에 걸려 막히므로, 관점을 지표 바로 앞으로
+ * 옮긴다(`fixPerspectiveOrderV15`).
  */
 function migratePlacedLeavesV15(next: any): any {
   const saved: MaterialPicks = next.materialPicks ?? {};
@@ -467,6 +471,14 @@ function migratePlacedLeavesV15(next: any): any {
     changed = true;
   }
   return changed ? { ...next, materialPicks: picks } : next;
+}
+
+/** v15 의 순서 바로잡기 — 지표가 평가 관점보다 앞이면 관점을 지표 바로 앞으로. 이미 맞으면 그대로. */
+function fixPerspectiveOrderV15(next: any): any {
+  if (!Array.isArray(next.cardOrder)) return next;
+  const order = normalizeCardOrder(next.cardOrder);
+  if (order.indexOf("metrics") > order.indexOf("perspective")) return next;
+  return { ...next, cardOrder: moveCard(order, "perspective", "metrics", "before") };
 }
 
 /**
@@ -660,7 +672,7 @@ export function migrateWorkflowState(persisted: any, version: number): any {
 
   // v14 → v15 — 평가 흐름 만들기. 종전에 받던 항목을 넣은 것으로 옮긴다.
   if (version < 15) {
-    next = migratePlacedLeavesV15(next);
+    next = fixPerspectiveOrderV15(migratePlacedLeavesV15(next));
   }
 
   return next;

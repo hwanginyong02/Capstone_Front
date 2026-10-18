@@ -8,7 +8,6 @@
  * 위쪽 알림 줄에는 방금 막힌 순서의 이유와 순서 권고(평가 관점 → 지표)가 나온다.
  */
 import { useDrop } from "react-dnd";
-import { Info } from "lucide-react";
 import type { TaskType } from "../../data/evaluationData";
 import type {
   ComposerCard,
@@ -33,8 +32,6 @@ interface PickDiagramProps {
   onSelectCard: (cardId: ComposerCardId) => void;
   /** 방금 막힌 순서 변경의 이유. */
   blockedReason: string | null;
-  /** 막지는 않는 순서 권고. */
-  hints: string[];
   actions: PickerActions;
 }
 
@@ -46,7 +43,6 @@ export function PickDiagram({
   selectedCardId,
   onSelectCard,
   blockedReason,
-  hints,
   actions,
 }: PickDiagramProps) {
   const [{ isOver, active }, drop] = useDrop<
@@ -79,20 +75,10 @@ export function PickDiagram({
         isOver ? "border-primary bg-primary-subtle" : active ? "border-border-strong" : "border-transparent",
       )}
     >
-      {(blockedReason || hints.length > 0) && (
-        <div className="flex flex-col gap-1.5">
-          {blockedReason && (
-            <p role="alert" className="text-sm leading-[21px] text-destructive">
-              {blockedReason}
-            </p>
-          )}
-          {hints.map((hint) => (
-            <p key={hint} role="status" className="flex items-start gap-2 text-sm leading-[21px] text-foreground-secondary">
-              <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              {hint}
-            </p>
-          ))}
-        </div>
+      {blockedReason && (
+        <p role="alert" className="text-sm leading-[21px] text-destructive">
+          {blockedReason}
+        </p>
       )}
 
       <div className="overflow-x-auto pb-2">

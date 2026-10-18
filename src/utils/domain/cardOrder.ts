@@ -9,7 +9,7 @@
  * 넣지 않은 선택 카드도 목록에 자리를 갖는다. 다이어그램에는 보이지 않고, 넣으면 그 레인 맨
  * 아래로 온다(`placeAtLaneEnd`).
  *
- * 순서는 마음대로지만 데이터가 앞에 있어야 하는 카드가 둘 있다(`ORDER_RULES`). 그 규칙을 깨는
+ * 순서는 마음대로지만 앞 카드의 답으로 그려지는 카드가 셋 있다(`ORDER_RULES`). 그 규칙을 깨는
  * 자리에 놓으면 화면이 원래 자리로 돌리고 이유를 보인다.
  *
  * 여기 함수들은 전부 순수하다 — 스토어를 읽지 않는다. 드래그 앤 드롭과 키보드 이동 버튼이 같은
@@ -167,12 +167,15 @@ export interface OrderRule {
 }
 
 /**
- * 깨면 놓지 못하는 순서 규칙. 뒤 카드의 입력 화면이 앞 카드에서 받은 데이터로 그려진다.
+ * 깨면 놓지 못하는 순서 규칙. 뒤 카드의 입력 화면이 앞 카드에서 받은 답으로 그려진다.
  *
  * - 지표와 합격 기준은 컬럼 매핑 결과로 계산할 수 있는 지표를 정한다(`metricAvailability`).
  * - 학습 데이터의 클래스별 데이터 양은 평가 데이터에서 찾은 클래스 목록으로 칸을 만든다.
+ * - 지표 화면의 목적별 점검·추천 지표는 평가 관점의 답을 읽는다. 종전에는 막지 않는 권고였지만,
+ *   관점이 뒤면 추천 없이 지표를 고르게 돼 규칙으로 올렸다(D4, 2026-10-18).
  *
- * 레인으로 보면 '평가 기준' 레인은 '데이터' 레인 뒤에만 올 수 있다.
+ * 레인으로 보면 '평가 기준' 레인은 '데이터' 레인 뒤에만 올 수 있다. 판정은 잠긴 카드를 늘 포함한
+ * 들어간 카드 집합으로 한다 — 흐름도에 아직 놓이지 않은 블록도 자리를 지킨다.
  */
 export const ORDER_RULES: OrderRule[] = [
   {
@@ -187,35 +190,20 @@ export const ORDER_RULES: OrderRule[] = [
     message:
       "학습 데이터는 평가 데이터 뒤에 둬야 해요. 클래스별 데이터 양을 평가 데이터의 클래스 목록으로 받기 때문이에요.",
   },
-];
-
-/**
- * 막지는 않고 알리기만 하는 순서. 평가 관점은 지표 추천의 근거라, 지표보다 뒤면 추천 없이 지표를
- * 고르게 된다.
- */
-export const ORDER_HINTS: OrderRule[] = [
   {
     first: "perspective",
     then: "metrics",
-    message: "평가 관점을 지표와 합격 기준보다 앞에 두면 관점에 맞는 지표를 추천받을 수 있어요.",
+    message:
+      "지표와 합격 기준은 평가 관점 뒤에 둬야 해요. 평가 관점의 답으로 지표를 추천하기 때문이에요.",
   },
 ];
 
-/** 들어간 카드 사이에서 어긴 규칙. 둘 중 하나라도 빠져 있으면 그 규칙은 보지 않는다. */
-function brokenRules(rules: OrderRule[], cards: readonly ComposerCardId[]): OrderRule[] {
-  return rules.filter((rule) => {
+/** 들어간 카드의 순서가 깬 규칙의 안내. 깬 것이 없으면 null. 둘 중 하나라도 빠진 규칙은 보지 않는다. */
+export function orderViolation(cards: readonly ComposerCardId[]): string | null {
+  const broken = ORDER_RULES.find((rule) => {
     const first = cards.indexOf(rule.first);
     const then = cards.indexOf(rule.then);
     return first >= 0 && then >= 0 && then < first;
   });
-}
-
-/** 들어간 카드의 순서가 깬 규칙의 안내. 깬 것이 없으면 null. */
-export function orderViolation(cards: readonly ComposerCardId[]): string | null {
-  return brokenRules(ORDER_RULES, cards)[0]?.message ?? null;
-}
-
-/** 들어간 카드의 순서에 대한 권고. */
-export function orderHints(cards: readonly ComposerCardId[]): string[] {
-  return brokenRules(ORDER_HINTS, cards).map((rule) => rule.message);
+  return broken?.message ?? null;
 }
