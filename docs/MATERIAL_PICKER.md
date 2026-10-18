@@ -194,7 +194,7 @@ PR #54 이후 팀 피드백: 화면이 각 필드 설명을 보여 주는 데 �
 
 재료 고르기 화면을 **평가 흐름 만들기**로 바꾼다. 빈 흐름도에서 시작해 왼쪽 트리의 항목을 단계에 넣으면 블록이 생기고, 필수 항목을 모두 넣어야 "다음"으로 간다. 함께 정한 것: 입력 재료 목록 중 레지스트리 밖에서 받던 재료(매핑 컬럼·양성 클래스·결정 임계값·모델 분류·예시 파일 등)도 트리 항목으로 넣어, "넣지 않으면 받지 않는다" 규칙을 모든 입력에 맞춘다.
 
-하위 절은 작업 순서대로 채운다: 12.1 레지스트리, 12.2 흐름 규칙과 저장 이행(v15), 12.3 화면·용어·표준 근거(요청서 요지와 사용자 결정 포함), 12.4 매핑, 12.5 모름과 입력 점검. 아직 비어 있는 절은 해당 작업이 끝나면 적는다.
+하위 절은 작업 순서대로 채운다: 12.1 레지스트리, 12.2 흐름 규칙과 저장 이행(v15), 12.3 화면·용어·표준 근거(요청서 요지와 사용자 결정 포함), 12.4 매핑, 12.5 모름과 입력 점검, 12.6 지표·판정·성적서·발급. 아직 비어 있는 절은 해당 작업이 끝나면 적는다.
 
 ### 12.1 레지스트리 — 항목, 표시, 개수
 
@@ -457,3 +457,34 @@ AI 에 넘기는 클래스 설명도 같은 거른 값(`reportInput.classLabelDe
 - **업로드 화면 안내(M2·M4)·용어(N2).** 업로드 화면의 "매핑할 수 있는 컬럼"은 매핑 선택지와 같은 `allowedMappingRoles` 로 만든다 — 다중 클래스의 확률·샘플 ID 가 빠지던 것을 고치고, 놓지 않은 항목은 안내하지 않는다. 따로 있던 추론 시간 카드는 지우고 지연시간 이름은 `latency_ms` 하나, 단위는 밀리초로 안내한다. 입력 화면 문구의 '응답시간'은 '지연시간'으로 바꿨다. 성적서 인쇄문(6절 응답시간 지표 표, 검증 절 항목 이름, 3층 점검 문장)은 판정 표 버전·발급본과 묶여 그대로 둔다.
 
 코드: `utils/domain/mappingPicks.ts`, `utils/stores/useWorkflowStore.ts`(`setColumnMapping`·`applyMaterialPicks`), `utils/domain/applyRoleChange.ts`, `components/column-mapping/`, `lib/report/mapWorkflowToFinalReport.ts`(`pickedDedicatedValues`·`buildDatasetInfo`), `hooks/useReportData.ts`, `pages/DataInfo.tsx`, `components/workflow/MaterialCheckNotice.tsx`, `pages/DataValidation.tsx`, `data/reportComposer.ts`(`isLeafReceived`), `utils/domain/evaluationClasses.ts`, `utils/domain/mappingHelpers.ts`, `components/data-upload/DataUpload.tsx`.
+
+### 12.6 지표·판정·성적서·발급 (P1, 같은 라운드)
+
+**β 기본값 한 곳(B3).** Fβ(M5)의 β 는 `DEFAULT_BETA = "1.0"`(`utils/domain/validation.ts`) 하나에서 시작한다. 지표의 상세 값 줄은 β 칸과 목표값 칸 중 어느 쪽을 먼저 적어도 `newMetricDetail(id, name)` 으로 만든다 — 종전에는 목표값을 먼저 적으면 M5 줄이 `beta: ""` 로 생겨 β 칸이 비고 "다음"이 잠겼다. β 를 직접 지우면 여전히 오류다(`isBetaValid` 를 지표 화면·β 칸·1층 재확인이 같이 쓴다). 이미 `beta: ""` 로 저장된 진행분은 사용자가 지운 것인지 알 수 없어 옮기지 않는다.
+
+**계산할 수 없게 된 지표(B8).** 검증 화면 "다음"의 1층 재확인(`layerOneGaps`)이 고른 지표를 지금 매핑으로 계산할 수 있는지도 본다(`unavailableSelectedMetrics` — 판정은 지표 화면과 같은 `unavailableMetricReasons`, 매핑 확정 응답의 가용 지표가 있으면 그것이 정본). 남아 있으면 "지표와 합격 기준에서 채우기"와 함께 "AUROC: 양성 클래스 점수(score) 컬럼이 매핑되지 않아 계산할 수 없습니다." 같은 줄을 보인다. 지표 화면은 들어올 때 그 지표를 빼고 알린다. 매핑을 고친 뒤 단계 표시줄로 지표 화면을 건너뛰어도 막힌다. 빈 매핑(시연)은 막지 않는다.
+
+**목표값 범위와 자릿수(B9·B10).**
+- M14(클래스 분포 차이, 총변동거리)·M18(레이블 분포 차이, 코사인 거리)의 목표값은 0~1 이다(백엔드 계산식과 같다). KL Divergence·Log Loss 는 그대로 0 이상.
+- 목표값은 소수 셋째 자리까지 받는다(`TARGET_DIGITS = 3`, 넷째 자리부터 "목표값은 소수 셋째 자리까지 넣으세요."). 인쇄도 같은 자릿수라 인쇄값과 판정값이 같다. 종전에는 0.855 를 받아 판정은 0.855 로, 인쇄는 둘째 자리로 했다(이진 표현 때문에 "≥ 0.85" — 판정과 다른 수).
+- 5절 합격 기준 문자열과 6.1·6.2 표는 `formatTargetCriteria` 하나로 찍는다. 8.1·8.3 은 원래 셋째 자리다. 5절 문자열은 생성 때 저장되고, 6절 표는 그릴 때 성적서의 `targetDigits` 를 읽는다 — **새 성적서만** 이 키(3)를 싣고, 키가 없는 발급본은 종전 둘째 자리 그대로 그린다.
+- 새 범위·자릿수 밖의 값이 저장된 진행분은 지표 화면과 검증 "다음"에서 막힌다(막힘 안내가 고칠 화면을 알려 준다).
+
+**핵심 지표 기본값 문장(W8).** 6.1 판정 규칙(고정 문구 10)의 핵심 지표 문장은 두 갈래다. 의뢰자가 합격 기준 표에서 핵심 지표를 한 번이라도 바꿨으면 "핵심 지표는 의뢰자가 지정하였다(…)", 손대지 않았으면 "핵심 지표는 분류 유형의 기본값을 의뢰자가 바꾸지 않고 사용하였다(…)". 판정은 `coreMetricsSource(composerMetrics)`(`lib/report/computeVerdict.ts`) 하나이고 `resolveCoreMetricIds` 도 이 판정으로 목록을 고른다. 바꿨다가 기본값과 같게 되돌려도 의뢰자의 선택이다. 성적서에 선택 키 `coreMetricsSource` 로 저장하고, 키가 없는 옛 성적서는 종전 문장이다.
+
+**작업 유형 이름과 대체값(W9).**
+- 화면과 성적서·AI 서술이 한국어 한 벌을 쓴다: 이진 분류 / 다중 클래스 분류 / 다중 레이블 분류(`TASK_TYPE_LABELS_KO`, 성적서 쪽 이름 `TASK_TYPE_LABELS` 는 같은 표). 사용자 결정으로 10-15 의 "출력은 영문 유지"를 뒤집었다. 백엔드 서술 지시문의 `TASK_TYPE_LABELS` 와 대조 테스트가 지킨다.
+- 표지·3절 평가 유형·5절 머리글은 성적서에 저장된 이름(`meta.taskTypeLabel`·`datasetInfo.taskTypeLabel`)을 찍으므로 발급본은 영문 그대로다. 5절 공통 지표 안내와 검증 절 묶음 이름은 그릴 때 표에서 읽어 옛 성적서도 한국어로 보인다.
+- 유형이 비었을 때의 유형은 `resolveTaskType()`(`data/evaluationData.ts`, "binary") 한 곳이다. 종전에는 15곳이 따로 정해 같은 파일 안에서도 "multiclass"·"binary" 로 갈렸다. 소스 검사 테스트가 `x || "binary"` 꼴이 다른 곳에 생기지 않게 막는다. 정상 흐름에서는 유형 선택이 첫 화면이라 빈 값이 오지 않는다.
+
+**1.2 평가 의뢰일(B1③).** 1.2 신청인 표의 이름표를 화면 칸과 같은 '평가 의뢰일'로 바꿨다(종전 '계약일자'). 저장 키 `contractDate`·`meta.contractDate` 는 persist·발급본과 묶여 그대로 둔다. 이름표는 그릴 때 정하므로 발급본도 새 이름표로 보인다(값은 같다).
+
+**발급·정정 발급 대화상자(B16).**
+- 브라우저 기본 창(confirm·prompt) 대신 화면 안 대화상자(`components/ui/dialog.tsx`, Radix Dialog)로 받는다.
+- 발급: 발급 비고 칸(선택). 비우면 보내지 않아 서버가 '최초 발급'으로 적는다.
+- 정정 발급: 정정 사유 칸(필수). 비거나 공백뿐이면 칸 아래 "정정 사유를 적어 주세요."를 보이고 확인 버튼을 잠근다. 종전에는 빈 사유를 말없이 버렸다.
+- 두 칸의 상한은 200자(`ISSUANCE_TEXT_MAX_CHARS`, `lib/report/issuanceApi.ts` 한 곳)이고 남은 글자를 보인다. 백엔드 `MAX_ISSUANCE_TEXT_CHARS` 와 같은 값이어야 한다(넘으면 422).
+- 422 의 `detail` 이 배열이면 각 항목의 `msg`(백엔드의 한국어 문구)를 오류로 보인다.
+- 발급자 칸은 두지 않는다(인증이 없어 확인할 수 없는 이름이 서명란에 찍힌다 — 기관 기본값을 쓴다).
+
+코드: `utils/domain/validation.ts`(`DEFAULT_BETA`·`newMetricDetail`·`TARGET_DIGITS`·`fitsTargetDigits`·목표값 범위), `utils/domain/passCriteria.ts`, `utils/domain/layerOne.ts`, `pages/TestItems.tsx`, `pages/DataValidation.tsx`, `lib/report/metricValueFormat.ts`(`formatTargetCriteria`), `lib/report/computeVerdict.ts`(`coreMetricsSource`), `lib/report/reportConstants.ts`(`verdictRuleText`), `lib/report/assembleEvaluatedReport.ts`, `lib/report/mapWorkflowToFinalReport.ts`, `data/evaluationData.ts`(`TASK_TYPE_LABELS_KO`·`resolveTaskType`), `components/report/`, `components/ui/dialog.tsx`, `hooks/useIssuance.ts`, `lib/report/issuanceApi.ts`.
