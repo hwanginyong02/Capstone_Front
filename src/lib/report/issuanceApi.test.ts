@@ -91,3 +91,28 @@ describe("재발급 요청", () => {
     ).rejects.toThrow(/권한이 없습니다/);
   });
 });
+
+describe("422 입력 검사 오류(B16)", () => {
+  it("detail 이 배열이면 각 항목의 msg 를 오류 메시지로 올린다", async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        detail: [{ type: "issuance_text_too_long", loc: ["body", "note"], msg: "정정 사유는 200자 이하로 적어 주세요(지금 201자)." }],
+      }),
+    });
+
+    await expect(reissueReport("RPT-2026-0001", "x".repeat(201), { runId: "r" })).rejects.toThrow(
+      "정정 사유는 200자 이하로 적어 주세요(지금 201자).",
+    );
+  });
+
+  it("msg 가 없는 배열이면 기본 문구", async () => {
+    fetchMock.mockResolvedValue({ ok: false, json: async () => ({ detail: [{}] }) });
+    await expect(issueReport({ runId: "r" })).rejects.toThrow("발급에 실패했습니다.");
+  });
+
+  it("발급 비고를 note 로 보낸다", async () => {
+    await issueReport({ runId: "r", note: "고객 제출용" });
+    expect(bodyOf().note).toBe("고객 제출용");
+  });
+});

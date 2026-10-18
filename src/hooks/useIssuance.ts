@@ -23,7 +23,8 @@ export interface UseIssuanceResult {
   canIssue: boolean;
   /** 발급/재발급 호출 진행 중 */
   busy: boolean;
-  issue: () => Promise<void>;
+  /** 발급. `note` 는 발급 비고 — 비우면 서버가 '최초 발급'으로 적는다. */
+  issue: (note?: string) => Promise<void>;
   reissue: (note: string) => Promise<void>;
 }
 
@@ -66,7 +67,7 @@ export function useIssuance(
     return true;
   }
 
-  async function issue() {
+  async function issue(note?: string) {
     if (!data || busy || !id) return;
     if (tooLargeToIssue(data)) return;
     const run = useWorkspaceStore
@@ -78,6 +79,8 @@ export function useIssuance(
         runId: id,
         modelName: run?.modelName,
         modelVersion: run?.versionName,
+        // 비고는 선택이다. 비거나 공백뿐이면 보내지 않아 서버 기본값('최초 발급')을 쓴다.
+        note: note?.trim() || undefined,
         // 발급 시점의 성적서 원본을 서버에 보관한다 — 이것이 없으면 번호로 문서를
         // 복원할 수도, 인쇄물의 진위를 대조할 수도 없다(ISSUES.md F-01).
         content: data,
