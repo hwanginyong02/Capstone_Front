@@ -20,7 +20,7 @@ import {
 
 import { RequiredColumnsCard } from "./RequiredColumnsCard";
 import { BinaryClassificationCard } from "./BinaryClassificationCard";
-import { DecisionThresholdCard } from "./DecisionThresholdCard";
+import { DecisionThresholdCard, thresholdApplies, withinUnitInterval } from "./DecisionThresholdCard";
 import { ClassLabelDescriptionCard } from "./ClassLabelDescriptionCard";
 import { DetectedMappingTable } from "./DetectedMappingTable";
 import { MappingStatusPanel } from "./MappingStatusPanel";
@@ -149,6 +149,8 @@ export function ColumnMapping({
       missingRoleCodes,
       duplicateRoleCount: duplicateCount,
       positiveClass,
+      // 임계값이 쓰일 때만 범위를 본다 — 카드가 보이는 조건과 같은 판정(`thresholdApplies`).
+      thresholdInRange: !thresholdApplies(resolvedTaskType, rows) || withinUnitInterval(decisionThreshold),
     });
 
     return {
@@ -159,7 +161,7 @@ export function ColumnMapping({
       validityMessage: describeMappingValidity(validityReason, missingRoleCodes),
       isValid: validityReason === "ok",
     };
-  }, [requiredRoles, roleCounts, rows, taskType, resolvedTaskType, positiveClass]);
+  }, [requiredRoles, roleCounts, rows, taskType, resolvedTaskType, positiveClass, decisionThreshold]);
 
   useEffect(() => {
     onValidationChange?.(mappingSummary.isValid);

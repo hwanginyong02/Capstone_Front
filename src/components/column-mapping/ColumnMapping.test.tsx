@@ -184,3 +184,27 @@ describe("확률 역할 (B12·B13)", () => {
     ).toBe(true);
   });
 });
+
+describe("결정 임계값 범위 (B4)", () => {
+  const scoreOnly = {
+    taskType: "binary" as const,
+    detectedClasses: ["0", "1"],
+    positiveClass: "1",
+    rows: [row("t", "y_true"), row("s", "score")],
+  };
+
+  it("확률만 매핑했고 임계값이 1.5 면 매핑 확정이 막히고 이유가 보인다", () => {
+    expect(validityOf({ ...scoreOnly, decisionThreshold: 1.5 })).toBe(false);
+    expect(screen.getAllByText("결정 임계값은 0과 1 사이여야 합니다.").length).toBeGreaterThan(0);
+  });
+
+  it("0.7 이면 통과", () => {
+    expect(validityOf({ ...scoreOnly, decisionThreshold: 0.7 })).toBe(true);
+  });
+
+  it("예측 레이블이 있어 임계값이 쓰이지 않으면 남은 값으로 막지 않는다", () => {
+    expect(
+      validityOf({ ...scoreOnly, rows: [...scoreOnly.rows, row("p", "y_pred")], decisionThreshold: 1.5 }),
+    ).toBe(true);
+  });
+});

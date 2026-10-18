@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { DecisionThresholdCard, withinUnitInterval } from "./DecisionThresholdCard";
+import { DecisionThresholdCard, parseThresholdText, thresholdApplies, withinUnitInterval } from "./DecisionThresholdCard";
 import type { MappingRole, MappingRow } from "../../types/mapping.types";
 
 /**
@@ -154,5 +154,59 @@ describe("withinUnitInterval", () => {
     [{ a: 0.5, b: 1.2 }, false],
   ] as Array<[number | Record<string, number> | null, boolean]>)("%o → %s", (value, expected) => {
     expect(withinUnitInterval(value)).toBe(expected);
+  });
+});
+
+describe("칸을 지우면 (B4)", () => {
+  it("parseThresholdText: 빈 칸은 null(기본값), 숫자가 아니면 undefined(저장하지 않음)", () => {
+    expect(parseThresholdText("")).toBeNull();
+    expect(parseThresholdText("  ")).toBeNull();
+    expect(parseThresholdText("0.7")).toBe(0.7);
+    expect(parseThresholdText("0")).toBe(0);
+    expect(parseThresholdText("abc")).toBeUndefined();
+  });
+
+  it("이진: 지워도 0 을 보내지 않고 null(비우면 0.5)을 보낸다 — 칸은 빈 채로 둔다", () => {
+    const onChange = vi.fn();
+    render(
+      <DecisionThresholdCard
+        resolvedTaskType="binary"
+        rows={[row("y", "y_true"), row("s", "score")]}
+        decisionThreshold={0.7}
+        onDecisionThresholdChange={onChange}
+      />,
+    );
+    const input = screen.getByLabelText("결정 임계값") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "" } });
+    expect(onChange).toHaveBeenLastCalledWith(null);
+    expect(onChange).not.toHaveBeenCalledWith(0);
+    expect(input.value).toBe("");
+    expect(screen.getByText(/비우면 0.5/)).toBeInTheDocument();
+  });
+
+  it("멀티레이블: 지운 칸은 그 키만 지운다 — 다른 칸은 그대로", () => {
+    const onChange = vi.fn();
+    render(
+      <DecisionThresholdCard
+        resolvedTaskType="multilabel"
+        rows={[row("t", "y_true"), row("s_a", "prob_label_*"), row("s_b", "prob_label_*")]}
+        decisionThreshold={{ s_a: 0.6, s_b: 0.8 }}
+        onDecisionThresholdChange={onChange}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("s_a 결정 임계값"), { target: { value: "" } });
+    expect(onChange).toHaveBeenLastCalledWith({ s_b: 0.8 });
+    fireEvent.change(screen.getByLabelText("s_b 결정 임계값"), { target: { value: "0.7" } });
+    expect(onChange).toHaveBeenLastCalledWith({ s_a: 0.6, s_b: 0.7 });
+  });
+});
+
+describe("thresholdApplies — 카드와 확정 검사가 같이 쓰는 판정", () => {
+  it("확률만 있을 때만, 다중 클래스는 아님", () => {
+    expect(thresholdApplies("binary", [row("y", "y_true"), row("s", "score")])).toBe(true);
+    expect(thresholdApplies("binary", [row("y", "y_true"), row("p", "y_pred"), row("s", "score")])).toBe(false);
+    expect(thresholdApplies("binary", [row("y", "y_true")])).toBe(false);
+    expect(thresholdApplies("multiclass", [row("y", "y_true"), row("c", "prob_class_*")])).toBe(false);
+    expect(thresholdApplies("multilabel", [row("y", "y_true"), row("c", "prob_label_*")])).toBe(true);
   });
 });

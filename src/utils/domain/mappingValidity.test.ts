@@ -95,3 +95,23 @@ describe("차단 사유 문구", () => {
     expect(describeMappingValidity("missing_roles", ["y_true", "y_pred"])).toContain("y_true, y_pred");
   });
 });
+
+describe("결정 임계값 범위 (B4)", () => {
+  const base = {
+    taskType: "binary" as const,
+    assignedRoleCount: 2,
+    missingRoleCodes: [],
+    duplicateRoleCount: 0,
+    positiveClass: "1",
+  };
+
+  it("0~1 밖이면 매핑 확정을 막고 이유를 알린다", () => {
+    expect(getMappingValidityReason({ ...base, thresholdInRange: false })).toBe("invalid_threshold");
+    expect(describeMappingValidity("invalid_threshold")).toBe("결정 임계값은 0과 1 사이여야 합니다.");
+  });
+
+  it("범위 안이거나 넘기지 않으면 통과", () => {
+    expect(getMappingValidityReason({ ...base, thresholdInRange: true })).toBe("ok");
+    expect(getMappingValidityReason(base)).toBe("ok");
+  });
+});

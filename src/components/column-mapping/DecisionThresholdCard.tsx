@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Info, SlidersHorizontal } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Alert, AlertDescription } from "../ui/alert";
@@ -23,22 +24,49 @@ interface DecisionThresholdCardProps {
  *
  * multiclass 는 argmax 라 임계값이 없으므로 카드를 띄우지 않는다.
  */
+/**
+ * 이 매핑에서 임계값이 쓰이는가 — 하드 예측 없이 확률·점수만 매핑했고, 다중 클래스가 아닐 때다.
+ * 카드를 그릴지와 매핑 확정의 범위 검사(`invalid_threshold`)가 이 한 판정을 쓴다 — 쓰이지 않는 값으로
+ * 확정을 막으면 고칠 칸이 없다.
+ */
+export function thresholdApplies(taskType: TaskType, rows: MappingRow[]): boolean {
+  // multiclass 는 확률의 argmax 로 예측을 정하므로 임계값 개념이 없다.
+  if (taskType === "multiclass") return false;
+  const { primary, alternatives } = PREDICTION_ROLE_ALTERNATIVES[taskType];
+  const hasHardPrediction = rows.some((row) => row.confirmedRole === primary);
+  const hasProbability = rows.some(
+    (row) => row.confirmedRole !== null && (alternatives as string[]).includes(row.confirmedRole),
+  );
+  return !hasHardPrediction && hasProbability;
+}
+
+/**
+ * 칸에 적은 글 → 저장할 값(B4). 빈 칸은 `null`(저장하지 않음 = 기본값 0.5), 숫자가 아니면(입력 중인
+ * "0." 같은 것) `undefined`(아무것도 바꾸지 않음). 종전에는 `Number("")` 가 0 이라, 칸을 지우면 0 이
+ * 저장돼 모든 샘플을 양성으로 판정했다.
+ */
+export function parseThresholdText(raw: string): number | null | undefined {
+  const text = raw.trim();
+  if (text === "") return null;
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 export function DecisionThresholdCard({
   resolvedTaskType,
   rows,
   decisionThreshold,
   onDecisionThresholdChange,
 }: DecisionThresholdCardProps) {
-  const { primary, alternatives } = PREDICTION_ROLE_ALTERNATIVES[resolvedTaskType];
-  const hasHardPrediction = rows.some((row) => row.confirmedRole === primary);
+  /** 칸마다 입력 중인 글. 숫자일 때만 저장하고, 칸을 떠나면 저장값을 다시 보인다. */
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const { alternatives } = PREDICTION_ROLE_ALTERNATIVES[resolvedTaskType];
   const probabilityRows = rows.filter(
     (row) => row.confirmedRole !== null && (alternatives as string[]).includes(row.confirmedRole),
   );
 
   // 파생이 일어나지 않으면 임계값은 쓰이지 않는다 — 쓰이지 않는 입력을 보여주지 않는다.
-  if (hasHardPrediction || probabilityRows.length === 0) return null;
-  // multiclass 는 확률의 argmax 로 예측을 정하므로 임계값 개념이 없다.
-  if (resolvedTaskType === "multiclass") return null;
+  if (!thresholdApplies(resolvedTaskType, rows)) return null;
 
   const perColumn = typeof decisionThreshold === "object" && decisionThreshold !== null;
   const scalarValue = perColumn ? DEFAULT_DECISION_THRESHOLD : (decisionThreshold ?? DEFAULT_DECISION_THRESHOLD);
@@ -48,17 +76,31 @@ export function DecisionThresholdCard({
       ? (decisionThreshold as Record<string, number>)[column] ?? DEFAULT_DECISION_THRESHOLD
       : scalarValue;
 
+  const SCALAR_KEY = "\u0000scalar";
+  const shown = (key: string, stored: number) => drafts[key] ?? String(stored);
+  const editDraft = (key: string, raw: string) => setDrafts((prev) => ({ ...prev, [key]: raw }));
+  const dropDraft = (key: string) =>
+    setDrafts((prev) => {
+      const { [key]: _dropped, ...rest } = prev;
+      return rest;
+    });
+
   const setScalar = (raw: string) => {
-    const parsed = Number(raw);
-    onDecisionThresholdChange(Number.isFinite(parsed) ? parsed : null);
+    editDraft(SCALAR_KEY, raw);
+    const parsed = parseThresholdText(raw);
+    if (parsed !== undefined) onDecisionThresholdChange(parsed);
   };
 
   const setForColumn = (column: string, raw: string) => {
-    const parsed = Number(raw);
+    editDraft(column, raw);
+    const parsed = parseThresholdText(raw);
+    if (parsed === undefined) return;
     const base: Record<string, number> = perColumn
       ? { ...(decisionThreshold as Record<string, number>) }
       : Object.fromEntries(probabilityRows.map((r) => [r.originalName, scalarValue]));
-    base[column] = Number.isFinite(parsed) ? parsed : DEFAULT_DECISION_THRESHOLD;
+    // 빈 칸은 그 키를 지운다 — 백엔드가 없는 키를 기본값 0.5 로 본다.
+    if (parsed === null) delete base[column];
+    else base[column] = parsed;
     onDecisionThresholdChange(base);
   };
 
@@ -93,14 +135,15 @@ export function DecisionThresholdCard({
                   max={1}
                   step={0.01}
                   aria-label={`${row.originalName} 결정 임계값`}
-                  value={thresholdFor(row.originalName)}
+                  value={shown(row.originalName, thresholdFor(row.originalName))}
                   onChange={(e) => setForColumn(row.originalName, e.target.value)}
+                  onBlur={() => dropDraft(row.originalName)}
                   className="w-28 rounded border border-border-strong px-2 py-1 text-right"
                 />
               </label>
             ))}
             <p className="text-xs text-muted-foreground">
-              레이블마다 임계값을 따로 정하고, 각각 따로 판정합니다.
+              레이블마다 임계값을 따로 정하고, 각각 따로 판정합니다. 비우면 {DEFAULT_DECISION_THRESHOLD}입니다.
             </p>
           </div>
         ) : (
@@ -117,16 +160,20 @@ export function DecisionThresholdCard({
               max={1}
               step={0.01}
               aria-label="결정 임계값"
-              value={scalarValue}
+              value={shown(SCALAR_KEY, scalarValue)}
               onChange={(e) => setScalar(e.target.value)}
+              onBlur={() => dropDraft(SCALAR_KEY)}
               className="w-28 rounded border border-border-strong px-2 py-1 text-right"
             />
           </label>
         )}
+        {!isMultilabel && (
+          <p className="text-xs text-muted-foreground">비우면 {DEFAULT_DECISION_THRESHOLD}입니다.</p>
+        )}
 
         {!withinUnitInterval(decisionThreshold) && (
           <Alert variant="destructive">
-            <AlertDescription>임계값은 0과 1 사이여야 합니다.</AlertDescription>
+            <AlertDescription>{THRESHOLD_RANGE_MESSAGE}</AlertDescription>
           </Alert>
         )}
       </CardContent>
@@ -134,7 +181,10 @@ export function DecisionThresholdCard({
   );
 }
 
-/** 백엔드와 같은 규칙([0,1])을 화면에서도 검사해 왕복 전에 알려준다. */
+/** 범위를 벗어났을 때 카드와 매핑 확정 안내가 함께 쓰는 문장. */
+export const THRESHOLD_RANGE_MESSAGE = "결정 임계값은 0과 1 사이여야 합니다.";
+
+/** 백엔드와 같은 규칙([0,1])을 화면에서도 검사해 왕복 전에 알려준다. 범위 판정은 이 함수 하나다. */
 export function withinUnitInterval(value: number | Record<string, number> | null): boolean {
   if (value === null) return true;
   const items = typeof value === "object" ? Object.values(value) : [value];
