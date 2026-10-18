@@ -66,6 +66,8 @@ describe("leafDetail", () => {
     const detail = leafDetail(leaf("clientInfo", "companyInfo"));
     expect(detail.basis).toBe("ISO/IEC 17025 7.8.2.1 e)");
     expect(detail.parts?.map((part) => part.label)).toEqual(["회사명", "대표자", "사업자등록번호", "전화번호", "주소"]);
+    // 설명에 "예:"가 없어도 레지스트리의 입력 예시를 보인다.
+    expect(detail.example).toMatch(/^회사명: \(주\)테스트기업/);
   });
 
   it("칸 항목(홈페이지)은 묶음 필드의 이름과 설명, 칸의 예시를 보인다", () => {
@@ -97,6 +99,8 @@ describe("leafDetail", () => {
     for (const item of all) {
       const detail = leafDetail(item);
       expect(detail.label).toBe(item.label);
+      // 필드 항목은 모두 입력 예시가 있다(레지스트리 inputExample 은 필수 칸이다).
+      if (!item.partKey) expect(detail.example, item.leafId).toBeTruthy();
       // 근거 줄은 레지스트리에 근거가 있을 때만 생긴다.
       expect(detail.basis === undefined).toBe(
         (catalogCards("").find((card) => card.id === item.cardId)?.fields.find((f) => f.id === item.fieldId)
