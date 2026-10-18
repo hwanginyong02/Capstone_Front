@@ -37,11 +37,12 @@ export interface FieldIssue {
    * `outOfRange` — 숫자가 아니거나 허용 범위 밖이다.
    * `invalidPeriod` — 기간의 한쪽만 적었거나 시작이 끝보다 늦다.
    * `incompatible` — 고른 선택지가 다른 칸의 값과 맞지 않는다(⑧ 라벨러 2명인데 Fleiss의 카파).
+   * `incompleteRow` — 줄을 추가하는 칸(⑨ 하이퍼파라미터)에 이름과 값 중 하나만 적은 줄이 있다(B6②).
    *
-   * `missing` 말고는 **지금 당장 틀린 값**이라 다음을 누르기 전부터 표시한다. `missing` 만 아직
-   * 입력하지 않은 것이라 넘어가려 한 뒤에야 표시한다.
+   * `missing`·`incompleteRow` 말고는 **지금 당장 틀린 값**이라 다음을 누르기 전부터 표시한다. 이 둘은
+   * 아직 덜 적은 것이라(이름을 적고 값으로 넘어가는 중일 수 있다) 넘어가려 한 뒤에야 표시한다.
    */
-  reason: "missing" | "exclusive" | "outOfRange" | "invalidPeriod" | "incompatible";
+  reason: "missing" | "exclusive" | "outOfRange" | "invalidPeriod" | "incompatible" | "incompleteRow";
   /** 화면에 그대로 적을 설명. `incompatible` 처럼 이유가 선택지마다 다른 경우에 쓴다. */
   message?: string;
   /**
@@ -50,6 +51,26 @@ export interface FieldIssue {
    */
   allowsUnknown: boolean;
 }
+
+/** 줄을 사용자가 추가하는 칸인가(⑨ 하이퍼파라미터) — 줄마다 이름과 값을 둘 다 적는다. */
+export function isFreeEntriesField(field: ComposerField): boolean {
+  return field.input === "entries" && !field.entryKeys && !field.entryKeysFrom;
+}
+
+/** 이름과 값을 둘 다 적은 줄만(B6②). 필수 점검과 성적서·AI(`reportMaterials` 의 하이퍼파라미터)가 같이 쓴다. */
+export function completeEntryRows(
+  entries: ReadonlyArray<{ key: string; value: string }> | undefined,
+): Array<{ key: string; value: string }> {
+  return (entries ?? []).filter((entry) => entry.key.trim() !== "" && entry.value.trim() !== "");
+}
+
+/** 이름과 값 중 하나만 적은 줄이 있는가. 둘 다 빈 줄은 아직 쓰지 않은 줄이라 세지 않는다. */
+export function hasIncompleteRow(entries: ReadonlyArray<{ key: string; value: string }> | undefined): boolean {
+  return (entries ?? []).some((entry) => (entry.key.trim() === "") !== (entry.value.trim() === ""));
+}
+
+/** `incompleteRow` 의 안내 — 칸 아래와 하단 한 줄이 같은 글을 쓴다. */
+export const INCOMPLETE_ROW_MESSAGE = "이름과 값을 모두 적어 주세요.";
 
 /**
  * 값이 채워져 있는가. "모름"은 채운 것으로 센다.
@@ -97,7 +118,9 @@ export function hasValue(
         classNames.every((name) => filled.some((entry) => entry.key === name))
       );
     }
-    // 줄을 사용자가 추가하는 필드(⑨ 하이퍼파라미터)는 적어도 한 줄이 채워져 있으면 된다.
+    // 줄을 사용자가 추가하는 필드(⑨ 하이퍼파라미터)는 이름과 값을 다 적은 줄이 하나는 있어야 한다(B6②).
+    // 종전에는 값만 적은 줄도 채운 것으로 세고, 성적서는 그 줄을 버려 '제공되지 않음'이 찍혔다.
+    if (isFreeEntriesField(field)) return completeEntryRows(entries).length > 0;
     return filled.length > 0;
   }
 
@@ -286,6 +309,11 @@ export function getFieldIssue(
   if (field.exclusiveChoice) {
     const chosen = value?.choices ?? [];
     if (chosen.includes(field.exclusiveChoice) && chosen.length > 1) return issue("exclusive");
+  }
+
+  // 이름만, 또는 값만 적은 줄 — 성적서는 이 줄을 버리므로 받지 않는다(B6②). 모름이면 따지지 않는다.
+  if (isFreeEntriesField(field) && !value?.unknown && hasIncompleteRow(value?.entries)) {
+    return { ...issue("incompleteRow"), message: INCOMPLETE_ROW_MESSAGE };
   }
 
   if (isFieldRequired(field, values) && !hasValue(field, value, classNames)) return issue("missing");

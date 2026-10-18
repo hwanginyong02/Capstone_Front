@@ -181,6 +181,54 @@ describe("⑨ 실행 환경", () => {
   });
 });
 
+/**
+ * B6② — 이름과 값 중 하나만 적은 줄은 4절에도 AI 에도 싣지 않는다. 두 곳의 줄 수가 같다(`completeEntryRows` 한 곳).
+ */
+describe("[B6②] 하이퍼파라미터는 이름과 값을 다 적은 줄만", () => {
+  const input = composer({
+    cards: ALL_ON,
+    modelEnv: {
+      algorithm: { text: "XGBoost" },
+      hyperparameters: {
+        entries: [
+          { key: "max_depth", value: "6" },
+          { key: "", value: "300" },
+          { key: "eta", value: " " },
+          { key: " n_estimators ", value: " 300 " },
+        ],
+      },
+    },
+  });
+  const materials = buildReportMaterials(input, "binary");
+
+  it("4절 표에는 이름·값 둘 다 있는 두 줄만, 앞뒤 공백을 걷어 낸다", () => {
+    expect(materials.hyperparameters.rows).toEqual([
+      { name: "max_depth", value: "6" },
+      { name: "n_estimators", value: "300" },
+    ]);
+  });
+
+  it("AI 에 넘기는 줄 수도 같다", () => {
+    const inputs = buildClientInputs({
+      composer: input,
+      materials,
+      model: { name: "m", version: "v1", purpose: "", category: "" },
+      reportPurposeNote: "",
+      coreMetrics: [],
+      classLabelDescriptions: {},
+      runtime: {},
+    });
+    const env = inputs.environment as Record<string, unknown>;
+    expect(env["하이퍼파라미터"]).toEqual({ max_depth: "6", n_estimators: "300" });
+    expect(Object.keys(env["하이퍼파라미터"] as object)).toHaveLength(materials.hyperparameters.rows!.length);
+  });
+
+  it("다 적은 줄이 없으면 '제공되지 않음'(null)", () => {
+    const only = composer({ cards: ALL_ON, modelEnv: { hyperparameters: { entries: [{ key: "", value: "6" }] } } });
+    expect(buildReportMaterials(only, "binary").hyperparameters.rows).toBeNull();
+  });
+});
+
 describe("선언과 지표 선택 이유", () => {
   const perspective = {
     criticalErrorType: { text: "Missed (FN)" },

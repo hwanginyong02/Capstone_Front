@@ -16,7 +16,11 @@ import { Label } from "../ui/label";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { TEXTAREA_CLASS } from "../data-upload/shared";
 import { cn } from "../../utils/styling/styles";
-import { isFieldRequired, isOtherChosen } from "../../utils/domain/composerFieldGate";
+import {
+  isFieldRequired,
+  isFreeEntriesField,
+  isOtherChosen,
+} from "../../utils/domain/composerFieldGate";
 import {
   NOTE_MAX_LENGTH,
   OTHER_TEXT_MAX_LENGTH,
@@ -91,7 +95,7 @@ export function ComposerFieldInput({
   };
 
   const controlId = "field-" + field.id;
-  const isFreeEntries = field.input === "entries" && !field.entryKeys && !field.entryKeysFrom;
+  const isFreeEntries = isFreeEntriesField(field);
   const required = isFieldRequired(field, siblingValues);
   const otherChosen = isOtherChosen(field, value);
   const otherText = value?.otherText ?? "";
@@ -306,6 +310,7 @@ export function ComposerFieldInput({
                   className="font-mono"
                   placeholder="이름"
                   aria-label={field.label + " 이름 " + (index + 1)}
+                  aria-invalid={(invalid && entry.key.trim() === "" && entry.value.trim() !== "") || undefined}
                   value={entry.key}
                   onChange={(event) => {
                     const next = [...entries];
@@ -317,6 +322,7 @@ export function ComposerFieldInput({
                   className="font-mono tabular-nums"
                   placeholder="값"
                   aria-label={field.label + " 값 " + (index + 1)}
+                  aria-invalid={(invalid && entry.value.trim() === "" && entry.key.trim() !== "") || undefined}
                   value={entry.value}
                   onChange={(event) => {
                     const next = [...entries];

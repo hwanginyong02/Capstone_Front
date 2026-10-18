@@ -14,6 +14,7 @@
  * `reportLabels` 가 정한다 — 매핑표를 여기 또 적으면 두 벌이 된다.
  */
 import { getCard } from "../../data/reportComposer";
+import { completeEntryRows } from "../../utils/domain/composerFieldGate";
 import { josaEuroRo } from "./koreanJosa";
 import type { TaskType } from "../../data/evaluationData";
 import {
@@ -238,9 +239,7 @@ function hyperparameters(c: ReportComposerInput): ReportMaterials["hyperparamete
   const table = c.modelEnv.hyperparameters;
   const rows =
     on && table && !table.unknown
-      ? (table.entries ?? [])
-          .filter((entry) => entry.key.trim() !== "" && entry.value.trim() !== "")
-          .map((entry) => ({ name: entry.key.trim(), value: entry.value.trim() }))
+      ? completeEntryRows(table.entries).map((entry) => ({ name: entry.key.trim(), value: entry.value.trim() }))
       : [];
   return { algorithm, rows: rows.length > 0 ? rows : null };
 }

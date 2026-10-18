@@ -9,6 +9,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  INCOMPLETE_ROW_MESSAGE,
+  completeEntryRows,
   getCardIssues,
   getFieldIssue,
   hasValue,
@@ -639,5 +641,62 @@ describe("[B5②·N6] 클래스별 데이터 양은 지금 클래스를 모두",
     ]);
     values.trainingClassVolume = entries("cat", "dog", "bird");
     expect(isCardComplete(학습데이터, "binary", values, true, undefined, CLASSES)).toBe(true);
+  });
+});
+
+/**
+ * B6② — 줄을 추가하는 칸(⑨ 하이퍼파라미터)은 이름과 값을 둘 다 적어야 받는다. 종전에는 값만 적은 줄도
+ * 채운 것으로 세 진행을 통과하고, 성적서는 그 줄을 버려 '제공되지 않음'이 찍혔다.
+ */
+describe("[B6②] 하이퍼파라미터 줄은 이름과 값 둘 다", () => {
+  const hyper = 모델환경.fields.find((f) => f.id === "hyperparameters")!;
+  const issue = (entries: Array<{ key: string; value: string }>, unknown = false) =>
+    getFieldIssue(모델환경, hyper, { hyperparameters: { entries, unknown } });
+
+  it("값만, 또는 이름만 적은 줄이 있으면 incompleteRow 와 안내 문구", () => {
+    for (const row of [{ key: "", value: "6" }, { key: "max_depth", value: "" }, { key: " ", value: "6" }]) {
+      expect(issue([{ key: "eta", value: "0.1" }, row])).toEqual({
+        cardId: "modelEnv",
+        fieldId: "hyperparameters",
+        label: "하이퍼파라미터",
+        reason: "incompleteRow",
+        message: "이름과 값을 모두 적어 주세요.",
+        allowsUnknown: true,
+      });
+    }
+    expect(INCOMPLETE_ROW_MESSAGE).toBe("이름과 값을 모두 적어 주세요.");
+  });
+
+  it("값만 적은 줄 하나뿐이면 채운 것이 아니다", () => {
+    expect(hasValue(hyper, { entries: [{ key: "", value: "6" }] })).toBe(false);
+  });
+
+  it("둘 다 빈 줄은 아직 쓰지 않은 줄 — 다 적은 줄이 있으면 통과", () => {
+    expect(issue([{ key: "max_depth", value: "6" }, { key: "", value: "" }])).toBeNull();
+  });
+
+  it("줄이 없으면 빈칸 문제, '모름'이면 남은 줄을 따지지 않는다", () => {
+    expect(issue([])?.reason).toBe("missing");
+    expect(issue([{ key: "", value: "6" }], true)).toBeNull();
+  });
+
+  it("completeEntryRows 는 이름·값이 다 있는 줄만 돌려준다", () => {
+    expect(
+      completeEntryRows([
+        { key: "a", value: "1" },
+        { key: "", value: "2" },
+        { key: "c", value: " " },
+      ]),
+    ).toEqual([{ key: "a", value: "1" }]);
+    expect(completeEntryRows(undefined)).toEqual([]);
+  });
+
+  it("칸이 정해진 묶음(⑥ 데이터 양)에는 이 규칙을 적용하지 않는다", () => {
+    const volume = 학습데이터.fields.find((f) => f.id === "trainingVolume")!;
+    expect(
+      getFieldIssue(학습데이터, volume, {
+        trainingVolume: { entries: [{ key: "Training", value: "1" }, { key: "Validation", value: "2" }] },
+      }),
+    ).toBeNull();
   });
 });

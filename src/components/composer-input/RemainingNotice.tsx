@@ -40,6 +40,16 @@ export function RemainingNotice({ issues }: RemainingNoticeProps) {
     );
   }
 
+  // 이름이나 값 하나만 적은 줄(⑨ 하이퍼파라미터) — 비어 있다고 하면 어느 칸인지 모른다.
+  const incomplete = issues.find((issue) => issue.reason === "incompleteRow");
+  if (incomplete) {
+    return (
+      <p className="text-body-small text-muted-foreground">
+        {incomplete.label}: {incomplete.message}
+      </p>
+    );
+  }
+
   const [first] = issues;
   // "모름"이 없는 필드뿐이라면 그 길을 알려주지 않는다 — ⑤ 평가 관점이 그렇다.
   const canSayUnknown = issues.some((issue) => issue.allowsUnknown);

@@ -89,7 +89,10 @@ export function ComposerCardForm({
                  * (배타 선택)는 지금 당장 틀린 것이라 바로 표시하고, 비어 있는 것은
                  * 사용자가 넘어가려 한 뒤에야 표시한다.
                  */
-                invalid={(issue && issue.reason !== "missing") || (showErrors && Boolean(issue))}
+                invalid={
+                  (issue && issue.reason !== "missing" && issue.reason !== "incompleteRow") ||
+                  (showErrors && Boolean(issue))
+                }
               />
               {issue?.reason === "exclusive" && (
                 <p className="mt-1 text-body-small text-destructive">
@@ -108,6 +111,9 @@ export function ComposerCardForm({
                 <p className="mt-1 text-body-small text-destructive">
                   시작 월과 끝 월을 모두 넣고, 시작 월이 끝 월보다 늦지 않게 하세요.
                 </p>
+              )}
+              {showErrors && issue?.reason === "incompleteRow" && (
+                <p className="mt-1 text-body-small text-destructive">{issue.message}</p>
               )}
               {showErrors && issue?.reason === "missing" && (
                 <p className="mt-1 text-body-small text-destructive">

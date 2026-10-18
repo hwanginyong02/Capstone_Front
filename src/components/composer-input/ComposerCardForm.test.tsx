@@ -529,3 +529,38 @@ describe("덧붙이는 글", () => {
     expect(screen.queryByRole("textbox", { name: "학습 데이터와 출처 관계 덧붙이는 글" })).not.toBeInTheDocument();
   });
 });
+
+describe("[B6②] 하이퍼파라미터 줄 — 이름과 값 둘 다", () => {
+  const values: ComposerValueMap = {
+    algorithm: { text: "XGBoost" },
+    hyperparameters: { entries: [{ key: "", value: "6" }] },
+  };
+
+  it("다음을 누르기 전에는 칸 아래 안내가 없고, 하단 한 줄이 이유를 말한다", () => {
+    renderForm("modelEnv", { values, picks: ["algorithm", "hyperparameters"] });
+    expect(screen.queryByText("이름과 값을 모두 적어 주세요.")).not.toBeInTheDocument();
+
+    const issues = getCardIssues(getCard("modelEnv"), "binary", values, true, ["algorithm", "hyperparameters"]);
+    render(<RemainingNotice issues={issues} />);
+    expect(screen.getByText("하이퍼파라미터: 이름과 값을 모두 적어 주세요.")).toBeInTheDocument();
+  });
+
+  it("다음을 누른 뒤에는 칸 아래 안내와 빈 쪽 칸의 오류 표시", () => {
+    const card = getCard("modelEnv");
+    const picks = ["algorithm", "hyperparameters"];
+    render(
+      <ComposerCardForm
+        card={card}
+        taskType="binary"
+        values={values}
+        onChange={vi.fn()}
+        issues={getCardIssues(card, "binary", values, true, picks)}
+        picks={picks}
+        showErrors
+      />,
+    );
+    expect(screen.getByText("이름과 값을 모두 적어 주세요.")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "하이퍼파라미터 이름 1" })).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("textbox", { name: "하이퍼파라미터 값 1" })).not.toHaveAttribute("aria-invalid");
+  });
+});
