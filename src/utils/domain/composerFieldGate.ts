@@ -15,7 +15,7 @@
  * 순수 함수다 — 스토어를 읽지 않고 값을 인자로 받는다. 화면은 결과로 `nextDisabled` 를
  * 만들어 `WorkflowShell` 에 넘긴다(가이드라인 §2 규칙 3).
  */
-import { getCardFields, isFieldPicked } from "../../data/reportComposer";
+import { getCardFields, isFieldReceived } from "../../data/reportComposer";
 import type { TaskType } from "../../data/evaluationData";
 import {
   MONTH_RANGE_KEYS,
@@ -239,9 +239,10 @@ export function getFieldIssue(
 ): FieldIssue | null {
   // 전용 화면이 받는 필드는 그 화면이 검사한다 — 값이 카드 값 모음 밖에 있어 여기서는 늘 빈칸으로 보인다.
   if (field.dedicatedScreen) return null;
-  // 그려지지 않은 필드(받지 않기로 했거나 조건이 성립하지 않음)에 남은 값은 따지지 않는다 —
-  // 사용자가 고칠 수 없다.
-  if (!isFieldVisible(field, values, isFieldPicked(card, field, picks))) return null;
+  // 그려지지 않은 필드(받지 않기로 했거나, 조건을 정하는 필드를 받지 않거나, 조건이 성립하지 않음)에
+  // 남은 값은 따지지 않는다 — 사용자가 고칠 수 없다(B2: ⑧ 검수 방식을 뺐는데 남은 'Several
+  // reviewers' 때문에 라벨러 수가 필수로 남던 문제).
+  if (!isFieldVisible(field, values, isFieldReceived(card, field, picks))) return null;
 
   const value = values[field.id];
   const issue = (reason: FieldIssue["reason"]): FieldIssue => ({

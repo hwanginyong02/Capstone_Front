@@ -54,7 +54,7 @@ import type {
   ComposerValueMap,
   MaterialPicks,
 } from "../../types/reportComposer.types";
-import { getCard, isFieldPicked, isPartPicked } from "../../data/reportComposer";
+import { getCard, isFieldPicked, isFieldReceived, isPartPicked } from "../../data/reportComposer";
 import { buildLegacyPatch } from "../../utils/domain/composerLegacyMirror";
 import {
   DEFAULT_EVAL_ENV_CONSTANTS,
@@ -121,7 +121,8 @@ export type ReportInputSource = Omit<MapWorkflowToReportInput, "composer"> & {
  * 재료 고르기에서 받지 않기로 한 권장·선택 필드의 값을 뺀다(docs/MATERIAL_PICKER.md §6).
  *
  * 체크를 끄기 전에 적어 둔 값이 저장소에 남아 있을 수 있다. 그 값을 성적서에 찍으면 "끈 항목은
- * 제공되지 않음"이 깨진다 — 권장 항목은 빠지면 성적서가 "제공되지 않음"으로 찍는다.
+ * 제공되지 않음"이 깨진다 — 권장 항목은 빠지면 성적서가 "제공되지 않음"으로 찍는다. 조건부 필드는
+ * 조건을 정하는 필드를 받을 때만 남긴다(`isFieldReceived` — ⑧ 검수 방식을 빼면 라벨러 수도 빠진다).
  */
 function pickedValues(
   cardId: ComposerCardId,
@@ -134,7 +135,7 @@ function pickedValues(
   return Object.fromEntries(
     Object.entries(values).filter(([fieldId]) => {
       const field = card.fields.find((item) => item.id === fieldId);
-      return !field || isFieldPicked(card, field, saved);
+      return !field || isFieldReceived(card, field, saved);
     }),
   );
 }

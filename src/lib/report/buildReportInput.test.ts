@@ -8,6 +8,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { buildReportInput } from "./mapWorkflowToFinalReport";
+import { buildReportMaterials } from "./reportMaterials";
 import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
 
 const source = () => useWorkflowStore.getState();
@@ -106,5 +107,43 @@ describe("재료 선택 점검의 진행 기록", () => {
     const ack = { at: "2026-10-17T05:03:00.000Z", version: "1.0", warningIds: ["reporting:8"] };
     useWorkflowStore.getState().setMaterialCheckAck(ack);
     expect(buildReportInput(source()).materialCheckAck).toEqual(ack);
+  });
+});
+
+describe("[B2] 조건부 값은 조건을 정하는 필드를 받을 때만 싣는다", () => {
+  beforeEach(() => {
+    useWorkflowStore.setState({
+      composerCards: { trainingData: false, testData: false, groundTruth: true, modelEnv: false },
+      composerGroundTruth: {
+        labelAuthor: { text: "Client" },
+        labelReview: { text: "Several reviewers" },
+        labelReviewerCount: { text: "3" },
+        labelAgreementKind: { text: "Percent agreement" },
+        labelAgreementValue: { text: "82" },
+      },
+    });
+  });
+
+  it("검수 방식을 빼면 라벨러 수·일치도 값도 빠진다 — 성적서 줄은 종전과 같다", () => {
+    useWorkflowStore.setState({ materialPicks: { groundTruth: ["labelAuthor"] } });
+    const input = buildReportInput(source());
+
+    expect(Object.keys(input.composer!.groundTruth)).toEqual(["labelAuthor"]);
+    // 종전에도 검수 방식이 빠져 있으면 라벨러 수 줄을 찍지 않았다 — 인쇄 결과는 바뀌지 않는다.
+    const legacy = {
+      ...input.composer!,
+      groundTruth: { ...input.composer!.groundTruth, labelReviewerCount: { text: "3" } },
+    };
+    const rows = buildReportMaterials(input.composer!, "binary").groundTruth;
+    expect(rows.map((row) => row.label)).toEqual(["정답 라벨 구축 방법", "정답 라벨 신뢰성"]);
+    expect(buildReportMaterials(legacy, "binary").groundTruth).toEqual(rows);
+  });
+
+  it("검수 방식을 받으면 라벨러 수·일치도를 싣는다", () => {
+    useWorkflowStore.setState({ materialPicks: { groundTruth: ["labelAuthor", "labelReview"] } });
+    const rows = buildReportMaterials(buildReportInput(source()).composer!, "binary").groundTruth;
+
+    expect(rows.find((row) => row.label === "라벨러 수")?.value).toBe("3명");
+    expect(rows.find((row) => row.label === "라벨 일치도")?.value).toMatch(/0\.82$/);
   });
 });

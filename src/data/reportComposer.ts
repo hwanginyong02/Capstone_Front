@@ -1417,8 +1417,8 @@ export function stepOfLeaf(cardId: ComposerCardId, leafId: string): StepId {
  * 입력 화면이 이 필드를 받는가 — `isFieldPicked` 에 더해, 조건부면 **조건을 정하는 필드도 받을 때만**
  * 받는다(B2). 조건을 정하는 필드가 조건부면 그 조건도 따진다(⑧ 일치도 값 ← 일치도 종류 ← 검수 방식).
  *
- * `isFieldPicked` 의 뜻은 바꾸지 않는다 — 조건부를 늘 참으로 보는 곳(입력 화면·매퍼)은 S2 에서 이
- * 함수로 옮긴다.
+ * `isFieldPicked` 의 뜻은 바꾸지 않는다. 조건부까지 따져야 하는 곳 — 입력 화면(`ComposerCardForm`)·
+ * 필수 점검(`getFieldIssue`)·성적서 매퍼(`pickedValues`) — 이 이 함수를 쓴다.
  */
 export function isFieldReceived(
   card: ComposerCard,

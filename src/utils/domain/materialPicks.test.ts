@@ -1,7 +1,7 @@
 /** 재료 고르기 규칙의 순수 함수(docs/MATERIAL_PICKER.md §6·§11). */
 import { describe, expect, it } from "vitest";
 
-import { catalogCards, pickableIds } from "../../data/reportComposer";
+import { catalogCards, getCard, isFieldReceived, pickableIds } from "../../data/reportComposer";
 import type { MaterialPicks } from "../../types/reportComposer.types";
 import { DEFAULT_CARD_ORDER } from "./cardOrder";
 import {
@@ -367,5 +367,20 @@ describe("평가 흐름 — 보이는 블록의 순서", () => {
       "trainingData",
     ]);
     expect(shownBlocksInOrder(DEFAULT_CARD_ORDER, "binary", {})).toEqual([]);
+  });
+});
+
+describe("[B2] 트리의 '함께 들어감'과 입력 쪽 '받는가'가 같은 조건을 쓴다", () => {
+  it("⑧ 에서 검수 방식을 넣고 빼면 두 쪽이 같이 바뀐다", () => {
+    const card = getCard("groundTruth");
+    const conditional = card.fields.filter((field) => field.kind === "conditional");
+    expect(conditional.length).toBeGreaterThan(0);
+    for (const ids of [["labelAuthor"], ["labelAuthor", "labelReview"], ["labelReview"]]) {
+      const placed = flowStatus("binary", { groundTruth: ids }).leaves;
+      for (const field of conditional) {
+        const leaf = placed.find((item) => item.leafId === field.id)!;
+        expect(isFieldReceived(card, field, ids), `${field.id} ${ids}`).toBe(leaf.placed);
+      }
+    }
   });
 });

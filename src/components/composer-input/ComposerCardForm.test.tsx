@@ -298,6 +298,25 @@ describe("필수 표시", () => {
     expect(screen.getByText("일치도 종류").querySelector("span")).toHaveTextContent("*");
     expect(screen.queryByText("일치도 값")).not.toBeInTheDocument();
   });
+
+  it("[B2] 검수 방식을 받지 않으면 남은 '여러 명 검수' 값이 있어도 라벨러 수·일치도 칸이 없다", () => {
+    const several = {
+      labelReview: { text: "Several reviewers" },
+      labelAgreementKind: { text: "Cohen's kappa" },
+    };
+    renderForm("groundTruth", { values: several, picks: ["labelAuthor"] });
+    expect(screen.queryByText("라벨러 수")).not.toBeInTheDocument();
+    expect(screen.queryByText("일치도 종류")).not.toBeInTheDocument();
+    expect(screen.queryByText("일치도 값")).not.toBeInTheDocument();
+  });
+
+  it("[B2] 검수 방식을 받으면 라벨러 수 칸이 다시 나온다", () => {
+    renderForm("groundTruth", {
+      values: { labelReview: { text: "Several reviewers" } },
+      picks: ["labelAuthor", "labelReview"],
+    });
+    expect(screen.getByText("라벨러 수")).toBeInTheDocument();
+  });
 });
 
 describe("차단 표시", () => {

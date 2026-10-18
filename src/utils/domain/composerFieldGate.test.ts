@@ -561,3 +561,30 @@ describe("숫자 칸 묶음은 0 이상의 정수만 받는다", () => {
     expect(issueOf(classVolume, [{ key: "cat", value: "" }])?.reason).not.toBe("outOfRange");
   });
 });
+
+describe("[B2] 조건부 칸은 조건을 정하는 칸을 받을 때만 따진다", () => {
+  const field = (id: string) => 정답라벨.fields.find((item) => item.id === id)!;
+  const several: ComposerValueMap = {
+    labelReview: { text: "Several reviewers" },
+    labelAgreementKind: { text: "Cohen's kappa" },
+  };
+
+  it("검수 방식을 받지 않으면 남은 값이 있어도 라벨러 수·일치도가 빈칸 문제가 되지 않는다", () => {
+    for (const id of ["labelReviewerCount", "labelAgreementKind", "labelAgreementValue"]) {
+      expect(getFieldIssue(정답라벨, field(id), several, ["labelAuthor"]), id).toBeNull();
+    }
+    expect(getCardIssues(정답라벨, "binary", { ...several, labelAuthor: { text: "Client" } }, true, ["labelAuthor"])).toEqual(
+      [],
+    );
+  });
+
+  it("검수 방식을 받으면 비어 있는 라벨러 수가 막는다 — 일치도 값은 종류를 따라 함께 나온다", () => {
+    const picks = ["labelAuthor", "labelReview"];
+    expect(getFieldIssue(정답라벨, field("labelReviewerCount"), several, picks)?.reason).toBe("missing");
+    expect(getFieldIssue(정답라벨, field("labelAgreementValue"), several, picks)?.reason).toBe("missing");
+  });
+
+  it("picks 가 없으면(흐름을 지나기 전) 종전처럼 모두 받는다", () => {
+    expect(getFieldIssue(정답라벨, field("labelReviewerCount"), several)?.reason).toBe("missing");
+  });
+});
