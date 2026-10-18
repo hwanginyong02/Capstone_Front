@@ -54,7 +54,7 @@ import type {
   ComposerValueMap,
   MaterialPicks,
 } from "../../types/reportComposer.types";
-import { getCard, isFieldPicked, isFieldReceived, isPartPicked } from "../../data/reportComposer";
+import { getCard, isFieldPicked, isFieldReceived, isLeafReceived, isPartPicked } from "../../data/reportComposer";
 import { buildLegacyPatch } from "../../utils/domain/composerLegacyMirror";
 import {
   DEFAULT_EVAL_ENV_CONSTANTS,
@@ -155,6 +155,33 @@ function pickedBasicInfo(basicInfo: BasicInfoFormData, picks: MaterialPicks | un
 }
 
 /**
+ * 전용 화면이 받는 선택 항목 중 평가 흐름에 놓지 않은 것의 값을 뺀다(docs/MATERIAL_PICKER.md §12.4).
+ *
+ * ① 클래스 레이블 설명(매핑 화면의 설명 카드)과 ⑥ 예시 파일 두 칸은 카드 값 그룹이 아니라 스토어의
+ * 따로 된 키에 있어 `pickedValues` 가 거르지 못한다. 빼기 전에 적어 둔 값이 남아 있어도 성적서·AI 에
+ * 싣지 않는다. 그 카드의 picks 가 없으면(평가 흐름 이전) 그대로 싣는다.
+ */
+export function pickedDedicatedValues(
+  state: Pick<
+    ReportInputSource,
+    "classLabelDescriptions" | "trainingExampleFiles" | "trainingUnsuitableExampleFiles" | "materialPicks"
+  >,
+): Pick<MapWorkflowToReportInput, "classLabelDescriptions" | "trainingExampleFiles" | "trainingUnsuitableExampleFiles"> {
+  const picks = state.materialPicks;
+  return {
+    classLabelDescriptions: isLeafReceived("evalData", "classLabelDescriptions", picks?.evalData)
+      ? state.classLabelDescriptions
+      : {},
+    trainingExampleFiles: isLeafReceived("trainingData", "trainingExamples", picks?.trainingData)
+      ? state.trainingExampleFiles
+      : [],
+    trainingUnsuitableExampleFiles: isLeafReceived("trainingData", "trainingUnsuitableExamples", picks?.trainingData)
+      ? state.trainingUnsuitableExampleFiles
+      : [],
+  };
+}
+
+/**
  * ⑨ 실행 환경을 넣었으면 그 값으로 `basicInfo.env*` 를 채운다. 성적서 4절 환경 표와 AI 입력이 그
  * 칸을 읽는다. 어느 칸이 어디로 가는지는 레지스트리의 `legacy.byKey` 가 정한다.
  *
@@ -192,10 +219,9 @@ export function buildReportInput(state: ReportInputSource): MapWorkflowToReportI
     selectedMetricIds: state.selectedMetricIds,
     metricDetails: state.metricDetails,
     uploadedFile: state.uploadedFile,
-    trainingExampleFiles: state.trainingExampleFiles,
-    trainingUnsuitableExampleFiles: state.trainingUnsuitableExampleFiles,
+    // 클래스 레이블 설명·예시 파일 — 놓지 않았으면 비운다. 매핑 역할은 스토어 불변식이 이미 걸렀다.
+    ...pickedDedicatedValues(state),
     columnMapping: state.columnMapping,
-    classLabelDescriptions: state.classLabelDescriptions,
     metadata: state.metadata,
     materialCheckAck: state.materialCheckAck ?? null,
     composer: {
@@ -425,12 +451,12 @@ function buildDatasetInfo(
     ? classValues
     : inferClassLabels(taskType, input.metricDetails);
 
-  const classLabelDescriptions: ClassLabelInfo[] | undefined = classValues.length
-    ? classValues.map((value) => ({
-        label: value,
-        description: input.classLabelDescriptions[value] ?? "",
-      }))
-    : undefined;
+  // 설명을 적은 클래스만 싣는다(B14). 하나도 없으면 표를 만들지 않는다 — 빈 설명을 "설명 미입력"
+  // 줄로 찍으면 클래스 레이블 설명을 받지 않은(평가 흐름에 놓지 않은) 성적서에도 표가 생긴다.
+  const described = classValues
+    .map((value) => ({ label: value, description: (input.classLabelDescriptions[value] ?? "").trim() }))
+    .filter((item) => item.description !== "");
+  const classLabelDescriptions: ClassLabelInfo[] | undefined = described.length ? described : undefined;
 
   return {
     format: inferFormat(input.uploadedFile),

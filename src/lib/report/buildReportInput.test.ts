@@ -6,6 +6,8 @@
  * 종전에는 Details 의 "시험 환경" 폼이 같은 값을 따로 받았다(§5).
  */
 import { beforeEach, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 import { buildReportInput } from "./mapWorkflowToFinalReport";
 import { buildReportMaterials } from "./reportMaterials";
@@ -145,5 +147,55 @@ describe("[B2] 조건부 값은 조건을 정하는 필드를 받을 때만 싣�
 
     expect(rows.find((row) => row.label === "라벨러 수")?.value).toBe("3명");
     expect(rows.find((row) => row.label === "라벨 일치도")?.value).toMatch(/0\.82$/);
+  });
+});
+
+describe("전용 화면이 받는 선택 항목 — 놓지 않았으면 성적서·AI 에 싣지 않는다(§12.4)", () => {
+  const file = (name: string) => ({ name, size: 1, type: "image/png" }) as never;
+
+  beforeEach(() => {
+    useWorkflowStore.setState({
+      classLabelDescriptions: { "0": "정상", "1": "이탈" },
+      trainingExampleFiles: [file("ok.png")],
+      trainingUnsuitableExampleFiles: [file("bad.png")],
+    });
+  });
+
+  it("평가 흐름 이전(picks 없음)이면 그대로 싣는다", () => {
+    const input = buildReportInput(source());
+    expect(input.classLabelDescriptions).toEqual({ "0": "정상", "1": "이탈" });
+    expect(input.trainingExampleFiles.map((item) => item.name)).toEqual(["ok.png"]);
+    expect(input.trainingUnsuitableExampleFiles.map((item) => item.name)).toEqual(["bad.png"]);
+  });
+
+  it("클래스 레이블 설명을 놓지 않았으면 {} — 다른 ① 항목을 놓았어도", () => {
+    useWorkflowStore.setState({ materialPicks: { evalData: ["latencyColumn"] } });
+    expect(buildReportInput(source()).classLabelDescriptions).toEqual({});
+  });
+
+  it("놓았으면 싣는다", () => {
+    useWorkflowStore.setState({ materialPicks: { evalData: ["classLabelDescriptions"] } });
+    expect(buildReportInput(source()).classLabelDescriptions).toEqual({ "0": "정상", "1": "이탈" });
+  });
+
+  it("예시 파일은 칸마다 따로 — 놓은 쪽만 싣는다", () => {
+    useWorkflowStore.setState({ materialPicks: { trainingData: ["trainingUnsuitableExamples"] } });
+    const input = buildReportInput(source());
+    expect(input.trainingExampleFiles).toEqual([]);
+    expect(input.trainingUnsuitableExampleFiles.map((item) => item.name)).toEqual(["bad.png"]);
+
+    useWorkflowStore.setState({ materialPicks: { trainingData: ["trainingExamples"] } });
+    const other = buildReportInput(source());
+    expect(other.trainingExampleFiles.map((item) => item.name)).toEqual(["ok.png"]);
+    expect(other.trainingUnsuitableExampleFiles).toEqual([]);
+  });
+
+  it("AI 에 넘기는 설명도 같은 거른 값이다 — useReportData 가 스토어 값을 직접 넘기지 않는다", () => {
+    const hook = readFileSync(resolve(__dirname, "../../hooks/useReportData.ts"), "utf-8");
+    const start = hook.indexOf("buildClientInputs({");
+    expect(start).toBeGreaterThan(0);
+    const call = hook.slice(start);
+    expect(call).toMatch(/classLabelDescriptions:\s*reportInput\.classLabelDescriptions/);
+    expect(hook).not.toMatch(/workflowState\.classLabelDescriptions/);
   });
 });

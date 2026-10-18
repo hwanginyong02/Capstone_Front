@@ -171,7 +171,8 @@ export function useReportData(id: string): UseReportDataResult {
                 coreMetrics: updatedKpiResults
                   .filter((r) => r.isCore)
                   .map((r) => `${r.name}(${r.metricId})`),
-                classLabelDescriptions: workflowState.classLabelDescriptions,
+                // 성적서 3절과 같은 출처 — 놓지 않은 설명은 `buildReportInput` 이 이미 비웠다.
+                classLabelDescriptions: reportInput.classLabelDescriptions,
                 // 성적서 4절과 같은 출처 — ⑨ 실행 환경을 넣었으면 그 값이다(`buildReportInput`).
                 runtime: {
                   운영체제: reportInput.basicInfo.envOS ?? "",

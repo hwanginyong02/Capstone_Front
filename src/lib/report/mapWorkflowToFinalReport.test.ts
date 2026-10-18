@@ -402,3 +402,29 @@ describe("지연시간(8번)은 6.4 에 실제로 찍힐지로 센다 (검토 �
     expect(check.warningIds).not.toContain("purpose:latency");
   });
 });
+
+describe("클래스 레이블 설명 — 적은 클래스만 3절에 (B14)", () => {
+  const withClasses = (descriptions: Record<string, string>) =>
+    baseInput({
+      taskType: "multiclass",
+      columnMapping: [
+        { originalName: "label", sampleValues: ["cat", "dog", "bird"], inferredRole: "y_true", confirmedRole: "y_true", modified: false, warnings: [] },
+      ],
+      classLabelDescriptions: descriptions,
+    });
+
+  it("3개 중 1개만 적으면 1줄", () => {
+    const report = mapWorkflowToFinalReport(withClasses({ cat: "집고양이", dog: "", bird: "   " }));
+    expect(report.datasetInfo.classLabelDescriptions).toEqual([{ label: "cat", description: "집고양이" }]);
+  });
+
+  it("하나도 적지 않으면 표가 없다 — '설명 미입력' 줄을 만들지 않는다", () => {
+    expect(mapWorkflowToFinalReport(withClasses({})).datasetInfo.classLabelDescriptions).toBeUndefined();
+    expect(mapWorkflowToFinalReport(withClasses({ cat: "", dog: " " })).datasetInfo.classLabelDescriptions).toBeUndefined();
+  });
+
+  it("모두 적으면 클래스 순서대로 모두", () => {
+    const report = mapWorkflowToFinalReport(withClasses({ dog: "개", cat: "고양이", bird: "새" }));
+    expect(report.datasetInfo.classLabelDescriptions?.map((item) => item.label)).toEqual(["cat", "dog", "bird"]);
+  });
+});
