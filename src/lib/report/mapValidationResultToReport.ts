@@ -9,8 +9,16 @@
 import type { ValidationResult, ValidationSummary } from "../../types/finalReport.types";
 import type { ValidateDataResponseData } from "../../types/validation.types";
 
-/** 백엔드 검증 항목명(영문) → 성적서 한글 라벨 */
-const CHECK_NAME_KO: Record<string, string> = {
+/**
+ * 백엔드 검증 항목명(영문) → 성적서·검증 화면의 한글 이름. 백엔드가 내는 이름은 모두 여기 있어야 한다 —
+ * 테스트가 `Capstone_Back/app/analysis/validation_checks.py` 의 `name="…"` 와 `*_CHECK = "…"` 상수 정의를
+ * 모아 대조한다(새 항목은 상수를 `name=` 에 넘기므로 리터럴만 모으면 놓친다).
+ */
+export const CHECK_NAME_KO: Readonly<Record<string, string>> = {
+  "Invalid role for task type": "유형에 맞지 않는 역할",
+  "Same column for true/pred": "정답·예측 같은 컬럼",
+  "Column mapped to multiple roles": "한 컬럼에 여러 역할",
+  "Empty dataset (no data rows)": "빈 데이터(행 없음)",
   "Missing required column": "필수 컬럼 누락",
   "Missing value": "누락값(NaN)",
   "Duplicate ID": "중복 ID",
@@ -26,7 +34,18 @@ const CHECK_NAME_KO: Record<string, string> = {
   "Latency non-numeric values": "지연시간 비숫자 값",
   "Latency negative values": "지연시간 음수 값",
   "Latency statistics (ms)": "지연시간 통계 (ms)",
+  // M3 — 확률 컬럼 이름으로 클래스·레이블을 확정할 수 없음(평가 단계의 400 을 검증에서 미리 막는다).
+  "Probability column names": "확률 컬럼 이름",
+  // M4 — 지연시간 값이 모두 1 미만이라 초 단위로 적은 것 같음(경고만).
+  "Latency unit": "지연시간 단위",
 };
+
+/**
+ * 결과 칸이 이미 한국어 문구로 오는 항목 — 영문 낱말 바꾸기(`normalizeResult`)를 하지 않고 그대로 싣는다.
+ * "Probability column names" 의 결과는 평가 단계 400 과 같은 한국어 문구이고, 컬럼·클래스 이름이 들어
+ * 있어("rows" 같은 이름도 올 수 있다) 바꾸면 이름이 망가진다.
+ */
+const KOREAN_RESULT_CHECKS: ReadonlySet<string> = new Set(["Probability column names"]);
 
 /** 검증 항목명의 한글 이름. 표에 없는 이름은 그대로 돌려준다. 검증 화면도 이 표를 쓴다. */
 export function checkNameKo(name: string): string {
@@ -75,7 +94,7 @@ export function mapValidationResultToReport(
   const dataValidation: ValidationResult[] = vr.validation_details.map((item) => ({
     checkName: CHECK_NAME_KO[item.name] ?? item.name,
     status: STATUS_MAP[item.status] ?? "warning",
-    detail: normalizeResult(item.result),
+    detail: KOREAN_RESULT_CHECKS.has(item.name) ? item.result : normalizeResult(item.result),
     group: item.group,
   }));
 
