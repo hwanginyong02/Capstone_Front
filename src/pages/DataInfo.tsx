@@ -11,7 +11,7 @@ import {
 import { TrainingExamplesSection } from "../components/report-info/TrainingExamplesSection";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { useStepFlow } from "../hooks/useStepFlow";
-import { getCard } from "../data/reportComposer";
+import { getCard, isLeafReceived } from "../data/reportComposer";
 import { getStepDefinition } from "../data/workflowSteps";
 import { getCardIssues } from "../utils/domain/composerFieldGate";
 import { includedCardsInOrder } from "../utils/domain/cardOrder";
@@ -61,6 +61,11 @@ export function DataInfo({ cardId }: { cardId: DataInfoCardId }) {
 
   const issues = getCardIssues(getCard(cardId), store.taskType, values, true, picks);
 
+  /** ⑥ 예시 파일 두 칸 — 평가 흐름에 넣은 칸만 받는다(선택 항목). picks 가 없으면 둘 다 받는다. */
+  const showValidExamples = cardId === "trainingData" && isLeafReceived("trainingData", "trainingExamples", picks);
+  const showUnsuitableExamples =
+    cardId === "trainingData" && isLeafReceived("trainingData", "trainingUnsuitableExamples", picks);
+
   return (
     <WorkflowShell
       showActionBar
@@ -89,13 +94,15 @@ export function DataInfo({ cardId }: { cardId: DataInfoCardId }) {
         classNames={classNames}
         showErrors={showErrors}
         after={
-          // ⑥ 의 예시 파일. 레지스트리에 파일 칸이 없어 카드 아래에 따로 받는다.
-          cardId === "trainingData" ? (
+          // ⑥ 의 예시 파일. 전용 칸이라 카드 폼이 아니라 카드 아래에 따로 받는다.
+          showValidExamples || showUnsuitableExamples ? (
             <TrainingExamplesSection
               trainingExampleFiles={store.trainingExampleFiles}
               onTrainingExampleFilesChange={store.setTrainingExampleFiles}
               trainingUnsuitableExampleFiles={store.trainingUnsuitableExampleFiles}
               onTrainingUnsuitableExampleFilesChange={store.setTrainingUnsuitableExampleFiles}
+              showValid={showValidExamples}
+              showUnsuitable={showUnsuitableExamples}
             />
           ) : undefined
         }

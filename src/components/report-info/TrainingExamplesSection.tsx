@@ -21,6 +21,12 @@ interface TrainingExamplesSectionProps {
   onTrainingUnsuitableExampleFilesChange: (
     value: UploadedFileInfo[] | ((prev: UploadedFileInfo[]) => UploadedFileInfo[]),
   ) => void;
+  /**
+   * 칸마다 평가 흐름에 넣었는지(⑥ 적합·부적합 예시 파일 — 둘 다 선택 항목). 넣지 않은 칸은 그리지 않는다.
+   * 둘 다 빼면 페이지가 이 절을 그리지 않는다. 기본값은 둘 다 보임(평가 흐름 이전 상태).
+   */
+  showValid?: boolean;
+  showUnsuitable?: boolean;
 }
 
 export function TrainingExamplesSection({
@@ -28,6 +34,8 @@ export function TrainingExamplesSection({
   onTrainingExampleFilesChange,
   trainingUnsuitableExampleFiles,
   onTrainingUnsuitableExampleFilesChange,
+  showValid = true,
+  showUnsuitable = true,
 }: TrainingExamplesSectionProps) {
   const exampleInputRef = useRef<HTMLInputElement>(null);
   const unsuitableInputRef = useRef<HTMLInputElement>(null);
@@ -50,7 +58,11 @@ export function TrainingExamplesSection({
     event.target.value = "";
   };
 
-  const allExamples = [...trainingExampleFiles, ...trainingUnsuitableExampleFiles];
+  // 넣지 않은 칸의 파일은 성적서에 실리지 않는다(`buildReportInput`) — 안내도 보이는 칸만 센다.
+  const allExamples = [
+    ...(showValid ? trainingExampleFiles : []),
+    ...(showUnsuitable ? trainingUnsuitableExampleFiles : []),
+  ];
   // 브라우저가 그릴 수 없는 이미지(HEIC 등) — 성적서에는 파일명과 크기만 적힌다.
   const withoutPreview = allExamples.filter((f) => f.type.startsWith("image/") && !f.previewUrl);
   const overBudget = previewBytes(allExamples) > EXAMPLE_PREVIEW_BUDGET_BYTES;
@@ -85,28 +97,32 @@ export function TrainingExamplesSection({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <ExampleUploadSlot
-              title="적합 예시"
-              description="학습 데이터셋에 들어가야 할 분명한 샘플입니다."
-              files={trainingExampleFiles}
-              onChoose={() => exampleInputRef.current?.click()}
-              onRemove={(index) =>
-                onTrainingExampleFilesChange((prev) => prev.filter((_, i) => i !== index))
-              }
-              onFileDrop={(file) => void addExample(file, onTrainingExampleFilesChange)}
-            />
-            <ExampleUploadSlot
-              title="부적합 예시"
-              description="빼거나, 검토하거나, 조심해서 다뤄야 할 샘플입니다(선택)."
-              files={trainingUnsuitableExampleFiles}
-              onChoose={() => unsuitableInputRef.current?.click()}
-              onRemove={(index) =>
-                onTrainingUnsuitableExampleFilesChange((prev) => prev.filter((_, i) => i !== index))
-              }
-              onFileDrop={(file) => void addExample(file, onTrainingUnsuitableExampleFilesChange)}
-              optional
-            />
+          <div className={showValid && showUnsuitable ? "grid grid-cols-1 gap-4 lg:grid-cols-2" : "grid grid-cols-1 gap-4"}>
+            {showValid && (
+              <ExampleUploadSlot
+                title="적합 예시"
+                description="학습 데이터셋에 들어가야 할 분명한 샘플입니다."
+                files={trainingExampleFiles}
+                onChoose={() => exampleInputRef.current?.click()}
+                onRemove={(index) =>
+                  onTrainingExampleFilesChange((prev) => prev.filter((_, i) => i !== index))
+                }
+                onFileDrop={(file) => void addExample(file, onTrainingExampleFilesChange)}
+              />
+            )}
+            {showUnsuitable && (
+              <ExampleUploadSlot
+                title="부적합 예시"
+                description="빼거나, 검토하거나, 조심해서 다뤄야 할 샘플입니다(선택)."
+                files={trainingUnsuitableExampleFiles}
+                onChoose={() => unsuitableInputRef.current?.click()}
+                onRemove={(index) =>
+                  onTrainingUnsuitableExampleFilesChange((prev) => prev.filter((_, i) => i !== index))
+                }
+                onFileDrop={(file) => void addExample(file, onTrainingUnsuitableExampleFilesChange)}
+                optional
+              />
+            )}
           </div>
 
           {withoutPreview.length > 0 && (
