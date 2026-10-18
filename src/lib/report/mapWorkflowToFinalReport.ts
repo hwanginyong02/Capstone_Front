@@ -56,6 +56,7 @@ import type {
 } from "../../types/reportComposer.types";
 import { getCard, isFieldPicked, isFieldReceived, isLeafReceived, isPartPicked } from "../../data/reportComposer";
 import { buildLegacyPatch } from "../../utils/domain/composerLegacyMirror";
+import { evaluationClassNames, type ClassMetadata } from "../../utils/domain/evaluationClasses";
 import {
   DEFAULT_EVAL_ENV_CONSTANTS,
   DEFAULT_EVAL_PURPOSE_TEXT,
@@ -428,24 +429,8 @@ function buildDatasetInfo(
 ): DatasetInfo {
   const sampleCount = validatedRows && validatedRows > 0 ? validatedRows : null;
 
-  // y_true 컬럼에서 실제 클래스 값을 도출 (있으면 mock/추론 대신 실제 값 사용)
-  const yTrueRow = input.columnMapping.find((r) => r.confirmedRole === "y_true");
-  let classValues: string[] = [];
-  
-  const colName = yTrueRow?.originalName;
-  const meta = input.metadata as any;
-  if (colName && meta?.column_unique_values?.[colName]) {
-    classValues = meta.column_unique_values[colName];
-  } else if (yTrueRow) {
-    if (taskType === "multilabel") {
-      const allLabels = yTrueRow.sampleValues.flatMap((val) => 
-        val.split(/[|,]/).map((s) => s.trim()).filter(Boolean)
-      );
-      classValues = [...new Set(allLabels)];
-    } else {
-      classValues = [...new Set(yTrueRow.sampleValues)];
-    }
-  }
+  // 클래스 목록은 매핑 화면·학습 데이터 화면과 같은 한 함수다(B5①).
+  const classValues = evaluationClassNames(taskType, input.columnMapping, input.metadata as ClassMetadata | null);
 
   const classLabels = classValues.length
     ? classValues

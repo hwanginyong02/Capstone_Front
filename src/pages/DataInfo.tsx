@@ -15,6 +15,7 @@ import { getCard, isLeafReceived } from "../data/reportComposer";
 import { getStepDefinition } from "../data/workflowSteps";
 import { getCardIssues } from "../utils/domain/composerFieldGate";
 import { includedCardsInOrder } from "../utils/domain/cardOrder";
+import { evaluationClassNames } from "../utils/domain/evaluationClasses";
 
 /**
  * ⑥ 학습 데이터 (`/app/training-data`) · ⑦ 테스트 데이터 (`/app/test-data`) · ⑧ 정답 라벨
@@ -52,12 +53,10 @@ export function DataInfo({ cardId }: { cardId: DataInfoCardId }) {
   const picks = store.materialPicks[cardId];
 
   /**
-   * ⑥ 클래스별 데이터 양의 칸은 업로드한 파일에서 찾은 클래스로 만든다.
-   * 멀티레이블은 클래스가 아니라 레이블 목록이 온다.
+   * ⑥ 클래스별 데이터 양의 칸은 평가 데이터의 클래스로 만든다(멀티레이블은 레이블). 매핑 화면·성적서와
+   * 같은 한 함수다(`evaluationClassNames`) — 매핑에서 정답 컬럼을 바꾸면 이 칸도 따라 바뀐다.
    */
-  const classNames: string[] = store.metadata?.detected_classes?.length
-    ? store.metadata.detected_classes
-    : (store.metadata?.detected_labels ?? []);
+  const classNames = evaluationClassNames(store.taskType, store.columnMapping, store.metadata);
 
   const issues = getCardIssues(getCard(cardId), store.taskType, values, true, picks);
 

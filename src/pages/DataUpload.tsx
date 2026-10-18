@@ -6,6 +6,7 @@ import { Button } from "../components/ui/button";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { useStepFlow } from "../hooks/useStepFlow";
 import { useColumnAnalysis } from "../hooks/useColumnAnalysis";
+import { evaluationClassNames, keepPositiveClass } from "../utils/domain/evaluationClasses";
 import { WorkflowShell } from "../layout/WorkflowShell";
 import {
   DataUpload as DataUploadContent,
@@ -50,8 +51,23 @@ export function DataUpload() {
         store.taskType || "multiclass",
       );
 
+      // 다시 올린 경우 전에 고른 양성 클래스가 새 파일의 클래스에도 있으면 지킨다(M5) — 분석은 metadata 를
+      // 통째로 덮어, 종전에는 다시 올릴 때마다 자동 판단 값으로 조용히 뒤집혔다.
+      const previousPositive = store.taskType === "binary" ? (store.metadata?.positive_class ?? "") : "";
       store.setColumnMapping(rows);
-      store.setMetadata(metadata);
+      const mapped = useWorkflowStore.getState().columnMapping;
+      store.setMetadata(
+        previousPositive && metadata
+          ? {
+              ...metadata,
+              positive_class: keepPositiveClass(
+                previousPositive,
+                evaluationClassNames(store.taskType, mapped, metadata),
+                metadata.positive_class ?? "",
+              ),
+            }
+          : metadata,
+      );
       // 백엔드가 만든 컬럼 대조 안내를 검증 단계까지 나른다(ISSUES.md B-03).
       store.setColumnNotes(columnNotes);
 

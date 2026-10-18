@@ -11,6 +11,7 @@ import {
 import type { MappingRole, MappingRow } from "../../types/mapping.types";
 import { applyRoleChange } from "../../utils/domain/applyRoleChange";
 import { buildRoleOptions } from "../../utils/domain/mappingPicks";
+import { evaluationClassNames } from "../../utils/domain/evaluationClasses";
 import { countDuplicateRoles } from "../../utils/domain/mappingHelpers";
 import { isLeafReceived } from "../../data/reportComposer";
 import {
@@ -93,25 +94,15 @@ export function ColumnMapping({
   );
 
   const yTrueRow = useMemo(() => rows.find((r) => r.confirmedRole === "y_true"), [rows]);
-  const yTrueValues = useMemo(() => {
-    const colName = yTrueRow?.originalName;
-    if (colName && columnUniqueValues?.[colName]) {
-      return columnUniqueValues[colName];
-    }
-    if (detectedClasses && detectedClasses.length > 0) {
-      return detectedClasses;
-    }
-    if (!yTrueRow) return [];
-    // 멀티레이블은 "sports|news" 처럼 결합된 값 → 원자 라벨로 분리해야 성적서 매퍼(동일하게 /[|,]/ 분리)와
-    // 클래스 설명 키가 일치한다(분리 안 하면 설명이 매칭 안 돼 "설명 미입력"으로 유실됨).
-    if (resolvedTaskType === "multilabel") {
-      const atoms = yTrueRow.sampleValues.flatMap((v) =>
-        v.split(/[|,]/).map((s) => s.trim()).filter(Boolean),
-      );
-      return Array.from(new Set(atoms));
-    }
-    return Array.from(new Set(yTrueRow.sampleValues));
-  }, [yTrueRow, resolvedTaskType, detectedClasses, columnUniqueValues]);
+  /** 클래스 목록 — 화면·학습 데이터·성적서가 같은 한 함수를 쓴다(`evaluationClassNames`, B5①). */
+  const yTrueValues = useMemo(
+    () =>
+      evaluationClassNames(resolvedTaskType, rows, {
+        column_unique_values: columnUniqueValues,
+        detected_classes: detectedClasses,
+      }),
+    [rows, resolvedTaskType, detectedClasses, columnUniqueValues],
+  );
 
   const roleCounts = useMemo(() => {
     const counts: Partial<Record<MappingRole, number>> = {};
