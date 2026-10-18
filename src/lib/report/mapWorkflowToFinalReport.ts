@@ -38,7 +38,8 @@ import type { ValidateDataResponseData } from "../../types/validation.types";
 import { mapValidationResultToReport } from "./mapValidationResultToReport";
 import { buildConclusion } from "./computeVerdict";
 import { REPORT_CONTENT_SCHEMA } from "./normalizeReportContent";
-import { resolveBeta, resolveTargetValue } from "../../utils/domain/validation";
+import { resolveBeta, resolveTargetValue, TARGET_DIGITS } from "../../utils/domain/validation";
+import { formatTargetCriteria } from "./metricValueFormat";
 import { checkMaterialSelection } from "./materialCheck";
 import { imbalanceRatioOf } from "./buildDatasetDiagnosis";
 import type {
@@ -270,6 +271,8 @@ export function mapWorkflowToFinalReport(
 
   return {
     contentSchema: REPORT_CONTENT_SCHEMA,
+    // 목표값을 찍는 자릿수(B10). 이 키가 없는 성적서는 종전 둘째 자리로 그린다.
+    targetDigits: TARGET_DIGITS,
     meta: buildMeta(input, resolvedTaskType),
     applicant: buildApplicant(input.basicInfo),
     performer: DEFAULT_PERFORMER,
@@ -548,8 +551,6 @@ function buildMetricList(
       const detail = metricDetails[metricId];
       const target = resolveTargetValue(metricId, detail?.targetValue);
 
-      // 방향성에 맞춰 합격 기준 표기(낮을수록 좋은 지표는 ≤). 6절 표(MetricRow)와 일관.
-      const criteriaOp = metric.higherIsBetter === false ? "≤" : "≥";
 
       // β 를 입력받는 지표(F-beta 등)는 사용자가 지정한 β 를 지표명에 함께 표기(입력값이 성적서에 드러나도록).
       const betaVal = detail?.beta?.trim();
@@ -560,7 +561,9 @@ function buildMetricList(
         metricId: getMetricDisplayId(metricId),
         name: displayName,
         threshold: target,
-        passCriteria: target !== null ? `${criteriaOp} ${target.toFixed(2)}` : "정보 제공",
+        // 방향성(낮을수록 좋은 지표는 ≤)과 자릿수를 6절 표(MetricRow)와 같은 함수로 — 저장 문자열이라
+        // 발급본은 그때 자릿수 그대로 남는다.
+        passCriteria: target !== null ? formatTargetCriteria(target, metric.higherIsBetter, TARGET_DIGITS) : "정보 제공",
       };
     })
     .filter((item): item is MetricItem => item !== null);

@@ -67,3 +67,10 @@ describe("nearTargetNote — 8.3 한 줄", () => {
     expect(nearTargetNote([kpi({ value: 0.801 })])).toBeNull();
   });
 });
+
+describe("8.3 의 목표값 자릿수 (B10)", () => {
+  it("목표 0.855 는 8.3 에도 0.855 로 찍힌다", () => {
+    const note = nearTargetNote(attachNearTarget([kpi({ value: 0.86, threshold: 0.855 })]));
+    expect(note).toContain("(목표 0.855 이상, 충족)");
+  });
+});

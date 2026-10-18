@@ -57,3 +57,21 @@ export function formatMetricCell(
 ): string {
   return formatMetricPercent(metricId, value) ?? formatMetricValue(value);
 }
+
+/**
+ * 합격 목표값을 찍을 자릿수가 없던 성적서(`FinalReportData.targetDigits` 없음)의 자릿수. 그때는 목표값을
+ * 둘째 자리로 반올림해 찍었다 — 발급본은 그 모양 그대로 다시 그린다.
+ */
+export const LEGACY_TARGET_DIGITS = 2;
+
+/**
+ * 합격 기준 한 칸("≥ 0.855"). 5절 문자열과 6.1·6.2 표가 이 하나로 찍는다. `digits` 는 성적서에 실린
+ * `targetDigits`(새 성적서 3) — 없으면 종전 2자리.
+ */
+export function formatTargetCriteria(
+  target: number,
+  higherIsBetter: boolean | undefined,
+  digits: number = LEGACY_TARGET_DIGITS,
+): string {
+  return `${higherIsBetter === false ? "≤" : "≥"} ${target.toFixed(digits)}`;
+}

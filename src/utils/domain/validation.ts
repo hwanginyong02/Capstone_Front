@@ -84,6 +84,19 @@ export function getTargetValueRule(metricId: string): { summary: string; validat
 }
 
 /**
+ * 합격 목표값의 소수 자릿수 상한. 목표값은 셋째 자리까지만 받고(넷째 자리부터 입력 오류), 성적서는
+ * 같은 자릿수로 찍는다(B10). 그래야 인쇄된 목표값과 판정에 쓴 목표값이 같다 — 종전에는 0.855 를
+ * 받아 "≥ 0.86" 으로 찍고 0.855 로 판정했다.
+ */
+export const TARGET_DIGITS = 3;
+
+/** 소수 `TARGET_DIGITS` 자리 안에 드는 값인가(지수 표기 입력도 값으로 본다). */
+export function fitsTargetDigits(value: number): boolean {
+  const scaled = value * 10 ** TARGET_DIGITS;
+  return Math.abs(scaled - Math.round(scaled)) < 1e-6;
+}
+
+/**
  * 단일 숫자 판정 기준이 필요한 메트릭인지 확인합니다.
  *
  * M21(Confusion Matrix)·M22(Class별 Metric)는 단일 숫자가 아니라 표/행렬을 산출하는

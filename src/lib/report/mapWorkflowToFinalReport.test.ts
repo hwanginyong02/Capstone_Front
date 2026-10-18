@@ -428,3 +428,19 @@ describe("클래스 레이블 설명 — 적은 클래스만 3절에 (B14)", () 
     expect(report.datasetInfo.classLabelDescriptions?.map((item) => item.label)).toEqual(["cat", "dog", "bird"]);
   });
 });
+
+describe("목표값 자릿수 — 5절은 셋째 자리(B10)", () => {
+  it("새 성적서는 targetDigits 3 을 싣고 5절 합격 기준을 셋째 자리로 찍는다", () => {
+    const report = mapWorkflowToFinalReport(
+      baseInput({
+        selectedMetricIds: ["M1", "M8"],
+        metricDetails: {
+          M1: { targetValue: "0.855" },
+          M8: { targetValue: "0.1" },
+        } as unknown as MapWorkflowToReportInput["metricDetails"],
+      }),
+    );
+    expect(report.targetDigits).toBe(3);
+    expect(report.metricList.map((item) => item.passCriteria)).toEqual(["≥ 0.855", "≤ 0.100"]);
+  });
+});

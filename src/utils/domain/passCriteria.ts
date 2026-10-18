@@ -10,14 +10,22 @@ import { getSelectedMetrics, type MetricDefinition, type TaskType } from "../../
 import { resolveCoreMetricIds } from "../../lib/report/computeVerdict";
 import type { ComposerValueMap } from "../../types/reportComposer.types";
 import type { MetricDetailStateMap } from "../../types/workflow.types";
-import { getTargetValueRule, metricNeedsTargetValue, parseNumericValue } from "./validation";
+import {
+  fitsTargetDigits,
+  getTargetValueRule,
+  metricNeedsTargetValue,
+  parseNumericValue,
+} from "./validation";
 
 /** 목표값 칸 하나의 문제. 없으면 null. */
 export function targetValueError(metricId: string, raw: string): string | null {
   if (raw.trim() === "") return "목표값을 넣으세요.";
   const parsed = parseNumericValue(raw);
   if (parsed === null) return "목표값은 숫자여야 합니다.";
-  return getTargetValueRule(metricId).validate(parsed);
+  const rangeError = getTargetValueRule(metricId).validate(parsed);
+  if (rangeError) return rangeError;
+  // 성적서가 찍는 자릿수(`TARGET_DIGITS` = 3)까지만 받는다(B10) — 인쇄값과 판정값이 같아야 한다.
+  return fitsTargetDigits(parsed) ? null : "목표값은 소수 셋째 자리까지 넣으세요.";
 }
 
 export interface PassCriteriaState {

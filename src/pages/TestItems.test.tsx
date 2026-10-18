@@ -100,6 +100,18 @@ describe("합격 목표값 — 평가 전에 받는다", () => {
 
     expect(useWorkflowStore.getState().metricDetails.M4?.targetValue).toBe("0.8");
   });
+
+  it("넷째 자리부터는 입력 오류이고 '다음'이 잠긴다 (B10)", async () => {
+    useWorkflowStore.setState({ metricDetails: withTargets(["M2", "M17"]) });
+    renderPage();
+
+    await userEvent.type(screen.getByRole("textbox", { name: "M4 목표값" }), "0.855");
+    expect(screen.getByRole("button", { name: "다음" })).toBeEnabled();
+
+    await userEvent.type(screen.getByRole("textbox", { name: "M4 목표값" }), "5");
+    expect(screen.getByText("목표값은 소수 셋째 자리까지 넣으세요.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다음" })).toBeDisabled();
+  });
 });
 
 describe("β 기본값 1.0 (B3)", () => {
