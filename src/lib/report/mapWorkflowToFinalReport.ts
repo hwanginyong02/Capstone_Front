@@ -403,24 +403,30 @@ function buildMeta(input: MapWorkflowToReportInput, taskType: TaskType): FinalRe
   };
 }
 
+/** 다듬은 값, 비면 "—"(B11 — 공백만 있는 칸을 그대로 찍지 않는다). */
+function trimmedOrDash(value: string | undefined): string {
+  return value?.trim() || "—";
+}
+
 function buildApplicant(basicInfo: BasicInfoFormData): ApplicantInfo {
   return {
-    companyName: basicInfo.companyName || "—",
-    representative: basicInfo.representative || "—",
-    businessNumber: basicInfo.businessNumber || "—",
-    contact: basicInfo.phone || "—",
+    companyName: trimmedOrDash(basicInfo.companyName),
+    representative: trimmedOrDash(basicInfo.representative),
+    businessNumber: trimmedOrDash(basicInfo.businessNumber),
+    contact: trimmedOrDash(basicInfo.phone),
     // 팩스·홈페이지는 점검 밖 선택 항목 — 비면 "—" 줄 대신 줄을 빼도록 빈 문자열로 둔다(재료 목록 1절).
     fax: basicInfo.fax?.trim() ?? "",
     homepage: basicInfo.website?.trim() ?? "",
-    address: basicInfo.address || "—",
+    address: trimmedOrDash(basicInfo.address),
   };
 }
 
 function buildEvalScope(basicInfo: BasicInfoFormData): EvalScope {
   const purposeKey = normalizeReportPurpose(basicInfo.reportPurpose);
+  const projectName = basicInfo.projectName?.trim();
   const projectInfo =
-    purposeKey === "project" && basicInfo.projectName
-      ? { name: basicInfo.projectName, agency: basicInfo.projectAgency || "—" }
+    purposeKey === "project" && projectName
+      ? { name: projectName, agency: trimmedOrDash(basicInfo.projectAgency) }
       : undefined;
 
   return {

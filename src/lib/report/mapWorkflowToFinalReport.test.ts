@@ -283,6 +283,41 @@ describe("1절 팩스·홈페이지 — 비면 빈 값(줄을 만들지 않음)"
   });
 });
 
+describe("[B11] 1.2 신청인 칸은 다듬어 싣고, 공백뿐이면 '—'", () => {
+  it("각 칸 — 앞뒤 공백을 걷어 내고, 공백만 있으면 '—'", () => {
+    const report = mapWorkflowToFinalReport(
+      baseInput({
+        basicInfo: {
+          ...DEFAULT_BASIC_INFO,
+          companyName: "  테스트 주식회사 ",
+          representative: "   ",
+          businessNumber: " 123-45-67890 ",
+          phone: "\t",
+          address: " 서울 ",
+        },
+      }),
+    );
+    expect(report.applicant).toMatchObject({
+      companyName: "테스트 주식회사",
+      representative: "—",
+      businessNumber: "123-45-67890",
+      contact: "—",
+      address: "서울",
+    });
+  });
+
+  it("과제 이름이 공백뿐이면 과제 정보를 싣지 않고, 기관이 공백뿐이면 '—'", () => {
+    const blank = mapWorkflowToFinalReport(
+      baseInput({ basicInfo: { ...DEFAULT_BASIC_INFO, reportPurpose: "project", projectName: "  ", projectAgency: "기관" } }),
+    );
+    expect(blank.evalScope.projectInfo).toBeUndefined();
+    const agency = mapWorkflowToFinalReport(
+      baseInput({ basicInfo: { ...DEFAULT_BASIC_INFO, reportPurpose: "project", projectName: " AI 과제 ", projectAgency: " " } }),
+    );
+    expect(agency.evalScope.projectInfo).toEqual({ name: "AI 과제", agency: "—" });
+  });
+});
+
 describe("2절 버전 — 기본값은 한 곳에서 정한다(DESIGN_GAPS R5)", () => {
   it.each([
     ["", "v1.0.0"],
