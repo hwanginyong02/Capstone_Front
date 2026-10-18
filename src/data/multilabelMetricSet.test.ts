@@ -640,8 +640,9 @@ describe("persist 마이그레이션 v11 → v12 — 재료 고르기 저장 상
   it("필수 카드는 모두 저장된 것으로 본다 — 다음에서 막히지 않는다", async () => {
     const migrated = await migrate({ taskType: "binary", composerCards: {} });
 
+    // 키가 있어야 v15 가 필수 항목을 채운다(정확한 배열은 아래 v15 테스트가 고정한다).
     for (const id of ["clientInfo", "model", "evalData", "perspective", "metrics"]) {
-      expect(migrated.materialPicks[id], id).toEqual([]);
+      expect(migrated.materialPicks[id], id).toBeDefined();
     }
   });
 
@@ -665,7 +666,14 @@ describe("persist 마이그레이션 v11 → v12 — 재료 고르기 저장 상
 
     expect(migrated.materialPicks.trainingData).toContain("trainingNotes");
     expect(migrated.materialPicks.trainingData).not.toContain("trainingDataFormat");
-    expect(migrated.materialPicks.clientInfo).toEqual(["contactExtra:website", "projectNumber"]);
+    // v12 가 고른 홈페이지·과제 번호에 v15 가 필수 항목을 더한다.
+    expect(migrated.materialPicks.clientInfo).toEqual([
+      "companyInfo",
+      "reportPurpose",
+      "contactExtra:website",
+      "projectNumber",
+      "requestDate",
+    ]);
   });
 });
 
@@ -788,7 +796,7 @@ describe("persist 마이그레이션 v11 → v13 — 전처리 일치가 숨지 
   });
 });
 
-describe("운영 v3 저장분이 첫 배포 때 v14 까지 한 번에 올라간다", () => {
+describe("운영 v3 저장분이 첫 배포 때 최신 판까지 한 번에 올라간다", () => {
   it("재료 고르기 체크가 만들어지고 이미 적은 선택 항목은 체크된다", async () => {
     const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
 
@@ -808,6 +816,11 @@ describe("운영 v3 저장분이 첫 배포 때 v14 까지 한 번에 올라간�
     expect(migrated.materialPicks.clientInfo).toContain("contactExtra:website");
     expect(migrated.materialPicks.trainingData).toBeUndefined();
     expect(migrated.composerTrainingData).toEqual({});
+    // 평가 흐름 만들기에서 갇히지 않는다 — 필수 항목이 모두 놓여 있다.
+    const { flowStatus } = await import("../utils/domain/materialPicks");
+    const status = flowStatus("binary", migrated.materialPicks);
+    expect(status.counts.required.total).toBeGreaterThan(0);
+    expect(status.missingRequired).toEqual([]);
   });
 });
 
@@ -860,5 +873,140 @@ describe("persist 마이그레이션 v13 → v14 — 입력 순서와 데이터 
     const migrated = await migrate({ composerCards: {}, completedStepIds: [], currentStepId: "dataInfo" });
 
     expect(migrated.currentStepId).toBe("perspective");
+  });
+});
+
+/**
+ * v14 → v15 — 재료 고르기가 빈 흐름에서 항목을 넣는 평가 흐름 만들기가 됐다(docs/MATERIAL_PICKER.md
+ * §12.2). 잠긴 카드 키의 뜻이 "필수는 들어가 있음"에서 "넣은 항목만"으로 바뀌어, 진행 중인 저장분을
+ * 넣은 것으로 옮긴다.
+ */
+describe("persist 마이그레이션 v14 → v15 — 종전에 받던 항목을 넣은 것으로", () => {
+  const migrate = async (state: Record<string, unknown>) => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+    return migrateWorkflowState(state, 14);
+  };
+  const LOCKED_EMPTY = { clientInfo: [], model: [], evalData: [], perspective: [], metrics: [] };
+
+  it("키가 있는 잠긴 카드에 모든 유형의 필수 항목과 지연시간을 넣는다 — 정확한 배열", async () => {
+    const migrated = await migrate({ taskType: "binary", materialPicks: LOCKED_EMPTY });
+
+    expect(migrated.materialPicks).toEqual({
+      clientInfo: ["companyInfo", "reportPurpose", "requestDate"],
+      model: ["modelNameVersion", "modelPurpose", "modelCategory"],
+      evalData: ["resultFile", "yTrueColumn", "predictionColumns", "positiveClass", "latencyColumn"],
+      // 유형과 무관하게 합집합 — 이진의 중요 오류 유형과 다중·멀티의 클래스 중요도가 함께 들어간다.
+      perspective: ["criticalErrorType", "classPriority", "usageMode"],
+      metrics: ["selectedMetrics", "passCriteria", "metricRationale", "coreMetrics"],
+    });
+  });
+
+  it.each(["binary", "multiclass", "multilabel"] as const)(
+    "%s: 옮긴 뒤 평가 흐름의 빠진 필수가 없다 — 유형을 몰라도(\"\") 같다",
+    async (taskType) => {
+      const { flowStatus } = await import("../utils/domain/materialPicks");
+      for (const saved of [taskType, ""]) {
+        const migrated = await migrate({ taskType: saved, materialPicks: LOCKED_EMPTY });
+        const status = flowStatus(taskType, migrated.materialPicks);
+        expect(status.counts.required.total).toBeGreaterThan(0);
+        expect(status.missingRequired).toEqual([]);
+      }
+    },
+  );
+
+  it("샘플 ID·클래스 레이블 설명은 이미 쓴 것만 넣는다", async () => {
+    const row = (role: string) => ({
+      originalName: role,
+      sampleValues: [],
+      inferredRole: role,
+      confirmedRole: role,
+      modified: false,
+      warnings: [],
+    });
+    const used = await migrate({
+      materialPicks: { evalData: [] },
+      columnMapping: [row("y_true"), row("id")],
+      classLabelDescriptions: { cat: "고양이", dog: "" },
+    });
+    expect(used.materialPicks.evalData).toEqual([
+      "resultFile",
+      "yTrueColumn",
+      "predictionColumns",
+      "positiveClass",
+      "latencyColumn",
+      "sampleIdColumn",
+      "classLabelDescriptions",
+    ]);
+
+    const unused = await migrate({
+      materialPicks: { evalData: [] },
+      columnMapping: [row("y_true"), { ...row("id"), confirmedRole: "ignore" }],
+      classLabelDescriptions: { cat: "  " },
+    });
+    expect(unused.materialPicks.evalData).not.toContain("sampleIdColumn");
+    expect(unused.materialPicks.evalData).not.toContain("classLabelDescriptions");
+  });
+
+  it("켜진 ⑥ 에 예시 파일을 올려 두었으면 그 항목을 넣는다 — 꺼져 있으면 건드리지 않는다", async () => {
+    const file = { name: "a.png", size: 1, type: "image/png" };
+    const on = await migrate({
+      composerCards: { trainingData: true, testData: false, groundTruth: false, modelEnv: false },
+      materialPicks: { trainingData: ["trainingDatasetName"] },
+      trainingExampleFiles: [file],
+      trainingUnsuitableExampleFiles: [],
+    });
+    expect(on.materialPicks.trainingData).toEqual(["trainingDatasetName", "trainingExamples"]);
+
+    const off = await migrate({
+      composerCards: { trainingData: false, testData: false, groundTruth: false, modelEnv: false },
+      materialPicks: { trainingData: [] },
+      trainingExampleFiles: [file],
+    });
+    expect(off.materialPicks.trainingData).toEqual([]);
+  });
+
+  it("키가 없는 카드와 다른 선택 카드는 그대로다", async () => {
+    const saved = {
+      materialPicks: { modelEnv: ["gpuUsage"], testData: ["testDataSource"] },
+      composerCards: { trainingData: false, testData: true, groundTruth: false, modelEnv: true },
+    };
+    const migrated = await migrate(saved);
+
+    expect(migrated.materialPicks).toEqual(saved.materialPicks);
+    expect(migrated.materialPicks.clientInfo).toBeUndefined();
+    // 바뀐 것이 없으면 같은 객체다.
+    expect(migrated).toBe(saved);
+  });
+
+  it("여러 번 돌려도 같다 — 이미 있는 항목·선택 항목은 남고 순서는 레지스트리 순서다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+    const once = await migrate({ materialPicks: { clientInfo: ["requestDate", "contactExtra:fax"] } });
+    const twice = migrateWorkflowState(once, 14);
+
+    expect(once.materialPicks.clientInfo).toEqual(["companyInfo", "reportPurpose", "contactExtra:fax", "requestDate"]);
+    expect(twice.materialPicks).toEqual(once.materialPicks);
+  });
+});
+
+describe("persist 사슬 — v11 저장분이 v15 까지", () => {
+  it("v12 가 만든 키에 v15 가 필수·지연시간을 채우고, 켜진 선택 카드는 v12 의 권장 그대로다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+    const migrated = migrateWorkflowState(
+      {
+        taskType: "multiclass",
+        composerCards: { trainingData: false, testData: false, groundTruth: false, modelEnv: true },
+        basicInfo: { fax: "02-1" },
+      },
+      11,
+    );
+
+    expect(migrated.materialPicks).toEqual({
+      evalData: ["resultFile", "yTrueColumn", "predictionColumns", "positiveClass", "latencyColumn"],
+      metrics: ["selectedMetrics", "passCriteria", "metricRationale", "coreMetrics"],
+      clientInfo: ["companyInfo", "reportPurpose", "contactExtra:fax", "requestDate"],
+      model: ["modelNameVersion", "modelPurpose", "modelCategory"],
+      perspective: ["criticalErrorType", "classPriority", "usageMode"],
+      modelEnv: ["algorithm", "hyperparameters", "runtimeEnv", "gpuUsage"],
+    });
   });
 });

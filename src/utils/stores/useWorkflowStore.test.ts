@@ -245,9 +245,9 @@ describe("재료 선택 점검의 진행 기록(materialCheckAck) — persist �
   });
 
   it("이 키가 없던 옛 저장분을 읽어도 null 로 남는다(이 키 때문에 판을 올리지 않음)", async () => {
-    // 판 14 는 재료 고르기의 입력 순서(cardOrder) 때문에 올렸다 — 이 키와 무관하다.
+    // 판 15 는 평가 흐름 만들기의 놓인 항목(필수 포함) 때문에 올렸다 — 이 키와 무관하다.
     const { WORKFLOW_PERSIST_VERSION } = await import("./useWorkflowStore");
-    expect(WORKFLOW_PERSIST_VERSION).toBe(14);
+    expect(WORKFLOW_PERSIST_VERSION).toBe(15);
     useWorkflowStore.getState().setMaterialCheckAck(ack);
     const raw = JSON.parse(localStorage.getItem(WORKFLOW_STORAGE_KEY)!);
     delete raw.state.materialCheckAck;
@@ -255,5 +255,27 @@ describe("재료 선택 점검의 진행 기록(materialCheckAck) — persist �
     localStorage.setItem(WORKFLOW_STORAGE_KEY, JSON.stringify(raw));
     await useWorkflowStore.persist.rehydrate();
     expect(useWorkflowStore.getState().materialCheckAck).toBeNull();
+  });
+});
+
+describe("persist v15 — 판 14 저장분을 다시 읽으면 놓인 항목이 채워진다", () => {
+  it("rehydrate 가 이행을 돌려 필수 항목과 지연시간을 넣는다", async () => {
+    localStorage.setItem(
+      WORKFLOW_STORAGE_KEY,
+      JSON.stringify({
+        version: 14,
+        state: {
+          taskType: "binary",
+          materialPicks: { clientInfo: ["contactExtra:website"], evalData: [] },
+        },
+      }),
+    );
+    await useWorkflowStore.persist.rehydrate();
+
+    const { materialPicks } = useWorkflowStore.getState();
+    expect(materialPicks.clientInfo).toEqual(["companyInfo", "reportPurpose", "contactExtra:website", "requestDate"]);
+    expect(materialPicks.evalData).toContain("latencyColumn");
+    // 키가 없던 잠긴 카드는 그대로 없다.
+    expect(materialPicks.model).toBeUndefined();
   });
 });

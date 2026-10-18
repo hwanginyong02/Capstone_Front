@@ -39,9 +39,13 @@ import {
   COMPOSER_CARDS,
   OPTIONAL_CARD_IDS,
   REQUIRED_CARD_IDS,
+  fieldOfLeaf,
+  leafKind,
   pickKind,
   pickableIds,
+  placeableIds,
 } from "../../data/reportComposer";
+import { orderPlaced } from "../domain/materialPicks";
 import { DEFAULT_CARD_ORDER, normalizeCardOrder, orderAfterPlacing } from "../domain/cardOrder";
 
 /**
@@ -56,7 +60,7 @@ import { DEFAULT_CARD_ORDER, normalizeCardOrder, orderAfterPlacing } from "../do
  */
 
 /** persist 스키마 버전. 저장된 상태의 의미가 바뀔 때만 올린다. */
-export const WORKFLOW_PERSIST_VERSION = 14;
+export const WORKFLOW_PERSIST_VERSION = 15;
 
 /**
  * 구 번호 체계(v4 까지)의 1~6 이 가리켰던 단계.
@@ -415,6 +419,57 @@ function migrateCardOrderV14(next: any): any {
 }
 
 /**
+ * v14 → v15 — 재료 고르기가 빈 흐름에서 항목을 넣는 "평가 흐름 만들기"가 됐다(docs/MATERIAL_PICKER.md
+ * §12.2). 잠긴 카드의 `materialPicks` 키 뜻이 "필수는 들어가 있음"에서 "넣은 항목만"으로 바뀌었다.
+ *
+ * 진행 중인 사용자가 돌아와 "다음"에서 갇히지 않게 **종전에 받던 것을 넣은 것으로 옮긴다.**
+ * - 키가 있는 잠긴 카드: 모든 유형의 필수 항목을 더한다. 유형을 바꿔도 다시 넣지 않게 합집합이다
+ *   (셈은 지금 유형의 항목만 돈다).
+ * - ① 평가 데이터: 지연시간 컬럼(종전에는 늘 받던 권장)을 더한다. 샘플 ID 컬럼은 매핑에 id 역할이
+ *   있을 때, 클래스 레이블 설명은 빈칸이 아닌 설명이 있을 때만 더한다 — 이미 쓴 선택 항목만 옮기는
+ *   v12 의 원칙과 같다.
+ * - ⑥ 학습 데이터(켜짐): 예시 파일을 올려 두었으면 그 항목을 더한다.
+ * - 키가 없는 카드·다른 선택 카드는 그대로다. 키가 없으면 입력 쪽은 "모두 받음"이고 흐름은 빈 블록이다.
+ *
+ * 합집합이라 여러 번 돌려도 같다. 결과는 레지스트리 순서다(`orderPlaced`).
+ * `placeableIds`·`leafKind` 의 뜻을 바꾸면 이 이행의 결과가 달라진다 — 바꾸려면 새 함수를 더한다.
+ */
+function migratePlacedLeavesV15(next: any): any {
+  const saved: MaterialPicks = next.materialPicks ?? {};
+  const picks: MaterialPicks = { ...saved };
+  const rows: unknown[] = Array.isArray(next.columnMapping) ? next.columnMapping : [];
+  const mappedId = rows.some((row) => (row as MappingRow | null)?.confirmedRole === "id");
+  const described = Object.values(next.classLabelDescriptions ?? {}).some(
+    (text) => typeof text === "string" && text.trim() !== "",
+  );
+  const cards: ComposerSelection = { ...DEFAULT_COMPOSER_SELECTION, ...(next.composerCards ?? {}) };
+
+  let changed = false;
+  for (const card of COMPOSER_CARDS) {
+    const current = saved[card.id];
+    if (!Array.isArray(current)) continue;
+    const add: string[] = [];
+    if (card.locked) {
+      add.push(
+        ...placeableIds(card.id, "").filter((id) => leafKind(card, fieldOfLeaf(card.id, id)!) === "required"),
+      );
+      if (card.id === "evalData") {
+        add.push("latencyColumn");
+        if (mappedId) add.push("sampleIdColumn");
+        if (described) add.push("classLabelDescriptions");
+      }
+    } else if (card.id === "trainingData" && cards.trainingData) {
+      if (next.trainingExampleFiles?.length) add.push("trainingExamples");
+      if (next.trainingUnsuitableExampleFiles?.length) add.push("trainingUnsuitableExamples");
+    }
+    if (add.length === 0) continue;
+    picks[card.id] = orderPlaced(card.id, [...current, ...add]);
+    changed = true;
+  }
+  return changed ? { ...next, materialPicks: picks } : next;
+}
+
+/**
  * 저장된 워크플로우 상태를 현재 규칙으로 옮긴다(순수 함수 — 테스트가 직접 호출한다).
  *
  * **v1 → v2**: multilabel 에서 M1·M11·M12·M13 이 제거됐다(ISSUES.md A-04, 결정 2).
@@ -479,6 +534,9 @@ function migrateCardOrderV14(next: any): any {
  *
  * **v13 → v14**: 입력 순서(`cardOrder`)가 생기고 데이터 정보 단계가 카드마다 나뉘었다
  * (`migrateCardOrderV14`).
+ *
+ * **v14 → v15**: 재료 고르기가 빈 흐름에서 항목을 넣는 평가 흐름 만들기가 됐다. 종전에 받던 필수·
+ * 지연시간·이미 쓴 항목을 넣은 것으로 옮긴다(`migratePlacedLeavesV15`).
  */
 export function migrateWorkflowState(persisted: any, version: number): any {
   if (!persisted || version >= WORKFLOW_PERSIST_VERSION) return persisted;
@@ -598,6 +656,11 @@ export function migrateWorkflowState(persisted: any, version: number): any {
   // v13 → v14 — 사용자 입력 순서, 데이터 정보 단계 분리.
   if (version < 14) {
     next = migrateCardOrderV14(next);
+  }
+
+  // v14 → v15 — 평가 흐름 만들기. 종전에 받던 항목을 넣은 것으로 옮긴다.
+  if (version < 15) {
+    next = migratePlacedLeavesV15(next);
   }
 
   return next;
