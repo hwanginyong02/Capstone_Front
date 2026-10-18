@@ -50,7 +50,7 @@ const GROUP_META: Record<ValidationGroup, { label: string; description: string }
   multiclass: { label: "다중 클래스 검사",   description: "분류 유형이 다중 클래스일 때 적용" },
   binary:     { label: "이진 분류 검사",     description: "분류 유형이 이진 분류일 때 적용" },
   multilabel: { label: "다중 레이블 검사",   description: "분류 유형이 다중 레이블일 때 적용" },
-  latency:    { label: "응답시간 검사",      description: "응답시간 컬럼이 있을 때 적용" },
+  latency:    { label: "지연시간 검사",      description: "지연시간 컬럼이 있을 때 적용" },
 };
 
 const GROUP_ORDER: ValidationGroup[] = ["common", "multiclass", "binary", "multilabel", "latency"];

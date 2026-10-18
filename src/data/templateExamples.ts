@@ -55,7 +55,7 @@ export function getComposerJsonExample(taskType: TaskType): string {
 /** 예시 아래 한 줄 안내. 유형마다 필수 컬럼 규칙이 다르다. */
 export function getComposerColumnNote(taskType: TaskType): string {
   if (taskType === "binary") {
-    return "정답(y_true)은 필수이고, 예측(y_pred)과 양성 확률(score) 중 하나가 있어야 합니다. AUROC 같은 곡선 지표는 확률이 있어야 합니다. 응답시간(latency_ms)은 선택입니다.";
+    return "정답(y_true)은 필수이고, 예측(y_pred)과 양성 확률(score) 중 하나가 있어야 합니다. AUROC 같은 곡선 지표는 확률이 있어야 합니다. 지연시간(latency_ms, 밀리초)은 선택입니다.";
   }
 
   if (taskType === "multilabel") {

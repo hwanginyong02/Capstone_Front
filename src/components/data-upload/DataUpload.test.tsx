@@ -61,3 +61,49 @@ describe("모델 이름표는 한 곳에서만 편집한다", () => {
     expect(source).toContain('update("versionName"');
   });
 });
+
+describe("업로드 화면의 컬럼 안내 — 매핑 선택지와 같은 함수(M2·M4)", () => {
+  it("유형마다 매핑 선택지(ignore 제외)와 같다 — 다중 클래스의 확률·샘플 ID 도 있다", async () => {
+    const { uploadColumnCodes } = await import("./DataUpload");
+    const { buildRoleOptions } = await import("../../utils/domain/mappingPicks");
+    for (const task of ["binary", "multiclass", "multilabel"] as const) {
+      const options = buildRoleOptions(task, undefined, [])
+        .map((option) => option.value)
+        .filter((value) => value !== "ignore");
+      expect(options.length).toBeGreaterThan(0);
+      expect(uploadColumnCodes(task, undefined)).toEqual(options);
+    }
+    expect(uploadColumnCodes("multiclass", undefined)).toEqual(expect.arrayContaining(["id", "prob_class_*", "latency"]));
+  });
+
+  it("평가 흐름에 놓지 않은 샘플 ID·지연시간은 안내하지 않는다", async () => {
+    const { uploadColumnCodes } = await import("./DataUpload");
+    expect(uploadColumnCodes("binary", [])).toEqual(["y_true", "y_pred", "score"]);
+    expect(uploadColumnCodes("binary", ["latencyColumn"])).toContain("latency");
+  });
+
+  it("지연시간 이름은 latency_ms 하나, 단위는 밀리초 — 따로 둔 inference_time_ms 카드는 없다", () => {
+    const source = read("components/data-upload/DataUpload.tsx");
+    expect(source).not.toContain("inference_time_ms");
+    expect(source).toMatch(/latency_ms/);
+    expect(source).toMatch(/밀리초\(ms\)/);
+  });
+});
+
+describe("화면 용어: '응답시간' 대신 '지연시간'(N2)", () => {
+  it("입력 화면 문구에 '응답시간'이 없다 — 성적서 인쇄문(report/sections·materialCheck)은 판정 표 버전에 묶여 그대로", () => {
+    const screens = [
+      "components/data-upload/DataUpload.tsx",
+      "components/test-items/TestItems.tsx",
+      "components/data-validation/DataValidation.tsx",
+      "components/workflow/MaterialCheckNotice.tsx",
+      "data/reportComposer.ts",
+      "data/templateExamples.ts",
+      "data/evaluationData.ts",
+    ];
+    expect(screens.length).toBeGreaterThan(0);
+    for (const file of screens) {
+      expect(read(file), file).not.toMatch(/응답시간|응답 시간/);
+    }
+  });
+});

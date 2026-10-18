@@ -533,7 +533,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         choices: ["Real-time", "Batch"],
         reportLabels: { "Real-time": "대화형(실시간)", Batch: "배치" },
         help:
-          "실시간 응답을 고르면 응답시간(latency) 컬럼을 매핑했는지 확인합니다. 없으면 생성 전에 알리고, " +
+          "실시간 응답을 고르면 지연시간(latency) 컬럼을 매핑했는지 확인합니다. 없으면 생성 전에 알리고, " +
           "성적서에 응답 속도를 판단할 수 없다고 적습니다.",
         reportSection: "5절",
         sentToAi: true,

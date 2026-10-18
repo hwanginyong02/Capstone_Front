@@ -107,6 +107,7 @@ export function DataUpload() {
         uploadedFile={store.uploadedFile}
         onUploadedFileChange={store.setUploadedFile}
         needsReupload={!!store.uploadedFile && !store.rawFile}
+        evalDataPicks={store.materialPicks.evalData}
       />
     </WorkflowShell>
   );

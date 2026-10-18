@@ -238,7 +238,7 @@ export function TestItems({
                       </span>
                       {!line.met &&
                         (line.recommended.length === 0 ? (
-                          <span className="text-muted-foreground">컬럼 매핑에서 응답시간(latency) 컬럼을 지정해야 채워집니다.</span>
+                          <span className="text-muted-foreground">평가 흐름에 지연시간 컬럼을 넣고 컬럼 매핑에서 latency 역할로 지정해야 채워집니다.</span>
                         ) : addable.length > 0 ? (
                           <Button variant="outline" size="sm" onClick={() => handleAddMetrics(addable)}>
                             추가: {addable.map(metricLabel).join(", ")}
