@@ -135,6 +135,30 @@ describe("파일 예시도 같은 판정 — 지연시간을 놓지 않으면 la
     expect(screen.getByText(/지연시간\(latency_ms, 밀리초\)은 선택입니다/)).toBeInTheDocument();
     placed.unmount();
   });
+
+  it("업로드 화면 JSON 탭: 놓지 않았으면 latency_ms 가 없고, 놓았으면 있다 (S10 검토 — 탭을 열어야 그려진다)", async () => {
+    const { render, screen } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const { DataUpload } = await import("./DataUpload");
+    const jsonText = async () => {
+      await userEvent.click(screen.getByRole("tab", { name: "JSON" }));
+      return screen.getByText(/"y_true": 1/).textContent!;
+    };
+
+    const view = render(
+      <DataUpload taskType="binary" uploadedFile={null} onUploadedFileChange={() => {}} evalDataPicks={[]} />,
+    );
+    const unplaced = await jsonText();
+    expect(unplaced).toContain('"score": 0.91 }');
+    expect(unplaced).not.toContain("latency_ms");
+    view.unmount();
+
+    const placed = render(
+      <DataUpload taskType="binary" uploadedFile={null} onUploadedFileChange={() => {}} evalDataPicks={["latencyColumn"]} />,
+    );
+    expect(await jsonText()).toContain('"latency_ms": 12');
+    placed.unmount();
+  });
 });
 
 describe("화면 용어: '응답시간' 대신 '지연시간'(N2)", () => {
