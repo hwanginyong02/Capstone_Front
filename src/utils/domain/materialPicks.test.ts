@@ -3,7 +3,17 @@ import { describe, expect, it } from "vitest";
 
 import { catalogCards, pickableIds } from "../../data/reportComposer";
 import type { MaterialPicks } from "../../types/reportComposer.types";
+import { DEFAULT_CARD_ORDER } from "./cardOrder";
 import {
+  blockFillIds,
+  describeMissingRequired,
+  flowLeaves,
+  flowStatus,
+  focusLeafIds,
+  isBlockShown,
+  orderPlaced,
+  shownBlocksInOrder,
+  togglePlaced,
   fieldRows,
   includeCardPicks,
   matchesTier,
@@ -168,5 +178,194 @@ describe("빠진 권장 항목 (§5·§6)", () => {
 
   it("표준 세트면 빠진 권장 항목이 없다", () => {
     expect(missingRecommended("binary", picksForTier("standard", "binary"))).toEqual([]);
+  });
+});
+
+// ─── 평가 흐름 만들기 규칙(§12.2) ───────────────────────────────────────────────
+
+const TASK_TYPES = ["binary", "multiclass", "multilabel"] as const;
+
+/** 이 유형의 잠긴 블록을 모두 블록째 넣은 picks. */
+function fillLocked(taskType: (typeof TASK_TYPES)[number]): MaterialPicks {
+  return Object.fromEntries(
+    catalogCards(taskType)
+      .filter((card) => card.locked)
+      .map((card) => [card.id, blockFillIds(card.id, taskType)]),
+  );
+}
+
+describe("평가 흐름 — 처음에는 아무것도 놓이지 않았다", () => {
+  it.each([
+    ["binary", 15, 15, 13],
+    ["multiclass", 14, 15, 13],
+    ["multilabel", 15, 15, 13],
+  ] as const)("%s 의 처음 개수는 필수 0/%i · 권장 0/%i · 선택 0/%i 이다", (taskType, req, rec, opt) => {
+    const { counts, missingRequired } = flowStatus(taskType, {});
+    expect(counts).toEqual({
+      required: { placed: 0, total: req },
+      recommended: { placed: 0, total: rec },
+      optional: { placed: 0, total: opt },
+    });
+    expect(missingRequired).toHaveLength(req);
+  });
+
+  it("잠긴 블록의 키가 빈 배열이어도 놓인 것이 없다 — 입력 쪽 '모두 받음'과 다르다", () => {
+    const picks: MaterialPicks = { clientInfo: [], evalData: [] };
+    expect(flowStatus("binary", picks).counts.required.placed).toBe(0);
+    expect(isBlockShown("clientInfo", "binary", {})).toBe(false);
+    expect(isBlockShown("clientInfo", "binary", picks)).toBe(false);
+  });
+});
+
+describe("평가 흐름 — 블록째 넣기와 개수", () => {
+  it.each(TASK_TYPES)("%s: 잠긴 블록을 모두 블록째 넣으면 빠진 필수가 없다", (taskType) => {
+    const status = flowStatus(taskType, fillLocked(taskType));
+    expect(status.counts.required.total).toBeGreaterThan(0);
+    expect(status.missingRequired).toEqual([]);
+    expect(status.counts.required.placed).toBe(status.counts.required.total);
+  });
+
+  it("필수 수 = 전체 − 빠진 필수 수 — 여러 picks 에서", () => {
+    const samples: MaterialPicks[] = [
+      {},
+      { clientInfo: ["companyInfo"] },
+      { clientInfo: ["companyInfo", "requestDate"], evalData: ["resultFile", "latencyColumn"] },
+      fillLocked("binary"),
+    ];
+    for (const picks of samples) {
+      const { counts, missingRequired } = flowStatus("binary", picks);
+      expect(counts.required.total - counts.required.placed).toBe(missingRequired.length);
+    }
+  });
+
+  it("평가 데이터를 블록째 넣으면 필수와 권장(지연시간)이 들어가고 선택은 들어가지 않는다", () => {
+    expect(blockFillIds("evalData", "binary")).toEqual([
+      "resultFile",
+      "yTrueColumn",
+      "predictionColumns",
+      "positiveClass",
+      "latencyColumn",
+    ]);
+    expect(blockFillIds("evalData", "multiclass")).not.toContain("positiveClass");
+  });
+
+  it("선택 카드를 블록째 넣으면 권장 전부 — 선택은 들어가지 않는다", () => {
+    expect(blockFillIds("modelEnv", "binary")).toEqual(["algorithm", "hyperparameters", "runtimeEnv", "gpuUsage"]);
+    const optional = flowLeaves("trainingData", "binary").filter((leaf) => leaf.kind === "optional");
+    expect(optional.length).toBeGreaterThan(0);
+    for (const leaf of optional) expect(blockFillIds("trainingData", "binary")).not.toContain(leaf.leafId);
+  });
+
+  it("빠진 권장 항목은 지연시간도 센다 — 잠긴 블록의 2층 보고 항목", () => {
+    const status = flowStatus("binary", { evalData: ["resultFile"] });
+    expect(status.unplacedRecommended.map((leaf) => leaf.leafId)).toContain("latencyColumn");
+    const placed = flowStatus("binary", { evalData: ["latencyColumn"] });
+    expect(placed.counts.recommended.placed).toBe(1);
+  });
+
+  it("다른 유형의 항목만 있으면 세지 않고 블록도 보이지 않는다", () => {
+    // 양성 클래스는 이진에만 있다.
+    const picks: MaterialPicks = { evalData: ["positiveClass"] };
+    expect(isBlockShown("evalData", "binary", picks)).toBe(true);
+    expect(isBlockShown("evalData", "multiclass", picks)).toBe(false);
+    expect(flowStatus("multiclass", picks).counts.required.placed).toBe(0);
+  });
+
+  it("선택 카드에서 블록이 보이는 것은 composerCards 가 켜진 것과 같다 — 항목이 있을 때", () => {
+    expect(isBlockShown("modelEnv", "binary", {})).toBe(false);
+    expect(isBlockShown("modelEnv", "binary", { modelEnv: [] })).toBe(false);
+    expect(isBlockShown("modelEnv", "binary", { modelEnv: ["gpuUsage"] })).toBe(true);
+  });
+});
+
+describe("평가 흐름 — 조건부 항목은 함께 들어간다", () => {
+  const conditionalPlaced = (taskType: (typeof TASK_TYPES)[number], picks: MaterialPicks) =>
+    flowStatus(taskType, picks)
+      .leaves.filter((leaf) => leaf.kind === "conditional" && leaf.placed)
+      .map((leaf) => leaf.leafId);
+
+  it("조건을 정하는 항목을 넣으면 함께 들어가고 빼면 빠진다", () => {
+    expect(conditionalPlaced("binary", {})).toEqual([]);
+    expect(conditionalPlaced("binary", { evalData: ["predictionColumns"] })).toEqual(["decisionThreshold"]);
+    expect(conditionalPlaced("binary", { metrics: ["selectedMetrics"] })).toEqual(["beta"]);
+    expect(conditionalPlaced("binary", { clientInfo: ["reportPurpose"] })).toEqual(["projectInfo"]);
+    expect(conditionalPlaced("binary", { groundTruth: ["labelReview"] })).toEqual([
+      "labelReviewerCount",
+      "labelAgreementKind",
+      "labelAgreementValue",
+    ]);
+  });
+
+  it("조건부는 개수에 넣지 않는다 — 함께 들어가도 필수 수가 그대로다", () => {
+    const one = flowStatus("binary", { evalData: ["predictionColumns"] }).counts;
+    expect(one.required.placed).toBe(1);
+    expect(one.recommended.placed + one.optional.placed).toBe(0);
+  });
+
+  it("다중 클래스에는 결정 임계값 항목이 없다", () => {
+    expect(flowLeaves("evalData", "multiclass").map((leaf) => leaf.leafId)).not.toContain("decisionThreshold");
+    expect(flowLeaves("evalData", "binary").find((leaf) => leaf.leafId === "decisionThreshold")?.triggerIds).toEqual([
+      "predictionColumns",
+    ]);
+  });
+});
+
+describe("평가 흐름 — 넣고 빼기", () => {
+  it("넣고 다시 누르면 뺀다. 필수 항목도 뺄 수 있다", () => {
+    const on = togglePlaced("clientInfo", undefined, "companyInfo");
+    expect(on).toEqual(["companyInfo"]);
+    expect(togglePlaced("clientInfo", on, "companyInfo")).toEqual([]);
+  });
+
+  it("조건부·모르는 id 는 무시하고, 레지스트리 순서로 두며, 다른 유형의 항목은 남긴다", () => {
+    expect(togglePlaced("clientInfo", ["requestDate"], "projectInfo")).toEqual(["requestDate"]);
+    expect(togglePlaced("clientInfo", ["requestDate"], "nope")).toEqual(["requestDate"]);
+    expect(togglePlaced("clientInfo", ["requestDate"], "companyInfo")).toEqual(["companyInfo", "requestDate"]);
+    // 클래스 중요도(다중·멀티)를 둔 채 중요 오류 유형(이진)을 넣어도 남는다.
+    expect(togglePlaced("perspective", ["classPriority"], "criticalErrorType")).toEqual([
+      "criticalErrorType",
+      "classPriority",
+    ]);
+    expect(orderPlaced("clientInfo", ["requestDate", "companyInfo", "companyInfo", "projectInfo"])).toEqual([
+      "companyInfo",
+      "requestDate",
+    ]);
+  });
+});
+
+describe("평가 흐름 — 막힘 안내와 강조", () => {
+  it("빠진 필수가 없으면 안내가 없다", () => {
+    expect(describeMissingRequired([])).toBeNull();
+  });
+
+  it("처음 셋의 이름과 나머지 개수를 적는다 — 카탈로그 순서(의뢰자 정보부터)", () => {
+    const { missingRequired } = flowStatus("binary", {});
+    expect(describeMissingRequired(missingRequired)).toBe(
+      `넣지 않은 필수 항목이 있어요: 회사 정보, 성적서 용도, 평가 의뢰일 외 ${missingRequired.length - 3}개`,
+    );
+    expect(describeMissingRequired(missingRequired.slice(0, 2))).toBe(
+      "넣지 않은 필수 항목이 있어요: 회사 정보, 성적서 용도",
+    );
+  });
+
+  it("들어올 때 넘긴 항목을 강조하고, 없으면 그 블록의 넣지 않은 필수·권장을 강조한다", () => {
+    expect(focusLeafIds({ cardId: "evalData", leafIds: ["latencyColumn"] }, "binary", {})).toEqual(["latencyColumn"]);
+    expect(focusLeafIds({ cardId: "evalData" }, "binary", { evalData: ["resultFile"] })).toEqual([
+      "yTrueColumn",
+      "predictionColumns",
+      "positiveClass",
+      "latencyColumn",
+    ]);
+  });
+});
+
+describe("평가 흐름 — 보이는 블록의 순서", () => {
+  it("놓인 블록만 입력 순서대로 — ⑥ 을 먼저 놓고 ① 을 놓아도 ① 이 앞이다", () => {
+    const picks: MaterialPicks = { trainingData: ["trainingDatasetName"], evalData: ["resultFile"] };
+    expect(shownBlocksInOrder(DEFAULT_CARD_ORDER, "binary", picks).map((card) => card.id)).toEqual([
+      "evalData",
+      "trainingData",
+    ]);
+    expect(shownBlocksInOrder(DEFAULT_CARD_ORDER, "binary", {})).toEqual([]);
   });
 });

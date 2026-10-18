@@ -324,6 +324,34 @@ export interface MaterialCategory {
 export type MaterialPicks = Partial<Record<ComposerCardId, string[]>>;
 
 /**
+ * 평가 흐름 만들기 트리의 항목 하나(docs/MATERIAL_PICKER.md §12.2). 필수·권장은 필드 하나, 칸이 나뉜
+ * 선택 필드는 칸 하나다. 조건부 항목도 트리에 보이지만 저장하지 않는다 — 조건을 정하는 항목을
+ * 넣으면 함께 들어간다.
+ */
+export interface FlowLeaf {
+  cardId: ComposerCardId;
+  /** `materialPicks` 에 들어가는 id. 조건부는 필드 id 이지만 저장하지 않는다. */
+  leafId: string;
+  fieldId: string;
+  partKey?: string;
+  label: string;
+  /** `leafKind` — 잠긴 카드의 2층 보고 항목(① 지연시간)은 권장이다. */
+  kind: PickKind;
+  conditionLabel?: string;
+  /** 조건부만 — 함께 들여오는 같은 카드의 항목 id(`conditionTriggerIds`). */
+  triggerIds?: string[];
+}
+
+/** 다른 화면에서 평가 흐름 만들기로 들어올 때 넘기는 `location.state`. */
+export interface FlowEntryState {
+  cardId: ComposerCardId;
+  /** 강조할 항목. 없으면 그 블록의 넣지 않은 필수·권장 항목이다(`focusLeafIds`). */
+  leafIds?: string[];
+  /** "다음"이 돌아갈 입력 화면(`composerNextStep`). */
+  returnStep?: StepId;
+}
+
+/**
  * 처음에는 **필수 카드만** 들어간다.
  *
  * 선택 카드는 사용자가 재료 고르기에서 항목을 골라 저장해야 들어간다 — 보지도 않은 카드의 입력을
