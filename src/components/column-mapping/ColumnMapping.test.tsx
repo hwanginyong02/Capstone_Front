@@ -148,6 +148,8 @@ describe("평가 흐름에 놓지 않은 항목 (docs/MATERIAL_PICKER.md §12.4)
     render(<ColumnMapping {...base} rows={[...base.rows, held]} evalDataPicks={[]} onPlaceLeaf={onPlaceLeaf} />);
     expect(screen.getByText("맡아 둠")).toBeInTheDocument();
     expect(screen.getByText(/평가 흐름에 '지연시간 컬럼'을 넣으면 이 역할로 돌아옵니다/)).toBeInTheDocument();
+    // 맡아 둔 역할은 선택지와 같은 한국어 이름표로(S10 마무리) — 코드("latency")만 쓰지 않는다.
+    expect(screen.getByText(/맡아 둠:/)).toHaveTextContent("맡아 둠: 지연시간(ms) (latency)");
     // 맡아 둔 행은 "자동 매핑:" 줄 대신 맡아 둔 안내를 보인다.
     expect(screen.queryByText(/자동 매핑:/)).not.toBeInTheDocument();
     screen.getByRole("button", { name: "평가 흐름 만들기에서 넣기" }).click();

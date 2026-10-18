@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { cn } from "../../utils/styling/styles";
 import type { MappingRole, MappingRow } from "../../types/mapping.types";
 import { getRowMatchState, isDuplicateRole } from "../../utils/domain/mappingHelpers";
-import { leafOfRole } from "../../utils/domain/mappingPicks";
+import { leafOfRole, roleOptionLabel } from "../../utils/domain/mappingPicks";
 import { fieldOfLeaf } from "../../data/reportComposer";
 import { Badge } from "../ui/badge";
 
@@ -120,7 +120,8 @@ function HeldRoleNote({ role, onPlaceLeaf }: { role: MappingRole; onPlaceLeaf?: 
   return (
     <div className="flex flex-col gap-1 text-xs text-muted-foreground">
       <span>
-        맡아 둠: <span className="font-mono font-medium text-foreground">{role}</span>
+        {/* 역할 이름은 선택지와 같은 한국어 이름표(roleOptionLabel) — 코드만 보이면 무슨 역할인지 모른다. */}
+        맡아 둠: <span className="font-medium text-foreground">{roleOptionLabel(role)}</span>
         {leaf ? ` — 평가 흐름에 '${leaf.label}'을 넣으면 이 역할로 돌아옵니다.` : null}
       </span>
       {leaf && onPlaceLeaf && (
