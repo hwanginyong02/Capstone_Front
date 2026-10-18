@@ -45,6 +45,18 @@ describe("받는 것", () => {
     expect(screen.queryByText("평가 의뢰일")).not.toBeInTheDocument();
   });
 
+  it("과제 번호는 용도와 무관하다 — 체크했으면 용도가 과제 산출물이 아니어도 보인다", () => {
+    useWorkflowStore.setState({
+      materialPicks: { clientInfo: ["projectNumber"] },
+      basicInfo: { ...useWorkflowStore.getState().basicInfo, reportPurpose: "internal" },
+    });
+    renderPage();
+
+    expect(screen.getByText("과제 번호")).toBeInTheDocument();
+    // 과제명·과제 기관은 여전히 과제 산출물일 때만 받는다.
+    expect(screen.queryByText("과제명")).not.toBeInTheDocument();
+  });
+
   it("재료 고르기 이전 상태(저장한 체크 없음)에서는 모두 보인다", () => {
     renderPage();
 

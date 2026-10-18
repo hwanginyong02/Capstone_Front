@@ -136,6 +136,18 @@ function invalidReason(
     return null;
   }
 
+  // 숫자 칸 묶음(⑥ 학습·검증 표본 수, 클래스별 데이터 양)은 건수라 0 이상의 정수만 받는다.
+  // 종전에는 숫자 키패드만 띄우고 검사하지 않아 글자를 넣어도 통과했다(재료 목록 6절).
+  if (field.input === "entries" && field.numeric) {
+    const wrong = (value.entries ?? []).some((entry) => {
+      const raw = entry.value.trim();
+      if (raw === "") return false;
+      const count = Number(raw.replace(/,/g, ""));
+      return !Number.isInteger(count) || count < 0;
+    });
+    return wrong ? { reason: "outOfRange", message: "0 이상의 정수로 적어 주세요." } : null;
+  }
+
   // 고른 선택지가 다른 칸의 숫자와 맞는가(⑧ Cohen의 카파는 2명, Fleiss의 카파는 3명 이상).
   const rule = value.text ? field.choiceRequires?.[value.text] : undefined;
   if (rule) {

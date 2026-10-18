@@ -30,32 +30,8 @@ type FormDataSetter = (
   value: BasicInfoFormData | ((prev: BasicInfoFormData) => BasicInfoFormData),
 ) => void;
 
-/** ③ 의뢰자 정보 — 회사·성적서 용도·과제. */
-export function isClientInfoValid(formData: BasicInfoFormData): boolean {
-  const baseValid = Boolean(
-    formData.companyName &&
-      formData.representative &&
-      formData.businessNumber &&
-      formData.phone &&
-      formData.address &&
-      formData.contractDate &&
-      formData.reportPurpose,
-  );
-  if (formData.reportPurpose === "project") {
-    return baseValid && Boolean(formData.projectName && formData.projectAgency);
-  }
-  return baseValid;
-}
-
-/** ④ 평가 대상 모델 — 이름·버전·용도·분류. 이름·버전은 run 을 식별하는 이름표이기도 하다. */
-export function isModelInfoValid(formData: BasicInfoFormData): boolean {
-  return Boolean(
-    formData.modelName.trim() &&
-      formData.versionName.trim() &&
-      formData.modelPurpose.trim() &&
-      formData.modelCategory.trim(),
-  );
-}
+// 1층 검사는 검증 화면의 "다음"도 다시 하므로 utils 로 옮겼다. 이 화면 파일에서 계속 꺼내 쓸 수 있게 둔다.
+export { isClientInfoValid, isModelInfoValid } from "../../utils/domain/basicInfoValidity";
 
 /** ③ 의 선택 항목을 재료 고르기에서 받기로 했는지. */
 function clientPicks(picks: readonly string[] | undefined) {
@@ -144,7 +120,7 @@ export function ClientInfoForm({ formData, onFormDataChange, picks }: ClientInfo
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <ChoiceCard id="internal" title="내부 검증" description="사내 품질 확인이나 모델 모니터링에 씁니다" selected={formData.reportPurpose === "internal"} />
               <ChoiceCard id="external" title="외부 제출" description="고객사나 심사 기관에 냅니다" selected={formData.reportPurpose === "external"} />
-              <ChoiceCard id="project" title="과제 제출" description="지원 과제의 증빙으로 냅니다" selected={formData.reportPurpose === "project"} />
+              <ChoiceCard id="project" title="과제 산출물" description="지원 과제의 증빙으로 냅니다" selected={formData.reportPurpose === "project"} />
             </div>
           </RadioGroup>
 
@@ -168,13 +144,16 @@ export function ClientInfoForm({ formData, onFormDataChange, picks }: ClientInfo
                 <Field label="과제 기관" required>
                   <Input value={formData.projectAgency} onChange={(e) => update("projectAgency", e.target.value)} />
                 </Field>
-                {show.projectNumber && (
-                  <Field label="과제 번호">
-                    <Input value={formData.projectNumber} onChange={(e) => update("projectNumber", e.target.value)} />
-                  </Field>
-                )}
               </div>
             </div>
+          )}
+
+          {/* 과제 번호는 용도와 무관한 선택 항목이다(재료 목록 1절 — 점검 밖, 1절 인쇄). 재료 고르기에서
+              골랐을 때만 받는다. */}
+          {show.projectNumber && (
+            <Field label="과제 번호">
+              <Input value={formData.projectNumber} onChange={(e) => update("projectNumber", e.target.value)} />
+            </Field>
           )}
         </CardContent>
       </Card>

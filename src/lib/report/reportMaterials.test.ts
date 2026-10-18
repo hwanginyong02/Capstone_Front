@@ -48,6 +48,7 @@ describe("카드를 끄면", () => {
 
   it("선택 항목은 줄을 만들지 않는다", () => {
     expect(labelsOf(materials.training)).not.toContain("수집 기간");
+    expect(labelsOf(materials.training)).not.toContain("학습·평가 전처리 일치");
     expect(labelsOf(materials.training)).not.toContain("학습 데이터 설명");
     expect(labelsOf(materials.test)).not.toContain("평가 데이터 수집 기간");
   });
@@ -128,7 +129,7 @@ describe("⑧ 정답 라벨", () => {
     ).toBe("Cohen의 카파 0.71");
     expect(
       valueOf(groundTruth({ ...several, labelAgreementKind: { text: "Percent agreement" }, labelAgreementValue: { text: "82" } }), "라벨 일치도"),
-    ).toBe("단순 일치율 82%");
+    ).toBe("단순 일치율 0.82"); // 화면은 %, 성적서·AI 는 0~1(재료 목록 5절)
     expect(
       valueOf(groundTruth({ ...several, labelAgreementKind: { text: "Other", otherText: "Gwet's AC1" }, labelAgreementValue: { text: "0.6" } }), "라벨 일치도"),
     ).toBe("기타(Gwet's AC1) 0.6");
@@ -202,10 +203,8 @@ describe("AI 에 넘기는 고객 입력 (서술 설계 D25, D34)", () => {
   const input = composer({
     cards: ALL_ON,
     perspective: { usageMode: { text: "Batch" }, criticalErrorType: { text: "Similar" } },
-    testData: {
-      testDataSource: { text: "Q1 logs" },
-      preprocessingMatch: { text: "Different", note: "Extra outlier filtering" },
-    },
+    testData: { testDataSource: { text: "Q1 logs" } },
+    trainingData: { preprocessingMatch: { text: "Different", note: "Extra outlier filtering" } },
   });
   const inputs = buildClientInputs({
     composer: input,
@@ -227,8 +226,9 @@ describe("AI 에 넘기는 고객 입력 (서술 설계 D25, D34)", () => {
     expect((inputs.training_data as Record<string, string>)["학습 데이터셋명"]).toBe(NOT_PROVIDED);
   });
 
-  it("성적서에 찍지 않는 전처리 일치도 넘기고, 덧붙인 글은 의뢰자 덧붙임으로 표시한다", () => {
-    expect((inputs.test_data as Record<string, string>)["학습·평가 전처리 일치"]).toBe(
+  it("3절에 찍는 전처리 일치 줄을 그대로 넘기고, 덧붙인 글은 의뢰자 덧붙임으로 표시한다", () => {
+    // ⑥ 학습 데이터가 받는다(persist v13) — ⑦ 을 넣지 않아도 학습 데이터와 함께 간다.
+    expect((inputs.training_data as Record<string, string>)["학습·평가 전처리 일치"]).toBe(
       "다름 (의뢰자 덧붙임: Extra outlier filtering)",
     );
   });
@@ -244,5 +244,112 @@ describe("AI 에 넘기는 고객 입력 (서술 설계 D25, D34)", () => {
     expect(inputs.core_metrics).toEqual(["Accuracy(M1)"]);
     expect(inputs.class_label_descriptions).toEqual({ "0": "stays" });
     expect(inputs.declarations).toEqual({ "위험 방향": "비슷함", "사용 방식": "배치" });
+  });
+});
+
+/** 5절 평균 방식 문장 — 고정 문구 4(서술 설계 D28). 다중 클래스에서 클래스 중요도로 정한다. */
+describe("5절 평균 방식 문장", () => {
+  const sentence = (classPriority: { text?: string; unknown?: boolean; note?: string }, taskType: "multiclass" | "multilabel" | "binary" = "multiclass") =>
+    buildReportMaterials(composer({ perspective: { classPriority } }), taskType).averagingSentence;
+
+  it("클래스 중요도에 맞는 평균 방식을 선언 값과 함께 적는다", () => {
+    expect(sentence({ text: "All equal" })).toBe(
+      '다중 클래스 지표의 평균 방식은 매크로 평균을 기준으로 한다. 의뢰자가 클래스 중요도를 "모든 클래스가 동등"으로 밝혔기 때문이다.',
+    );
+    expect(sentence({ text: "Larger classes first" })).toContain("가중 평균");
+    expect(sentence({ text: "Individual samples first" })).toContain("마이크로 평균");
+  });
+
+  it("덧붙인 글은 따옴표 안에 넣지 않는다 — 선언 표에 있다", () => {
+    expect(sentence({ text: "All equal", note: "희귀 클래스도 중요" })).toContain('"모든 클래스가 동등"');
+  });
+
+  it("다중 클래스가 아니거나 답하지 않았으면 문장이 없다", () => {
+    expect(sentence({ text: "All equal" }, "multilabel")).toBeUndefined();
+    expect(sentence({ unknown: true })).toBeUndefined();
+  });
+});
+
+describe("⑥ 학습·평가 전처리 일치 — 3절 학습 데이터 표에 찍는다(DESIGN_GAPS R1)", () => {
+  const rowsWith = (value: Record<string, unknown>, on = true) =>
+    buildReportMaterials(
+      composer({
+        cards: { ...ALL_ON, trainingData: on },
+        trainingData: { trainingPeriod: { entries: [{ key: "From", value: "2023-01" }, { key: "To", value: "2024-12" }] }, preprocessingMatch: value },
+      }),
+      "binary",
+    ).training;
+
+  it("값이 있으면 수집 기간 다음 줄에 찍는다", () => {
+    const rows = rowsWith({ text: "Different", note: "정규화 다름" });
+    const labels = labelsOf(rows);
+
+    expect(valueOf(rows, "학습·평가 전처리 일치")).toBe("다름 (의뢰자 덧붙임: 정규화 다름)");
+    expect(labels.indexOf("학습·평가 전처리 일치")).toBe(labels.indexOf("수집 기간") + 1);
+  });
+
+  it('"모름"을 고르면 그 답을 그대로 찍는다(점검 밖 선택 항목이라 제공되지 않음 대상이 아니다)', () => {
+    expect(valueOf(rowsWith({ text: "Unknown" }), "학습·평가 전처리 일치")).toBe("모름");
+  });
+
+  it("⑥ 을 껐으면 줄이 없다", () => {
+    expect(labelsOf(rowsWith({ text: "Same" }, false))).not.toContain("학습·평가 전처리 일치");
+  });
+});
+
+describe("2층 보고 항목 번호 (재료 선택 점검 4.2 — MaterialRow.item)", () => {
+  const filled = buildReportMaterials(
+    composer({
+      cards: ALL_ON,
+      groundTruth: { labelReview: { text: "Several reviewers" } },
+    }),
+    "binary",
+  );
+  const itemsByLabel = (rows: MaterialRow[]) => Object.fromEntries(rows.map((row) => [row.label, row.item]));
+
+  it("학습 데이터 줄: 1번 다섯 줄, 채널 효과 9번, 편향 감소 노력 3번", () => {
+    expect(itemsByLabel(filled.training)).toMatchObject({
+      "학습 데이터셋명": 1,
+      "학습 데이터 출처": 1,
+      "학습 샘플 수": 1,
+      "검증 샘플 수": 1,
+      "학습 클래스 분포": 1,
+      "채널 효과": 9,
+      "편향 감소 노력": 3,
+    });
+  });
+
+  it("평가 데이터 출처와 학습 데이터와의 관계는 2번(목록 밖 권장 필드를 합침)", () => {
+    expect(itemsByLabel(filled.test)).toEqual({ "평가 데이터 출처": 2, "학습 데이터와의 관계": 2 });
+  });
+
+  it("정답 라벨: 구축 방법 4번, 신뢰성·라벨러 수·일치도 5번", () => {
+    expect(itemsByLabel(filled.groundTruth)).toEqual({
+      "정답 라벨 구축 방법": 4,
+      "정답 라벨 신뢰성": 5,
+      "라벨러 수": 5,
+      "라벨 일치도": 5,
+    });
+  });
+
+  it("가속 두 줄은 11번, 선언 줄에는 번호가 없다", () => {
+    expect(itemsByLabel(filled.environment)).toEqual({ "학습 가속": 11, "추론 가속": 11 });
+    expect(filled.declarations.length).toBeGreaterThan(0);
+    expect(filled.declarations.every((row) => row.item === undefined)).toBe(true);
+  });
+});
+
+describe("'기타'를 고르고 글을 비우면 답이 아니다 (검토 반영)", () => {
+  it("한 개 고르기는 제공되지 않음, 여러 개 고르기는 그 선택지만 뺀다", () => {
+    const materials = buildReportMaterials(
+      composer({
+        cards: ALL_ON,
+        metrics: { metricRationale: { text: "Other (own words)" } },
+        trainingData: { imbalanceHandling: { choices: ["Did nothing", "Other (free text)"] } },
+      }),
+      "multilabel",
+    );
+    expect(materials.metricRationale).toBeNull();
+    expect(valueOf(materials.training, "편향 감소 노력")).toBe("수행 안 함");
   });
 });

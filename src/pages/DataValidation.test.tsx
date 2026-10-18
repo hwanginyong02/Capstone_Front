@@ -106,3 +106,92 @@ describe("검증 단계 상단 안내 (ISSUES.md B-03·B-04·A-12)", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("생성 전 안내와 '다음' (재료 선택 점검 6절)", () => {
+  const addEvaluationRun = vi.fn(() => ({ id: "run-1" }));
+
+  /** 매퍼처럼 **부를 때의** 스토어 기록으로 점검한다 — 기록 → 재생성 순서가 성적서에 닿는지 본다. */
+  async function setupLive(options: Parameters<typeof import("../test/materialCheckFixture").materialCheckFixture>[0]) {
+    const { materialCheckFixture } = await import("../test/materialCheckFixture");
+    const { FILLED_LAYER_ONE } = await import("../test/layerOneFixture");
+    const { useWorkspaceStore } = await import("../utils/stores/useWorkspaceStore");
+    useWorkspaceStore.setState({ addEvaluationRun } as never);
+    useWorkflowStore.setState({ ...FILLED_LAYER_ONE, materialCheckAck: null });
+    const buildEvaluationResult = vi.fn(() => ({
+      workflowSnapshot: {},
+      reportData: {
+        evalScope: { version: "v1" },
+        meta: { reportId: "R" },
+        materialCheck: materialCheckFixture(options, useWorkflowStore.getState().materialCheckAck),
+      },
+    }));
+    return renderPage({ validationData: { error_count: 0 }, buildEvaluationResult });
+  }
+
+  async function setup(materialCheck: unknown) {
+    const { FILLED_LAYER_ONE } = await import("../test/layerOneFixture");
+    const { useWorkspaceStore } = await import("../utils/stores/useWorkspaceStore");
+    useWorkspaceStore.setState({ addEvaluationRun } as never);
+    useWorkflowStore.setState({ ...FILLED_LAYER_ONE, materialCheckAck: null });
+    const buildEvaluationResult = vi.fn(() => ({
+      workflowSnapshot: {},
+      reportData: { evalScope: { version: "v1" }, meta: { reportId: "R" }, materialCheck },
+    }));
+    const next = renderPage({ validationData: { error_count: 0 }, buildEvaluationResult });
+    return { next, buildEvaluationResult };
+  }
+
+  beforeEach(() => addEvaluationRun.mockClear());
+
+  it("1층 빈칸이 있으면 막고 그 단계로 안내한다 — run 을 저장하지 않는다", async () => {
+    const { materialCheckFixture } = await import("../test/materialCheckFixture");
+    const { next } = await setup(materialCheckFixture({ missingLatencyAndLabel: true }));
+    useWorkflowStore.setState({ basicInfo: { ...useWorkflowStore.getState().basicInfo, companyName: "" } });
+
+    next.click();
+
+    const list = await screen.findByRole("list", { name: "비어 있는 필수 입력" });
+    expect(list).toHaveTextContent("의뢰자 정보에서 채우기");
+    expect(addEvaluationRun).not.toHaveBeenCalled();
+    // 막혔으면 경고를 보고 진행한 것이 아니다 — 기록도 남기지 않는다.
+    expect(useWorkflowStore.getState().materialCheckAck).toBeNull();
+  });
+
+  it("2·3층 경고는 화면에 보이고, '다음'을 누르면 기록을 남긴 뒤 진행한다", async () => {
+    const { materialCheckFixture } = await import("../test/materialCheckFixture");
+    const check = materialCheckFixture({ missingLatencyAndLabel: true, realTime: true });
+    const { next, buildEvaluationResult } = await setup(check);
+
+    expect(screen.getByRole("region", { name: "생성 전 안내" })).toBeVisible();
+    expect(screen.getByRole("list", { name: "빠진 보고 항목" })).toHaveTextContent("정답 라벨 구축 방법");
+    buildEvaluationResult.mockClear();
+
+    next.click();
+
+    const ack = useWorkflowStore.getState().materialCheckAck;
+    expect(ack).toMatchObject({ version: "1.0", warningIds: check.warningIds });
+    expect(Number.isNaN(Date.parse(ack!.at))).toBe(false);
+    // 기록을 남긴 뒤 성적서를 다시 만든다 — 그래야 6.0 이 "확인 후 진행"을 찍는다.
+    expect(buildEvaluationResult).toHaveBeenCalledTimes(2);
+    expect(addEvaluationRun).toHaveBeenCalledTimes(1);
+  });
+
+  it("경고가 없으면 안내를 그리지 않고 옛 기록을 비운다", async () => {
+    const { materialCheckFixture } = await import("../test/materialCheckFixture");
+    const { next } = await setup(materialCheckFixture());
+    useWorkflowStore.setState({ materialCheckAck: { at: "2026-10-01T00:00:00Z", version: "1.0", warningIds: ["x"] } });
+
+    expect(screen.queryByRole("region", { name: "생성 전 안내" })).not.toBeInTheDocument();
+    next.click();
+    expect(useWorkflowStore.getState().materialCheckAck).toBeNull();
+    expect(addEvaluationRun).toHaveBeenCalledTimes(1);
+  });
+
+  it("저장되는 성적서에 '확인 후 진행'이 실린다(기록을 남긴 뒤 다시 만든 결과)", async () => {
+    const next = await setupLive({ missingLatencyAndLabel: true });
+    next.click();
+    const saved = (addEvaluationRun.mock.calls[0] as unknown as [{ reportData: { materialCheck: { acknowledgement: unknown; printed: { summary: Array<{ value: string }> } } } }])[0];
+    expect(saved.reportData.materialCheck.acknowledgement).not.toBeNull();
+    expect(saved.reportData.materialCheck.printed.summary[2].value).toMatch(/^확인 후 진행 \(/);
+  });
+});

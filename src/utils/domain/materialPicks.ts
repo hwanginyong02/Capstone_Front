@@ -294,8 +294,8 @@ export interface MissingRecommended {
  * 고르지 않은 권장 항목을 카드별로, 카탈로그 순서로(docs/MATERIAL_PICKER.md §5·§6).
  *
  * 권장 항목은 선택 카드 안의 표준 보고 항목이다. 고르지 않으면 성적서에 "제공되지 않음"으로 찍히므로
- * 재료 고르기 하단 바와 확인과 생성 단계에서 알린다. 넣지 않은 선택 카드는 아무것도 고르지 않은
- * 것으로 본다.
+ * 재료 고르기 하단 바("빠진 항목 보기")가 알린다. 넣지 않은 선택 카드는 아무것도 고르지 않은 것으로
+ * 본다. 입력값까지 본 생성 전 안내는 재료 선택 점검이 검증 화면에서 맡는다.
  */
 export function missingRecommended(taskType: TaskType | "", picks: MaterialPicks): MissingRecommended[] {
   return catalogCards(taskType)

@@ -14,6 +14,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildFactSheet, type BuildFactSheetInput } from "./buildFactSheet";
+import type { KpiResult, Problem } from "../../types/finalReport.types";
 
 function input(overrides: Partial<BuildFactSheetInput> = {}): BuildFactSheetInput {
   return {
@@ -132,5 +133,154 @@ describe("멀티레이블 혼동행렬 — 첫 레이블만 보내던 문제 (IS
 
     expect(sheet.confusion?.matrix).toEqual([[5, 1], [2, 4]]);
     expect(sheet.confusion?.labels).toEqual(["0", "1"]);
+  });
+});
+
+/** 건수와 파생 예측 사실은 M21 선택과 무관하게 AI 로 간다(재료 목록 9절). */
+describe("TP·TN·FP·FN 건수와 파생 예측 사실", () => {
+  it("건수를 confusion_counts 로 싣는다 — 혼동행렬이 없어도", () => {
+    const fs = buildFactSheet(
+      input({
+        confusionMatrix: null,
+        confusionCounts: { kind: "binary", rows: [{ label: "1", tp: 52, tn: 49, fp: 56, fn: 43 }] },
+      }),
+    );
+    expect(fs.confusion).toBeNull();
+    expect(fs.confusion_counts).toEqual([{ label: "1", tp: 52, fp: 56, fn: 43, tn: 49 }]);
+  });
+
+  it("파생 예측 사실을 방법·임계값·출처 컬럼으로 싣는다", () => {
+    const fs = buildFactSheet(
+      input({
+        derivedPrediction: { method: "threshold", threshold: 0.35, source_columns: ["score"], target_role: "y_pred" },
+      }),
+    );
+    expect(fs.derived_prediction).toEqual({ method: "threshold", threshold: 0.35, source_columns: ["score"] });
+  });
+
+  it("파생이 없으면 null, 건수가 없으면 빈 배열", () => {
+    const fs = buildFactSheet(input());
+    expect(fs.derived_prediction).toBeNull();
+    expect(fs.confusion_counts).toEqual([]);
+  });
+});
+
+describe("경계·확신 오류 비율 (설계 D30)", () => {
+  it("error_ratios 를 응답 모양 그대로 싣는다", () => {
+    const errorRatios = {
+      unit: "sample" as const,
+      misclassified: 12,
+      boundary: null,
+      boundary_note: "threshold_unknown" as const,
+      confident: { count: 2, ratio: 0.1667 },
+      boundary_margin: 0.1,
+      confident_level: 0.9,
+      threshold: null,
+    };
+    expect(buildFactSheet(input({ errorRatios })).error_ratios).toEqual(errorRatios);
+  });
+
+  it("없으면 null", () => {
+    expect(buildFactSheet(input()).error_ratios).toBeNull();
+  });
+});
+
+describe("95% 신뢰구간 (설계 D29)", () => {
+  const ci = { low: 0.71, high: 0.83, method: "wilson" };
+  const metric = (p: Partial<KpiResult>): KpiResult => ({
+    metricId: "M1", name: "Accuracy", value: 0.8, threshold: 0.7, status: "pass", ...p,
+  });
+
+  it("판정 대상 지표에만 ci_low·ci_high 를 싣는다", () => {
+    const fs = buildFactSheet(
+      input({
+        kpiResults: [
+          metric({ metricId: "M1", ci }),
+          metric({ metricId: "M2" }),
+          // 판정 대상이 아닌데 구간이 남아 있는 경우도 싣지 않는다(isJudged 한 곳)
+          metric({ metricId: "M3", threshold: null, ci }),
+        ],
+      }),
+    );
+    expect(fs.metrics.map((m) => [m.metric_id, m.ci_low, m.ci_high])).toEqual([
+      ["M1", 0.71, 0.83],
+      ["M2", null, null],
+      ["M3", null, null],
+    ]);
+  });
+
+  it("6.0 방식 한 줄을 ci_method_note 로, 없으면 null", () => {
+    const note = "판정 대상 지표의 95% 신뢰구간은 Wilson 점수 구간(M1)으로 산출하였습니다.";
+    expect(buildFactSheet(input({ confidenceIntervalNote: note })).ci_method_note).toBe(note);
+    expect(buildFactSheet(input()).ci_method_note).toBeNull();
+  });
+});
+
+/** 아슬아슬(설계 D12) — 판정과 같은 식(computeMargin·isNearTarget)으로 margin·near_target 을 싣는다. */
+describe("아슬아슬 margin·near_target (설계 D12)", () => {
+  const metric = (p: Partial<KpiResult>): KpiResult => ({
+    metricId: "M1", name: "Accuracy", value: 0.8, threshold: 0.7, status: "pass", ...p,
+  });
+
+  it("판정 대상 지표는 margin(4자리)과 near_target, 아니면 null·false", () => {
+    const fs = buildFactSheet(
+      input({
+        kpiResults: [
+          metric({ metricId: "M4", value: 0.81234, threshold: 0.8 }),
+          metric({ metricId: "M8", value: 0.102, threshold: 0.1, higherIsBetter: false, status: "fail" }),
+          metric({ metricId: "M1", value: 0.9, threshold: 0.8 }),
+          metric({ metricId: "M2", threshold: null }),
+        ],
+      }),
+    );
+    expect(fs.metrics.map((m) => [m.metric_id, m.margin, m.near_target])).toEqual([
+      ["M4", 0.0123, true], // 싣는 값은 4자리 — 뺄셈 끝자리 잡음이 서술로 새지 않는다
+      ["M8", -0.002, true],
+      ["M1", 0.1, false],
+      ["M2", null, false],
+    ]);
+  });
+
+  it("음수 목표(MCC −0.1)", () => {
+    const fs = buildFactSheet(input({ kpiResults: [metric({ metricId: "M5", value: -0.0985, threshold: -0.1 })] }));
+    expect(fs.metrics[0].margin).toBe(0.0015);
+    expect(fs.metrics[0].near_target).toBe(true);
+  });
+});
+
+/** 문제 목록(설계 D22)과 그 재료(D40·D20) — 성적서에 저장한 것과 같은 모양 그대로 싣는다. */
+describe("문제 목록·임계값 조정 여지·불균형 영향", () => {
+  const problem: Problem = {
+    id: "P1",
+    kind: "core_fail",
+    priority: "HIGH",
+    title: "핵심 지표 미달 (F1 Score)",
+    source_section: "8.2",
+    recommend_section: "9.2",
+    evidence: { "F1 Score": { value: 0.71, target: 0.8 } },
+    note: null,
+  };
+  const gain = { max_f1: 0.8421, current_f1: 0.7012, gain: 0.1409, best_threshold: 0.37 };
+  const effect = {
+    level: "affected" as const,
+    imbalance_ratio: 3.2,
+    accuracy_minus_macro_f1: 0.12,
+    majority_minus_minority_f1: 0.18,
+    majority_class: "neg",
+    minority_class: "pos",
+  };
+
+  it("problems·f1_threshold_gain·imbalance_effect 를 그대로 싣는다", () => {
+    const fs = buildFactSheet(input({ problems: [problem], thresholdGain: gain, imbalanceEffect: effect }));
+    expect(fs.problems).toEqual([problem]);
+    expect(fs.f1_threshold_gain).toEqual(gain);
+    expect(fs.imbalance_effect).toEqual(effect);
+  });
+
+  it("없으면 빈 배열·null", () => {
+    const fs = buildFactSheet(input());
+    expect(fs.problems).toEqual([]);
+    expect(fs.f1_threshold_gain).toBeNull();
+    expect(fs.imbalance_effect).toBeNull();
   });
 });

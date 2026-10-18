@@ -128,7 +128,7 @@ describe("화면 구조", () => {
     }
     // 필수는 버튼이 없다 — 늘 들어간다.
     expect(within(fields).queryByRole("button", { name: "회사명 넣기" })).not.toBeInTheDocument();
-    expect(within(fields).getAllByText("조건: 성적서 용도에서 과제 제출 선택 시")).toHaveLength(2);
+    expect(within(fields).getAllByText("조건: 성적서 용도에서 과제 산출물 선택 시")).toHaveLength(2);
     expect(within(fields).getByRole("button", { name: "홈페이지 넣기" })).toHaveAttribute("aria-pressed", "false");
   });
 

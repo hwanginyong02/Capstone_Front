@@ -13,8 +13,37 @@ import { Link, useParams } from "react-router";
 
 import { ReportSections } from "../../components/report/ReportSections";
 import { ReportLoadingState } from "../../components/report/ReportLoadingState";
-import { getReportContent, formatKstDateTime } from "../../lib/report/issuanceApi";
+import {
+  applyIssuance,
+  formatKstDateTime,
+  getIssuance,
+  getReportContent,
+} from "../../lib/report/issuanceApi";
+import { normalizeReportContent } from "../../lib/report/normalizeReportContent";
 import type { FinalReportData } from "../../types/finalReport.types";
+
+/**
+ * 보관본에 발급 기록을 덧입힌다. 발급 때 보낸 원본은 번호를 받기 전 데이터라 문서 번호·발급 일시·
+ * 서명이 비어 있어, 그대로 그리면 표지에 "(미발급)", 서명란에 "초안 — 미발급"이 찍혔다. 재발급
+ * 보관본은 한 차수 전의 발급 정보를 담고 있었다. 그리는 데이터만 바꾸고 보관본·검증 코드는 그대로다.
+ * 발급 기록을 못 받으면 적어도 번호와 이 차수의 발급 일시는 채운다.
+ */
+function withIssuance(
+  content: FinalReportData,
+  reportNo: string,
+  issuedAt: string,
+  issuance: Awaited<ReturnType<typeof getIssuance>>,
+): FinalReportData {
+  if (issuance) return applyIssuance(content, issuance);
+  return {
+    ...content,
+    meta: {
+      ...content.meta,
+      reportId: content.meta.reportId || reportNo,
+      issuedAt: issuedAt ? formatKstDateTime(issuedAt) : content.meta.issuedAt,
+    },
+  };
+}
 
 type State =
   | { kind: "loading" }
@@ -29,15 +58,17 @@ export function ReportByNumber() {
     let active = true;
     setState({ kind: "loading" });
 
-    getReportContent(reportNo).then((result) => {
+    Promise.all([getReportContent(reportNo), getIssuance(reportNo)]).then(([result, issuance]) => {
       if (!active) return;
       if (!result || !result.content) {
         setState({ kind: "missing" });
         return;
       }
+      // 옛 판의 보관본은 지금 뜻으로 옮겨 읽는다(보관본 자체는 그대로).
+      const content = normalizeReportContent(result.content as FinalReportData);
       setState({
         kind: "found",
-        data: result.content as FinalReportData,
+        data: withIssuance(content, reportNo, result.issuedAt, issuance),
         version: result.version,
         issuedAt: result.issuedAt,
         hash: result.contentHash,

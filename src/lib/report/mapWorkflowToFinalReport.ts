@@ -25,6 +25,7 @@ import type {
   EvalScope,
   FinalReportData,
   FinalReportMeta,
+  MaterialCheckAck,
   MetricFormula,
   ReportPurposeKey,
   SignatureData,
@@ -36,12 +37,17 @@ import { normalizeIsoDate } from "../../utils/domain/isoDate";
 import type { ValidateDataResponseData } from "../../types/validation.types";
 import { mapValidationResultToReport } from "./mapValidationResultToReport";
 import { buildConclusion } from "./computeVerdict";
+import { REPORT_CONTENT_SCHEMA } from "./normalizeReportContent";
+import { resolveBeta, resolveTargetValue } from "../../utils/domain/validation";
+import { checkMaterialSelection } from "./materialCheck";
+import { imbalanceRatioOf } from "./buildDatasetDiagnosis";
 import type {
   BasicInfoFormData,
   MetricDetailStateMap,
   UploadedFileInfo,
 } from "../../types/workflow.types";
-import { buildReportMaterials, type ReportComposerInput } from "./reportMaterials";
+import { DEFAULT_BASIC_INFO } from "../../types/workflow.types";
+import { NOT_PROVIDED, buildReportMaterials, type ReportComposerInput } from "./reportMaterials";
 import type {
   ComposerCardId,
   ComposerSelection,
@@ -55,7 +61,6 @@ import {
   DEFAULT_EVAL_PURPOSE_TEXT,
   DEFAULT_EVAL_SCOPE_TEXT,
   DEFAULT_PERFORMER,
-  REPORT_PURPOSE_LABEL,
   REPORT_PURPOSE_OVERVIEW,
 } from "./reportConstants";
 
@@ -92,6 +97,11 @@ export interface MapWorkflowToReportInput {
    * 없으면 카드를 모두 끈 것과 같다.
    */
   composer?: ReportComposerInput;
+  /**
+   * 생성 전 안내를 보고도 진행한 기록(검증 화면 "다음"이 남김). 재료 선택 점검이 이 기록을 인정할지
+   * 정해 6.0 에 찍는다. 이 키가 생기기 전 스냅샷에는 없다.
+   */
+  materialCheckAck?: MaterialCheckAck | null;
 }
 
 /** `buildReportInput` 이 읽는 워크플로우 상태. 스토어를 그대로 넘겨도 된다. */
@@ -186,6 +196,7 @@ export function buildReportInput(state: ReportInputSource): MapWorkflowToReportI
     columnMapping: state.columnMapping,
     classLabelDescriptions: state.classLabelDescriptions,
     metadata: state.metadata,
+    materialCheckAck: state.materialCheckAck ?? null,
     composer: {
       cards: state.composerCards,
       metrics: pickedValues("metrics", state.composerMetrics, picks),
@@ -214,7 +225,17 @@ export function mapWorkflowToFinalReport(
     ? mapValidationResultToReport(validationResult, 0)
     : null;
 
+  const evalEnv = buildEvalEnv(input.basicInfo);
+  const materials = input.composer ? buildReportMaterials(input.composer, resolvedTaskType) : undefined;
+  const materialCheck = materials && input.composer ? runMaterialCheck(input, validationResult, materials, evalEnv) : undefined;
+  // 3번 줄(클래스 중요도 → 평균 방식)이 미충족이면 5절 평균 방식 문장을 점검 결과의 문장으로 바꿔 찍는다.
+  const printedMaterials =
+    materials && materialCheck?.printed.averagingSentence
+      ? { ...materials, averagingSentence: materialCheck.printed.averagingSentence }
+      : materials;
+
   return {
+    contentSchema: REPORT_CONTENT_SCHEMA,
     meta: buildMeta(input, resolvedTaskType),
     applicant: buildApplicant(input.basicInfo),
     performer: DEFAULT_PERFORMER,
@@ -225,7 +246,7 @@ export function mapWorkflowToFinalReport(
     // datasetDiagnosis 는 실제 클래스 분포 기반으로 useReportData 에서 채운다(가짜 MOCK 제거).
     datasetDiagnosis: "",
     trainingDatasetInfo: buildTrainingDatasetInfo(input),
-    evalEnv: buildEvalEnv(input.basicInfo),
+    evalEnv,
     metricList: buildMetricList(resolvedTaskType, input.selectedMetricIds, input.metricDetails),
     metricFormulas: buildMetricFormulas(resolvedTaskType, input.selectedMetricIds),
     dataValidation: mappedValidation ? mappedValidation.dataValidation : [],
@@ -245,8 +266,63 @@ export function mapWorkflowToFinalReport(
     // 서명/발급 이력은 발급 시점에 백엔드 IssuanceOut 으로 채운다(초안은 빈 값 → "미발급" 표기).
     signature: { issuer: "", signedAt: "", history: [] },
     // 고객 재료 — 재료 목록의 인쇄 위치대로 각 절이 찍는다. 옛 스냅샷에는 카드 값이 없다.
-    materials: input.composer ? buildReportMaterials(input.composer, resolvedTaskType) : undefined,
+    materials: printedMaterials,
+    // 재료 선택 점검 — 표지·1.4·5절·6.0 이 읽는다. 옛 스냅샷(카드 값 없음)에는 없다.
+    ...(materialCheck ? { materialCheck } : {}),
   };
+}
+
+/**
+ * 지연시간(보고 항목 8)이 성적서 6.4 에 실제로 찍힐지. latency 를 매핑했어도 값이 하나도 숫자가 아니면
+ * 평가가 통계를 내지 않아 6.4 는 "제공되지 않음"이다. 검증 응답의 "Latency statistics (ms)" 항목은
+ * 평가와 같은 프레임·같은 조건(숫자 값 1개 이상)으로 나오므로 그것으로 본다. 검증 전(지표 화면
+ * 미리보기)에는 매핑만 본다.
+ */
+function latencyWillBeMeasured(
+  input: MapWorkflowToReportInput,
+  validationResult: ValidateDataResponseData | null | undefined,
+): boolean {
+  const mapped = input.columnMapping.some((row) => row.confirmedRole === "latency");
+  if (!mapped || !validationResult) return mapped;
+  return validationResult.validation_details.some((item) => item.name === LATENCY_STATS_CHECK);
+}
+
+/** 백엔드 `validation_checks.check_latency` 가 숫자 지연시간이 있을 때만 내는 항목 이름. */
+const LATENCY_STATS_CHECK = "Latency statistics (ms)";
+
+/**
+ * 재료 선택 점검을 이 성적서의 값으로 부른다(판정은 `checkMaterialSelection` 한 곳).
+ *
+ * 불균형 비율은 검증 응답의 분포(평가와 같은 프레임)를 먼저 쓰고, 없으면 업로드 분석의 분포를 쓴다.
+ * 어느 쪽을 썼는지 결과에 남는다.
+ */
+function runMaterialCheck(
+  input: MapWorkflowToReportInput,
+  validationResult: ValidateDataResponseData | null | undefined,
+  materials: ReturnType<typeof buildReportMaterials>,
+  evalEnv: EvalEnvironment,
+) {
+  const taskType: TaskType = input.taskType || "binary";
+  const fromValidation = validationResult?.class_distribution;
+  const fromUpload = input.metadata?.class_distribution;
+  const [distribution, distributionSource] =
+    fromValidation && Object.keys(fromValidation).length > 0
+      ? [fromValidation, "validation" as const]
+      : fromUpload && Object.keys(fromUpload).length > 0
+        ? [fromUpload, "upload" as const]
+        : [null, null];
+  return checkMaterialSelection({
+    taskType,
+    materials,
+    systemSpec: evalEnv.systemSpec,
+    latencyMapped: latencyWillBeMeasured(input, validationResult),
+    perspective: input.composer!.perspective,
+    selectedMetricIds: input.selectedMetricIds,
+    beta: resolveBeta(input.metricDetails),
+    imbalanceRatio: distribution ? imbalanceRatioOf(distribution) : null,
+    distributionSource: distribution ? distributionSource : null,
+    ack: input.materialCheckAck ?? null,
+  });
 }
 
 // ---------- helpers ----------
@@ -283,8 +359,9 @@ function buildApplicant(basicInfo: BasicInfoFormData): ApplicantInfo {
     representative: basicInfo.representative || "—",
     businessNumber: basicInfo.businessNumber || "—",
     contact: basicInfo.phone || "—",
-    fax: basicInfo.fax || "—",
-    homepage: basicInfo.website || "—",
+    // 팩스·홈페이지는 점검 밖 선택 항목 — 비면 "—" 줄 대신 줄을 빼도록 빈 문자열로 둔다(재료 목록 1절).
+    fax: basicInfo.fax?.trim() ?? "",
+    homepage: basicInfo.website?.trim() ?? "",
     address: basicInfo.address || "—",
   };
 }
@@ -293,22 +370,21 @@ function buildEvalScope(basicInfo: BasicInfoFormData): EvalScope {
   const purposeKey = normalizeReportPurpose(basicInfo.reportPurpose);
   const projectInfo =
     purposeKey === "project" && basicInfo.projectName
-      ? {
-          name: basicInfo.projectName,
-          agency: basicInfo.projectAgency || "—",
-          projectNumber: basicInfo.projectNumber || undefined,
-        }
+      ? { name: basicInfo.projectName, agency: basicInfo.projectAgency || "—" }
       : undefined;
 
   return {
     purpose: REPORT_PURPOSE_OVERVIEW[purposeKey] || DEFAULT_EVAL_PURPOSE_TEXT,
     targetModel: basicInfo.modelName || "—",
-    version: basicInfo.versionName || "v1.0.0",
+    // 버전의 기본값은 여기 한 곳에서 정한다 — 성적서(2절·4절·서명란), AI, 실행 기록이 모두 이 값을
+    // 쓴다(DESIGN_GAPS R5). 입력 칸은 기본값이 미리 채워진 1층 필수지만, 끝난 단계로 돌아가 지울 수 있다.
+    version: basicInfo.versionName?.trim() || DEFAULT_BASIC_INFO.versionName,
     scope: DEFAULT_EVAL_SCOPE_TEXT,
     reportPurposeKey: purposeKey,
     modelPurpose: basicInfo.modelPurpose || undefined,
     modelCategory: basicInfo.modelCategory || undefined,
     purposeNote: basicInfo.reportPurposeNote?.trim() || undefined,
+    projectNumber: basicInfo.projectNumber?.trim() || undefined,
     projectInfo,
   };
 }
@@ -420,15 +496,19 @@ function buildTrainingDatasetInfo(input: MapWorkflowToReportInput): TrainingData
   };
 }
 
+/**
+ * 4절 환경 표. 실행 환경은 2층 보고 항목이라 비었거나 "모름"이면 "제공되지 않음"으로 적는다
+ * (재료 선택 점검 4.2 — "—"는 쓰지 않는다. "해당 없음"과 구분된다).
+ */
 function buildEvalEnv(basicInfo: BasicInfoFormData): EvalEnvironment {
   return {
     ...DEFAULT_EVAL_ENV_CONSTANTS,
     systemSpec: {
-      os: basicInfo.envOS || "—",
-      cpu: basicInfo.envCPU || "—",
-      gpu: basicInfo.envGPU || "—",
-      memory: basicInfo.envMemory || "—",
-      software: basicInfo.envSoftware || "—",
+      os: basicInfo.envOS || NOT_PROVIDED,
+      cpu: basicInfo.envCPU || NOT_PROVIDED,
+      gpu: basicInfo.envGPU || NOT_PROVIDED,
+      memory: basicInfo.envMemory || NOT_PROVIDED,
+      software: basicInfo.envSoftware || NOT_PROVIDED,
     },
   };
 }
@@ -448,8 +528,7 @@ function buildMetricList(
       if (!metric || !metric.supportedTaskTypes.includes(taskType)) return null;
 
       const detail = metricDetails[metricId];
-      const target = parseFloat(detail?.targetValue ?? "");
-      const hasThreshold = Number.isFinite(target) && target > 0;
+      const target = resolveTargetValue(metricId, detail?.targetValue);
 
       // 방향성에 맞춰 합격 기준 표기(낮을수록 좋은 지표는 ≤). 6절 표(MetricRow)와 일관.
       const criteriaOp = metric.higherIsBetter === false ? "≤" : "≥";
@@ -462,8 +541,8 @@ function buildMetricList(
       return {
         metricId: getMetricDisplayId(metricId),
         name: displayName,
-        threshold: hasThreshold ? target : 0,
-        passCriteria: hasThreshold ? `${criteriaOp} ${target.toFixed(2)}` : "정보 제공",
+        threshold: target,
+        passCriteria: target !== null ? `${criteriaOp} ${target.toFixed(2)}` : "정보 제공",
       };
     })
     .filter((item): item is MetricItem => item !== null);

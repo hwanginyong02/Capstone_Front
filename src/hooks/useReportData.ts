@@ -12,18 +12,16 @@ import { useEffect, useState } from "react";
 
 import { apiUrl } from "@/lib/apiBase";
 import { buildReportInput, mapWorkflowToFinalReport } from "../lib/report/mapWorkflowToFinalReport";
-import type { FinalReportData, LatencyStats } from "../types/finalReport.types";
+import type { FinalReportData } from "../types/finalReport.types";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { useWorkspaceStore } from "../utils/stores/useWorkspaceStore";
-import { getMetricDisplayId, METRICS } from "../data/evaluationData";
-import { buildConclusion, resolveCoreMetricIds } from "../lib/report/computeVerdict";
 import { buildClientInputs } from "../lib/report/reportMaterials";
 import { buildDatasetDiagnosis } from "../lib/report/buildDatasetDiagnosis";
-import { buildFactSheet } from "../lib/report/buildFactSheet";
-import { evaluateStatus } from "../lib/report/evaluateStatus";
+import { assembleEvaluatedReport } from "../lib/report/assembleEvaluatedReport";
+import { normalizeReportContent } from "../lib/report/normalizeReportContent";
 import { fetchNarrative } from "../lib/report/fetchNarrative";
 import { translateRoleToBackend } from "../lib/mapping/translateRoleToBackend";
-import { metricNeedsTargetValue } from "../utils/domain/validation";
+import { resolveBeta } from "../utils/domain/validation";
 
 interface UseReportDataResult {
   data: FinalReportData | null;
@@ -40,8 +38,9 @@ export function useReportData(id: string): UseReportDataResult {
   );
 
   const [data, setData] = useState<FinalReportData | null>(() => {
+    // 캐시된 성적서는 옛 판일 수 있다 — 지금 뜻으로 옮겨 읽는다(저장값은 그대로).
     if (run?.reportData && (run.reportData as any).isEvaluated) {
-      return run.reportData;
+      return normalizeReportContent(run.reportData);
     }
     return null;
   });
@@ -52,12 +51,12 @@ export function useReportData(id: string): UseReportDataResult {
   useEffect(() => {
     // 만약 워크스페이스에 기 저장된 run 정보가 있고, 이미 계산이 완료된 상태라면 바로 캐시 반환
     if (run?.reportData && (run.reportData as any).isEvaluated) {
-      setData(run.reportData);
+      setData(normalizeReportContent(run.reportData));
       return;
     }
 
     if (!workflowState.rawFile) {
-      setData(run?.reportData || null);
+      setData(run?.reportData ? normalizeReportContent(run.reportData) : null);
       return;
     }
 
@@ -97,7 +96,7 @@ export function useReportData(id: string): UseReportDataResult {
           class_distribution: workflowState.metadata?.class_distribution || {},
         };
 
-        const beta = parseFloat(workflowState.metricDetails["M5"]?.beta || "1.0");
+        const beta = resolveBeta(workflowState.metricDetails);
 
         const payload = {
           task_type: workflowState.taskType || "multiclass",
@@ -128,273 +127,25 @@ export function useReportData(id: string): UseReportDataResult {
         const result = await response.json();
         if (!active) return;
 
-        const baseReport = mapWorkflowToFinalReport(
-          buildReportInput(workflowState),
-          workflowState.validationResult,
-        );
+        // 성적서 입력 스냅샷 — 매퍼·문제 목록·AI 고객 입력이 같은 값을 본다.
+        const reportInput = buildReportInput(workflowState);
+        const baseReport = mapWorkflowToFinalReport(reportInput, workflowState.validationResult);
 
-        const success_metrics = result.results.success_metrics || {};
-        // 계산 실패 지표({metricId: 에러문자열}). value 0/fail 위장 대신 'unavailable' 처리(D4).
-        const failed_metrics = result.results.failed_metrics || {};
-
-        // 1. KPI 지표 계산값 치환
-        const taskTypeForMetrics = workflowState.taskType || "multiclass";
-        // 핵심 지표 — 지표와 합격 기준 화면의 합격 기준 표에서 고른 값, 고르지 않았으면 유형별 기본값이다.
-        // 판정(아래 buildConclusion)과 성적서의 "핵심" 표시가 같은 목록을 본다.
-        const coreDisplayIds = new Set(
-          resolveCoreMetricIds(
-            taskTypeForMetrics,
-            workflowState.selectedMetricIds,
-            workflowState.composerMetrics,
-          ).map(getMetricDisplayId),
-        );
-        const updatedKpiResults = workflowState.selectedMetricIds
-          .map((metricId) => {
-            // **task 필터를 함께 본다.** 4절(metricList)·5절(metricFormulas)은
-            // supportedTaskTypes 로 거르는데 여기만 걸러내지 않아, 그 task 가 노출하지
-            // 않는 지표가 6절 KPI 표에만 숫자로 찍혔다(ISSUES.md A-04 의 인쇄 결과).
-            const metric = METRICS.find(
-              (m) => m.id === metricId && m.supportedTaskTypes.includes(taskTypeForMetrics),
-            );
-            if (!metric) return null;
-
-            // 방향성(높을수록/낮을수록 좋음) — 판정·기준 표기의 단일 출처(evaluationData.ts)
-            const higherIsBetter = metric.higherIsBetter !== false;
-            const detail = workflowState.metricDetails[metricId];
-            const target = parseFloat(detail?.targetValue ?? "");
-            // 정보성 지표(M21/M22)는 타겟값을 받지 않는다. 과거 세션에 저장된 값이
-            // 남아 있어도 판정 대상이 되지 않도록 여기서도 같은 규칙을 적용한다.
-            const hasThreshold =
-              metricNeedsTargetValue(metricId) && Number.isFinite(target) && target > 0;
-            const displayId = getMetricDisplayId(metricId);
-
-            // 계산 실패 지표: 판정/집계에서 제외되도록 'unavailable' 로 표기(value 0/fail 위장 금지)
-            const failReason = failed_metrics[metricId];
-            if (failReason !== undefined) {
-              return {
-                metricId: displayId,
-                name: metric.name,
-                value: 0,
-                threshold: hasThreshold ? target : 0,
-                status: "unavailable" as const,
-                higherIsBetter,
-                errorMessage: typeof failReason === "string" ? failReason : String(failReason),
-                perClass: undefined,
-                subMetrics: undefined,
-                isCore: coreDisplayIds.has(displayId),
-              };
-            }
-
-            const val = success_metrics[metricId];
-
-            // dict 반환 메트릭 (M11/M12/M13): f1_score를 대표값으로, 세부값은 subMetrics로
-            let resolvedValue = 0;
-            let subMetrics: { precision: number; recall: number; f1Score: number } | undefined;
-
-            if (typeof val === "number") {
-              resolvedValue = val;
-            } else if (val && typeof val === "object" && "f1_score" in val) {
-              resolvedValue = val.f1_score;
-              subMetrics = { precision: val.precision, recall: val.recall, f1Score: val.f1_score };
-            }
-
-            let status: "pass" | "fail" | "warning" | "unavailable" = "pass";
-            if (hasThreshold) {
-              status = evaluateStatus(resolvedValue, target, higherIsBetter);
-            }
-
-            let perClass: Array<{ label: string; value: number; status: string }> | undefined;
-            if (["M2", "M3", "M4"].includes(metricId) && success_metrics["M22"]) {
-              const classReport = success_metrics["M22"];
-              const excludeKeys = ["accuracy", "macro avg", "weighted avg", "micro avg", "samples avg"];
-              const classValues = Object.keys(classReport).filter(k => !excludeKeys.includes(k));
-
-              const metricKeyMap: Record<string, string> = {
-                "M2": "precision",
-                "M3": "recall",
-                "M4": "f1-score",
-              };
-              const key = metricKeyMap[metricId];
-
-              if (classValues.length > 0 && key) {
-                perClass = classValues.map((val) => {
-                  const classVal = classReport[val];
-                  const score = classVal ? classVal[key] : 0;
-                  const classStatus = hasThreshold
-                    ? evaluateStatus(score, target, higherIsBetter)
-                    : "pass";
-                  return {
-                    label: val,
-                    value: score,
-                    status: classStatus,
-                  };
-                });
-              }
-            }
-
-            const isVisualOnly = metricId === "M21" || metricId === "M22";
-
-            return {
-              metricId: displayId,
-              name: metric.name,
-              value: resolvedValue,
-              threshold: (hasThreshold && !isVisualOnly) ? target : 0,
-              status: isVisualOnly ? "pass" : status,
-              higherIsBetter,
-              perClass,
-              subMetrics,
-              isCore: coreDisplayIds.has(displayId),
-            };
-          })
-          .filter((item): item is any => item !== null);
-
-        // 2. 오차 행렬(Confusion Matrix) 치환
-        let confusionMatrix = null;
-        if (success_metrics.M21) {
-          const cm = success_metrics.M21;
-          if (cm.type === "multilabel") {
-            const classLabels = cm.labels || workflowState.metadata?.detected_labels || [];
-            const multilabelMatrices = cm.matrix.map((mat: number[][], idx: number) => {
-              const labelName = classLabels[idx] || `Label ${idx}`;
-              const total = mat.reduce((acc: number, row: number[]) => acc + row.reduce((a, b) => a + b, 0), 0);
-              return { label: labelName, matrix: mat, totalSamples: total };
-            });
-            const defaultMat = multilabelMatrices[0] || { label: "Label 0", matrix: [[0, 0], [0, 0]], totalSamples: 0 };
-            confusionMatrix = {
-              labels: [`Negative (${defaultMat.label})`, `Positive (${defaultMat.label})`],
-              matrix: defaultMat.matrix,
-              totalSamples: defaultMat.totalSamples,
-              multilabelMatrices,
-            };
-          } else {
-            const total = cm.matrix.reduce((acc: number, row: number[]) => acc + row.reduce((a, b) => a + b, 0), 0);
-            confusionMatrix = {
-              labels: cm.labels || cm.matrix.map((_: any, idx: number) => `Class ${idx}`),
-              matrix: cm.matrix,
-              totalSamples: total,
-            };
-          }
-        }
-
-        // 2-1. ROC / PR 곡선 좌표 + 스칼라 AUC (binary, 백엔드 success_metrics)
-        const rocCurve = success_metrics.roc_curve
-          ? {
-              fpr: success_metrics.roc_curve.fpr,
-              tpr: success_metrics.roc_curve.tpr,
-              auroc: typeof success_metrics.M9 === "number" ? success_metrics.M9 : undefined,
-            }
-          : null;
-        const prCurve = success_metrics.pr_curve
-          ? {
-              recall: success_metrics.pr_curve.recall,
-              precision: success_metrics.pr_curve.precision,
-              auprc: typeof success_metrics.M10 === "number" ? success_metrics.M10 : undefined,
-            }
-          : null;
-
-        // 2-2. 지연시간 통계 — latency 컬럼이 매핑된 경우만 백엔드가 latency_stats 반환
-        const ls = success_metrics.latency_stats;
-        const latencyStats: LatencyStats | null = ls
-          ? {
-              mean: ls.mean,
-              min: ls.min,
-              p50: ls.p50,
-              p95: ls.p95,
-              p99: ls.p99,
-              max: ls.max,
-              unit: ls.unit === "s" ? "s" : "ms",
-            }
-          : null;
-
-        // 3. 데이터셋 진단 문구 — 실제 클래스 분포 + 불균형비(M23) + 제외 행수로 구성
-        const imbalanceRatio =
-          typeof success_metrics.M23 === "number" ? success_metrics.M23 : undefined;
-        
-        // 백엔드 EvaluateResponse 에서 최신 class_distribution 이 오면 우선 사용, 없으면 metadata 폴백
-        const resolvedClassDistribution = result.class_distribution && Object.keys(result.class_distribution).length > 0 
-          ? result.class_distribution 
-          : workflowState.metadata?.class_distribution || {};
-
-        const taskTypeResolved = workflowState.taskType || "binary";
-        // 혼동행렬의 totalSamples가 가장 정확한 평가 데이터의 row 수 (멀티레이블의 경우 200)
-        // 서버가 확정한 표본 수를 최우선으로 쓴다. 종전에는 마지막 폴백으로 학습 데이터 폼의
-        // 검증 샘플 수를 썼다 — 모델 학습용 검증 세트 크기라 평가 행 수와 무관하다
-        // (ISSUES.md B-02·E-17). 그 폼은 ⑥ 카드로 합쳐지며 없어졌다.
-        const datasetSize: number | undefined =
-          result.n_samples || confusionMatrix?.totalSamples || undefined;
-
-        const datasetDiagnosis = buildDatasetDiagnosis(
-          { class_distribution: resolvedClassDistribution },
-          imbalanceRatio,
-          result.dropped_rows,
-          datasetSize,
-          taskTypeResolved
-        );
-
-        // 4. verdict/score 규칙 산출 (서술의 권위 값 — 백엔드도 fact_sheet.verdict 로 강제)
-        const ruleConclusion = buildConclusion(updatedKpiResults, taskTypeResolved, [
-          ...coreDisplayIds,
-        ]);
-
-        // 5. LLM 서술 생성 — 평가 결과로 fact_sheet 조립 후 /api/generate-narrative 호출.
-        //    실패/무키 시 빈 서술 반환(섹션이 "생성 예정" 안내). KPI·차트는 영향받지 않음.
-        const yTrueRow = workflowState.columnMapping.find(
-          (r) => r.confirmedRole === "y_true",
-        );
-        const classLabels: string[] =
-          workflowState.metadata?.detected_classes?.length
-            ? workflowState.metadata.detected_classes
-            : workflowState.metadata?.detected_labels?.length
-              ? workflowState.metadata.detected_labels
-              : yTrueRow
-                ? [...new Set(yTrueRow.sampleValues)]
-                : [];
-
-        const factSheet = buildFactSheet({
-          kpiResults: updatedKpiResults,
-          confusionMatrix,
-          classDistribution: resolvedClassDistribution,
-          // 표본 수는 서버가 확정한 값을 그대로 쓴다. 분포 합계로 추측하면 멀티레이블에서
-          // 200행이 408 이 된다(ISSUES.md B-02).
-          nSamples: result.n_samples ?? confusionMatrix?.totalSamples ?? 0,
-          imbalanceRatio,
-          droppedRows: result.dropped_rows,
-          verdict: ruleConclusion.verdict,
-          score: ruleConclusion.score,
-          classReport: success_metrics.M22 ?? null,
-          classLabels,
-          latencyStats,
-          positiveClass: workflowState.metadata?.positive_class ?? null,
-        });
-
+        // 평가 응답 → stage1 성적서·AI 사실 시트(서술과 무관한 결정론적 조립, `assembleEvaluatedReport`).
         // ── Stage 1: 서술과 무관한 결정론적 결과(KPI·차트·규칙 verdict)를 즉시 렌더한다.
         //    느리거나 실패하는 LLM 서술이 성적서 전체 표시를 인질로 잡지 않도록 분리(D6b).
-        //    interpretation/recommendation* 은 baseReport 의 빈 기본값 유지, narrativeSource 미설정.
-        // 파생 예측 사실(SPEC §0 기재 의무)을 성적서 메타로 나른다. 백엔드는 실제로
-        // 파생이 일어났을 때만 이 키를 내려보낸다(ISSUES.md A-01).
-        const derivedPrediction = success_metrics.derived_prediction ?? undefined;
-
-        const stage1Report: FinalReportData = {
-          ...baseReport,
-          // 평가 데이터 표본 수는 평가에 실제로 쓴 행 수로 덮는다. 검증 응답이 없던 경로에서는
-          // baseReport 의 값이 0 이다.
-          datasetInfo: {
-            ...baseReport.datasetInfo,
-            sampleCount: datasetSize ?? baseReport.datasetInfo.sampleCount,
-          },
-          meta: { ...baseReport.meta, derivedPrediction },
-          // 평가를 실제로 수행한 환경(라이브러리 버전·수행 시각). 종전에는 프론트
-          // 상수를 인쇄해 실제와 무관한 값이 성적서에 남았다(ISSUES.md F-09).
-          evalEnv: { ...baseReport.evalEnv, environment: result.environment ?? undefined },
-          // 전처리 경고를 버리지 않는다(ISSUES.md D-16). 결측 제외·확률합 이상·파생 예측
-          // 같은 사실이 여기에만 실려 온다.
-          evaluationWarnings: Array.isArray(result.warnings) ? result.warnings : [],
-          kpiResults: updatedKpiResults,
-          conclusion: ruleConclusion,  // full ConclusionData (verdict/score + 빈 서술)
-          datasetDiagnosis,
-          charts: { confusionMatrix, rocCurve, prCurve },
-          latency: latencyStats,
-        };
+        const { stage1Report, factSheet } = assembleEvaluatedReport(baseReport, result, {
+          taskType: workflowState.taskType,
+          selectedMetricIds: workflowState.selectedMetricIds,
+          metricDetails: workflowState.metricDetails,
+          composerMetrics: workflowState.composerMetrics,
+          columnMapping: workflowState.columnMapping,
+          metadata: workflowState.metadata,
+          composer: reportInput.composer,
+        });
+        const ruleConclusion = stage1Report.conclusion;
+        const updatedKpiResults = stage1Report.kpiResults;
+        const taskTypeResolved = workflowState.taskType || "binary";
         // stage1(서술 없음)은 스토어에 저장하지 않는다(캐시 오염 방지) — 로컬 렌더만.
         setData(stage1Report);
         setIsLoading(false);
@@ -404,7 +155,6 @@ export function useReportData(id: string): UseReportDataResult {
         // ── Stage 2: LLM 서술을 받아 7·8·9절만 병합한다(KPI·차트는 이미 화면에 있음).
         // 고객이 제공한 입력도 함께 넘긴다(서술 설계 D25). 종전에는 성적서 구성 카드의 값이
         // 저장만 되고 AI 에 가지 않았다. 회사·과제 정보는 넣지 않는다(D34).
-        const reportInput = buildReportInput(workflowState);
         const clientInputs =
           reportInput.composer && baseReport.materials
             ? buildClientInputs({
@@ -412,7 +162,8 @@ export function useReportData(id: string): UseReportDataResult {
                 materials: baseReport.materials,
                 model: {
                   name: workflowState.basicInfo.modelName ?? "",
-                  version: workflowState.basicInfo.versionName ?? "",
+                  // 성적서에 찍는 버전과 같은 값(기본값 판정은 매퍼 한 곳).
+                  version: baseReport.evalScope.version,
                   purpose: workflowState.basicInfo.modelPurpose ?? "",
                   category: workflowState.basicInfo.modelCategory ?? "",
                 },
@@ -443,7 +194,11 @@ export function useReportData(id: string): UseReportDataResult {
         const mergedReport: FinalReportData = {
           ...stage1Report,
           // verdict/score 는 규칙 산출값, 서술(benchmark/narrative/risks)은 LLM 결과로 병합
-          conclusion: { ...ruleConclusion, ...narrative.conclusionText },
+          conclusion: {
+            ...ruleConclusion,
+            ...narrative.conclusionText,
+            benchmarkRefs: narrative.benchmarkRefs,
+          },
           interpretation: narrative.interpretation,
           recommendationNarrative: narrative.recommendationNarrative,
           recommendations: narrative.recommendations,

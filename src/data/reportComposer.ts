@@ -101,6 +101,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       },
       {
         // 멀티레이블에서만 묻는다. 세 지표군의 뜻이 서로 달라 고른 이유를 성적서에 적는다.
+        // TS 4213 6.5.1 의 보고 항목이라 재료 선택 점검 **2층**(12번)이다 — 늘 묻지만(잠긴 카드라
+        // kind 는 required) "모름"을 허용하고, 비어도 진행을 막지 않는다. 빠지면 성적서에 "제공되지
+        // 않음"이 찍히고 생성 전 안내에 나온다(지표 화면은 빈 칸을 막지 않는다).
         id: "metricRationale",
         label: "지표 선택 이유",
         inputExample: "오차를 고르게 봄 / 모든 레이블 일치 / 겹치는 정도 / 기타(직접 입력)",
@@ -127,7 +130,10 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           "Other (own words)": "기타",
         },
         otherChoice: "Other (own words)",
-        help: "멀티레이블 지표는 저마다 다른 것을 묻기 때문에, 이 지표를 고른 이유를 성적서에 적습니다.",
+        allowsUnknown: true,
+        help:
+          "멀티레이블 지표는 저마다 다른 것을 묻기 때문에, 이 지표를 고른 이유를 성적서에 적습니다. " +
+          "비우거나 모름으로 두면 성적서에 \"제공되지 않음\"으로 표시되고, 진행은 막지 않습니다.",
         // 지표 격자 바로 아래에서 레지스트리로 그린다. 카드의 나머지 필드(지표·β·합격 기준·핵심
         // 지표)는 지표 화면이 직접 그리고 검사한다.
         step: "metrics",
@@ -184,14 +190,14 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       {
         id: "reportPurpose",
         label: "성적서 용도",
-        inputExample: "내부 검증 / 외부 제출 / 과제 제출 (덧붙이는 글 가능)",
+        inputExample: "내부 검증 / 외부 제출 / 과제 산출물 (덧붙이는 글 가능)",
         kind: "required",
         input: "single",
-        description: "성적서를 어디에 쓰는지입니다. 과제 제출을 고르면 과제 정보를 받습니다. 예: 고객사나 기관에 내면 외부 제출",
+        description: "성적서를 어디에 쓰는지입니다. 과제 산출물을 고르면 과제 정보를 받습니다. 예: 고객사나 기관에 내면 외부 제출",
         choiceLabels: {
           "Internal review": "내부 검증",
           "External submission": "외부 제출",
-          "Project submission": "과제 제출",
+          "Project submission": "과제 산출물",
         },
         choices: ["Internal review", "External submission", "Project submission"],
         reportSection: "1절",
@@ -201,7 +207,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         label: "과제 정보",
         inputExample: "과제명 · 과제 기관",
         kind: "conditional",
-        conditionLabel: "성적서 용도에서 과제 제출 선택 시",
+        conditionLabel: "성적서 용도에서 과제 산출물 선택 시",
         requiredWhen: { field: "reportPurpose", equals: "Project submission" },
         input: "text",
         description: "성적서를 제출할 과제의 정보입니다.",
@@ -288,11 +294,11 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     name: "평가 관점",
     description: "이 모델에서 무엇을 중요하게 볼지입니다.",
     locked: true,
-    // 지표와 합격 기준 바로 앞 단계다 — 답이 지표 추천의 근거다(docs/MATERIAL_PICKER.md §3).
+    // 지표와 합격 기준 바로 앞 단계다 — 답이 재료 선택 점검 3층의 기준점이다(docs/MATERIAL_PICKER.md §3).
     steps: ["perspective"],
     help:
-      "답에 따라 알맞은 지표를 추천하고, 고른 지표가 맞지 않으면 지표 화면에서 알려 줍니다. " +
-      "다음으로 넘어가는 것은 막지 않습니다.",
+      "고른 지표가 답과 맞지 않으면 지표 화면의 \"목적별 점검\"과 검증 화면의 생성 전 안내에서 " +
+      "알려 줍니다. 다음으로 넘어가는 것은 막지 않습니다.",
     // 유형에 따라 필드가 갈리지만 사용자는 **항상 두 개**를 받는다.
     fields: [
       {
@@ -315,8 +321,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           Similar: "비슷함",
         },
         help:
-          "놓침을 고르면 Recall 이나 β가 1보다 큰 Fβ를, 잘못 잡음을 고르면 Precision 이나 " +
-          "β가 1보다 작은 Fβ를 추천합니다.",
+          "놓침을 고르면 Recall 또는 β가 1보다 큰 Fβ가, 잘못 잡음을 고르면 Precision 또는 " +
+          "β가 1보다 작은 Fβ가 지표에 있어야 합니다. 없으면 지표 화면에서 알려 줍니다.",
         standardClause: "6.2.6",
         reportSection: "5절",
         sentToAi: true,
@@ -340,7 +346,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           "Larger classes first": "다수 클래스 우선",
           "Individual samples first": "샘플 단위로 중요",
         },
-        help: "차례대로 매크로·가중·마이크로 평균 지표에 대응합니다.",
+        help:
+          "차례대로 매크로·가중·마이크로 평균 지표가 있어야 합니다. 클래스별 표를 고르면 세 평균이 " +
+          "모두 있는 것으로 봅니다. 멀티레이블에서 큰 클래스 우선·개별 샘플 우선은 클래스별 표가 필요합니다.",
         standardClause: "6.4.3",
         reportSection: "5절",
         sentToAi: true,
@@ -358,7 +366,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         },
         choices: ["Real-time", "Batch"],
         reportLabels: { "Real-time": "대화형(실시간)", Batch: "배치" },
-        help: "실시간 응답을 고르면 파일에 응답시간(latency) 컬럼이 있는지 확인합니다.",
+        help:
+          "실시간 응답을 고르면 응답시간(latency) 컬럼을 매핑했는지 확인합니다. 없으면 생성 전에 알리고, " +
+          "성적서에 응답 속도를 판단할 수 없다고 적습니다.",
         standardClause: "6.6.2",
         reportSection: "5절",
         sentToAi: true,
@@ -558,6 +568,36 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         description: "학습 데이터에 대해 그 밖에 알릴 내용입니다. 예: 개인정보는 가명 처리함",
         reportSection: "7절",
       },
+      {
+        /**
+         * 학습과 평가 데이터의 전처리가 같은가 — 종전의 자유서술 세 칸(⑥ 전처리, ⑦ 전처리·전처리
+         * 내용)을 이 한 칸으로 바꿨다(서술 설계 D44).
+         *
+         * TS 4213 5.3.3 은 전처리를 "주의를 기울여야 할 것"으로만 적고 보고를 요구하지 않는다.
+         * 걱정하는 것은 일관되지 않은 전처리가 해석을 비트는 경우라, 같은지만 묻고 코드가 조건으로
+         * 쓸 수 있게 선택지로 받는다. 전처리가 채널 효과의 원인이면 ⑥ "Different processing"이 받는다.
+         *
+         * ⑥ 학습 데이터 카드에 둔다. 종전에는 ⑦ 테스트 데이터 카드에 있어, ⑦ 을 넣지 않으면 학습
+         * 데이터를 넣어도 이 값을 받을 수 없었다(재료 목록 4절 "AI 예", persist v13 이 옮긴다).
+         */
+        id: "preprocessingMatch",
+        label: "학습과 같은 전처리",
+        inputExample: "같음 / 다름 / 모름 (덧붙이는 글 가능)",
+        kind: "optional",
+        input: "single",
+        description: "평가 데이터를 학습 데이터와 같은 방식으로 전처리했는지입니다. 내용은 묻지 않습니다. 예: 같은 정규화 코드를 썼으면 같음",
+        choiceLabels: {
+          Same: "같음",
+          Different: "다름",
+          Unknown: "모름",
+        },
+        choices: ["Same", "Different", "Unknown"],
+        allowsNote: true,
+        help: "학습 데이터와 평가 데이터를 같은 방식으로 전처리했는지입니다.",
+        reportSection: "3절",
+        sentToAi: true,
+        reportLabels: { Same: "같음", Different: "다름", Unknown: "모름" },
+      },
     ],
   },
   {
@@ -611,33 +651,6 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         mono: true,
         reportSection: "4절",
         sentToAi: true,
-      },
-      {
-        /**
-         * 학습과 평가 데이터의 전처리가 같은가 — 종전의 자유서술 세 칸(⑥ 전처리, ⑦ 전처리·전처리
-         * 내용)을 이 한 칸으로 바꿨다(서술 설계 D44).
-         *
-         * TS 4213 5.3.3 은 전처리를 "주의를 기울여야 할 것"으로만 적고 보고를 요구하지 않는다.
-         * 걱정하는 것은 일관되지 않은 전처리가 해석을 비트는 경우라, 같은지만 묻고 코드가 조건으로
-         * 쓸 수 있게 선택지로 받는다. 전처리가 채널 효과의 원인이면 ⑥ "Different processing"이 받는다.
-         */
-        id: "preprocessingMatch",
-        label: "학습과 같은 전처리",
-        inputExample: "같음 / 다름 / 모름 (덧붙이는 글 가능)",
-        kind: "optional",
-        input: "single",
-        description: "테스트 데이터를 학습 때와 같은 방식으로 전처리했는지입니다. 내용은 묻지 않습니다. 예: 같은 정규화 코드를 썼으면 같음",
-        choiceLabels: {
-          Same: "같음",
-          Different: "다름",
-          Unknown: "모름",
-        },
-        choices: ["Same", "Different", "Unknown"],
-        allowsNote: true,
-        help: "학습 데이터와 테스트 데이터를 같은 방식으로 전처리했는지입니다.",
-        reportSection: "정할 것",
-        sentToAi: true,
-        reportLabels: { Same: "같음", Different: "다름", Unknown: "모름" },
       },
     ],
   },

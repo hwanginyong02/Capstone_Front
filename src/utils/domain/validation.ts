@@ -90,3 +90,34 @@ export function getTargetValueRule(metricId: string): { summary: string; validat
 export function metricNeedsTargetValue(metricId: string): boolean {
   return metricId !== "M21" && metricId !== "M22";
 }
+
+/**
+ * 성적서·판정에 쓸 합격 목표값. 목표값이 없으면 `null` 이다.
+ *
+ * 비었거나, 숫자가 아니거나, 그 지표의 허용 범위(`getTargetValueRule`)를 벗어나면 목표값이 없는
+ * 것으로 본다. 정보성 지표(M21·M22)는 늘 `null` 이다.
+ *
+ * 종전에는 "목표값 없음"을 0 으로 나타내고 `> 0` 만 판정했다. 그래서 MCC(−1~1)처럼 0 이나
+ * 음수가 정상인 목표가 판정에서 조용히 빠졌다(재료 목록 7절 "지표별 허용 범위 검사").
+ */
+export function resolveTargetValue(metricId: string, raw: string | undefined): number | null {
+  if (!metricNeedsTargetValue(metricId)) return null;
+  const value = parseNumericValue(raw ?? "");
+  if (value === null) return null;
+  return getTargetValueRule(metricId).validate(value) === null ? value : null;
+}
+
+/**
+ * Fβ(M5)의 β. 입력이 비었으면 1.0 이다 — 평가 요청과 재료 선택 점검(2번 줄: β > 1 이면 재현율 쪽,
+ * β < 1 이면 정밀도 쪽)이 이 함수 하나로 같은 값을 쓴다. 숫자가 아니면 NaN 이 그대로 나온다
+ * (지표 화면이 그 값을 막는다).
+ */
+export function resolveBeta(metricDetails: Record<string, { beta?: string } | undefined> | null | undefined): number {
+  return parseFloat(metricDetails?.["M5"]?.beta || "1.0");
+}
+
+/** β 입력이 쓸 수 있는 값인가(0 보다 큰 숫자). 지표 화면과 검증 화면의 1층 재확인이 같은 규칙을 쓴다. */
+export function isBetaValid(raw: string | undefined): boolean {
+  const beta = raw ?? "1.0";
+  return beta.trim() !== "" && Number.isFinite(Number(beta)) && Number(beta) > 0;
+}

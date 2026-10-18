@@ -11,8 +11,9 @@ import { getCardIssues } from "../utils/domain/composerFieldGate";
 /**
  * 평가 관점 (`/app/perspective`) — 지표와 합격 기준 바로 앞(docs/MATERIAL_PICKER.md §3).
  *
- * ⑤ 의 답은 지표를 권하는 근거다. 지표 화면 바로 앞이라 그 화면의 "추천 지표"와 맞지 않는 지표에
- * 대한 경고가 그대로 동작한다. 종전에는 지표 화면 맨 위에 있었다(WORKFLOW_REDESIGN §10.1).
+ * ⑤ 의 답은 재료 선택 점검 3층의 기준점이다. 바로 다음 지표 화면이 이 답으로 "목적별 점검"을
+ * 보여 주고 "추천 지표"를 고르며, 검증 화면의 생성 전 안내가 다시 알린다(`checkMaterialSelection`).
+ * 종전에는 지표 화면 맨 위에 있었다(WORKFLOW_REDESIGN §10.1).
  */
 export function Perspective() {
   const store = useWorkflowStore();
@@ -52,7 +53,7 @@ export function Perspective() {
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-2">평가 관점</h1>
           <p className="text-sm text-muted-foreground">
-            이 모델에서 무엇을 중요하게 볼지 답하세요. 다음 단계에서 이 답으로 지표를 추천합니다.
+            이 모델에서 무엇을 중요하게 볼지 답하세요. 다음 단계에서 이 답에 맞는 지표가 있는지 확인합니다.
           </p>
         </div>
         <ComposerCardForm

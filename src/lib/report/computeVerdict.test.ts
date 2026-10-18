@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { computeVerdict, resolveCoreMetricIds } from "./computeVerdict";
+import {
+  computeMargin,
+  computeVerdict,
+  isJudged,
+  isNearTarget,
+  resolveCoreMetricIds,
+} from "./computeVerdict";
 import type { KpiResult } from "../../types/finalReport.types";
 
 function kpi(p: Partial<KpiResult>): KpiResult {
@@ -42,7 +48,7 @@ describe("computeVerdict", () => {
   });
 
   it("D19: 판정 대상 지표가 하나도 없으면 판정 불가, 통과율은 셀 수 없다", () => {
-    const res = computeVerdict([kpi({ metricId: "M21", status: "pass", threshold: 0 })], "binary");
+    const res = computeVerdict([kpi({ metricId: "M21", status: "pass", threshold: null })], "binary");
     expect(res.verdict).toBe("INCONCLUSIVE");
     expect(res.judgedCount).toBe(0);
     expect(res.score).toBe(0);
@@ -130,7 +136,7 @@ describe("D19 규칙 순서", () => {
     const res = computeVerdict(
       [
         kpi({ metricId: "M1", status: "pass", threshold: 0.9 }),
-        kpi({ metricId: "M20", status: "pass", threshold: 0 }),
+        kpi({ metricId: "M20", status: "pass", threshold: null }),
       ],
       "binary",
       ["M1", "M20"],
@@ -154,5 +160,139 @@ describe("D19 규칙 순서", () => {
       computeVerdict([core, kpi({ metricId: "M3", status: "pass", threshold: 0.8 })], "binary", ["M1"])
         .verdict,
     ).toBe("PASS");
+  });
+});
+
+describe("isJudged — 판정 대상 한 곳 (신뢰구간 등도 이 식을 본다)", () => {
+  it("목표값이 있고 산출에 성공하면 판정 대상 — 목표값 0 도 목표값이다", () => {
+    expect(isJudged(kpi({ threshold: 0.8, status: "fail" }))).toBe(true);
+    expect(isJudged(kpi({ threshold: 0, status: "pass" }))).toBe(true);
+  });
+
+  it("목표값이 없거나(null) 산출에 실패하면(unavailable) 판정 대상이 아니다", () => {
+    expect(isJudged(kpi({ threshold: null }))).toBe(false);
+    expect(isJudged(kpi({ threshold: 0.8, status: "unavailable" }))).toBe(false);
+  });
+
+  it("computeVerdict 의 판정 대상 수와 같다", () => {
+    const rows = [
+      kpi({ metricId: "M1", threshold: 0.8 }),
+      kpi({ metricId: "M2", threshold: null }),
+      kpi({ metricId: "M3", threshold: 0.5, status: "unavailable" }),
+    ];
+    expect(computeVerdict(rows, "binary", []).judgedCount).toBe(rows.filter(isJudged).length);
+  });
+});
+
+/**
+ * 아슬아슬(근소 차이) — 서술 설계 D12, 고정 문구 10 마지막 문장. |마진| < |목표값| × 3% (엄격 미만).
+ * 설계 원문의 "목표값 × 3%" 를 목표값 절댓값으로 고쳤다 — 목표가 음수(MCC)여도 폭이 양수다.
+ * 경계값 테스트는 부동소수 오차가 없는 수(목표 100 → 폭 3)로 고정한다.
+ */
+describe("computeMargin·isNearTarget — 아슬아슬 한 곳 (D12)", () => {
+  it("높을수록 좋은 지표: 마진 = 값 − 목표(미달이면 음수)", () => {
+    expect(computeMargin(kpi({ value: 103, threshold: 100 }))).toBe(3);
+    expect(computeMargin(kpi({ value: 97, threshold: 100, status: "fail" }))).toBe(-3);
+  });
+
+  it("낮을수록 좋은 지표: 마진 = 목표 − 값(충족이면 양수)", () => {
+    expect(computeMargin(kpi({ value: 97, threshold: 100, higherIsBetter: false }))).toBe(3);
+    expect(computeMargin(kpi({ value: 103, threshold: 100, higherIsBetter: false, status: "fail" }))).toBe(-3);
+  });
+
+  it("판정 대상이 아니면 마진 null, 아슬아슬 아님", () => {
+    const noTarget = kpi({ value: 0.8, threshold: null });
+    const unavailable = kpi({ value: 0, threshold: 0.8, status: "unavailable" });
+    expect(computeMargin(noTarget)).toBeNull();
+    expect(computeMargin(unavailable)).toBeNull();
+    expect(isNearTarget(noTarget)).toBe(false);
+    // 측정 불가 지표는 value 0 이라 목표 0 근처면 아슬아슬처럼 보일 수 있다 — 판정 대상이 아니다.
+    expect(isNearTarget(kpi({ value: 0, threshold: 0.001, status: "unavailable" }))).toBe(false);
+  });
+
+  it("경계: |마진| 이 꼭 목표의 3% 이면 아슬아슬이 아니다(엄격 미만) — 합격·미달 양쪽", () => {
+    expect(isNearTarget(kpi({ value: 103, threshold: 100 }))).toBe(false);
+    expect(isNearTarget(kpi({ value: 97, threshold: 100, status: "fail" }))).toBe(false);
+    expect(isNearTarget(kpi({ value: 102.99, threshold: 100 }))).toBe(true);
+    expect(isNearTarget(kpi({ value: 97.01, threshold: 100, status: "fail" }))).toBe(true);
+  });
+
+  it("3% 안팎 — 목표 0.8 에서 차이 0.02 는 아슬아슬, 0.032(4%)는 아니다", () => {
+    expect(isNearTarget(kpi({ value: 0.82, threshold: 0.8 }))).toBe(true);
+    expect(isNearTarget(kpi({ value: 0.78, threshold: 0.8, status: "fail" }))).toBe(true);
+    expect(isNearTarget(kpi({ value: 0.832, threshold: 0.8 }))).toBe(false);
+    expect(isNearTarget(kpi({ value: 0.768, threshold: 0.8, status: "fail" }))).toBe(false);
+  });
+
+  it("음수 목표(MCC −0.1)에서도 폭은 |목표| × 3% = 0.003 이다", () => {
+    expect(isNearTarget(kpi({ metricId: "M5", value: -0.0985, threshold: -0.1 }))).toBe(true);
+    expect(isNearTarget(kpi({ metricId: "M5", value: -0.1015, threshold: -0.1, status: "fail" }))).toBe(true);
+    expect(isNearTarget(kpi({ metricId: "M5", value: -0.09, threshold: -0.1 }))).toBe(false);
+  });
+
+  it("낮을수록 좋은 지표(FPR 목표 0.1): 0.102 미달도 아슬아슬, 0.09 는 아니다", () => {
+    expect(isNearTarget(kpi({ metricId: "M8", value: 0.102, threshold: 0.1, higherIsBetter: false, status: "fail" }))).toBe(true);
+    expect(isNearTarget(kpi({ metricId: "M8", value: 0.09, threshold: 0.1, higherIsBetter: false }))).toBe(false);
+  });
+
+  it("목표 0 이면 폭이 0 이라 아슬아슬이 나오지 않는다", () => {
+    expect(isNearTarget(kpi({ value: 0, threshold: 0 }))).toBe(false);
+    expect(isNearTarget(kpi({ value: 0.0001, threshold: 0 }))).toBe(false);
+  });
+});
+
+/** 판정 사유(9절 문제 목록의 재료) — 판정 결과는 바꾸지 않고 어느 지표 때문인지를 돌려준다. */
+describe("computeVerdict 판정 사유", () => {
+  it("핵심·비핵심 미달 지표를 나눠 적는다 — FAIL 이어도 비핵심 미달을 센다", () => {
+    const res = computeVerdict(
+      [
+        kpi({ metricId: "M1", status: "fail" }),
+        kpi({ metricId: "M4", status: "pass" }),
+        kpi({ metricId: "M8", status: "fail", threshold: 0.1 }),
+        kpi({ metricId: "M9", status: "unavailable" }),
+      ],
+      "binary",
+    );
+    expect(res.verdict).toBe("FAIL");
+    expect(res.reasons).toEqual({ coreFailed: ["M1"], nonCoreFailed: ["M8"], inconclusive: null });
+  });
+
+  it("합격·조건부 합격에는 판정 불가 사유가 없다", () => {
+    const pass = computeVerdict([kpi({ metricId: "M1" }), kpi({ metricId: "M4" })], "binary");
+    expect(pass.reasons).toEqual({ coreFailed: [], nonCoreFailed: [], inconclusive: null });
+    const conditional = computeVerdict(
+      [kpi({ metricId: "M1" }), kpi({ metricId: "M4" }), kpi({ metricId: "M2", status: "fail" })],
+      "binary",
+    );
+    expect(conditional.verdict).toBe("CONDITIONAL_PASS");
+    expect(conditional.reasons.nonCoreFailed).toEqual(["M2"]);
+  });
+
+  it("핵심 지표 산출 실패 → core_not_computed (목표 없는 핵심이 함께 있어도)", () => {
+    const res = computeVerdict(
+      [
+        kpi({ metricId: "M1", status: "unavailable" }),
+        kpi({ metricId: "M4", threshold: null }),
+        kpi({ metricId: "M2" }),
+      ],
+      "binary",
+    );
+    expect(res.verdict).toBe("INCONCLUSIVE");
+    expect(res.reasons.inconclusive).toEqual({ reason: "core_not_computed", metricIds: ["M1"] });
+  });
+
+  it("핵심 지표 목표값 없음 → no_target", () => {
+    const res = computeVerdict(
+      [kpi({ metricId: "M1" }), kpi({ metricId: "M4", threshold: null })],
+      "binary",
+    );
+    expect(res.verdict).toBe("INCONCLUSIVE");
+    expect(res.reasons.inconclusive).toEqual({ reason: "no_target", metricIds: ["M4"] });
+  });
+
+  it("판정 대상 0개(핵심 지표 탓 아님) → no_judged", () => {
+    const res = computeVerdict([kpi({ metricId: "M2", threshold: null })], "binary", []);
+    expect(res.verdict).toBe("INCONCLUSIVE");
+    expect(res.reasons.inconclusive).toEqual({ reason: "no_judged", metricIds: [] });
   });
 });

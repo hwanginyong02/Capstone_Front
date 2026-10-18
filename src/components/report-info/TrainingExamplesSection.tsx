@@ -10,6 +10,7 @@ import { Lightbulb } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import type { UploadedFileInfo } from "../../types/workflow.types";
 import { ExampleUploadSlot, toUploadedFileInfoAsync } from "../data-upload/shared";
+import { EXAMPLE_PREVIEW_BUDGET_BYTES, previewBytes } from "../../utils/image/examplePreview";
 
 interface TrainingExamplesSectionProps {
   trainingExampleFiles: UploadedFileInfo[];
@@ -48,6 +49,11 @@ export function TrainingExamplesSection({
     void addExample(file, setter);
     event.target.value = "";
   };
+
+  const allExamples = [...trainingExampleFiles, ...trainingUnsuitableExampleFiles];
+  // 브라우저가 그릴 수 없는 이미지(HEIC 등) — 성적서에는 파일명과 크기만 적힌다.
+  const withoutPreview = allExamples.filter((f) => f.type.startsWith("image/") && !f.previewUrl);
+  const overBudget = previewBytes(allExamples) > EXAMPLE_PREVIEW_BUDGET_BYTES;
 
   return (
     <div className="space-y-6">
@@ -102,6 +108,18 @@ export function TrainingExamplesSection({
               optional
             />
           </div>
+
+          {withoutPreview.length > 0 && (
+            <p role="note" className="text-sm text-muted-foreground">
+              미리보기를 만들 수 없는 이미지 형식입니다: {withoutPreview.map((f) => f.name).join(", ")}. 성적서에는
+              파일명과 크기만 적힙니다. JPG·PNG 로 바꿔 올리면 이미지도 찍힙니다.
+            </p>
+          )}
+          {overBudget && (
+            <p role="note" className="text-sm text-destructive">
+              예시 이미지가 많아 성적서가 발급 용량 한도에 가까워졌습니다. 발급이 막히면 예시를 몇 장 줄여 주세요.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

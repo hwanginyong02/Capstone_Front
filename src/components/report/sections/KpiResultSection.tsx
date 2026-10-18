@@ -1,12 +1,29 @@
-import type { DerivedPredictionFact, FinalReportMeta, KpiResult } from "../../../types/finalReport.types";
+import type {
+  ClassReportRow,
+  ClassReportTable,
+  FinalReportMeta,
+  KpiResult,
+} from "../../../types/finalReport.types";
 import { MetricRow } from "../shared/MetricRow";
 import { PassBadge } from "../shared/PassBadge";
 import { verdictRuleText } from "../../../lib/report/reportConstants";
+import { hasNearTargetMarks } from "../../../lib/report/nearTarget";
+import { describeDerivation } from "../../../lib/report/derivationText";
 
 import type { TaskType } from "../../../data/evaluationData";
 
 interface KpiResultSectionProps {
   kpiResults: KpiResult[];
+  /**
+   * 클래스별 표(M22) — 클래스 줄과 평균 줄. 없으면(이 키가 생기기 전 발급된 성적서) 지표별 클래스
+   * 판정(`perClass`)을 종전처럼 찍는다.
+   */
+  classReport?: ClassReportTable | null;
+  /**
+   * 파생 예측 사실을 6.0 일러두기에 찍을지. 판 2 이전에 발급된 보관본만 그렇다 — 지금은 7.1 앞
+   * 고정 문구로 찍는다(재료 목록 4절, `InterpretSection`).
+   */
+  derivationIn60?: boolean;
   taskType: TaskType;
   meta?: FinalReportMeta;
   /**
@@ -14,44 +31,41 @@ interface KpiResultSectionProps {
    * 규칙으로 판정해 저장된 성적서에 새 규칙을 적으면 판정과 설명이 어긋난다.
    */
   showVerdictRule?: boolean;
+  /**
+   * 신뢰구간 산출 방식 한 줄(생성 때 저장, 설계 D29). 있으면 6.0 에 찍고 6.1·6.2 에 "95% 신뢰구간" 열을
+   * 더한다. 이 키가 생기기 전 성적서와 구간이 없는 평가는 종전 표 그대로다.
+   */
+  confidenceIntervalNote?: string;
 }
 
-const KPI_CORE_IDS_BY_TASK: Record<TaskType, Set<string>> = {
+/**
+ * 종전 6.1 의 유형별 고정 묶음. 핵심 지표 표시(`KpiResult.isCore`)가 생기기 전 발급된 보관본만 이
+ * 묶음으로 6.1 을 그린다. 지금은 고객이 정한 핵심 지표가 6.1 이다(재료 목록 7절 "핵심 지표").
+ */
+const LEGACY_KPI_CORE_IDS_BY_TASK: Record<TaskType, Set<string>> = {
   binary: new Set(["M1", "M4", "M20", "M23"]),
   multiclass: new Set(["M1", "M4", "M11", "M23"]),
   multilabel: new Set(["M4", "M15", "M17", "M23"]),
 };
 
-/**
- * 파생 예측의 방법·임계값·출처를 한 문장으로. SPEC §0 이 요구하는 기재 항목이다
- * (ISSUES.md A-01) — 어떤 컬럼에서 어떤 규칙으로 만들었는지가 성적서에 남아야
- * 독자가 그 수치를 재현할 수 있다.
- */
-function describeDerivation(fact: DerivedPredictionFact): string {
-  const source = fact.source_columns.join(", ");
-  if (fact.method === "argmax") {
-    return `확률 컬럼 [${source}] 중 가장 큰 값의 클래스를 예측으로 삼았습니다(argmax, 임계값 없음).`;
-  }
-  if (fact.method === "threshold_per_label") {
-    const t =
-      typeof fact.threshold === "object" && fact.threshold !== null
-        ? Object.entries(fact.threshold).map(([col, v]) => `${col} ≥ ${v}`).join(", ")
-        : `모든 레이블 ≥ ${fact.threshold}`;
-    return `점수 컬럼 [${source}] 에 레이블별 결정 임계값을 적용했습니다(${t}).`;
-  }
-  const positive = fact.positive_class ? ` 양성 클래스는 [${fact.positive_class}] 입니다.` : "";
-  return `점수 컬럼 [${source}] 이 결정 임계값 ${fact.threshold} 이상이면 양성으로 판정했습니다.${positive}`;
-}
 
 export function KpiResultSection({
   kpiResults,
+  classReport,
+  derivationIn60 = false,
   taskType,
   meta,
   showVerdictRule = false,
+  confidenceIntervalNote,
 }: KpiResultSectionProps) {
-  const coreIds = KPI_CORE_IDS_BY_TASK[taskType] || KPI_CORE_IDS_BY_TASK.binary;
-  const kpiCore   = kpiResults.filter((r) => coreIds.has(r.metricId));
-  const kpiDetail = kpiResults.filter((r) => !coreIds.has(r.metricId));
+  const showCi = confidenceIntervalNote !== undefined;
+  // 6.1 은 고객이 정한 핵심 지표다(판정 규칙 D19 의 핵심 지표와 같다). 핵심 지표 표시가 없는 옛
+  // 보관본만 종전의 유형별 고정 묶음으로 그린다.
+  const hasCoreMarks = kpiResults.some((r) => r.isCore !== undefined);
+  const legacyCore = LEGACY_KPI_CORE_IDS_BY_TASK[taskType] || LEGACY_KPI_CORE_IDS_BY_TASK.binary;
+  const isCoreRow = (r: KpiResult) => (hasCoreMarks ? Boolean(r.isCore) : legacyCore.has(r.metricId));
+  const kpiCore   = kpiResults.filter(isCoreRow);
+  const kpiDetail = kpiResults.filter((r) => !isCoreRow(r));
 
   return (
     <div className="space-y-8 pt-8">
@@ -63,7 +77,7 @@ export function KpiResultSection({
           {taskType === "binary" && (
             <li>본 성적서의 이진 분류 평가 지표는 사용자가 매핑 단계에서 지정한 {meta?.positiveClass ? `[ ${meta.positiveClass} ]` : "Target"} 클래스 기준으로 산출되었습니다.</li>
           )}
-          {meta?.derivedPrediction && (
+          {derivationIn60 && meta?.derivedPrediction && (
             <li>
               <strong>본 평가의 예측 레이블은 모델이 직접 출력한 값이 아니라 확률·점수에서 파생한 값입니다.</strong>{" "}
               {describeDerivation(meta.derivedPrediction)}
@@ -72,6 +86,7 @@ export function KpiResultSection({
           {kpiResults.some(r => r.metricId === "M6") && (
             <li>KL Divergence(M6) 지표는 예측 확률(Probability) 분포가 아닌, 정답 레이블과 모델이 예측한 클래스 레이블 간의 분포 차이(Target Drift)를 기반으로 산출되었습니다.</li>
           )}
+          {showCi && <li>{confidenceIntervalNote}</li>}
         </ul>
       </div>
 
@@ -84,6 +99,7 @@ export function KpiResultSection({
               <th className="py-2 pr-3 text-left font-medium text-slate-500 w-16">Metric ID</th>
               <th className="py-2 pr-4 text-left font-medium text-slate-500">시험항목</th>
               <th className="py-2 pr-4 text-left font-medium text-slate-500 w-28">산출 결과</th>
+              {showCi && <th className="py-2 pr-4 text-left font-medium text-slate-500 w-36">95% 신뢰구간</th>}
               <th className="py-2 pr-4 text-left font-medium text-slate-500 w-24">합격 기준</th>
               <th className="py-2 text-left font-medium text-slate-500 w-24">판정</th>
             </tr>
@@ -99,14 +115,25 @@ export function KpiResultSection({
                 status={r.status}
                 higherIsBetter={r.higherIsBetter}
                 isCore={r.isCore}
+                showCi={showCi}
+                ci={r.ci}
               />
             ))}
+            {kpiCore.length === 0 && (
+              <tr>
+                <td colSpan={showCi ? 6 : 5} className="py-3 text-slate-500">
+                  의뢰자가 지정한 핵심 지표가 없습니다. 지표별 결과는 아래 세부 시험항목에 있습니다.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
         {showVerdictRule && (
           <p className="text-xs leading-5 text-slate-500">
+            {/* 3% 문장은 아슬아슬 표시(nearTarget)를 붙인 성적서에만 — 8.3 에 표시한 적 없는 옛 성적서는 종전 문안. */}
             {verdictRuleText(
               kpiResults.filter((r) => r.isCore).map((r) => `${r.name}(${r.metricId})`),
+              hasNearTargetMarks(kpiResults),
             )}
           </p>
         )}
@@ -121,6 +148,7 @@ export function KpiResultSection({
               <th className="py-2 pr-3 text-left font-medium text-slate-500 w-16">Metric ID</th>
               <th className="py-2 pr-4 text-left font-medium text-slate-500">시험항목</th>
               <th className="py-2 pr-4 text-left font-medium text-slate-500 w-28">산출 결과</th>
+              {showCi && <th className="py-2 pr-4 text-left font-medium text-slate-500 w-36">95% 신뢰구간</th>}
               <th className="py-2 pr-4 text-left font-medium text-slate-500 w-24">합격 기준</th>
               <th className="py-2 text-left font-medium text-slate-500 w-24">판정</th>
             </tr>
@@ -136,14 +164,19 @@ export function KpiResultSection({
                 status={r.status}
                 higherIsBetter={r.higherIsBetter}
                 isCore={r.isCore}
+                showCi={showCi}
+                ci={r.ci}
               />
             ))}
           </tbody>
         </table>
 
 
-        {/* Per-class 세부 결과 */}
-        {kpiResults.some((r) => r.perClass?.length) && (
+        {/* M22 클래스별 표 — 클래스 줄 아래에 평균 줄(매크로·가중·마이크로·샘플). M22 만 골라도 보인다. */}
+        {classReport && <ClassReportBlock table={classReport} />}
+
+        {/* 지표별 클래스 판정 — classReport 가 생기기 전 발급된 성적서에만 있다(보관본을 종전대로 그린다). */}
+        {!classReport && kpiResults.some((r) => r.perClass?.length) && (
           <div className="space-y-4 pt-4 border-t border-slate-100">
             <p className="text-sm font-semibold text-slate-700">M22 — Class-wise Metric (클래스별 세부 성능)</p>
             {kpiResults
@@ -215,6 +248,56 @@ export function KpiResultSection({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+const fmt = (v: number | null, digits = 3) => (v === null ? "—" : v.toFixed(digits));
+
+function ClassReportCells({ row }: { row: ClassReportRow }) {
+  return (
+    <>
+      <td className="py-1.5 pr-4 font-mono text-slate-900">{fmt(row.precision)}</td>
+      <td className="py-1.5 pr-4 font-mono text-slate-900">{fmt(row.recall)}</td>
+      <td className="py-1.5 pr-4 font-mono text-slate-900">{fmt(row.f1)}</td>
+      <td className="py-1.5 font-mono text-slate-700">{row.support === null ? "—" : row.support}</td>
+    </>
+  );
+}
+
+/** M22 클래스별 표. 평균 줄은 클래스 줄과 굵은 선으로 가른다. */
+function ClassReportBlock({ table }: { table: ClassReportTable }) {
+  return (
+    <div className="space-y-2 pt-4 border-t border-slate-100">
+      <p className="text-sm font-semibold text-slate-700">M22 — Class-wise Metric (클래스별 세부 성능)</p>
+      <table className="w-full text-sm border-collapse" aria-label="클래스별 세부 성능">
+        <thead>
+          <tr className="border-b border-slate-200">
+            <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">클래스</th>
+            <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">Precision</th>
+            <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">Recall</th>
+            <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">F1</th>
+            <th className="py-1.5 text-left text-xs font-medium text-slate-500">표본 수</th>
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row) => (
+            <tr key={row.label} className="border-b border-slate-50">
+              <td className="py-1.5 pr-4 text-slate-700">{row.label}</td>
+              <ClassReportCells row={row} />
+            </tr>
+          ))}
+          {table.averages.map((row, index) => (
+            <tr
+              key={row.label}
+              className={index === 0 ? "border-t-2 border-slate-200" : "border-t border-slate-50"}
+            >
+              <td className="py-1.5 pr-4 font-medium text-slate-700">{row.label}</td>
+              <ClassReportCells row={row} />
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

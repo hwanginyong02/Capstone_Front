@@ -588,22 +588,24 @@ describe("persist 마이그레이션 v10 → v11 — 전처리 한 칸, 일치�
       },
     });
 
-    expect(migrated.composerTestData).toEqual({
-      preprocessingMatch: {
-        text: "Different",
-        note: "Training: Normalized / Test: Dropped outliers",
-      },
+    // v11 은 ⑦ 에 만들고 v13 이 ⑥ 으로 옮긴다 — 체인 끝에서는 ⑥ 에 있다.
+    expect(migrated.composerTrainingData.preprocessingMatch).toEqual({
+      text: "Different",
+      note: "Training: Normalized / Test: Dropped outliers",
     });
+    expect(migrated.composerTestData).toEqual({});
     expect(migrated.composerTrainingData.preprocessing).toBeUndefined();
   });
 
   it('"모름"은 모름으로, "전처리 없음"은 짝이 없어 글로 남긴다', async () => {
     expect(
-      (await migrate({ composerTestData: { testPreprocessing: { unknown: true } } })).composerTestData,
-    ).toEqual({ preprocessingMatch: { text: "Unknown" } });
+      (await migrate({ composerTestData: { testPreprocessing: { unknown: true } } })).composerTrainingData
+        .preprocessingMatch,
+    ).toEqual({ text: "Unknown" });
     expect(
-      (await migrate({ composerTestData: { testPreprocessing: { text: "None" } } })).composerTestData,
-    ).toEqual({ preprocessingMatch: { note: "Test: no preprocessing" } });
+      (await migrate({ composerTestData: { testPreprocessing: { text: "None" } } })).composerTrainingData
+        .preprocessingMatch,
+    ).toEqual({ note: "Test: no preprocessing" });
   });
 
   it("옛 일치도(%)는 단순 일치율로 옮긴다", async () => {
@@ -667,14 +669,156 @@ describe("persist 마이그레이션 v11 → v12 — 재료 고르기 저장 상
   });
 });
 
+describe("멀티레이블 기본 핵심 지표가 추천에 있다 (재료 목록 7절)", () => {
+  it("F1(M4)과 Jaccard(M17)가 모두 추천 지표다 — 핵심 지표가 F1 하나로 줄지 않는다", async () => {
+    const { resolveCoreMetricIds } = await import("../lib/report/computeVerdict");
+    const recommended = getRecommendedMetricIds("multilabel");
+
+    expect(recommended).toEqual(expect.arrayContaining(["M4", "M17"]));
+    expect(resolveCoreMetricIds("multilabel", recommended)).toEqual(["M4", "M17"]);
+  });
+});
+
 /**
- * v12 → v13 — 재료 고르기가 다이어그램이 됐다(docs/MATERIAL_PICKER.md §11). 입력 순서(`cardOrder`)가
- * 생기고, ⑥ ⑦ ⑧ 을 묶던 데이터 정보 단계가 카드마다 나뉘었다.
+ * v12 → v13 — 학습·평가 전처리 일치가 ⑦ 에서 ⑥ 으로 옮겨 갔다(재료 목록 4절 "AI 예" — ⑦ 을 넣지
+ * 않으면 학습 데이터를 넣어도 값이 AI 로 가지 않던 문제).
  */
-describe("persist 마이그레이션 v12 → v13 — 입력 순서와 데이터 카드 단계", () => {
-  const migrate = async (state: object) => {
+describe("persist 마이그레이션 v12 → v13 — 전처리 일치를 ⑥ 으로", () => {
+  const migrate = async (state: Record<string, unknown>) => {
     const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
     return migrateWorkflowState(state, 12);
+  };
+
+  it("적어 둔 값과 체크를 ⑥ 으로 옮긴다", async () => {
+    const migrated = await migrate({
+      composerTestData: { testDataSource: { text: "Q1 logs" }, preprocessingMatch: { text: "Same" } },
+      composerTrainingData: {},
+      materialPicks: { testData: ["testDataSource", "preprocessingMatch"], trainingData: ["trainingDatasetName"] },
+      composerCards: { trainingData: true, testData: true, groundTruth: false, modelEnv: false },
+    });
+
+    expect(migrated.composerTrainingData.preprocessingMatch).toEqual({ text: "Same" });
+    expect(migrated.composerTestData).toEqual({ testDataSource: { text: "Q1 logs" } });
+    expect(migrated.materialPicks.testData).toEqual(["testDataSource"]);
+    expect(migrated.materialPicks.trainingData).toEqual(["trainingDatasetName", "preprocessingMatch"]);
+    expect(migrated.composerCards.testData).toBe(true);
+  });
+
+  it("⑦ 에 그 체크만 있었다면 ⑦ 은 빠지고, ⑥ 을 저장하지 않았어도 ⑥ 에서 보인다(R2)", async () => {
+    const migrated = await migrate({
+      composerTestData: { preprocessingMatch: { text: "Different" } },
+      materialPicks: { testData: ["preprocessingMatch"] },
+      composerCards: { trainingData: false, testData: true, groundTruth: false, modelEnv: false },
+    });
+
+    expect(migrated.materialPicks.testData).toEqual([]);
+    expect(migrated.composerCards.testData).toBe(false);
+    // 고른 항목이 ⑥ 으로 옮겨 갔으니 ⑥ 에 체크되고 ⑥ 카드가 켜진다 — 숨지 않는다.
+    expect(migrated.materialPicks.trainingData).toEqual(["preprocessingMatch"]);
+    expect(migrated.composerCards.trainingData).toBe(true);
+    expect(migrated.composerTrainingData.preprocessingMatch).toEqual({ text: "Different" });
+  });
+
+  it("⑥ 을 '넣지 않음'([])으로 저장했어도 ⑦ 에서 고른 항목을 따른다(R2-c)", async () => {
+    const migrated = await migrate({
+      composerTestData: { testDataSource: { text: "logs" }, preprocessingMatch: { text: "Same" } },
+      materialPicks: { testData: ["testDataSource", "preprocessingMatch"], trainingData: [] },
+      composerCards: { trainingData: false, testData: true, groundTruth: false, modelEnv: false },
+    });
+
+    expect(migrated.materialPicks.trainingData).toEqual(["preprocessingMatch"]);
+    expect(migrated.composerCards.trainingData).toBe(true);
+    // 카드 켜짐과 체크가 맞는다(saveMaterialPick 의 불변식) — 카드마다 따로 본다.
+    expect(migrated.composerCards.testData).toBe(migrated.materialPicks.testData.length > 0);
+    expect(migrated.composerCards.trainingData).toBe(migrated.materialPicks.trainingData.length > 0);
+  });
+
+  it("v12 저장분에서 ⑦ 에 체크가 없었으면 아무것도 켜지 않는다", async () => {
+    const migrated = await migrate({
+      composerTestData: { preprocessingMatch: { text: "Same" } },
+      materialPicks: { testData: ["testDataSource"] },
+      composerCards: { trainingData: false, testData: true, groundTruth: false, modelEnv: false },
+    });
+
+    expect(migrated.materialPicks.trainingData).toBeUndefined();
+    expect(migrated.composerCards.trainingData).toBe(false);
+  });
+
+  it("⑥ 에 이미 값이 있으면 그것을 둔다", async () => {
+    const migrated = await migrate({
+      composerTestData: { preprocessingMatch: { text: "Different" } },
+      composerTrainingData: { preprocessingMatch: { text: "Same" } },
+    });
+
+    expect(migrated.composerTrainingData.preprocessingMatch).toEqual({ text: "Same" });
+  });
+});
+
+/**
+ * v11 이하 → v13 — v12 단계가 지금 레지스트리로 체크를 만들어, ⑦ 에는 전처리 일치가 없고 ⑥ 은 값이
+ * 아직 ⑦ 에 있어 체크되지 않았다. 그래서 ⑥ 이 켜져 있어도 이 항목이 숨었다(DESIGN_GAPS R2-d).
+ */
+describe("persist 마이그레이션 v11 → v13 — 전처리 일치가 숨지 않는다", () => {
+  const fromV11 = async (state: Record<string, unknown>) => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+    return migrateWorkflowState(state, 11);
+  };
+
+  it("⑦ 이 켜져 있었고 값이 있었으면 ⑥ 에 체크하고 ⑥ 을 켠다", async () => {
+    const migrated = await fromV11({
+      composerTestData: { preprocessingMatch: { text: "Different", note: "정규화 다름" } },
+      composerTrainingData: {},
+      composerCards: { trainingData: true, testData: true, groundTruth: false, modelEnv: false },
+    });
+
+    expect(migrated.materialPicks.trainingData).toContain("preprocessingMatch");
+    expect(migrated.composerCards.trainingData).toBe(true);
+    expect(migrated.composerTrainingData.preprocessingMatch).toEqual({ text: "Different", note: "정규화 다름" });
+  });
+
+  it("⑦ 이 꺼져 있었으면 값만 옮기고 ⑥ 은 그대로 둔다", async () => {
+    const migrated = await fromV11({
+      composerTestData: { preprocessingMatch: { text: "Same" } },
+      composerCards: { trainingData: false, testData: false, groundTruth: false, modelEnv: false },
+    });
+
+    expect(migrated.composerTrainingData.preprocessingMatch).toEqual({ text: "Same" });
+    expect(migrated.materialPicks.trainingData).toBeUndefined();
+    expect(migrated.composerCards.trainingData).toBe(false);
+  });
+});
+
+describe("운영 v3 저장분이 첫 배포 때 v14 까지 한 번에 올라간다", () => {
+  it("재료 고르기 체크가 만들어지고 이미 적은 선택 항목은 체크된다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+
+    const migrated = migrateWorkflowState(
+      {
+        taskType: "binary",
+        selectedMetricIds: ["M1"],
+        completedSteps: [1, 2],
+        currentStep: 3,
+        basicInfo: { companyName: "A", website: "https://a.example" },
+      },
+      3,
+    );
+
+    // 필수 카드는 저장된 것으로 본다 — 운영 사용자를 재료 고르기에서 다시 막지 않는다.
+    expect(Object.keys(migrated.materialPicks).length).toBeGreaterThan(0);
+    expect(migrated.materialPicks.clientInfo).toContain("contactExtra:website");
+    expect(migrated.materialPicks.trainingData).toBeUndefined();
+    expect(migrated.composerTrainingData).toEqual({});
+  });
+});
+
+/**
+ * v13 → v14 — 재료 고르기가 다이어그램이 됐다(docs/MATERIAL_PICKER.md §11). 입력 순서(`cardOrder`)가
+ * 생기고, ⑥ ⑦ ⑧ 을 묶던 데이터 정보 단계가 카드마다 나뉘었다.
+ */
+describe("persist 마이그레이션 v13 → v14 — 입력 순서와 데이터 카드 단계", () => {
+  const migrate = async (state: object) => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+    return migrateWorkflowState(state, 13);
   };
 
   it("순서는 카탈로그 순서로 시작한다 — 지금까지 걸어 온 순서와 같다", async () => {

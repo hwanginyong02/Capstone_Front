@@ -12,6 +12,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { DataValidationSection } from "./DataValidationSection";
+import { materialCheckFixture } from "../../../test/materialCheckFixture";
 import type { KpiResult, ValidationResult } from "../../../types/finalReport.types";
 
 const KPIS: KpiResult[] = [
@@ -96,5 +97,44 @@ describe("화면 ↔ 인쇄본 배선", () => {
         .sort();
 
     expect(sectionsIn(PRINT)).toEqual(sectionsIn(SCREEN));
+  });
+
+  // 섹션에 prop 을 더할 때 한쪽만 고치면 화면과 인쇄본이 갈린다. 처음에는 DataValidation 만
+  // 대조했으나, 설계 차이 수정 라운드가 여러 섹션에 prop 을 더하므로 모든 섹션으로 넓힌다.
+  const screenSections = [
+    ...new Set(
+      [...readFileSync(resolve(__dirname, SCREEN), "utf-8").matchAll(/<(\w+Section)\b/g)].map((m) => m[1]),
+    ),
+  ];
+
+  it("대조할 섹션이 실제로 있다(빈 목록이면 아래 대조가 아무것도 검사하지 않는다)", () => {
+    expect(screenSections.length).toBeGreaterThan(10);
+  });
+
+  it.each(screenSections)("인쇄본이 화면과 같은 prop 을 %s 에 넘긴다", (section) => {
+    expect(propsPassedTo(section, PRINT)).toEqual(propsPassedTo(section, SCREEN));
+  });
+});
+
+describe("6.0 재료 선택 점검 세 줄 (고정 문구 14 · 2.1 한눈에 보기)", () => {
+  it("점검 결과가 있으면 보고 항목·목적별 점검·생성 전 안내 확인 줄을 찍는다", () => {
+    render(
+      <DataValidationSection
+        dataValidation={VALIDATION}
+        kpiResults={KPIS}
+        totalSamples={10}
+        materialCheck={materialCheckFixture({ missingLatencyAndLabel: true, realTime: true })}
+      />,
+    );
+    expect(summaryValue("보고 항목 제공")).toBe("11개 중 9개");
+    expect(summaryValue("목적별 점검")).toBe("1줄 중 0줄 충족");
+    expect(summaryValue("생성 전 안내 확인")).toBe("확인 기록 없음");
+    expect(screen.getByText("점검 표 1.0")).toBeInTheDocument();
+  });
+
+  it("점검 결과가 없는 옛 성적서에는 세 줄이 없다", () => {
+    render(<DataValidationSection dataValidation={VALIDATION} kpiResults={KPIS} totalSamples={10} />);
+    expect(screen.queryByText("보고 항목 제공")).not.toBeInTheDocument();
+    expect(screen.queryByText("생성 전 안내 확인")).not.toBeInTheDocument();
   });
 });

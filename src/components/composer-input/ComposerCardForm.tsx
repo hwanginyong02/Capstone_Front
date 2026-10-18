@@ -95,9 +95,9 @@ export function ComposerCardForm({
                   다른 선택지와 함께 고를 수 없는 답입니다: {choiceLabel(field, field.exclusiveChoice ?? "")}
                 </p>
               )}
-              {issue?.reason === "outOfRange" && rangeFor(field, values) && (
+              {issue?.reason === "outOfRange" && (issue.message || rangeFor(field, values)) && (
                 <p className="mt-1 text-body-small text-destructive">
-                  {describeRange(rangeFor(field, values)!)}
+                  {issue.message ?? describeRange(rangeFor(field, values)!)}
                 </p>
               )}
               {issue?.reason === "incompatible" && issue.message && (

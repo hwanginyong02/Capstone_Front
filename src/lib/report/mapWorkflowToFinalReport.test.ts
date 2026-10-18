@@ -230,3 +230,175 @@ describe("평가 데이터 표본 수", () => {
     expect(report.datasetInfo.sampleCount).toBe(0);
   });
 });
+
+/** 4절 실행 환경은 2층 — 비었거나 "모름"이면 "제공되지 않음"이다(재료 선택 점검 4.2). "—"가 아니다. */
+describe("4절 실행 환경의 빈 칸", () => {
+  it("제공되지 않음으로 적는다", () => {
+    const report = mapWorkflowToFinalReport(baseInput());
+    expect(Object.values(report.evalEnv.systemSpec)).toEqual(Array(5).fill("제공되지 않음"));
+  });
+});
+
+describe("1절 과제 번호 — 용도와 무관한 선택 항목(재료 목록 1절)", () => {
+  it("외부 제출이어도 과제 번호를 싣고, 과제명·과제 기관은 없다", () => {
+    const report = mapWorkflowToFinalReport(
+      baseInput({
+        basicInfo: { ...DEFAULT_BASIC_INFO, reportPurpose: "external", projectNumber: " ML-1 " },
+      }),
+    );
+
+    expect(report.evalScope.projectNumber).toBe("ML-1");
+    expect(report.evalScope.projectInfo).toBeUndefined();
+  });
+
+  it("과제 산출물이면 과제명·과제 기관과 과제 번호를 함께 싣는다", () => {
+    const report = mapWorkflowToFinalReport(
+      baseInput({
+        basicInfo: {
+          ...DEFAULT_BASIC_INFO,
+          reportPurpose: "project",
+          projectName: "AI 과제",
+          projectAgency: "기관",
+          projectNumber: "P-1",
+        },
+      }),
+    );
+
+    expect(report.evalScope.projectInfo).toEqual({ name: "AI 과제", agency: "기관" });
+    expect(report.evalScope.projectNumber).toBe("P-1");
+  });
+});
+
+describe("1절 팩스·홈페이지 — 비면 빈 값(줄을 만들지 않음)", () => {
+  it("비었거나 공백뿐이면 빈 문자열, 값이 있으면 그대로", () => {
+    const empty = mapWorkflowToFinalReport(baseInput({ basicInfo: { ...DEFAULT_BASIC_INFO, fax: "  ", website: "" } }));
+    expect(empty.applicant.fax).toBe("");
+    expect(empty.applicant.homepage).toBe("");
+
+    const filled = mapWorkflowToFinalReport(
+      baseInput({ basicInfo: { ...DEFAULT_BASIC_INFO, fax: "02-1", website: "https://a.example" } }),
+    );
+    expect(filled.applicant.fax).toBe("02-1");
+    expect(filled.applicant.homepage).toBe("https://a.example");
+  });
+});
+
+describe("2절 버전 — 기본값은 한 곳에서 정한다(DESIGN_GAPS R5)", () => {
+  it.each([
+    ["", "v1.0.0"],
+    ["   ", "v1.0.0"],
+    [" v2.0 ", "v2.0"],
+  ])("입력 '%s' → '%s'", (input, expected) => {
+    const report = mapWorkflowToFinalReport(baseInput({ basicInfo: { ...DEFAULT_BASIC_INFO, versionName: input } }));
+
+    expect(report.evalScope.version).toBe(expected);
+  });
+});
+
+describe("재료 선택 점검 연결 (판정은 checkMaterialSelection 한 곳)", () => {
+  const composer = (perspective: ComposerValueMap = {}): ReportComposerInput => ({
+    ...withTraining({}, false).composer,
+    perspective,
+  });
+  const validation = (distribution?: Record<string, number>) => ({
+    task_type: "binary",
+    selected_metric_ids: ["M1"],
+    execution_summary: [],
+    validation_details: [],
+    error_count: 0,
+    warning_count: 0,
+    ...(distribution ? { class_distribution: distribution } : {}),
+  });
+
+  it("카드 값이 있으면 결과를 싣고, 옛 스냅샷(카드 값 없음)에는 싣지 않는다", () => {
+    expect(mapWorkflowToFinalReport(baseInput({ composer: composer() })).materialCheck?.version).toBe("1.0");
+    expect(mapWorkflowToFinalReport(baseInput()).materialCheck).toBeUndefined();
+  });
+
+  it("2층은 성적서가 실제로 찍는 값을 센다 — 카드를 끄고 환경을 비우면 1·2·3·4·5·7·8·9·10·11 빠짐", () => {
+    const report = mapWorkflowToFinalReport(baseInput({ composer: composer() }));
+    expect(report.materialCheck!.reporting).toMatchObject({ total: 11, provided: 1 });
+    expect(report.evalEnv.systemSpec.os).toBe("제공되지 않음");
+  });
+
+  it("지연시간 컬럼을 매핑했으면 8번은 제공", () => {
+    const report = mapWorkflowToFinalReport(
+      baseInput({
+        composer: composer(),
+        columnMapping: [{ confirmedRole: "latency" } as MapWorkflowToReportInput["columnMapping"][number]],
+      }),
+    );
+    expect(report.materialCheck!.warningIds).not.toContain("reporting:8");
+  });
+
+  it("IR 은 검증 응답의 분포(평가와 같은 프레임)를 먼저 쓰고, 없으면 업로드 분석 분포를 쓴다", () => {
+    const input = baseInput({
+      composer: composer(),
+      selectedMetricIds: ["M9"],
+      metadata: { class_distribution: { "0": 50, "1": 50 } },
+    });
+    const fromValidation = mapWorkflowToFinalReport(input, validation({ "0": 950, "1": 50 })).materialCheck!;
+    expect(fromValidation).toMatchObject({ imbalanceRatio: 19, distributionSource: "validation" });
+    expect(fromValidation.warningIds).toContain("purpose:curveImbalance");
+
+    const fromUpload = mapWorkflowToFinalReport(input, validation()).materialCheck!;
+    expect(fromUpload).toMatchObject({ imbalanceRatio: 1, distributionSource: "upload" });
+    expect(fromUpload.warningIds).not.toContain("purpose:curveImbalance");
+  });
+
+  it("진행 기록을 넘기면 점검이 인정 여부를 정한다", () => {
+    const input = baseInput({ composer: composer() });
+    const warningIds = mapWorkflowToFinalReport(input).materialCheck!.warningIds;
+    const ack = { at: "2026-10-17T05:03:00.000Z", version: "1.0", warningIds };
+    expect(mapWorkflowToFinalReport({ ...input, materialCheckAck: ack }).materialCheck!.acknowledgement).toEqual({
+      at: ack.at,
+      version: "1.0",
+    });
+  });
+
+  it("다중 클래스 3번 줄이 미충족이면 5절 평균 방식 문장을 바꿔 찍는다(충족이면 고정 문구 4 그대로)", () => {
+    const unmet = mapWorkflowToFinalReport(
+      baseInput({ taskType: "multiclass", selectedMetricIds: ["M1"], composer: composer({ classPriority: { text: "All equal" } }) }),
+    );
+    expect(unmet.materials!.averagingSentence).toBe(
+      '의뢰자가 클래스 중요도를 "모든 클래스가 동등"으로 밝혔으나, 이에 맞는 매크로 평균 지표는 시험 항목에 없다(1.4 참조).',
+    );
+    const met = mapWorkflowToFinalReport(
+      baseInput({ taskType: "multiclass", selectedMetricIds: ["M11"], composer: composer({ classPriority: { text: "All equal" } }) }),
+    );
+    expect(met.materials!.averagingSentence).toBe(
+      '다중 클래스 지표의 평균 방식은 매크로 평균을 기준으로 한다. 의뢰자가 클래스 중요도를 "모든 클래스가 동등"으로 밝혔기 때문이다.',
+    );
+  });
+});
+
+describe("지연시간(8번)은 6.4 에 실제로 찍힐지로 센다 (검토 반영)", () => {
+  const composer = (): ReportComposerInput => ({ ...withTraining({}, false).composer, perspective: { usageMode: { text: "Real-time" } } });
+  const latencyRow = [{ confirmedRole: "latency" } as MapWorkflowToReportInput["columnMapping"][number]];
+  const validation = (names: string[]) => ({
+    task_type: "binary",
+    selected_metric_ids: ["M1"],
+    execution_summary: [],
+    validation_details: names.map((name) => ({ name, result: "", handling: "", status: "pass" as const, group: "latency" as const })),
+    error_count: 0,
+    warning_count: 0,
+  });
+
+  it("매핑했어도 숫자 값이 없어 검증에 통계 항목이 없으면 빠짐(대화형 줄도 미충족)", () => {
+    const check = mapWorkflowToFinalReport(
+      baseInput({ composer: composer(), columnMapping: latencyRow }),
+      validation(["Latency non-numeric values"]),
+    ).materialCheck!;
+    expect(check.warningIds).toContain("reporting:8");
+    expect(check.warningIds).toContain("purpose:latency");
+  });
+
+  it("검증에 통계 항목이 있으면 제공", () => {
+    const check = mapWorkflowToFinalReport(
+      baseInput({ composer: composer(), columnMapping: latencyRow }),
+      validation(["Latency statistics (ms)"]),
+    ).materialCheck!;
+    expect(check.warningIds).not.toContain("reporting:8");
+    expect(check.warningIds).not.toContain("purpose:latency");
+  });
+});

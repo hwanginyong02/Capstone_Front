@@ -10,6 +10,8 @@ import { focusFirstIssue } from "../components/composer-input/focusFirstIssue";
 import { getCard, getCardFields } from "../data/reportComposer";
 import { getFieldIssue, type FieldIssue } from "../utils/domain/composerFieldGate";
 import { passCriteriaState } from "../utils/domain/passCriteria";
+import { isBetaValid } from "../utils/domain/validation";
+import { materialCheckFor, recommendedMetricIdsFor } from "../utils/domain/purposeRecommendation";
 import { unavailableMetricReasons } from "../utils/domain/metricAvailability";
 import { METRICS } from "../data/evaluationData";
 import { Alert, AlertDescription } from "../components/ui/alert";
@@ -49,21 +51,29 @@ export function TestItems() {
     store.setSelectedMetricIds(selected.filter((id) => !(id in unavailableReasons)));
     setDroppedMetricIds(dropped);
   }, []);
+  // 목적별 점검 미리보기와 추천 지표 — 성적서와 같은 점검 결과를 읽는다. 검증 전이라 불균형 비율은
+  // 업로드 분석의 분포로 센다(검증 화면에서는 평가와 같은 프레임의 분포로 다시 본다).
+  const purposeLines = materialCheckFor(store)?.purpose.lines ?? [];
+  const recommendedMetricIds = recommendedMetricIdsFor(store);
+
   const droppedNames = droppedMetricIds
     .map((id) => METRICS.find((metric) => metric.id === id)?.name ?? id)
     .join(", ");
 
-  /** ② 카드 중 레지스트리로 그리는 필드(멀티레이블의 지표 선택 이유)만 검사한다. */
+  /**
+   * ② 카드 중 레지스트리로 그리는 필드(멀티레이블의 지표 선택 이유)만 검사한다. 이 필드는 재료 선택
+   * 점검 2층이라 **비어 있어도 막지 않는다** — 막는 것은 틀린 값(배타 선택 등)뿐이다. 빈 칸은
+   * 화면에 안내만 하고, 성적서에 "제공되지 않음"으로 찍혀 생성 전 안내에 나온다.
+   */
   const metricCard = getCard("metrics");
   const metricCardIssues = getCardFields("metrics", store.taskType)
     .filter((field) => field.step === "metrics")
     .map((field) => getFieldIssue(metricCard, field, store.composerMetrics))
     .filter((issue): issue is FieldIssue => issue !== null);
+  const blockingMetricCardIssues = metricCardIssues.filter((issue) => issue.reason !== "missing");
 
   const beta = store.metricDetails["M5"]?.beta ?? "1.0";
-  const betaInvalid =
-    store.selectedMetricIds.includes("M5") &&
-    (beta.trim() === "" || !Number.isFinite(Number(beta)) || Number(beta) <= 0);
+  const betaInvalid = store.selectedMetricIds.includes("M5") && !isBetaValid(beta);
 
   const handleBetaChange = (value: string) => {
     store.setMetricDetails((prev) => {
@@ -114,9 +124,9 @@ export function TestItems() {
   };
 
   const handleNext = () => {
-    if (metricCardIssues.length > 0) {
+    if (blockingMetricCardIssues.length > 0) {
       setShowErrors(true);
-      focusFirstIssue(metricCardIssues);
+      focusFirstIssue(blockingMetricCardIssues);
       return;
     }
     flow.goNext();
@@ -139,7 +149,7 @@ export function TestItems() {
       }
       previousLabel="이전"
       nextLabel="다음"
-      rightAction={<RemainingNotice issues={metricCardIssues} />}
+      rightAction={<RemainingNotice issues={blockingMetricCardIssues} />}
     >
       <TestItemsContent
         taskType={store.taskType}
@@ -154,6 +164,8 @@ export function TestItems() {
         }
         metricCardIssues={metricCardIssues}
         unavailableReasons={unavailableReasons}
+        recommendedMetricIds={recommendedMetricIds}
+        purposeLines={purposeLines}
         notice={
           droppedMetricIds.length > 0 ? (
             <Alert role="status">

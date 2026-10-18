@@ -53,6 +53,8 @@ export const STEP_CATALOG: StepDefinition[] = [
   { id: "trainingData", label: "학습 데이터", path: "/app/training-data" },
   { id: "testData", label: "테스트 데이터", path: "/app/test-data" },
   { id: "groundTruth", label: "정답 라벨", path: "/app/ground-truth" },
+  // 평가 관점은 지표 화면의 목적별 점검·추천 지표가 읽는 답이다. 순서는 사용자가 정하지만 지표보다
+  // 앞에 두기를 권한다(`utils/domain/cardOrder.ts` 의 ORDER_HINTS).
   { id: "perspective", label: "평가 관점", path: "/app/perspective" },
   { id: "metrics", label: "지표와 합격 기준", path: "/app/metrics" },
   // 아래 둘은 카드가 아니다. 카드 순서와 무관하게 늘 맨 끝이다 — 백엔드는 지표 목록 없이 검증을

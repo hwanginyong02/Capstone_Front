@@ -11,6 +11,7 @@
  * 대신 `DataValidationSection.test.tsx` 의 배선 계약 테스트가 두 경로의 prop 집합을 대조한다.
  */
 import type { FinalReportData } from "../../types/finalReport.types";
+import { isLegacyLayout } from "../../lib/report/normalizeReportContent";
 import { ReportCoverSection } from "./sections/ReportCoverSection";
 import { CompanyInfoSection } from "./sections/CompanyInfoSection";
 import { EvalScopeSection } from "./sections/EvalScopeSection";
@@ -29,14 +30,16 @@ import { SignatureSection } from "./sections/SignatureSection";
 export function ReportSections({ data }: { data: FinalReportData }) {
   return (
     <>
-      <ReportCoverSection meta={data.meta} performer={data.performer} />
+      <ReportCoverSection meta={data.meta} performer={data.performer} materialCheck={data.materialCheck} />
       <CompanyInfoSection
         applicant={data.applicant}
         performer={data.performer}
         evalScope={data.evalScope}
         meta={data.meta}
+        materialCheck={data.materialCheck}
+        hasConfidenceIntervals={data.confidenceIntervalNote !== undefined}
       />
-      <EvalScopeSection meta={data.meta} />
+      <EvalScopeSection meta={data.meta} evalScope={data.evalScope} />
       <DatasetSection
         datasetInfo={data.datasetInfo}
         datasetSamples={data.datasetSamples}
@@ -51,22 +54,40 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         kpiResults={data.kpiResults}
         totalSamples={data.datasetInfo.sampleCount}
         validationSummary={data.validationSummary}
+        materialCheck={data.materialCheck}
       />
       <KpiResultSection
         kpiResults={data.kpiResults}
+        classReport={data.classReport}
+        derivationIn60={isLegacyLayout(data)}
         taskType={data.meta.taskType}
         meta={data.meta}
         // 판정 규칙 문구는 그 규칙(D19)으로 판정한 성적서에만 — judgedCount 가 그 표시다.
         showVerdictRule={data.conclusion.judgedCount !== undefined}
+        confidenceIntervalNote={data.confidenceIntervalNote}
       />
       <ChartSection charts={data.charts} />
-      <LatencySection latency={data.latency} />
-      <InterpretSection interpretation={data.interpretation} source={data.narrativeSource} />
-      <ConclusionSection conclusion={data.conclusion} source={data.narrativeSource} />
+      <LatencySection latency={data.latency} materialCheck={data.materialCheck} />
+      <InterpretSection
+        interpretation={data.interpretation}
+        source={data.narrativeSource}
+        // 파생 예측 사실은 7.1 앞에 찍는다. 판 2 이전 보관본은 6.0 일러두기에 찍었다.
+        derivedPrediction={isLegacyLayout(data) ? undefined : data.meta.derivedPrediction}
+        confusionCounts={data.confusionCounts}
+        errorRatioSentence={data.errorRatioSentence}
+        labelCautionSentence={data.labelCautionSentence}
+      />
+      <ConclusionSection
+        conclusion={data.conclusion}
+        source={data.narrativeSource}
+        nearTargetNote={data.nearTargetNote}
+        sourceRelationSentence={data.sourceRelationSentence}
+      />
       <RecommendSection
         recommendations={data.recommendations}
         narrative={data.recommendationNarrative}
         source={data.narrativeSource}
+        problems={data.problems}
       />
       <SignatureSection
         signature={data.signature}

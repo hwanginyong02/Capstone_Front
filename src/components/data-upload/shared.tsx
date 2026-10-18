@@ -13,6 +13,7 @@ import { Card, CardContent } from "../ui/card";
 import { Label } from "../ui/label";
 import type { UploadedFileInfo } from "../../types/workflow.types";
 import { formatFileSize } from "../../utils/format/format";
+import { makeExamplePreview } from "../../utils/image/examplePreview";
 
 /** 디자인 시스템에 Textarea 컴포넌트가 없어 Input 스타일을 모사한 textarea 클래스 */
 export const TEXTAREA_CLASS =
@@ -26,17 +27,12 @@ export function toUploadedFileInfo(file: File): UploadedFileInfo {
   };
 }
 
-/** 이미지면 미리보기 URL 까지 붙여 돌려준다. */
+/**
+ * 이미지면 인쇄용 미리보기(축소본)를 붙여 돌려준다. 원본을 그대로 넣으면 발급 상한(1 MiB)을 넘을 수
+ * 있다(`utils/image/examplePreview.ts`). 브라우저가 그릴 수 없는 이미지면 미리보기 없이 돌려준다.
+ */
 export async function toUploadedFileInfoAsync(file: File): Promise<UploadedFileInfo> {
-  let previewUrl: string | undefined = undefined;
-  if (file.type.startsWith("image/")) {
-    previewUrl = await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(URL.createObjectURL(file));
-      reader.readAsDataURL(file);
-    });
-  }
+  const previewUrl = file.type.startsWith("image/") ? (await makeExamplePreview(file)) ?? undefined : undefined;
   return { ...toUploadedFileInfo(file), previewUrl };
 }
 

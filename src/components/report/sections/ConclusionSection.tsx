@@ -1,8 +1,9 @@
 import { CheckCircle2, AlertTriangle, XCircle, CircleHelp } from "lucide-react";
-import type { ConclusionData, NarrativeSource } from "../../../types/finalReport.types";
+import type { BenchmarkRef, ConclusionData, NarrativeSource } from "../../../types/finalReport.types";
 import { SectionTitle } from "../shared/SectionTitle";
 import { NarrativeSourceBadge } from "../shared/NarrativeSourceBadge";
 import { cn } from "../../../utils/styling/styles";
+import { formatMetricValue } from "../../../lib/report/metricValueFormat";
 
 const VERDICT_CONFIG = {
   PASS: {
@@ -40,6 +41,16 @@ const VERDICT_CONFIG = {
 interface ConclusionSectionProps {
   conclusion: ConclusionData;
   source?: NarrativeSource;
+  /**
+   * 아슬아슬 지표 한 줄(생성 때 저장, 설계 D12). 있으면 8.3 에 찍는다 — 6.1 판정 규칙의 "8.3에 별도
+   * 표시하였다"가 가리키는 자리다. 아슬아슬 지표가 없거나 이 키가 생기기 전 성적서에는 없다.
+   */
+  nearTargetNote?: string;
+  /**
+   * 8.2 일반화 고정 문구 11a·11b(평가 데이터가 학습과 같은/다른 출처). 생성 때 저장한 문장을 서술
+   * 아래 찍는다. 의뢰자가 출처 관계를 답하지 않았거나 이 키가 생기기 전 성적서에는 없다.
+   */
+  sourceRelationSentence?: string;
 }
 
 /** 서술 블록: LLM이 채울 텍스트가 있으면 인용, 없으면 "생성 예정" 플레이스홀더 표시 */
@@ -61,7 +72,12 @@ function NarrativeBlock({ title, text }: { title: string; text: string }) {
   );
 }
 
-export function ConclusionSection({ conclusion, source }: ConclusionSectionProps) {
+export function ConclusionSection({
+  conclusion,
+  source,
+  nearTargetNote,
+  sourceRelationSentence,
+}: ConclusionSectionProps) {
   const config = VERDICT_CONFIG[conclusion.verdict];
   const Icon = config.icon;
 
@@ -102,14 +118,101 @@ export function ConclusionSection({ conclusion, source }: ConclusionSectionProps
         항목별 값과 기준은 6절 표에서 확인할 수 있습니다.
       </p>
 
-      {/* 8.1 도메인 성능 벤치마크 */}
-      <NarrativeBlock title="도메인 성능 벤치마크" text={conclusion.benchmark} />
+      {/* 8.1 도메인 성능 벤치마크 — 참조 범위를 숫자로 찍고(재료 목록 9절) 서술을 붙인다. */}
+      <div className="space-y-3">
+        {conclusion.benchmarkRefs && conclusion.benchmarkRefs.length > 0 && (
+          <BenchmarkTable refs={conclusion.benchmarkRefs} />
+        )}
+        <NarrativeBlock title="도메인 성능 벤치마크" text={conclusion.benchmark} />
+      </div>
 
-      {/* 8.2 전반적 성능 및 일반화 능력 총평 */}
-      <NarrativeBlock title="전반적 성능 및 일반화 능력 총평" text={conclusion.narrative} />
+      {/* 8.2 전반적 성능 및 일반화 능력 총평 — 일반화 고정 문구(11a·11b)는 의뢰자 답으로 정해 서술 아래 찍는다. */}
+      <div className="space-y-3">
+        <NarrativeBlock title="전반적 성능 및 일반화 능력 총평" text={conclusion.narrative} />
+        {sourceRelationSentence && (
+          <p className="text-sm leading-relaxed text-slate-700">{sourceRelationSentence}</p>
+        )}
+      </div>
 
-      {/* 8.3 기술적 취약점 및 잠재적 리스크 요약 */}
-      <NarrativeBlock title="기술적 취약점 및 잠재적 리스크 요약" text={conclusion.risks} />
+      {/* 8.3 기술적 취약점 및 잠재적 리스크 요약 — 아슬아슬 지표 표시는 규칙으로 정해 서술 아래 찍는다. */}
+      <div className="space-y-3">
+        <NarrativeBlock title="기술적 취약점 및 잠재적 리스크 요약" text={conclusion.risks} />
+        {nearTargetNote && (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">
+            {nearTargetNote}
+          </p>
+        )}
+      </div>
     </section>
+  );
+}
+
+const QUALITY_LABEL: Record<string, string> = { better: "우수", within: "범위 내", worse: "미흡" };
+
+/** 목표값이 참조 범위의 어디에 있는지(설계 D31). 단순 수치 위치라 방향을 반영하지 않는다. */
+const TARGET_POSITION_LABEL: Record<string, string> = {
+  below: "범위보다 낮음",
+  within: "범위 안",
+  above: "범위보다 높음",
+};
+
+/** 8.1 벤치마크 비교 표 — 모델 값과 참조 범위(내부 참조 기준치). 서술보다 앞에 숫자로 둔다. */
+function BenchmarkTable({ refs }: { refs: BenchmarkRef[] }) {
+  const notes = [...new Set(refs.map((r) => r.sourceNote).filter(Boolean))];
+  // 목표값 열은 서버가 목표값 키를 실어 보낸 성적서에만 그린다. 그 전에 만든 성적서는 발급 당시 모양 그대로.
+  const showTarget = refs.some((r) => "targetValue" in r);
+  return (
+    <div className="space-y-1">
+      <table className="w-full text-sm border-collapse" aria-label="벤치마크 참조 범위">
+        <thead>
+          <tr className="border-b border-slate-200">
+            <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">지표</th>
+            <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">모델 값</th>
+            <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">참조 범위</th>
+            <th className={cn("py-1.5 text-left text-xs font-medium text-slate-500", showTarget && "pr-4")}>위치</th>
+            {showTarget && (
+              <>
+                <th className="py-1.5 pr-4 text-left text-xs font-medium text-slate-500">목표값</th>
+                <th className="py-1.5 text-left text-xs font-medium text-slate-500">목표값 수준</th>
+              </>
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {refs.map((r) => (
+            <tr key={r.metric} className="border-b border-slate-50 last:border-b-0">
+              <td className="py-1.5 pr-4 text-slate-700">
+                {r.metric}
+                {r.direction === "lower" && <span className="ml-1 text-xs text-slate-400">(낮을수록 좋음)</span>}
+              </td>
+              <td className="py-1.5 pr-4 font-mono tabular-nums text-slate-900">{r.modelValue.toFixed(3)}</td>
+              <td className="py-1.5 pr-4 font-mono tabular-nums text-slate-900">
+                {r.refLow.toFixed(2)} ~ {r.refHigh.toFixed(2)}
+              </td>
+              <td className={cn("py-1.5 text-slate-700", showTarget && "pr-4")}>
+                {QUALITY_LABEL[r.quality] ?? r.quality}
+              </td>
+              {showTarget && (
+                <>
+                  <td className="py-1.5 pr-4 font-mono tabular-nums text-slate-900">
+                    {formatMetricValue(r.targetValue)}
+                  </td>
+                  <td className="py-1.5 text-slate-700">
+                    {r.targetValue == null || !r.targetPosition
+                      ? "—"
+                      : TARGET_POSITION_LABEL[r.targetPosition]}
+                  </td>
+                </>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {notes.map((note) => (
+        <p key={note} className="text-xs text-slate-500">
+          ※ {note}
+        </p>
+      ))}
+    </div>
   );
 }
