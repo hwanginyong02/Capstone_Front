@@ -185,6 +185,13 @@ export function DataValidation() {
                         >
                           {gap.label}에서 채우기
                         </button>
+                        {gap.details && (
+                          <ul aria-label={`${gap.label} 문제`} className="mt-1 list-disc pl-5">
+                            {gap.details.map((detail) => (
+                              <li key={detail}>{detail}</li>
+                            ))}
+                          </ul>
+                        )}
                       </li>
                     ))}
                   </ul>

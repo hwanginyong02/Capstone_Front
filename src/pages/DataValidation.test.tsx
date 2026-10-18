@@ -161,6 +161,36 @@ describe("생성 전 안내와 '다음' (재료 선택 점검 6절)", () => {
     expect(useWorkflowStore.getState().materialCheckAck).toBeNull();
   });
 
+  it("매핑을 고친 뒤 계산할 수 없게 된 지표가 남아 있으면 막고 지표 화면으로 이유와 함께 안내한다 (B8)", async () => {
+    const { materialCheckFixture } = await import("../test/materialCheckFixture");
+    const { next } = await setup(materialCheckFixture({}));
+    const row = (role: string) => ({
+      originalName: role,
+      sampleValues: [],
+      inferredRole: role,
+      confirmedRole: role,
+      modified: false,
+      warnings: [],
+    });
+    useWorkflowStore.setState({
+      taskType: "binary",
+      selectedMetricIds: ["M1", "M9"],
+      metricDetails: {
+        M1: { targetValue: "0.8" },
+        M9: { targetValue: "0.7" },
+      } as never,
+      columnMapping: [row("y_true"), row("y_pred")] as never,
+      availableMetricIds: null,
+    });
+
+    next.click();
+
+    const list = await screen.findByRole("list", { name: "비어 있는 필수 입력" });
+    expect(list).toHaveTextContent("지표와 합격 기준에서 채우기");
+    expect(screen.getByRole("list", { name: "지표와 합격 기준 문제" })).toHaveTextContent(/^AUROC: /);
+    expect(addEvaluationRun).not.toHaveBeenCalled();
+  });
+
   it("2·3층 경고는 화면에 보이고, '다음'을 누르면 기록을 남긴 뒤 진행한다", async () => {
     const { materialCheckFixture } = await import("../test/materialCheckFixture");
     const check = materialCheckFixture({ missingLatencyAndLabel: true, realTime: true });
