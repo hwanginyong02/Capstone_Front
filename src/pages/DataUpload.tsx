@@ -12,6 +12,7 @@ import {
   DataUpload as DataUploadContent,
   isEvaluationDataUploadValid,
 } from "../components/data-upload/DataUpload";
+import { resolveTaskType } from "../data/evaluationData";
 
 /**
  * ① 평가 데이터 — 결과 파일 업로드. 다음이 컬럼 매핑이다(docs/MATERIAL_PICKER.md §3).
@@ -48,7 +49,7 @@ export function DataUpload() {
     try {
       const { rows, metadata, columnNotes } = await analyzeColumns(
         store.rawFile,
-        store.taskType || "multiclass",
+        resolveTaskType(store.taskType),
       );
 
       // 다시 올린 경우 전에 고른 양성 클래스가 새 파일의 클래스에도 있으면 지킨다(M5) — 분석은 metadata 를

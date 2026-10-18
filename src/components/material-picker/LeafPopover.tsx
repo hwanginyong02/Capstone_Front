@@ -13,7 +13,7 @@
  */
 import { useId, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
-import { TASK_TYPE_LABELS_KO, type TaskType } from "../../data/evaluationData";
+import { TASK_TYPE_LABELS_KO, type TaskType, resolveTaskType } from "../../data/evaluationData";
 import type { PickKind } from "../../types/reportComposer.types";
 import type { LeafDetail } from "../../utils/domain/leafDetail";
 import { FOCUS_RING, cn } from "../../utils/styling/styles";
@@ -212,9 +212,9 @@ function LeafPopoverBody({
       {detail.file && (
         <div className="flex flex-col gap-2 rounded-md border border-border bg-background p-3">
           <span className="text-xs font-medium text-foreground-secondary">
-            파일 예시 · {TASK_TYPE_LABELS_KO[taskType || "multiclass"]} · CSV
+            파일 예시 · {TASK_TYPE_LABELS_KO[resolveTaskType(taskType)]} · CSV
           </span>
-          <CsvExampleViewer taskType={taskType || "multiclass"} />
+          <CsvExampleViewer taskType={resolveTaskType(taskType)} />
         </div>
       )}
 

@@ -8,10 +8,11 @@ import { apiUrl } from "@/lib/apiBase";
 import { translateRoleToBackend } from "../mapping/translateRoleToBackend";
 import type { MappingRow } from "../../types/mapping.types";
 import type { MappingWarning } from "./backendNotices";
+import { resolveTaskType, type TaskType } from "../../data/evaluationData";
 
 export interface ConfirmMappingInput {
   columnMapping: MappingRow[];
-  taskType: string | null;
+  taskType: TaskType | "" | null;
   selectedMetricIds: string[];
 }
 
@@ -30,7 +31,7 @@ export interface ConfirmMappingResult {
 export async function confirmMapping(
   input: ConfirmMappingInput,
 ): Promise<ConfirmMappingResult> {
-  const taskType = input.taskType || "multiclass";
+  const taskType = resolveTaskType(input.taskType);
 
   const backendMappings = input.columnMapping.map((row) => ({
     column: row.originalName,

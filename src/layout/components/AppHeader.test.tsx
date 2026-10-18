@@ -22,7 +22,7 @@ function renderHeader() {
   );
 }
 
-const badge = () => screen.getByRole("button", { name: "분류 유형: 다중 레이블" });
+const badge = () => screen.getByRole("button", { name: "분류 유형: 다중 레이블 분류" });
 
 beforeEach(() => {
   localStorage.clear();
@@ -35,7 +35,7 @@ afterEach(() => {
 });
 
 describe("분류 유형 배지", () => {
-  it("버튼 이름은 '분류 유형: 다중 레이블'이고, 옆에 '분류 유형' 글자가 보인다. title 은 없다", () => {
+  it("버튼 이름은 '분류 유형: 다중 레이블 분류'이고, 옆에 '분류 유형' 글자가 보인다. title 은 없다", () => {
     renderHeader();
 
     expect(badge()).toBeInTheDocument();
@@ -53,7 +53,7 @@ describe("분류 유형 배지", () => {
     expect(badge()).toHaveFocus();
 
     const tooltip = await screen.findByRole("tooltip");
-    expect(tooltip).toHaveTextContent("분류 유형: 다중 레이블");
+    expect(tooltip).toHaveTextContent("분류 유형: 다중 레이블 분류");
     expect(tooltip).toHaveTextContent(TASK_TYPE_DESCRIPTIONS_KO.multilabel);
     expect(tooltip).toHaveTextContent("바꾸면 고른 지표·올린 데이터·컬럼 매핑이 지워져요");
   });

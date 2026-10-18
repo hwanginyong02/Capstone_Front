@@ -34,27 +34,31 @@ export interface RequiredColumnDisplay {
   description: string;
 }
 
-export const TASK_TYPE_LABELS: Record<TaskType, string> = {
-  binary: "Binary",
-  multiclass: "Multi-class",
-  multilabel: "Multi-label",
-};
-
 /**
- * 한국어 유형 이름.
+ * 한국어 유형 이름 — 화면과 성적서·AI 서술이 모두 이 한 벌을 쓴다(W9, 2026-10-18 사용자 결정 "성적서·AI 의
+ * 작업 유형 이름도 한국어로"). 종전에는 화면은 '다중 클래스'·'다중 레이블', 성적서는 영문(Binary 등)이었다.
  *
- * 표기는 `docs/UI_DESIGN.md` §3·§4 를 따른다 — 그 문서가 유형을 **사용자에게 보여주는 방식**을
- * 정하는 쪽이고, `docs/COMPOSER_DESIGN.md` 의 유형 배지도 거기를 가리킨다.
- *
- * 앱 화면은 모두 이 표를 쓴다(docs/MATERIAL_PICKER.md §8). 위 `TASK_TYPE_LABELS`(영문)는
- * 성적서와 AI 서술에 넘기는 유형 이름이라 그대로 둔다 — 화면 문구를 바꾸면서 출력까지
- * 바꾸지 않는다.
+ * 표기는 `docs/UI_DESIGN.md` §3·§4 를 따른다. 백엔드 서술 지시문의 `TASK_TYPE_LABELS`
+ * (app/narrative/prompt.py)와 같은 글자다 — 대조 테스트가 지킨다. 이미 발급된 성적서는 저장된
+ * 이름(`meta.taskTypeLabel`·`datasetInfo.taskTypeLabel`) 그대로 그린다.
  */
 export const TASK_TYPE_LABELS_KO: Record<TaskType, string> = {
   binary: "이진 분류",
-  multiclass: "다중 클래스",
-  multilabel: "다중 레이블",
+  multiclass: "다중 클래스 분류",
+  multilabel: "다중 레이블 분류",
 };
+
+/** 성적서에 싣는 유형 이름. 화면과 같은 표다(W9) — 이름만 남겨 둔다. */
+export const TASK_TYPE_LABELS: Record<TaskType, string> = TASK_TYPE_LABELS_KO;
+
+/**
+ * 유형을 아직 고르지 않았을 때(빈 값) 쓸 유형 — 대체값은 여기 한 곳이다(W9). 종전에는 15곳이 따로
+ * 정해 같은 파일 안에서도 "multiclass"·"binary" 로 갈렸다. 정상 흐름에서는 유형 선택이 첫 화면이라
+ * 빈 값이 오지 않는다.
+ */
+export function resolveTaskType(taskType: TaskType | "" | null | undefined): TaskType {
+  return taskType || "binary";
+}
 
 /**
  * 유형 한 줄 설명 — 진입 화면의 유형 카드와 머리의 분류 유형 툴팁이 같이 쓴다(같은 문장을 두 벌 두지

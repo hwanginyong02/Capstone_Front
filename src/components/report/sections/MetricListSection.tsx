@@ -6,6 +6,7 @@ import type {
 import { SectionTitle } from "../shared/SectionTitle";
 import { TwoColTable } from "../shared/TwoColTable";
 import { materialText, toTableRows } from "../shared/materialRows";
+import { TASK_TYPE_LABELS } from "../../../data/evaluationData";
 
 interface MetricListSectionProps {
   metricList: MetricItem[];
@@ -54,7 +55,9 @@ export function MetricListSection({
       <div className="space-y-3">
         <h3 className="text-sm font-semibold text-slate-700">
           공통 지표{" "}
-          <span className="font-normal text-slate-400 text-xs">(Binary / Multi-class / Multi-label 모두 적용)</span>
+          <span className="font-normal text-slate-400 text-xs">
+            ({TASK_TYPE_LABELS.binary} / {TASK_TYPE_LABELS.multiclass} / {TASK_TYPE_LABELS.multilabel} 모두 적용)
+          </span>
         </h3>
         <MetricTable items={commonItems} formulaMap={formulaMap} />
       </div>

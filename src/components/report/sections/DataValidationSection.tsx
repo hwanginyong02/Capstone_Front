@@ -8,6 +8,7 @@ import type {
 import type { ValidationGroup } from "../../../types/validation.types";
 import { SectionTitle } from "../shared/SectionTitle";
 import { cn } from "../../../utils/styling/styles";
+import { TASK_TYPE_LABELS } from "../../../data/evaluationData";
 
 const STATUS_CONFIG = {
   pass:    { icon: CheckCircle2,  color: "text-emerald-500", label: "통과" },
@@ -16,10 +17,11 @@ const STATUS_CONFIG = {
 } as const;
 
 const GROUP_META: Record<ValidationGroup, { label: string; description: string }> = {
-  common:     { label: "공통 검증 항목",        description: "모든 태스크 유형에 공통 적용" },
-  multiclass: { label: "다중 분류 검증 항목",   description: "태스크 유형이 Multiclass인 경우 적용" },
-  binary:     { label: "이진 분류 검증 항목",   description: "태스크 유형이 Binary인 경우 적용" },
-  multilabel: { label: "다중 레이블 검증 항목", description: "태스크 유형이 Multilabel인 경우 적용" },
+  common:     { label: "공통 검증 항목",        description: "모든 분류 유형에 공통 적용" },
+  // 유형 이름은 화면·성적서와 같은 한국어 표(W9). 종전에는 영문(Multiclass 등)이었다.
+  multiclass: { label: `${TASK_TYPE_LABELS.multiclass} 검증 항목`, description: `분류 유형이 ${TASK_TYPE_LABELS.multiclass}인 경우 적용` },
+  binary:     { label: `${TASK_TYPE_LABELS.binary} 검증 항목`,     description: `분류 유형이 ${TASK_TYPE_LABELS.binary}인 경우 적용` },
+  multilabel: { label: `${TASK_TYPE_LABELS.multilabel} 검증 항목`, description: `분류 유형이 ${TASK_TYPE_LABELS.multilabel}인 경우 적용` },
   latency:    { label: "응답시간 검증 항목",    description: "응답시간(latency) 컬럼이 있는 경우 적용" },
 };
 

@@ -6,7 +6,7 @@
  *
  * 순수 함수다. 화면은 결과로 다음 버튼을 잠근다.
  */
-import { getSelectedMetrics, type MetricDefinition, type TaskType } from "../../data/evaluationData";
+import { getSelectedMetrics, type MetricDefinition, type TaskType, resolveTaskType } from "../../data/evaluationData";
 import { resolveCoreMetricIds } from "../../lib/report/computeVerdict";
 import type { ComposerValueMap } from "../../types/reportComposer.types";
 import type { MetricDetailStateMap } from "../../types/workflow.types";
@@ -47,7 +47,7 @@ export function passCriteriaState(
   metricDetails: MetricDetailStateMap,
   composerMetrics: ComposerValueMap,
 ): PassCriteriaState {
-  const resolved = taskType || "multiclass";
+  const resolved = resolveTaskType(taskType);
   const targetMetrics = getSelectedMetrics(resolved, selectedMetricIds).filter((metric) =>
     metricNeedsTargetValue(metric.id),
   );

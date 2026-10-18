@@ -7,6 +7,7 @@ import {
   resolveMissingRoleCodes,
   type TaskType,
   getBaseRequiredColumns,
+  resolveTaskType,
 } from "../../data/evaluationData";
 import type { MappingRole, MappingRow } from "../../types/mapping.types";
 import { applyRoleChange } from "../../utils/domain/applyRoleChange";
@@ -75,7 +76,7 @@ export function ColumnMapping({
   evalDataPicks,
   onPlaceLeaf,
 }: ColumnMappingProps) {
-  const resolvedTaskType: TaskType = taskType || "multiclass";
+  const resolvedTaskType: TaskType = resolveTaskType(taskType);
   /**
    * 매핑해야 할 역할 — 정답과 예측(또는 확률). 매핑은 지표 선택보다 앞이고 고른 지표에 기대지
    * 않는다(docs/MATERIAL_PICKER.md §3). 지표마다 더 필요한 컬럼(예: AUROC 의 확률)은 지표 화면이

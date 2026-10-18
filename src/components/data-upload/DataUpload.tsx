@@ -23,6 +23,7 @@ import {
   TASK_TYPE_LABELS_KO,
   type RequiredColumnCode,
   type TaskType,
+  resolveTaskType,
 } from "../../data/evaluationData";
 import { allowedMappingRoles } from "../../utils/domain/mappingPicks";
 import type { UploadedFileInfo } from "../../types/workflow.types";
@@ -88,7 +89,7 @@ export function DataUpload({
   // 사용자가 전부 올린 뒤에야 413 을 봤다(G-04a·D-15).
   const [sizeError, setSizeError] = useState<string | null>(null);
 
-  const resolvedTaskType: TaskType = taskType || "multiclass";
+  const resolvedTaskType: TaskType = resolveTaskType(taskType);
   const requiredColumns = useMemo(
     () => uploadColumnCodes(resolvedTaskType, evalDataPicks).map(getColumnDisplay),
     [resolvedTaskType, evalDataPicks],

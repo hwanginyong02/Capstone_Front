@@ -15,6 +15,7 @@ import {
   TASK_TYPE_LABELS,
   getMetricDisplayId,
   type TaskType,
+  resolveTaskType,
 } from "../../data/evaluationData";
 
 import type {
@@ -248,7 +249,7 @@ export function mapWorkflowToFinalReport(
   input: MapWorkflowToReportInput,
   validationResult?: ValidateDataResponseData | null,
 ): FinalReportData {
-  const resolvedTaskType: TaskType = input.taskType || "binary";
+  const resolvedTaskType: TaskType = resolveTaskType(input.taskType);
 
   // 데이터 검증 결과: 백엔드 /api/validate-data 응답이 있으면 실제 값으로 채우고,
   // 없으면 빈 배열(가짜 MOCK 8항목을 노출하지 않음 — 섹션이 "검증 미수행" 안내로 처리).
@@ -339,7 +340,7 @@ function runMaterialCheck(
   materials: ReturnType<typeof buildReportMaterials>,
   evalEnv: EvalEnvironment,
 ) {
-  const taskType: TaskType = input.taskType || "binary";
+  const taskType: TaskType = resolveTaskType(input.taskType);
   const fromValidation = validationResult?.class_distribution;
   const fromUpload = input.metadata?.class_distribution;
   const [distribution, distributionSource] =
