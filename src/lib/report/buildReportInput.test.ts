@@ -223,3 +223,52 @@ describe("전용 화면이 받는 선택 항목 — 놓지 않았으면 성적�
     expect(hook).not.toMatch(/workflowState\.classLabelDescriptions/);
   });
 });
+
+/**
+ * B5③ — ⑥ 학습 클래스 분포는 지금 클래스의 칸만 싣는다. 옛 파일·옛 정답 컬럼에서 적어 둔 칸이 남으면 3절에
+ * 옛 클래스가 찍히고, 9절 분포 차이가 평가 데이터에 없는 클래스로 거짓 차이를 냈다.
+ */
+describe("[B5③] 학습 클래스 분포 — 지금 클래스의 칸만", () => {
+  beforeEach(() => {
+    useWorkflowStore.setState({
+      columnMapping: [
+        { originalName: "label", sampleValues: ["0", "1"], inferredRole: "y_true", confirmedRole: "y_true", modified: false, warnings: [] },
+      ],
+      metadata: { column_unique_values: { label: ["0", "1"] } },
+      composerTrainingData: {
+        trainingClassVolume: {
+          entries: [
+            { key: "0", value: "800" },
+            { key: "1", value: "200" },
+            { key: "churn", value: "5000" },
+          ],
+        },
+      },
+    });
+  });
+
+  it("옛 클래스 칸을 빼고 지금 클래스의 칸은 그대로 둔다 — 3절 분포 줄에 옛 클래스가 없다", () => {
+    const input = buildReportInput(source());
+    expect(input.composer!.trainingData.trainingClassVolume?.entries).toEqual([
+      { key: "0", value: "800" },
+      { key: "1", value: "200" },
+    ]);
+    const rows = buildReportMaterials(input.composer!, "binary").training;
+    expect(rows.find((row) => row.label === "학습 클래스 분포")?.value).toBe("0 800 / 1 200");
+  });
+
+  it("정답 컬럼이 없으면 칸이 남지 않는다 — 3절은 '제공되지 않음'", () => {
+    useWorkflowStore.setState({ columnMapping: [] });
+    const input = buildReportInput(source());
+    expect(input.composer!.trainingData.trainingClassVolume?.entries).toEqual([]);
+    const rows = buildReportMaterials(input.composer!, "binary").training;
+    expect(rows.find((row) => row.label === "학습 클래스 분포")?.value).toBeNull();
+  });
+
+  it("'모름'·값 없음은 그대로 둔다", () => {
+    useWorkflowStore.setState({ composerTrainingData: { trainingClassVolume: { unknown: true } } });
+    expect(buildReportInput(source()).composer!.trainingData.trainingClassVolume).toEqual({ unknown: true });
+    useWorkflowStore.setState({ composerTrainingData: {} });
+    expect(buildReportInput(source()).composer!.trainingData.trainingClassVolume).toBeUndefined();
+  });
+});

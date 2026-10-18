@@ -51,8 +51,19 @@ export interface FieldIssue {
   allowsUnknown: boolean;
 }
 
-/** 값이 채워져 있는가. "모름"은 채운 것으로 센다. */
-export function hasValue(field: ComposerField, value: ComposerFieldValue | undefined): boolean {
+/**
+ * 값이 채워져 있는가. "모름"은 채운 것으로 센다.
+ *
+ * `classNames` 는 클래스마다 칸을 만드는 필드(`entryKeysFrom: "classes"` — ⑥ 클래스별 데이터 양)가
+ * 쓸 지금 클래스 목록이다(`evaluationClassNames`). 그 필드는 **지금 클래스를 모두** 채워야 한다(B5②) —
+ * 옛 파일·옛 정답 컬럼의 키는 세지 않는다. 목록이 비면(클래스를 아직 모름) "모름"만 통과한다(N6:
+ * 빈 목록의 `every` 는 참이라 빈칸이 통과하던 함정).
+ */
+export function hasValue(
+  field: ComposerField,
+  value: ComposerFieldValue | undefined,
+  classNames: readonly string[] = [],
+): boolean {
   if (!value) return false;
   // "모름" 은 성적서에 "제공되지 않음" 으로 찍히지만, 진행은 막지 않는다.
   if (value.unknown) return true;
@@ -79,8 +90,14 @@ export function hasValue(field: ComposerField, value: ComposerFieldValue | undef
         filled.some((entry) => entry.key === key),
       );
     }
-    // 줄을 사용자가 추가하거나(⑨ 하이퍼파라미터) 업로드한 클래스에서 만드는 필드는
-    // 적어도 한 줄이 채워져 있으면 된다 — 클래스 수를 여기서 알 수 없다.
+    // 클래스마다 칸이 있는 필드는 지금 클래스를 모두 채워야 한다(B5②). 목록이 비면 모름만 통과(N6).
+    if (field.entryKeysFrom === "classes") {
+      return (
+        classNames.length > 0 &&
+        classNames.every((name) => filled.some((entry) => entry.key === name))
+      );
+    }
+    // 줄을 사용자가 추가하는 필드(⑨ 하이퍼파라미터)는 적어도 한 줄이 채워져 있으면 된다.
     return filled.length > 0;
   }
 
@@ -121,6 +138,7 @@ function invalidReason(
   field: ComposerField,
   value: ComposerFieldValue | undefined,
   values: ComposerValueMap,
+  classNames: readonly string[],
 ): { reason: "outOfRange" | "invalidPeriod" | "incompatible"; message?: string } | null {
   if (!value || value.unknown) return null;
 
@@ -139,7 +157,12 @@ function invalidReason(
   // 숫자 칸 묶음(⑥ 학습·검증 표본 수, 클래스별 데이터 양)은 건수라 0 이상의 정수만 받는다.
   // 종전에는 숫자 키패드만 띄우고 검사하지 않아 글자를 넣어도 통과했다(재료 목록 6절).
   if (field.input === "entries" && field.numeric) {
-    const wrong = (value.entries ?? []).some((entry) => {
+    // 클래스마다 칸이 있는 필드는 지금 클래스의 칸만 본다 — 옛 클래스 칸은 화면에 없어 고칠 수 없다.
+    const shown =
+      field.entryKeysFrom === "classes"
+        ? (value.entries ?? []).filter((entry) => classNames.includes(entry.key))
+        : (value.entries ?? []);
+    const wrong = shown.some((entry) => {
       const raw = entry.value.trim();
       if (raw === "") return false;
       const count = Number(raw.replace(/,/g, ""));
@@ -236,6 +259,7 @@ export function getFieldIssue(
   field: ComposerField,
   values: ComposerValueMap,
   picks?: readonly string[],
+  classNames: readonly string[] = [],
 ): FieldIssue | null {
   // 전용 화면이 받는 필드는 그 화면이 검사한다 — 값이 카드 값 모음 밖에 있어 여기서는 늘 빈칸으로 보인다.
   if (field.dedicatedScreen) return null;
@@ -253,7 +277,7 @@ export function getFieldIssue(
     allowsUnknown: Boolean(field.allowsUnknown),
   });
 
-  const invalid = invalidReason(field, value, values);
+  const invalid = invalidReason(field, value, values, classNames);
   if (invalid) {
     const base = issue(invalid.reason);
     return invalid.message ? { ...base, message: invalid.message } : base;
@@ -264,7 +288,7 @@ export function getFieldIssue(
     if (chosen.includes(field.exclusiveChoice) && chosen.length > 1) return issue("exclusive");
   }
 
-  if (isFieldRequired(field, values) && !hasValue(field, value)) return issue("missing");
+  if (isFieldRequired(field, values) && !hasValue(field, value, classNames)) return issue("missing");
 
   return null;
 }
@@ -274,7 +298,7 @@ export function getFieldIssue(
  *
  * `picks` 는 재료 고르기에서 이 카드에 고른 항목이다. 없으면 모든 필드를 받는 것으로 본다.
  * 받기로 한 선택 필드는 비어 있어도 걸리지 않지만, 값을 **틀리게** 적은 것(범위 밖 숫자,
- * 뒤집힌 기간)은 걸린다.
+ * 뒤집힌 기간)은 걸린다. `classNames` 는 클래스마다 칸이 있는 필드가 쓸 지금 클래스 목록이다(`hasValue`).
  */
 export function getCardIssues(
   card: ComposerCard,
@@ -282,11 +306,12 @@ export function getCardIssues(
   values: ComposerValueMap,
   included: boolean,
   picks?: readonly string[],
+  classNames: readonly string[] = [],
 ): FieldIssue[] {
   if (!included) return [];
 
   return getCardFields(card.id, taskType)
-    .map((field) => getFieldIssue(card, field, values, picks))
+    .map((field) => getFieldIssue(card, field, values, picks, classNames))
     .filter((issue): issue is FieldIssue => issue !== null);
 }
 
@@ -297,6 +322,7 @@ export function isCardComplete(
   values: ComposerValueMap,
   included: boolean,
   picks?: readonly string[],
+  classNames: readonly string[] = [],
 ): boolean {
-  return getCardIssues(card, taskType, values, included, picks).length === 0;
+  return getCardIssues(card, taskType, values, included, picks, classNames).length === 0;
 }

@@ -58,7 +58,12 @@ import type {
 } from "../../types/reportComposer.types";
 import { getCard, isFieldPicked, isFieldReceived, isLeafReceived, isPartPicked } from "../../data/reportComposer";
 import { buildLegacyPatch } from "../../utils/domain/composerLegacyMirror";
-import { currentClassEntries, evaluationClassNames, type ClassMetadata } from "../../utils/domain/evaluationClasses";
+import {
+  currentClassEntries,
+  currentClassVolume,
+  evaluationClassNames,
+  type ClassMetadata,
+} from "../../utils/domain/evaluationClasses";
 import {
   DEFAULT_EVAL_ENV_CONSTANTS,
   DEFAULT_EVAL_PURPOSE_TEXT,
@@ -213,6 +218,8 @@ export function buildReportInput(state: ReportInputSource): MapWorkflowToReportI
   const picks = state.materialPicks;
   const modelEnv = pickedValues("modelEnv", state.composerModelEnv, picks);
   const dedicated = pickedDedicatedValues(state);
+  // 지금 클래스 목록 — 3절 클래스 설명·학습 클래스 분포·AI·9절 분포 차이가 모두 이 목록으로 거른 값을 쓴다.
+  const classNames = evaluationClassNames(state.taskType, state.columnMapping, state.metadata as ClassMetadata | null);
   return {
     basicInfo: withRuntimeFromCard(
       pickedBasicInfo(state.basicInfo, picks),
@@ -226,10 +233,7 @@ export function buildReportInput(state: ReportInputSource): MapWorkflowToReportI
     // 클래스 레이블 설명·예시 파일 — 놓지 않았으면 비운다. 매핑 역할은 스토어 불변식이 이미 걸렀다.
     ...dedicated,
     // 설명은 지금 클래스의 것만 — 옛 파일·옛 정답 컬럼의 키가 AI 에 가지 않게(N1). 3절과 같은 목록이다.
-    classLabelDescriptions: currentClassEntries(
-      dedicated.classLabelDescriptions,
-      evaluationClassNames(state.taskType, state.columnMapping, state.metadata as ClassMetadata | null),
-    ),
+    classLabelDescriptions: currentClassEntries(dedicated.classLabelDescriptions, classNames),
     columnMapping: state.columnMapping,
     metadata: state.metadata,
     materialCheckAck: state.materialCheckAck ?? null,
@@ -237,7 +241,8 @@ export function buildReportInput(state: ReportInputSource): MapWorkflowToReportI
       cards: state.composerCards,
       metrics: pickedValues("metrics", state.composerMetrics, picks),
       perspective: pickedValues("perspective", state.composerPerspective, picks),
-      trainingData: pickedValues("trainingData", state.composerTrainingData, picks),
+      // 학습 클래스 분포도 지금 클래스의 칸만(B5③) — 옛 클래스 칸이 거짓 '분포 차이'를 내지 않게.
+      trainingData: currentClassVolume(pickedValues("trainingData", state.composerTrainingData, picks), classNames),
       testData: pickedValues("testData", state.composerTestData, picks),
       groundTruth: pickedValues("groundTruth", state.composerGroundTruth, picks),
       modelEnv,

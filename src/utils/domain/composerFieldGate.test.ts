@@ -30,6 +30,8 @@ function fill(cardId: Parameters<typeof getCard>[0], taskType: "binary" = "binar
   for (const field of getCardFields(cardId, taskType)) {
     if (field.kind !== "required") continue;
     if (field.input === "multi") values[field.id] = { choices: [field.choices![1]] };
+    // 클래스마다 칸이 있는 필드는 지금 클래스 목록이 있어야 채울 수 있다 — 다른 필드를 보는 테스트라 모름으로 둔다.
+    else if (field.entryKeysFrom === "classes") values[field.id] = { unknown: true };
     else if (field.input === "entries") {
       values[field.id] = field.entryKeys
         ? { entries: field.entryKeys.map((key) => ({ key, value: "1" })) }
@@ -532,7 +534,7 @@ describe("숫자 칸 묶음은 0 이상의 정수만 받는다", () => {
   const volume = 학습데이터.fields.find((f) => f.id === "trainingVolume")!;
   const classVolume = 학습데이터.fields.find((f) => f.id === "trainingClassVolume")!;
   const issueOf = (field: typeof volume, entries: Array<{ key: string; value: string }>) =>
-    getFieldIssue(학습데이터, field, { [field.id]: { entries } });
+    getFieldIssue(학습데이터, field, { [field.id]: { entries } }, undefined, ["cat"]);
 
   it("글자를 넣으면 걸린다", () => {
     const issue = issueOf(volume, [
@@ -586,5 +588,56 @@ describe("[B2] 조건부 칸은 조건을 정하는 칸을 받을 때만 따진�
 
   it("picks 가 없으면(흐름을 지나기 전) 종전처럼 모두 받는다", () => {
     expect(getFieldIssue(정답라벨, field("labelReviewerCount"), several)?.reason).toBe("missing");
+  });
+});
+
+/**
+ * B5② · N6 — ⑥ 클래스별 데이터 양은 지금 클래스를 모두 채우거나 "모름"이어야 한다(사용자 결정 "학습 클래스
+ * 분포 모두 입력(또는 모름)"). 옛 클래스 칸은 세지 않는다. 클래스 목록이 비면 "모름"만 통과한다 — 빈 목록의
+ * `every` 는 참이라 빈칸이 통과하던 함정(N6).
+ */
+describe("[B5②·N6] 클래스별 데이터 양은 지금 클래스를 모두", () => {
+  const field = 학습데이터.fields.find((f) => f.id === "trainingClassVolume")!;
+  const CLASSES = ["cat", "dog", "bird"];
+  const entries = (...keys: string[]) => ({ entries: keys.map((key) => ({ key, value: "10" })) });
+  const issue = (value: ComposerValueMap[string], classNames: string[]) =>
+    getFieldIssue(학습데이터, field, { trainingClassVolume: value }, undefined, classNames);
+
+  it("세 클래스 중 둘만 채우면 빈칸 문제다", () => {
+    expect(hasValue(field, entries("cat", "dog"), CLASSES)).toBe(false);
+    expect(issue(entries("cat", "dog"), CLASSES)?.reason).toBe("missing");
+  });
+
+  it("셋 다 채우거나 '모름'이면 통과한다", () => {
+    expect(issue(entries("cat", "dog", "bird"), CLASSES)).toBeNull();
+    expect(issue({ ...entries("cat"), unknown: true }, CLASSES)).toBeNull();
+  });
+
+  it("옛 클래스 칸만 있으면 빈칸 문제다 — 옛 칸의 틀린 값은 고칠 수 없어 따지지 않는다", () => {
+    expect(issue(entries("x", "y", "z"), CLASSES)?.reason).toBe("missing");
+    const stale = { entries: [...entries("cat", "dog", "bird").entries, { key: "x", value: "많음" }] };
+    expect(issue(stale, CLASSES)).toBeNull();
+  });
+
+  it("지금 클래스 칸의 틀린 값은 걸린다", () => {
+    const wrong = { entries: [{ key: "cat", value: "-1" }, { key: "dog", value: "1" }, { key: "bird", value: "1" }] };
+    expect(issue(wrong, CLASSES)?.reason).toBe("outOfRange");
+  });
+
+  it("[N6] 클래스 목록이 비면 채운 칸이 있어도 빈칸 문제이고 '모름'만 통과한다", () => {
+    expect(hasValue(field, entries("cat"), [])).toBe(false);
+    expect(issue(entries("cat"), [])?.reason).toBe("missing");
+    expect(issue({ unknown: true }, [])).toBeNull();
+    // 목록을 넘기지 않아도 같다(기본값 빈 목록).
+    expect(hasValue(field, entries("cat"))).toBe(false);
+  });
+
+  it("카드 전체 점검도 같은 목록을 쓴다", () => {
+    const values: ComposerValueMap = { ...fill("trainingData"), trainingClassVolume: entries("cat", "dog") };
+    expect(getCardIssues(학습데이터, "binary", values, true, undefined, CLASSES).map((i) => i.fieldId)).toEqual([
+      "trainingClassVolume",
+    ]);
+    values.trainingClassVolume = entries("cat", "dog", "bird");
+    expect(isCardComplete(학습데이터, "binary", values, true, undefined, CLASSES)).toBe(true);
   });
 });

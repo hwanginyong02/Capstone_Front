@@ -253,6 +253,10 @@ function distributionShift(
 ): Found | null {
   const training = trainingCounts(composer);
   if (!training || Object.keys(evaluation).length === 0) return null;
+  // 평가 데이터의 클래스가 학습 분포에 하나라도 없으면 견주지 않는다(B5②) — 일부 클래스만 적은 학습
+  // 분포로 비율을 내면 적은 클래스 몫이 부풀어 차이가 거짓으로 커진다. 평가에 0건인 클래스는 보지 않는다.
+  const uncovered = Object.entries(evaluation).some(([name, count]) => count > 0 && !(name in training));
+  if (uncovered) return null;
   const train = ratios(training);
   const test = ratios(evaluation);
   const classes = [...new Set([...Object.keys(train), ...Object.keys(test)])];

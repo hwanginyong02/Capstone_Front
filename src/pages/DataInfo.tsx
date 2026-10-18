@@ -58,7 +58,8 @@ export function DataInfo({ cardId }: { cardId: DataInfoCardId }) {
    */
   const classNames = evaluationClassNames(store.taskType, store.columnMapping, store.metadata);
 
-  const issues = getCardIssues(getCard(cardId), store.taskType, values, true, picks);
+  // 클래스별 데이터 양은 지금 클래스를 모두 채워야 한다(B5②) — 화면의 칸과 같은 목록으로 판정한다.
+  const issues = getCardIssues(getCard(cardId), store.taskType, values, true, picks, classNames);
 
   /** ⑥ 예시 파일 두 칸 — 평가 흐름에 넣은 칸만 받는다(선택 항목). picks 가 없으면 둘 다 받는다. */
   const showValidExamples = cardId === "trainingData" && isLeafReceived("trainingData", "trainingExamples", picks);

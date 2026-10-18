@@ -53,3 +53,35 @@ describe("예시 파일 칸", () => {
     expect(screen.queryByText("적합 예시")).not.toBeInTheDocument();
   });
 });
+
+/**
+ * B5② — 화면이 칸을 만드는 클래스 목록과 같은 목록으로 점검한다. 페이지가 목록을 넘기지 않으면 지금 클래스를
+ * 다 채워도 "비어 있는 칸"으로 막히고, 옛 규칙(한 칸만 채워도 통과)으로 되돌리면 일부만 채워도 넘어간다.
+ */
+describe("[B5②] 클래스별 데이터 양 — 지금 클래스를 모두", () => {
+  beforeEach(() => {
+    useWorkflowStore.setState({
+      materialPicks: { trainingData: ["trainingClassVolume"] },
+      columnMapping: [
+        { originalName: "label", sampleValues: ["0", "1"], inferredRole: "y_true", confirmedRole: "y_true", modified: false, warnings: [] },
+      ],
+      metadata: { column_unique_values: { label: ["0", "1"] } } as never,
+    });
+  });
+
+  it("한 클래스만 채우면 비어 있는 칸으로 남는다", () => {
+    useWorkflowStore.setState({ composerTrainingData: { trainingClassVolume: { entries: [{ key: "0", value: "80" }] } } });
+    renderPage();
+    expect(screen.getByText(/비어 있는 칸: 클래스별 데이터 양/)).toBeInTheDocument();
+  });
+
+  it("두 클래스를 다 채우면 남은 칸이 없다", () => {
+    useWorkflowStore.setState({
+      composerTrainingData: {
+        trainingClassVolume: { entries: [{ key: "0", value: "80" }, { key: "1", value: "20" }] },
+      },
+    });
+    renderPage();
+    expect(screen.queryByText(/비어 있는 칸/)).not.toBeInTheDocument();
+  });
+});

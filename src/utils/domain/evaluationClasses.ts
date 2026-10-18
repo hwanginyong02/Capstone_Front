@@ -16,6 +16,7 @@
  */
 import type { TaskType } from "../../data/evaluationData";
 import type { MappingRow } from "../../types/mapping.types";
+import type { ComposerValueMap } from "../../types/reportComposer.types";
 
 /** 이 함수가 읽는 메타데이터 키. 스토어의 실제 값은 이보다 넓다. */
 export interface ClassMetadata {
@@ -76,4 +77,25 @@ export function currentClassEntries(
 ): Record<string, string> {
   const current = new Set(classNames);
   return Object.fromEntries(Object.entries(values).filter(([key]) => current.has(key)));
+}
+
+/**
+ * ⑥ 클래스별 데이터 양에서 지금 클래스의 칸만 남긴다(B5③). 클래스 레이블 설명의 `currentClassEntries` 와
+ * 같은 규칙을 칸 목록(`entries`)에 적용한다.
+ *
+ * 다른 파일·다른 정답 컬럼에서 적어 둔 옛 클래스 칸이 남으면 3절 학습 클래스 분포·AI 에 옛 클래스가
+ * 찍히고, 9절 분포 차이는 평가 데이터에 없는 클래스를 학습 쪽 비율에 넣어 거짓 차이를 냈다. 성적서 입력을
+ * 만드는 곳(`buildReportInput`) 한 곳에서 거르면 셋이 같은 값을 쓴다. 값이 없으면 그대로 돌려준다.
+ */
+export function currentClassVolume(
+  values: ComposerValueMap,
+  classNames: readonly string[],
+): ComposerValueMap {
+  const value = values.trainingClassVolume;
+  if (!value?.entries) return values;
+  const current = new Set(classNames);
+  return {
+    ...values,
+    trainingClassVolume: { ...value, entries: value.entries.filter((entry) => current.has(entry.key)) },
+  };
 }
