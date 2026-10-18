@@ -184,11 +184,19 @@ describe("넣고 빼기 — 바로 반영", () => {
       "positiveClass",
       "latencyColumn",
     ]);
-    expect(within(tree()).getByRole("button", { name: "평가 데이터 필수·권장 항목 모두 넣기" })).toBeDisabled();
+    const fill = within(tree()).getByRole("button", { name: "평가 데이터 필수·권장 항목 모두 넣기" });
+    expect(fill).toHaveAttribute("aria-disabled", "true");
+    // 누른 뒤 꺼져도 같은 버튼에 포커스가 남는다 — 키보드 사용자가 자리를 잃지 않는다.
+    expect(fill).toHaveFocus();
+    await userEvent.click(fill);
+    expect(useWorkflowStore.getState().materialPicks.evalData).toHaveLength(5);
 
     await userEvent.click(within(tree()).getByRole("button", { name: "테스트 데이터 권장 항목 모두 넣기" }));
     expect(useWorkflowStore.getState().materialPicks.testData).toEqual(["testDataSource", "testSourceRelation"]);
-    expect(within(tree()).getByRole("button", { name: "테스트 데이터 권장 항목 모두 넣기" })).toBeDisabled();
+    expect(within(tree()).getByRole("button", { name: "테스트 데이터 권장 항목 모두 넣기" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 
   it("함께 들어감: ＋가 없고, 조건 항목을 넣으면 함께 들어가 점선 칩이 생기지만 필수 수는 그대로다", async () => {
@@ -249,6 +257,8 @@ describe("설명 팝업", () => {
     expect(dialog).toHaveTextContent("2025-01 ~ 2025-03");
     expect(within(dialog).getByText("의미")).toBeInTheDocument();
     expect(within(dialog).queryByText("표준 근거")).not.toBeInTheDocument();
+    // 파일이 아닌 항목에는 파일 예시 표가 없다.
+    expect(within(dialog).queryByRole("table")).not.toBeInTheDocument();
   });
 
   it("테스트 데이터 › 데이터 출처: TS 4213 8절 근거", async () => {
@@ -305,6 +315,29 @@ describe("설명 팝업", () => {
     expect(useWorkflowStore.getState().materialPicks.model).toEqual(["modelCategory"]);
     expect(status()).toHaveTextContent("필수 항목 1/15");
     expect(within(dialog).getByRole("button", { name: "빼기" })).toBeInTheDocument();
+  });
+
+  it("다른 항목 이름을 누르면 그 팝업으로 바뀐다 — 앞 팝업이 포커스를 되찾아 가 새 팝업을 닫지 않는다", async () => {
+    renderPage();
+    await openLeaf("의뢰자 정보", "회사 정보");
+
+    await userEvent.click(within(leaves("의뢰자 정보")).getByRole("button", { name: "성적서 용도" }));
+    // 닫힌 팝업의 포커스 되돌리기는 다음 틱에 돈다.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(screen.queryByRole("dialog", { name: "회사 정보" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "성적서 용도" })).toBeInTheDocument();
+  });
+
+  it("항목 이름 버튼은 구분을 설명으로 읽는다", () => {
+    renderPage();
+
+    expect(within(leaves("의뢰자 정보")).getByRole("button", { name: "회사 정보" })).toHaveAccessibleDescription(
+      "필수 항목",
+    );
+    expect(within(leaves("의뢰자 정보")).getByRole("button", { name: "홈페이지" })).toHaveAccessibleDescription(
+      "선택 항목",
+    );
   });
 
   it("열면 포커스가 팝업으로 가고, Esc 로 닫으면 이름 버튼으로 돌아온다", async () => {
@@ -391,8 +424,11 @@ describe("하단 바와 다음", () => {
     expect(status()).toHaveTextContent("필수 항목 0/15");
     expect(status()).toHaveTextContent("권장 0/15");
     expect(status()).toHaveTextContent("선택 0/13");
-    expect(status()).toHaveTextContent("필수 항목 15개를 더 넣어야 다음으로 갈 수 있어요.");
-    expect(status()).not.toHaveTextContent("품질");
+    expect(screen.getByText("필수 항목 15개를 더 넣어야 다음으로 갈 수 있어요.")).toBeInTheDocument();
+    // 알리는 영역은 수 한 줄뿐이다 — 안내 문장과 버튼은 그 밖에 있다.
+    expect(status()).not.toHaveTextContent("더 넣어야");
+    expect(within(status()).queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByText(/품질/)).not.toBeInTheDocument();
   });
 
   it("같은 수를 자리마다 따로 고정한다 — 트리 블록 줄의 필수 0/3", () => {
@@ -422,6 +458,33 @@ describe("하단 바와 다음", () => {
     expect(within(leaves("의뢰자 정보")).getByRole("button", { name: "회사 정보" }).closest("li")).not.toHaveAttribute(
       "data-missing",
     );
+  });
+
+  it("막힌 뒤 다 채우면 안내가 사라지고, 다시 빼도 다음을 누르기 전엔 안내·칠하기가 돌아오지 않는다", async () => {
+    renderPage();
+    await userEvent.click(next());
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    for (const block of ["의뢰자 정보", "평가 대상 모델", "평가 관점", "지표와 합격 기준"]) {
+      await userEvent.click(within(tree()).getByRole("button", { name: `${block} 필수 항목 모두 넣기` }));
+    }
+    await userEvent.click(within(tree()).getByRole("button", { name: "평가 데이터 필수·권장 항목 모두 넣기" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    await userEvent.click(within(leaves("의뢰자 정보")).getByRole("button", { name: "회사 정보 빼기" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(document.querySelectorAll("[data-missing]")).toHaveLength(0);
+  });
+
+  it("빠진 항목 보기에서 넣으면 포커스가 다음 [넣기]로 간다", async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: "빠진 항목 보기" }));
+    const first = screen.getByRole("button", { name: "의뢰자 정보 회사 정보 넣기" });
+
+    await userEvent.click(first);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(screen.getByRole("button", { name: "의뢰자 정보 성적서 용도 넣기" })).toHaveFocus();
   });
 
   it("필수 블록 다섯을 블록째 넣고 다음 → 첫 입력 화면", async () => {
@@ -482,14 +545,13 @@ describe("들어오고 나가기", () => {
 
   it("돌아갈 화면(returnStep)을 들고 왔으면 다 넣은 뒤 다음이 그 화면으로 간다", async () => {
     fillRequired();
-    useWorkflowStore.setState({
-      completedStepIds: ["clientInfo", "model", "upload", "mapping", "perspective", "metrics"],
-    });
+    // 처음 미완료 화면(의뢰자 정보)과 돌아갈 화면이 다르다 — returnStep 을 무시하면 의뢰자 정보로 간다.
     renderPage({ cardId: "groundTruth", returnStep: "groundTruth" });
     await addLeaf("정답 라벨", "라벨 작성 주체");
 
     await userEvent.click(next());
     expect(screen.getByTestId("step-ground-truth")).toBeInTheDocument();
+    expect(screen.queryByTestId("step-client-info")).not.toBeInTheDocument();
   });
 
   it("유형을 고르지 않고 들어오면 작업 유형 화면으로 보낸다", () => {

@@ -96,6 +96,8 @@ export function MaterialPicker() {
   const stages = flowTree(taskType, status);
   const blocks = new Map(stages.flatMap((stage) => stage.blocks).map((block) => [block.card.id, block]));
   const shownCards = shownBlocksInOrder(cardOrder, status);
+  // 다 채우면 "다음"을 누른 일은 지나간 일이다 — 다시 빼도 다음을 누르기 전엔 안내와 칠하기를 되살리지 않는다.
+  if (triedNext && status.missingRequired.length === 0) setTriedNext(false);
   const showMissing = triedNext && status.missingRequired.length > 0;
 
   const expand = (keys: string[]) => setExpanded((current) => new Set([...current, ...keys]));

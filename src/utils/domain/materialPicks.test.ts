@@ -283,3 +283,19 @@ describe("flowTree — 트리 모델(단계 > 블록 > 항목)", () => {
     expect(block(filled, "modelEnv").onFlow).toBe(true);
   });
 });
+
+describe("블록째 넣기 — 모든 블록에 넣을 것이 있다", () => {
+  it.each(TASK_TYPES)("%s: 블록마다 필수·권장 항목만, 하나 이상", (taskType) => {
+    const cards = catalogCards(taskType);
+    expect(cards.length).toBeGreaterThan(0);
+    for (const card of cards) {
+      const ids = blockFillIds(card.id, taskType);
+      expect(ids.length, card.id).toBeGreaterThan(0);
+      const kinds = flowLeaves(card.id, taskType)
+        .filter((leaf) => ids.includes(leaf.leafId))
+        .map((leaf) => leaf.kind);
+      expect(kinds.every((kind) => kind === "required" || kind === "recommended"), card.id).toBe(true);
+    }
+  });
+});
+

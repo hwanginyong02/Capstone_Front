@@ -38,7 +38,6 @@ const FILL_LABEL: Record<BlockFillKinds, string> = {
   "required+recommended": "필수·권장 항목 모두 넣기",
   required: "필수 항목 모두 넣기",
   recommended: "권장 항목 모두 넣기",
-  optional: "선택 항목 모두 넣기",
 };
 
 interface PickTreeProps {
@@ -299,6 +298,7 @@ function LeafRows({
           taskType={taskType}
           onToggle={() => actions.onToggleLeaf(leaf.cardId, leaf.leafId)}
           onDoubleClick={() => actions.onPlaceLeaf(leaf.cardId, leaf.leafId)}
+          describedBy={`${treeLeafId(leaf.cardId, leaf.leafId)}-kind`}
           buttonClassName={cn(
             "min-w-0 flex-1 truncate rounded-sm text-left text-sm text-foreground",
             leaf.kind === "required" && !leaf.placed && "font-medium",
@@ -306,7 +306,9 @@ function LeafRows({
         >
           {leaf.label}
         </LeafPopover>
-        <span className="sr-only">{KIND_LABEL[leaf.kind]} 항목</span>
+        <span id={`${treeLeafId(leaf.cardId, leaf.leafId)}-kind`} className="sr-only">
+          {KIND_LABEL[leaf.kind]} 항목
+        </span>
         {missing ? (
           <span className="shrink-0 rounded bg-destructive/10 px-1.5 py-px text-[11px] font-medium text-destructive">
             빠짐

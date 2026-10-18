@@ -8,24 +8,28 @@ import { cn } from "../../utils/styling/styles";
 /**
  * 툴팁. `title` 속성 대신 쓴다 — 키보드 포커스에도 뜨고 화면 낭독기가 설명으로 읽는다.
  *
- * - `Tooltip` 은 안에서 Provider 를 감싸 단독으로 쓸 수 있다. 여러 개를 한 화면에 둘 때는 바깥에
- *   `TooltipProvider` 를 하나 두어 지연 시간을 나눠 쓴다.
+ * - 바깥에 `TooltipProvider` 가 있으면 그것을 나눠 쓰고(지연 시간·이어 보기를 함께), 없으면 `Tooltip` 이
+ *   스스로 Provider 를 감싸 단독으로 쓸 수 있다.
  * - **화살표를 그리지 않는다.** Radix 의 Arrow 는 `useSize` 가 가드 없이 `new ResizeObserver` 를
  *   불러 jsdom(테스트)에서 깨진다.
  */
+/** 바깥에 Provider 가 있는지. Radix 는 이것을 알려 주지 않아 따로 둔다. */
+const HasProvider = React.createContext(false);
+
 function TooltipProvider({
   delayDuration = 300,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
-  return <TooltipPrimitive.Provider data-slot="tooltip-provider" delayDuration={delayDuration} {...props} />;
+  return (
+    <HasProvider.Provider value={true}>
+      <TooltipPrimitive.Provider data-slot="tooltip-provider" delayDuration={delayDuration} {...props} />
+    </HasProvider.Provider>
+  );
 }
 
 function Tooltip({ ...props }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
-  return (
-    <TooltipProvider>
-      <TooltipPrimitive.Root data-slot="tooltip" {...props} />
-    </TooltipProvider>
-  );
+  const root = <TooltipPrimitive.Root data-slot="tooltip" {...props} />;
+  return React.useContext(HasProvider) ? root : <TooltipProvider>{root}</TooltipProvider>;
 }
 
 function TooltipTrigger({ ...props }: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {

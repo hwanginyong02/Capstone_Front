@@ -8,6 +8,7 @@
  * 품질 배지(최소·표준·상세)는 없다 — 추천 세트가 없어졌고, 권장 p/t 와 빠진 권장 안내가 같은 정보를
  * 준다.
  */
+import { useRef } from "react";
 import { CircleCheck, TriangleAlert } from "lucide-react";
 import { getCard } from "../../data/reportComposer";
 import type { ComposerCardId, FlowLeaf } from "../../types/reportComposer.types";
@@ -28,8 +29,14 @@ export function PickStatusBar({ counts, missingRequired, unplacedRecommended, co
   const anyMissing = missingRequired.length > 0 || unplacedRecommended.length > 0;
 
   return (
-    <div role="status" aria-label="항목 현황" aria-atomic="true" className="flex min-w-0 flex-col gap-0.5">
-      <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-foreground">
+    <div className="flex min-w-0 flex-col gap-0.5">
+      {/* 알리는 영역은 수 한 줄뿐이다 — 안내 문장과 버튼까지 넣으면 넣고 뺄 때마다 길게 다시 읽는다. */}
+      <p
+        role="status"
+        aria-label="항목 현황"
+        aria-atomic="true"
+        className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-foreground"
+      >
         <span className="flex items-center gap-1.5">
           <KindMarker kind="required" />
           필수 항목 {counts.required.placed}/{counts.required.total}
@@ -79,6 +86,20 @@ function MissingPopover({
   recommended: FlowLeaf[];
   onPlaceLeaf: (cardId: ComposerCardId, leafId: string) => void;
 }) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  /** 넣으면 그 줄이 사라진다 — 포커스가 body 로 떨어지지 않게 다음 [넣기], 없으면 목록으로 옮긴다. */
+  const place = (cardId: ComposerCardId, leafId: string, button: HTMLElement) => {
+    const buttons = [...(contentRef.current?.querySelectorAll<HTMLElement>("button[data-place]") ?? [])];
+    const at = buttons.indexOf(button);
+    const nextKey = (buttons[at + 1] ?? buttons[at - 1])?.dataset.place;
+    onPlaceLeaf(cardId, leafId);
+    requestAnimationFrame(() => {
+      const target = nextKey
+        ? contentRef.current?.querySelector<HTMLElement>(`button[data-place="${nextKey}"]`)
+        : contentRef.current;
+      target?.focus();
+    });
+  };
   const groups = [
     { title: "필수 항목", leaves: required },
     { title: "권장 항목", leaves: recommended },
@@ -87,7 +108,7 @@ function MissingPopover({
   return (
     <Popover>
       <PopoverTrigger className="text-sm underline underline-offset-4 hover:text-foreground">빠진 항목 보기</PopoverTrigger>
-      <PopoverContent side="top" align="start" className="w-80 p-0">
+      <PopoverContent ref={contentRef} tabIndex={-1} side="top" align="start" className="w-80 p-0">
         <div aria-label="빠진 항목" role="group" className="flex max-h-80 flex-col overflow-y-auto py-1">
           {groups.map((group) => (
             <section key={group.title} aria-label={group.title} className="border-t border-border first:border-t-0">
@@ -103,7 +124,8 @@ function MissingPopover({
                           <button
                             type="button"
                             aria-label={`${getCard(cardId).name} ${leaf.label} 넣기`}
-                            onClick={() => onPlaceLeaf(cardId, leaf.leafId)}
+                            data-place={`${cardId}:${leaf.leafId}`}
+                            onClick={(event) => place(cardId, leaf.leafId, event.currentTarget)}
                             className="text-xs text-primary underline underline-offset-4"
                           >
                             넣기

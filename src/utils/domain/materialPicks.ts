@@ -17,7 +17,6 @@ import {
   getCard,
   getCardFields,
   getVisibleCards,
-  isFieldPicked,
   leafKind,
   partPickId,
   placeableIds,
@@ -106,15 +105,15 @@ export function togglePlaced(
 }
 
 /**
- * 블록째 넣을 때 들어갈 항목 — 필수와 권장. 둘 다 없는 블록이면 선택 전부.
+ * 블록째 넣을 때 들어갈 항목 — 필수와 권장. 모든 블록에 필수나 권장이 있다(테스트가 지킨다).
  *
  * 블록을 넣는 것은 "이 블록을 성적서에 싣겠다"는 뜻이라 표준 보고 항목까지 빠짐없이 받는 쪽을 기본으로
  * 둔다. 빼고 싶은 항목은 하나씩 뺀다.
  */
 export function blockFillIds(cardId: ComposerCardId, taskType: TaskType | ""): string[] {
-  const leaves = flowLeaves(cardId, taskType).filter((leaf) => leaf.kind !== "conditional");
-  const main = leaves.filter((leaf) => leaf.kind === "required" || leaf.kind === "recommended");
-  return (main.length > 0 ? main : leaves).map((leaf) => leaf.leafId);
+  return flowLeaves(cardId, taskType)
+    .filter((leaf) => leaf.kind === "required" || leaf.kind === "recommended")
+    .map((leaf) => leaf.leafId);
 }
 
 /** 흐름도에 블록이 보이는가 — 이 유형의 (조건부가 아닌) 항목이 하나라도 놓였을 때(`FlowStatus.shownCardIds`). */
@@ -198,8 +197,8 @@ export interface TreeLeaf extends FlowLeaf {
   companions: Array<FlowLeaf & { placed: boolean }>;
 }
 
-/** 블록째 넣기(⊕)가 넣을 구분. 필수·권장이 있으면 그것, 없으면 선택. */
-export type BlockFillKinds = "required+recommended" | "required" | "recommended" | "optional";
+/** 블록째 넣기(⊕)가 넣을 구분. */
+export type BlockFillKinds = "required+recommended" | "required" | "recommended";
 
 /** 트리의 블록 한 줄. */
 export interface TreeBlock {
@@ -263,9 +262,7 @@ export function flowTree(taskType: TaskType | "", status: FlowStatus): TreeStage
             ? "required+recommended"
             : fillKindSet.has("required")
               ? "required"
-              : fillKindSet.has("recommended")
-                ? "recommended"
-                : "optional";
+              : "recommended";
         return {
           card,
           leaves,

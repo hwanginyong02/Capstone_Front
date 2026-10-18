@@ -7,7 +7,7 @@
  *   "열고 넣기"가 되어 깜빡이지 않는다.
  * - 같은 이름을 다시 눌러도 닫혔다 열리지 않게, 이름 버튼을 누르거나 그리로 포커스가 가는 것은 바깥
  *   동작으로 치지 않는다.
- * - 열리면 내용에 포커스가 가고(제목과 내용을 먼저 읽음), 닫히면 이름 버튼으로 돌아온다(N4).
+ * - 열리면 내용에 포커스가 가고(제목과 내용을 먼저 읽음), Esc·✕ 로 닫히면 이름 버튼으로 돌아온다(N4).
  *   PopoverAnchor 는 Trigger 가 아니라 Radix 가 돌려줄 곳을 모르므로 직접 돌린다.
  * - 표준 근거가 없는 항목은 그 줄을 그리지 않는다(`leafDetail`).
  */
@@ -35,6 +35,8 @@ interface LeafPopoverProps {
   /** 이름을 두 번 눌렀을 때 — 팝업은 연 채로 그 항목을 넣는다. */
   onDoubleClick?: () => void;
   side?: "right" | "bottom";
+  /** 이름 버튼의 설명(구분 글자 "필수 항목" 등)을 가진 요소 id. */
+  describedBy?: string;
   /** 이름 버튼의 클래스와 내용. */
   buttonClassName?: string;
   children: ReactNode;
@@ -50,11 +52,13 @@ export function LeafPopover({
   onToggle,
   onDoubleClick,
   side = "right",
+  describedBy,
   buttonClassName,
   children,
 }: LeafPopoverProps) {
   const anchorRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const interactedOutside = useRef(false);
   const titleId = useId();
 
   return (
@@ -65,6 +69,7 @@ export function LeafPopover({
           type="button"
           aria-haspopup="dialog"
           aria-expanded={open}
+          aria-describedby={describedBy}
           onClick={() => onOpenChange(true)}
           onDoubleClick={onDoubleClick}
           className={cn(FOCUS_RING, buttonClassName)}
@@ -82,14 +87,18 @@ export function LeafPopover({
           event.preventDefault();
           contentRef.current?.focus();
         }}
+        // Esc·✕ 로 닫을 때만 이름 버튼으로 돌아온다. 바깥을 눌러 닫혔으면 포커스는 누른 곳에 둔다 —
+        // 다른 항목 이름을 눌러 그 팝업이 열렸는데 이 팝업이 포커스를 되찾아 가면 새 팝업이 닫힌다.
         onCloseAutoFocus={(event) => {
           event.preventDefault();
-          anchorRef.current?.focus();
+          if (!interactedOutside.current) anchorRef.current?.focus();
+          interactedOutside.current = false;
         }}
         // 바깥 클릭·포커스 이동이 자기 이름 버튼이면 닫지 않는다 — 두 번 누르기에서 둘째 클릭이 포커스를
         // 이름 버튼으로 옮겨도 열린 채 둔다.
         onInteractOutside={(event) => {
           if (anchorRef.current?.contains(event.target as Node)) event.preventDefault();
+          else interactedOutside.current = true;
         }}
         className={cn(
           "flex max-h-[min(32rem,80vh)] flex-col gap-3 overflow-y-auto p-4",
