@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   DEFAULT_BETA,
+  getTargetValueRule,
   isBetaValid,
   metricNeedsTargetValue,
   newMetricDetail,
@@ -138,5 +139,20 @@ describe("β 기본값 한 곳 (B3)", () => {
     expect(isBetaValid("")).toBe(false);
     expect(isBetaValid("0")).toBe(false);
     expect(isBetaValid("2")).toBe(true);
+  });
+});
+
+describe("목표값 범위 — M14·M18 은 0~1 (B9)", () => {
+  it.each(["M14", "M18"])("%s 는 1.2 면 오류, 0.3 이면 통과", (id) => {
+    expect(getTargetValueRule(id).validate(1.2)).toBe("이 지표의 목표값은 0과 1 사이여야 합니다.");
+    expect(getTargetValueRule(id).validate(-0.1)).not.toBeNull();
+    expect(getTargetValueRule(id).validate(0.3)).toBeNull();
+    expect(getTargetValueRule(id).summary).toBe("0과 1 사이의 숫자를 넣으세요.");
+  });
+
+  it("KL Divergence·Log Loss 는 그대로 0 이상(상한 없음)", () => {
+    expect(getTargetValueRule("M6").validate(2)).toBeNull();
+    expect(getTargetValueRule("M19").validate(2)).toBeNull();
+    expect(getTargetValueRule("M6").validate(-0.1)).not.toBeNull();
   });
 });

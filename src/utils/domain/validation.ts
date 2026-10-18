@@ -37,13 +37,17 @@ export function getTargetValueRule(metricId: string): { summary: string; validat
     "M11",
     "M12",
     "M13",
+    // M14(클래스 분포 차이)는 총변동거리 0.5·Σ|P−Q|, M18(레이블 분포 차이)은 코사인 거리 1−cos 이라
+    // 둘 다 0~1 이다(백엔드 multiclass.py·multilabel.py). 종전에는 0 이상만 봐 1 을 넘는 목표를 받았다(B9).
+    "M14",
     "M15",
     "M16",
     "M17",
+    "M18",
     "M22",
   ]);
 
-  const nonNegativeIds = new Set(["M6", "M14", "M18", "M19"]);
+  const nonNegativeIds = new Set(["M6", "M19"]);
 
   if (zeroToOneIds.has(metricId)) {
     return {
