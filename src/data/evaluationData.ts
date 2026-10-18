@@ -52,6 +52,29 @@ export const TASK_TYPE_LABELS_KO: Record<TaskType, string> = {
 export const TASK_TYPE_LABELS: Record<TaskType, string> = TASK_TYPE_LABELS_KO;
 
 /**
+ * W9 이전에 성적서에 싣던 영문 유형 이름 — 옛 발급본을 알아보는 데만 쓴다(2026-10-18 사용자 결정
+ * "성적서 유형 이름 한국어, 발급본은 그대로"). 새 성적서에 쓰지 않는다.
+ */
+export const LEGACY_TASK_TYPE_LABELS: Record<TaskType, string> = {
+  binary: "Binary",
+  multiclass: "Multi-class",
+  multilabel: "Multi-label",
+};
+
+/**
+ * 저장된 유형 이름(`meta.taskTypeLabel`)이 W9 이전의 영문 이름인가 — 옛 발급본이면 그릴 때 정하는
+ * 문구(5.1 공통 지표 안내·6.0 검증 묶음 이름)도 그때 글자로 그린다. 판정은 이 함수 하나다.
+ */
+export function isLegacyTaskTypeLabel(label: string | undefined): boolean {
+  return label !== undefined && Object.values(LEGACY_TASK_TYPE_LABELS).includes(label);
+}
+
+/** 저장된 유형 이름에 맞는 유형 이름 표 — 옛 발급본이면 영문 표, 아니면 한국어 표. */
+export function taskTypeLabelsFor(savedLabel: string | undefined): Record<TaskType, string> {
+  return isLegacyTaskTypeLabel(savedLabel) ? LEGACY_TASK_TYPE_LABELS : TASK_TYPE_LABELS_KO;
+}
+
+/**
  * 유형을 아직 고르지 않았을 때(빈 값) 쓸 유형 — 대체값은 여기 한 곳이다(W9). 종전에는 15곳이 따로
  * 정해 같은 파일 안에서도 "multiclass"·"binary" 로 갈렸다. 정상 흐름에서는 유형 선택이 첫 화면이라
  * 빈 값이 오지 않는다.

@@ -55,6 +55,7 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         totalSamples={data.datasetInfo.sampleCount}
         validationSummary={data.validationSummary}
         materialCheck={data.materialCheck}
+        taskTypeLabel={data.meta.taskTypeLabel}
       />
       <KpiResultSection
         kpiResults={data.kpiResults}

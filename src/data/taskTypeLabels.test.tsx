@@ -11,7 +11,14 @@ import { join, relative, resolve } from "node:path";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { resolveTaskType, TASK_TYPE_LABELS, TASK_TYPE_LABELS_KO } from "./evaluationData";
+import {
+  isLegacyTaskTypeLabel,
+  LEGACY_TASK_TYPE_LABELS,
+  resolveTaskType,
+  TASK_TYPE_LABELS,
+  TASK_TYPE_LABELS_KO,
+  taskTypeLabelsFor,
+} from "./evaluationData";
 import { mapWorkflowToFinalReport } from "../lib/report/mapWorkflowToFinalReport";
 import { DEFAULT_BASIC_INFO } from "../types/workflow.types";
 import { ReportCoverSection } from "../components/report/sections/ReportCoverSection";
@@ -88,9 +95,39 @@ describe("성적서의 유형 이름 — 자리마다", () => {
     expect(screen.queryByText(/Multi-label|Multi-class|Binary/)).not.toBeInTheDocument();
   });
 
+  it("옛 발급본(영문 저장값)의 5.1 공통 지표 안내는 W9 이전 글자 그대로 (S10 마무리)", () => {
+    for (const label of ["Binary", "Multi-class", "Multi-label"]) {
+      const { unmount } = render(
+        <MetricListSection metricList={report.metricList} metricFormulas={report.metricFormulas} taskTypeLabel={label} />,
+      );
+      expect(screen.getByText("(Binary / Multi-class / Multi-label 모두 적용)")).toBeInTheDocument();
+      expect(screen.getByText(`${label} 전용 지표`)).toBeInTheDocument();
+      expect(screen.queryByText(/이진 분류|다중 클래스 분류|다중 레이블 분류/)).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it("발급본은 저장된 이름 그대로 그린다", () => {
     render(<ReportCoverSection meta={{ ...report.meta, taskTypeLabel: "Multi-label" }} performer={report.performer} />);
     expect(screen.getByText("Multi-label")).toBeInTheDocument();
+  });
+});
+
+describe("옛 발급본 유형 이름 판정 (isLegacyTaskTypeLabel, S10 마무리)", () => {
+  it("W9 이전 영문 표의 세 값만 옛 이름이다", () => {
+    expect(LEGACY_TASK_TYPE_LABELS).toEqual({ binary: "Binary", multiclass: "Multi-class", multilabel: "Multi-label" });
+    const legacy = Object.values(LEGACY_TASK_TYPE_LABELS);
+    expect(legacy.length).toBe(3);
+    for (const label of legacy) expect(isLegacyTaskTypeLabel(label)).toBe(true);
+    for (const label of [...Object.values(TASK_TYPE_LABELS_KO), "binary", "Multiclass", "", undefined]) {
+      expect(isLegacyTaskTypeLabel(label)).toBe(false);
+    }
+  });
+
+  it("표 고르기 — 영문 저장값이면 영문 표, 아니면 한국어 표", () => {
+    expect(taskTypeLabelsFor("Multi-label")).toBe(LEGACY_TASK_TYPE_LABELS);
+    expect(taskTypeLabelsFor("다중 레이블 분류")).toBe(TASK_TYPE_LABELS_KO);
+    expect(taskTypeLabelsFor(undefined)).toBe(TASK_TYPE_LABELS_KO);
   });
 });
 

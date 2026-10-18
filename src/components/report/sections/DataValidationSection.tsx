@@ -8,7 +8,7 @@ import type {
 import type { ValidationGroup } from "../../../types/validation.types";
 import { SectionTitle } from "../shared/SectionTitle";
 import { cn } from "../../../utils/styling/styles";
-import { TASK_TYPE_LABELS } from "../../../data/evaluationData";
+import { isLegacyTaskTypeLabel, TASK_TYPE_LABELS_KO } from "../../../data/evaluationData";
 
 const STATUS_CONFIG = {
   pass:    { icon: CheckCircle2,  color: "text-emerald-500", label: "통과" },
@@ -16,12 +16,26 @@ const STATUS_CONFIG = {
   fail:    { icon: XCircle,       color: "text-red-500",     label: "오류" },
 } as const;
 
-const GROUP_META: Record<ValidationGroup, { label: string; description: string }> = {
+type GroupMeta = Record<ValidationGroup, { label: string; description: string }>;
+
+const GROUP_META: GroupMeta = {
   common:     { label: "공통 검증 항목",        description: "모든 분류 유형에 공통 적용" },
   // 유형 이름은 화면·성적서와 같은 한국어 표(W9). 종전에는 영문(Multiclass 등)이었다.
-  multiclass: { label: `${TASK_TYPE_LABELS.multiclass} 검증 항목`, description: `분류 유형이 ${TASK_TYPE_LABELS.multiclass}인 경우 적용` },
-  binary:     { label: `${TASK_TYPE_LABELS.binary} 검증 항목`,     description: `분류 유형이 ${TASK_TYPE_LABELS.binary}인 경우 적용` },
-  multilabel: { label: `${TASK_TYPE_LABELS.multilabel} 검증 항목`, description: `분류 유형이 ${TASK_TYPE_LABELS.multilabel}인 경우 적용` },
+  multiclass: { label: `${TASK_TYPE_LABELS_KO.multiclass} 검증 항목`, description: `분류 유형이 ${TASK_TYPE_LABELS_KO.multiclass}인 경우 적용` },
+  binary:     { label: `${TASK_TYPE_LABELS_KO.binary} 검증 항목`,     description: `분류 유형이 ${TASK_TYPE_LABELS_KO.binary}인 경우 적용` },
+  multilabel: { label: `${TASK_TYPE_LABELS_KO.multilabel} 검증 항목`, description: `분류 유형이 ${TASK_TYPE_LABELS_KO.multilabel}인 경우 적용` },
+  latency:    { label: "응답시간 검증 항목",    description: "응답시간(latency) 컬럼이 있는 경우 적용" },
+};
+
+/**
+ * W9 이전의 묶음 이름·설명(6392c78 시점 글자 그대로). 옛 발급본(저장된 유형 이름이 영문)은 이 표로
+ * 그린다 — 사용자 결정 "발급본은 그대로". 묶음 이름은 저장하지 않고 그릴 때 정하기 때문이다.
+ */
+const LEGACY_GROUP_META: GroupMeta = {
+  common:     { label: "공통 검증 항목",        description: "모든 태스크 유형에 공통 적용" },
+  multiclass: { label: "다중 분류 검증 항목",   description: "태스크 유형이 Multiclass인 경우 적용" },
+  binary:     { label: "이진 분류 검증 항목",   description: "태스크 유형이 Binary인 경우 적용" },
+  multilabel: { label: "다중 레이블 검증 항목", description: "태스크 유형이 Multilabel인 경우 적용" },
   latency:    { label: "응답시간 검증 항목",    description: "응답시간(latency) 컬럼이 있는 경우 적용" },
 };
 
@@ -34,10 +48,12 @@ interface DataValidationSectionProps {
   validationSummary?: ValidationSummary;
   /** 재료 선택 점검 결과. 있으면 6.0 에 세 줄(보고 항목·목적별 점검·생성 전 안내 확인)을 더한다. */
   materialCheck?: MaterialCheckResult;
+  /** 저장된 유형 이름(`meta.taskTypeLabel`). 옛 영문 이름이면 묶음 이름을 그때 글자로 그린다(W9 발급본). */
+  taskTypeLabel: string;
 }
 
-function GroupBlock({ group, items }: { group: ValidationGroup; items: ValidationResult[] }) {
-  const meta = GROUP_META[group];
+function GroupBlock({ group, items, legacy }: { group: ValidationGroup; items: ValidationResult[]; legacy: boolean }) {
+  const meta = (legacy ? LEGACY_GROUP_META : GROUP_META)[group];
   const failCount    = items.filter((i) => i.status === "fail").length;
   const warningCount = items.filter((i) => i.status === "warning").length;
   const passCount    = items.filter((i) => i.status === "pass").length;
@@ -95,7 +111,9 @@ export function DataValidationSection({
   totalSamples,
   validationSummary,
   materialCheck,
+  taskTypeLabel,
 }: DataValidationSectionProps) {
+  const legacyNames = isLegacyTaskTypeLabel(taskTypeLabel);
   const failCount    = dataValidation.filter((r) => r.status === "fail").length;
   const warningCount = dataValidation.filter((r) => r.status === "warning").length;
 
@@ -184,7 +202,7 @@ export function DataValidationSection({
         {hasValidation ? (
           <div className="space-y-3">
             {groupedSections.map(({ group, items }) => (
-              <GroupBlock key={group} group={group} items={items} />
+              <GroupBlock key={group} group={group} items={items} legacy={legacyNames} />
             ))}
           </div>
         ) : (
