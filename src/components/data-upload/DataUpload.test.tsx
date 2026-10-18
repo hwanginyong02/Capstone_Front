@@ -107,3 +107,18 @@ describe("화면 용어: '응답시간' 대신 '지연시간'(N2)", () => {
     }
   });
 });
+
+describe("업로드 도움말의 유형 이름 — 유형 이름표와 같은 '다중 레이블 분류'(S9)", () => {
+  it("도움말 문장에 '멀티레이블'이 없다", () => {
+    expect(read("components/data-upload/DataUpload.tsx")).not.toMatch(/멀티레이블|멀티 레이블/);
+  });
+
+  it("다중 레이블 화면의 정답·예측·확률 안내가 TASK_TYPE_LABELS_KO 이름을 쓴다", async () => {
+    const { render, screen } = await import("@testing-library/react");
+    const { DataUpload } = await import("./DataUpload");
+    render(<DataUpload taskType="multilabel" uploadedFile={null} onUploadedFileChange={() => {}} />);
+    expect(screen.getByText(/^샘플마다 정답이 들어 있는 컬럼입니다\. 다중 레이블 분류이면 정답 레이블 묶음을/)).toBeInTheDocument();
+    expect(screen.getByText(/^샘플마다 모델의 예측이 들어 있는 컬럼입니다\. 다중 레이블 분류이면 예측 레이블 묶음을/)).toBeInTheDocument();
+    expect(screen.getByText(/^다중 레이블 분류에서는 레이블마다 확률 컬럼을 하나씩 둡니다/)).toBeInTheDocument();
+  });
+});

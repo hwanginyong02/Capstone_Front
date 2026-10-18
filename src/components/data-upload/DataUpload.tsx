@@ -244,10 +244,10 @@ function getColumnHelpText(code: string, fallback: string) {
     return "평가 샘플마다 고유하게 가리키는 컬럼입니다. 모든 행에 겹치지 않는 식별자가 있어야 합니다.";
   }
   if (code === "y_true") {
-    return "샘플마다 정답이 들어 있는 컬럼입니다. 멀티레이블이면 정답 레이블 묶음을 sports|news 처럼 한 가지 형식으로 적습니다.";
+    return `샘플마다 정답이 들어 있는 컬럼입니다. ${TASK_TYPE_LABELS_KO.multilabel}이면 정답 레이블 묶음을 sports|news 처럼 한 가지 형식으로 적습니다.`;
   }
   if (code === "y_pred") {
-    return "샘플마다 모델의 예측이 들어 있는 컬럼입니다. 멀티레이블이면 예측 레이블 묶음을 y_true 와 같은 형식으로 적습니다.";
+    return `샘플마다 모델의 예측이 들어 있는 컬럼입니다. ${TASK_TYPE_LABELS_KO.multilabel}이면 예측 레이블 묶음을 y_true 와 같은 형식으로 적습니다.`;
   }
   if (code === "score") {
     return "확신 점수를 담는 컬럼입니다. 이진 분류에서는 보통 양성 클래스의 점수입니다.";
