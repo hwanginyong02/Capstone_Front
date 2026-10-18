@@ -44,6 +44,7 @@ import {
   pickKind,
   pickableIds,
   placeableIds,
+  unknownPerEntry,
 } from "../../data/reportComposer";
 import { orderPlaced } from "../domain/materialPicks";
 import { restrictMappingRoles } from "../domain/mappingPicks";
@@ -482,6 +483,52 @@ function fixPerspectiveOrderV15(next: any): any {
   return { ...next, cardOrder: moveCard(order, "perspective", "metrics", "before") };
 }
 
+/** 성적서 구성 카드의 값이 담긴 저장 키. ① ② ③ ④ 는 카드 값 모음이 아니거나 모름 칸이 없다. */
+const COMPOSER_VALUE_KEYS = {
+  perspective: "composerPerspective",
+  metrics: "composerMetrics",
+  trainingData: "composerTrainingData",
+  testData: "composerTestData",
+  groundTruth: "composerGroundTruth",
+  modelEnv: "composerModelEnv",
+} as const;
+
+/**
+ * v15 의 칸별 "모름" 옮기기(W3) — 모름을 칸마다 고르게 됐다.
+ *
+ * - 칸이 정해진 글·숫자 묶음(⑥ 데이터 양, ⑨ 실행 환경 — `unknownPerEntry`)의 옛 필드 모름은 **모든 칸의
+ *   모름**(`unknownKeys`)으로 옮긴다. 뜻이 같다(성적서에는 칸마다 "제공되지 않음").
+ * - ⑨ GPU 사용 여부는 필드 모름 체크를 없앴다(칸마다 "모름" 선택지가 있다). 옛 필드 모름은 두 칸 모두
+ *   "Unknown" 으로 옮긴다. 옮기지 않으면 값에 남은 `unknown` 이 체크박스 없이 입력을 잠가 갇힌다(R2).
+ *
+ * 옮긴 값에는 `unknown` 이 남지 않아 여러 번 돌려도 같다. 바뀐 것이 없으면 같은 객체를 돌려준다.
+ */
+function migrateUnknownPerEntryV15(next: any): any {
+  let result = next;
+  for (const card of COMPOSER_CARDS) {
+    const storeKey = COMPOSER_VALUE_KEYS[card.id as keyof typeof COMPOSER_VALUE_KEYS];
+    const group: ComposerValueMap | undefined = storeKey ? next[storeKey] : undefined;
+    if (!group || typeof group !== "object") continue;
+    let moved: ComposerValueMap | null = null;
+    for (const field of card.fields) {
+      const value = group[field.id];
+      if (!value?.unknown || !field.entryKeys) continue;
+      const { unknown: _unknown, ...rest } = value;
+      if (unknownPerEntry(field)) {
+        moved = { ...(moved ?? group), [field.id]: { ...rest, unknownKeys: [...field.entryKeys] } };
+      } else if (field.unknownChoice) {
+        const answer = field.unknownChoice;
+        moved = {
+          ...(moved ?? group),
+          [field.id]: { ...rest, entries: field.entryKeys.map((key) => ({ key, value: answer })) },
+        };
+      }
+    }
+    if (moved) result = { ...result, [storeKey]: moved };
+  }
+  return result;
+}
+
 /**
  * 저장된 워크플로우 상태를 현재 규칙으로 옮긴다(순수 함수 — 테스트가 직접 호출한다).
  *
@@ -549,7 +596,8 @@ function fixPerspectiveOrderV15(next: any): any {
  * (`migrateCardOrderV14`).
  *
  * **v14 → v15**: 재료 고르기가 빈 흐름에서 항목을 넣는 평가 흐름 만들기가 됐다. 종전에 받던 필수·
- * 지연시간·이미 쓴 항목을 넣은 것으로 옮긴다(`migratePlacedLeavesV15`).
+ * 지연시간·이미 쓴 항목을 넣은 것으로 옮긴다(`migratePlacedLeavesV15`). 하위 단계 둘: 평가 관점 → 지표
+ * 순서 바로잡기(`fixPerspectiveOrderV15`, D4), 칸별 "모름" 옮기기(`migrateUnknownPerEntryV15`, W3).
  */
 export function migrateWorkflowState(persisted: any, version: number): any {
   if (!persisted || version >= WORKFLOW_PERSIST_VERSION) return persisted;
@@ -673,7 +721,7 @@ export function migrateWorkflowState(persisted: any, version: number): any {
 
   // v14 → v15 — 평가 흐름 만들기. 종전에 받던 항목을 넣은 것으로 옮긴다.
   if (version < 15) {
-    next = fixPerspectiveOrderV15(migratePlacedLeavesV15(next));
+    next = migrateUnknownPerEntryV15(fixPerspectiveOrderV15(migratePlacedLeavesV15(next)));
   }
 
   return next;

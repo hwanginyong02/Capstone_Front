@@ -564,3 +564,54 @@ describe("[B6②] 하이퍼파라미터 줄 — 이름과 값 둘 다", () => {
     expect(screen.getByRole("textbox", { name: "하이퍼파라미터 값 1" })).not.toHaveAttribute("aria-invalid");
   });
 });
+
+/** W3 — 칸이 정해진 묶음은 칸마다 모름. GPU 사용 여부는 칸마다 고르는 "모름"만 있다. */
+describe("[W3] 칸별 모름", () => {
+  const picks = ["runtimeEnv", "gpuUsage"];
+
+  it("실행 환경은 필드 모름 체크 대신 다섯 칸마다 모름 체크가 있다", () => {
+    renderForm("modelEnv", { picks });
+    expect(screen.queryByRole("checkbox", { name: "실행 환경 모름" })).not.toBeInTheDocument();
+    for (const label of ["운영체제", "CPU", "GPU", "메모리", "소프트웨어"]) {
+      expect(screen.getByRole("checkbox", { name: `실행 환경 ${label} 모름` })).toBeInTheDocument();
+    }
+  });
+
+  it("칸 모름을 고르면 그 칸만 unknownKeys 로 보고한다", async () => {
+    const { onChange } = renderForm("modelEnv", {
+      picks,
+      values: { runtimeEnv: { entries: [{ key: "Operating system", value: "Ubuntu" }] } },
+    });
+    await userEvent.click(screen.getByRole("checkbox", { name: "실행 환경 CPU 모름" }));
+    expect(onChange).toHaveBeenCalledWith("runtimeEnv", {
+      entries: [{ key: "Operating system", value: "Ubuntu" }],
+      unknownKeys: ["CPU"],
+      unknown: false,
+    });
+  });
+
+  it("모름인 칸만 잠기고 다른 칸은 그대로 쓸 수 있다", async () => {
+    const { onChange } = renderForm("modelEnv", { picks, values: { runtimeEnv: { unknownKeys: ["CPU"] } } });
+    const inputs = document.querySelectorAll<HTMLInputElement>("#field-runtimeEnv-CPU, #field-runtimeEnv-GPU");
+    expect(inputs).toHaveLength(2);
+    expect(document.getElementById("field-runtimeEnv-CPU")).toBeDisabled();
+    expect(document.getElementById("field-runtimeEnv-GPU")).not.toBeDisabled();
+
+    // 다시 풀면 목록에서 빠진다.
+    await userEvent.click(screen.getByRole("checkbox", { name: "실행 환경 CPU 모름" }));
+    expect(onChange).toHaveBeenCalledWith("runtimeEnv", { unknownKeys: [], unknown: false });
+  });
+
+  it("데이터 양도 학습·검증 칸마다 모름이 있다", () => {
+    renderForm("trainingData", { picks: ["trainingVolume"] });
+    expect(screen.queryByRole("checkbox", { name: "데이터 양 모름" })).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "데이터 양 학습 모름" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "데이터 양 검증 모름" })).toBeInTheDocument();
+  });
+
+  it("GPU 사용 여부에는 필드 모름 체크가 없고 칸마다 '모름' 선택지가 있다", () => {
+    renderForm("modelEnv", { picks });
+    expect(screen.queryByRole("checkbox", { name: "GPU 사용 여부 모름" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("radio", { name: "모름" })).toHaveLength(2);
+  });
+});

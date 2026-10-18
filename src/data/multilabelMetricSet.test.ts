@@ -553,7 +553,8 @@ describe("persist 마이그레이션 v9 → v10 — 학습 데이터 폼을 ⑥ 
     });
 
     expect(migrated.composerTrainingData.trainingDatasetName).toEqual({ text: "card name" });
-    expect(migrated.composerTrainingData.trainingVolume).toEqual({ unknown: true });
+    // 덮지 않은 모름은 사슬 끝에서 v15 가 칸별 모름으로 옮긴다(W3) — 뜻은 같다.
+    expect(migrated.composerTrainingData.trainingVolume).toEqual({ unknownKeys: ["Training", "Validation"] });
   });
 
   it("카드 선택은 건드리지 않는다 — 켜는 것은 사용자의 결정이다", async () => {
@@ -1033,5 +1034,95 @@ describe("persist v15 — 평가 관점이 지표 뒤인 저장 순서를 바로
     expect(await migrate(saved)).toBe(saved);
     const none = { taskType: "binary" };
     expect(await migrate(none)).toBe(none);
+  });
+});
+
+/**
+ * v15 의 칸별 "모름" 옮기기(W3). 옛 필드 모름은 칸마다 모름으로, 필드 모름 체크를 없앤 ⑨ GPU 사용 여부는 두 칸
+ * "Unknown" 으로 옮긴다 — 옮기지 않으면 남은 `unknown` 이 체크박스 없이 입력을 잠가 갇힌다.
+ */
+describe("persist v15 — 칸별 모름 옮기기(W3)", () => {
+  const OLD = {
+    composerTrainingData: {
+      trainingVolume: { unknown: true, entries: [{ key: "Training", value: "10" }] },
+      trainingClassVolume: { unknown: true },
+      trainingDatasetName: { unknown: true },
+    },
+    composerModelEnv: {
+      runtimeEnv: { unknown: true },
+      gpuUsage: { unknown: true, entries: [{ key: "Training", value: "Yes" }] },
+      algorithm: { unknown: true },
+    },
+  };
+
+  it("v14 저장분 — 정확한 값", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+    const migrated = migrateWorkflowState(structuredClone(OLD), 14);
+
+    expect(migrated.composerTrainingData).toEqual({
+      trainingVolume: { entries: [{ key: "Training", value: "10" }], unknownKeys: ["Training", "Validation"] },
+      // 칸이 클래스에서 오는 필드·한 칸짜리 필드는 필드 모름 그대로다.
+      trainingClassVolume: { unknown: true },
+      trainingDatasetName: { unknown: true },
+    });
+    expect(migrated.composerModelEnv).toEqual({
+      runtimeEnv: { unknownKeys: ["Operating system", "CPU", "GPU", "Memory", "Software"] },
+      gpuUsage: {
+        entries: [
+          { key: "Training", value: "Unknown" },
+          { key: "Inference", value: "Unknown" },
+        ],
+      },
+      algorithm: { unknown: true },
+    });
+  });
+
+  it("여러 번 돌려도 같다 — 옮긴 값에는 unknown 이 남지 않고, 옮길 것이 없으면 같은 객체다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+    const once = migrateWorkflowState(structuredClone(OLD), 14);
+    const twice = migrateWorkflowState(once, 14);
+    expect(twice).toEqual(once);
+    expect(twice.composerModelEnv).toBe(once.composerModelEnv);
+    expect(twice.composerTrainingData).toBe(once.composerTrainingData);
+  });
+
+  it("옮긴 뒤 필수 점검을 통과한다 — 잠긴 채 갇히지 않는다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+    const { getFieldIssue } = await import("../utils/domain/composerFieldGate");
+    const { getCard } = await import("./reportComposer");
+    const migrated = migrateWorkflowState(structuredClone(OLD), 14);
+    const env = getCard("modelEnv");
+    for (const id of ["runtimeEnv", "gpuUsage"]) {
+      const field = env.fields.find((f) => f.id === id)!;
+      expect(getFieldIssue(env, field, migrated.composerModelEnv), id).toBeNull();
+    }
+    const training = getCard("trainingData");
+    const volume = training.fields.find((f) => f.id === "trainingVolume")!;
+    expect(getFieldIssue(training, volume, migrated.composerTrainingData)).toBeNull();
+  });
+
+  it("사슬 — v11 저장분도 v15 끝에서 칸별 모름이다", async () => {
+    const { migrateWorkflowState } = await import("../utils/stores/useWorkflowStore");
+    const migrated = migrateWorkflowState(
+      {
+        taskType: "binary",
+        composerCards: { trainingData: true, testData: false, groundTruth: false, modelEnv: true },
+        composerTrainingData: { trainingVolume: { unknown: true } },
+        composerModelEnv: { runtimeEnv: { unknown: true }, gpuUsage: { unknown: true } },
+      },
+      11,
+    );
+    expect(migrated.composerTrainingData.trainingVolume).toEqual({ unknownKeys: ["Training", "Validation"] });
+    expect(migrated.composerModelEnv.runtimeEnv).toEqual({
+      unknownKeys: ["Operating system", "CPU", "GPU", "Memory", "Software"],
+    });
+    expect(migrated.composerModelEnv.gpuUsage).toEqual({
+      entries: [
+        { key: "Training", value: "Unknown" },
+        { key: "Inference", value: "Unknown" },
+      ],
+    });
+    // 놓인 항목 채우기(v12 의 권장 → v15)도 같은 사슬에서 그대로다.
+    expect(migrated.materialPicks.modelEnv).toEqual(["algorithm", "hyperparameters", "runtimeEnv", "gpuUsage"]);
   });
 });

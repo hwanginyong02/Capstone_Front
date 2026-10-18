@@ -700,3 +700,44 @@ describe("[B6②] 하이퍼파라미터 줄은 이름과 값 둘 다", () => {
     ).toBeNull();
   });
 });
+
+/**
+ * W3 — 칸별 "모름". 일부 칸만 알 때 아는 칸은 적고 모르는 칸만 모름으로 넘어간다. 종전에는 다섯 칸을 다
+ * 채우거나 필드 전체를 모름으로 해야 했다.
+ */
+describe("[W3] 칸별 모름", () => {
+  const runtime = 모델환경.fields.find((f) => f.id === "runtimeEnv")!;
+  const volume = 학습데이터.fields.find((f) => f.id === "trainingVolume")!;
+  const gpu = 모델환경.fields.find((f) => f.id === "gpuUsage")!;
+  const known = (keys: string[]) => keys.map((key) => ({ key, value: "x" }));
+
+  it("실행 환경: CPU 만 모름이고 나머지 넷을 채우면 통과", () => {
+    const value = { entries: known(["Operating system", "GPU", "Memory", "Software"]), unknownKeys: ["CPU"] };
+    expect(hasValue(runtime, value)).toBe(true);
+    expect(getFieldIssue(모델환경, runtime, { runtimeEnv: value })).toBeNull();
+  });
+
+  it("모름이 아닌 칸이 비면 여전히 빈칸 문제", () => {
+    const value = { entries: known(["Operating system", "GPU", "Memory"]), unknownKeys: ["CPU"] };
+    expect(getFieldIssue(모델환경, runtime, { runtimeEnv: value })?.reason).toBe("missing");
+  });
+
+  it("데이터 양: 학습 수만 알면 검증을 모름으로 — 모름 칸에 남은 틀린 값은 따지지 않는다", () => {
+    const value = {
+      entries: [
+        { key: "Training", value: "12,000" },
+        { key: "Validation", value: "모름" },
+      ],
+      unknownKeys: ["Validation"],
+    };
+    expect(getFieldIssue(학습데이터, volume, { trainingVolume: value })).toBeNull();
+    // 모름을 풀면 그 값이 다시 따져진다.
+    expect(getFieldIssue(학습데이터, volume, { trainingVolume: { entries: value.entries } })?.reason).toBe("outOfRange");
+  });
+
+  it("GPU 사용 여부의 빈칸 안내도 '모름'을 알려 준다 — 선택지에 모름이 있다", () => {
+    const issue = getFieldIssue(모델환경, gpu, { gpuUsage: { entries: [] } });
+    expect(issue?.reason).toBe("missing");
+    expect(issue?.allowsUnknown).toBe(true);
+  });
+});

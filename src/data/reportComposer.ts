@@ -18,6 +18,7 @@ import {
   type ComposerCard,
   type ComposerCardId,
   type ComposerField,
+  type ComposerFieldValue,
   type FieldPart,
   type MaterialCategory,
   type OptionalCardId,
@@ -1145,7 +1146,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         entryKeys: ["Training", "Inference"],
         choices: ["Yes", "No", "Unknown"],
         reportLabels: { Yes: "예", No: "아니오", Unknown: "모름" },
-        allowsUnknown: true,
+        // 칸마다 "모름" 선택지가 있어 필드 모름 체크를 두지 않는다(W3). 성적서에는 "제공되지 않음"(N8).
+        unknownChoice: "Unknown",
         reportSection: "4절",
         sentToAi: true,
         standardBasis: { standard: "ISO/IEC TS 4213", clause: "5.3.12", reportingItem: 11 },
@@ -1191,6 +1193,24 @@ export function getCardFields(id: ComposerCardId, taskType: TaskType | ""): Comp
  */
 export function choiceLabel(field: ComposerField, value: string): string {
   return field.choiceLabels?.[value] ?? value;
+}
+
+/**
+ * 칸마다 "모름"을 고르는 필드인가(W3) — 칸이 정해진 글·숫자 묶음(⑥ 데이터 양, ⑨ 실행 환경). 선택지로
+ * 고르는 묶음(⑨ GPU 사용 여부)은 선택지에 모름이 있어(`unknownChoice`) 여기 들지 않는다.
+ */
+export function unknownPerEntry(field: ComposerField): boolean {
+  return field.input === "entries" && Boolean(field.entryKeys) && !field.choices && Boolean(field.allowsUnknown);
+}
+
+/** 이 칸을 "모름"으로 골랐는가 — 필드 모름이든 칸별 모름이든. */
+export function isEntryUnknown(value: ComposerFieldValue | undefined, key: string): boolean {
+  return Boolean(value?.unknown || value?.unknownKeys?.includes(key));
+}
+
+/** 모름으로 답할 길이 있는가 — 필드 모름 체크 또는 "모름" 선택지. 안내 문구가 "모르면 모름을 고르세요"를 붙일지 정한다. */
+export function canAnswerUnknown(field: ComposerField): boolean {
+  return Boolean(field.allowsUnknown || field.unknownChoice);
 }
 
 /** `entryKeys` 행의 화면 이름. 이름표가 없으면 키를 그대로 보인다(클래스 이름 등). */

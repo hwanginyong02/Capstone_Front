@@ -15,7 +15,12 @@
  * 순수 함수다 — 스토어를 읽지 않고 값을 인자로 받는다. 화면은 결과로 `nextDisabled` 를
  * 만들어 `WorkflowShell` 에 넘긴다(가이드라인 §2 규칙 3).
  */
-import { getCardFields, isFieldReceived } from "../../data/reportComposer";
+import {
+  canAnswerUnknown,
+  getCardFields,
+  isEntryUnknown,
+  isFieldReceived,
+} from "../../data/reportComposer";
 import type { TaskType } from "../../data/evaluationData";
 import {
   MONTH_RANGE_KEYS,
@@ -46,7 +51,8 @@ export interface FieldIssue {
   /** 화면에 그대로 적을 설명. `incompatible` 처럼 이유가 선택지마다 다른 경우에 쓴다. */
   message?: string;
   /**
-   * 이 필드에 "모름" 이 있는가. 안내 문구가 "모르면 모름을 고르세요" 를 붙일지 정한다 —
+   * 이 필드에 "모름" 이 있는가(필드 모름 체크·칸별 모름·"모름" 선택지 — `canAnswerUnknown`). 안내 문구가
+   * "모르면 모름을 고르세요" 를 붙일지 정한다 —
    * ⑤ 평가 관점처럼 모름이 없는 필드에 그 말을 하면 있지도 않은 길을 알려주는 셈이다.
    */
   allowsUnknown: boolean;
@@ -105,10 +111,10 @@ export function hasValue(
   if (field.input === "entries") {
     const entries = value.entries ?? [];
     const filled = entries.filter((entry) => entry.value.trim() !== "");
-    // 칸이 정해진 필드(⑥ 데이터 양, ⑨ GPU 사용 여부)는 **전부** 채워야 한다.
+    // 칸이 정해진 필드(⑥ 데이터 양, ⑨ GPU 사용 여부)는 **전부** 채워야 한다. 칸별 "모름"은 채운 것이다(W3).
     if (field.entryKeys) {
-      return field.entryKeys.every((key) =>
-        filled.some((entry) => entry.key === key),
+      return field.entryKeys.every(
+        (key) => isEntryUnknown(value, key) || filled.some((entry) => entry.key === key),
       );
     }
     // 클래스마다 칸이 있는 필드는 지금 클래스를 모두 채워야 한다(B5②). 목록이 비면 모름만 통과(N6).
@@ -181,10 +187,12 @@ function invalidReason(
   // 종전에는 숫자 키패드만 띄우고 검사하지 않아 글자를 넣어도 통과했다(재료 목록 6절).
   if (field.input === "entries" && field.numeric) {
     // 클래스마다 칸이 있는 필드는 지금 클래스의 칸만 본다 — 옛 클래스 칸은 화면에 없어 고칠 수 없다.
-    const shown =
-      field.entryKeysFrom === "classes"
-        ? (value.entries ?? []).filter((entry) => classNames.includes(entry.key))
-        : (value.entries ?? []);
+    // 칸별 "모름"으로 잠근 칸의 남은 값도 따지지 않는다(W3).
+    const shown = (value.entries ?? []).filter(
+      (entry) =>
+        !isEntryUnknown(value, entry.key) &&
+        (field.entryKeysFrom !== "classes" || classNames.includes(entry.key)),
+    );
     const wrong = shown.some((entry) => {
       const raw = entry.value.trim();
       if (raw === "") return false;
@@ -297,7 +305,7 @@ export function getFieldIssue(
     fieldId: field.id,
     label: field.label,
     reason,
-    allowsUnknown: Boolean(field.allowsUnknown),
+    allowsUnknown: canAnswerUnknown(field),
   });
 
   const invalid = invalidReason(field, value, values, classNames);

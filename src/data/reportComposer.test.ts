@@ -34,6 +34,9 @@ import {
   pickableIds,
   placeableIds,
   stepOfLeaf,
+  canAnswerUnknown,
+  isEntryUnknown,
+  unknownPerEntry,
 } from "./reportComposer";
 import { MAPPABLE_ROLES_BY_TASK, getColumnDisplay, type TaskType } from "./evaluationData";
 import { REPORT_PURPOSE_LABEL } from "../lib/report/reportConstants";
@@ -564,7 +567,8 @@ describe("필수 (표준 보고) 유도", () => {
       const card = getCard(id);
       for (const field of card.fields) {
         if (!isStandardReportingField(card, field)) continue;
-        const hasWayOut = Boolean(field.allowsUnknown || field.exclusiveChoice);
+        // 모름 체크(필드·칸별), "모름" 선택지(⑨ GPU 사용 여부 — W3), "알려진 것 없음" 중 하나.
+        const hasWayOut = Boolean(field.allowsUnknown || field.unknownChoice || field.exclusiveChoice);
         expect(hasWayOut, `${card.id}.${field.id}`).toBe(true);
       }
     }
@@ -1087,5 +1091,44 @@ describe("재료 목록과 맞춘 형태", () => {
     expect(entryLabel(fieldOf("modelEnv", "runtimeEnv")!, "Operating system")).toBe("운영체제");
     // 이름표가 없는 칸(클래스 이름 등)은 키를 그대로 보인다.
     expect(entryLabel(fieldOf("trainingData", "trainingClassVolume")!, "cat")).toBe("cat");
+  });
+});
+
+/**
+ * W3 — "모름"을 칸 단위로. 칸이 정해진 글·숫자 묶음은 칸마다 모름을 고르고, 칸마다 "모름" 선택지가 있는
+ * ⑨ GPU 사용 여부는 필드 모름 체크를 두지 않는다(같은 화면에 모름이 두 번 나오던 것). N8: GPU 의 "모름"은
+ * 이미 성적서에 "제공되지 않음"으로 찍힌다(reportMaterials 의 가속 줄).
+ */
+describe("[W3] 칸별 모름", () => {
+  const allFields = COMPOSER_CARDS.flatMap((card) => card.fields.map((field) => ({ card, field })));
+
+  it("칸마다 모름을 고르는 필드는 ⑥ 데이터 양과 ⑨ 실행 환경 둘이다", () => {
+    const perEntry = allFields.filter(({ field }) => unknownPerEntry(field)).map(({ card, field }) => `${card.id}.${field.id}`);
+    expect(perEntry).toEqual(["trainingData.trainingVolume", "modelEnv.runtimeEnv"]);
+  });
+
+  it("⑨ GPU 사용 여부는 필드 모름 체크가 없고 'Unknown' 선택지가 모름이다", () => {
+    const gpu = getCard("modelEnv").fields.find((field) => field.id === "gpuUsage")!;
+    expect(gpu.allowsUnknown).toBeUndefined();
+    expect(gpu.unknownChoice).toBe("Unknown");
+    expect(gpu.choices).toContain(gpu.unknownChoice);
+    expect(unknownPerEntry(gpu)).toBe(false);
+    expect(canAnswerUnknown(gpu)).toBe(true);
+  });
+
+  it("'모름' 선택지를 둔 필드는 모두 그 선택지가 실제로 있다", () => {
+    const withChoice = allFields.filter(({ field }) => field.unknownChoice);
+    expect(withChoice.length).toBeGreaterThan(0);
+    for (const { field } of withChoice) {
+      expect(field.choices, field.id).toContain(field.unknownChoice);
+      expect(field.allowsUnknown, field.id).toBeUndefined();
+    }
+  });
+
+  it("isEntryUnknown 은 필드 모름과 칸별 모름을 함께 본다", () => {
+    expect(isEntryUnknown({ unknownKeys: ["CPU"] }, "CPU")).toBe(true);
+    expect(isEntryUnknown({ unknownKeys: ["CPU"] }, "GPU")).toBe(false);
+    expect(isEntryUnknown({ unknown: true }, "GPU")).toBe(true);
+    expect(isEntryUnknown(undefined, "GPU")).toBe(false);
   });
 });

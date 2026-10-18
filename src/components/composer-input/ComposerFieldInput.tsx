@@ -6,7 +6,8 @@
  * 어긋나지 않는다.
  *
  * "모름"을 고르면 컨트롤을 잠근다 — 값과 모름이 동시에 남아 어느 쪽이 참인지 모르게 되는
- * 상태를 만들지 않는다. 성적서에는 "제공되지 않음"으로 찍힌다(이번 범위에서는 저장까지만).
+ * 상태를 만들지 않는다. 성적서에는 "제공되지 않음"으로 찍힌다. 칸이 정해진 글·숫자 묶음은 칸마다
+ * 모름을 고른다(W3, `unknownPerEntry`).
  */
 import { Plus, X } from "lucide-react";
 import { Button } from "../ui/button";
@@ -26,6 +27,7 @@ import {
   OTHER_TEXT_MAX_LENGTH,
   choiceLabel,
   entryLabel,
+  unknownPerEntry,
 } from "../../data/reportComposer";
 import { CharCount } from "./CharCount";
 import {
@@ -80,6 +82,16 @@ export function ComposerFieldInput({
     onChange({ ...value, entries: [...rest, { key, value: next }], unknown: false });
   };
   const entryValue = (key: string) => entries.find((entry) => entry.key === key)?.value ?? "";
+  /**
+   * 칸별 "모름"(W3) — ⑥ 데이터 양·⑨ 실행 환경은 칸마다 고른다. 필드 모름 체크는 두지 않는다. 고른 칸은
+   * 잠그고(값은 남겨 두어 다시 풀면 돌아온다) 성적서에는 그 칸만 "제공되지 않음"이 된다.
+   */
+  const perEntryUnknown = unknownPerEntry(field);
+  const unknownKeys = value?.unknownKeys ?? [];
+  const toggleEntryUnknown = (key: string, on: boolean) => {
+    const rest = unknownKeys.filter((item) => item !== key);
+    onChange({ ...value, unknownKeys: on ? [...rest, key] : rest, unknown: false });
+  };
 
   const toggleChoice = (choice: string) => {
     const has = chosen.includes(choice);
@@ -109,7 +121,7 @@ export function ComposerFieldInput({
           {required && <span className="ml-1 text-destructive">*</span>}
         </Label>
 
-        {field.allowsUnknown && (
+        {field.allowsUnknown && !perEntryUnknown && (
           /* 켜면 다른 선택지와 같은 강조색 테두리가 뜬다 — 이것도 하나의 답이다. */
           <label
             className={cn(
@@ -230,12 +242,24 @@ export function ComposerFieldInput({
           <div className="grid gap-3 sm:grid-cols-2">
             {field.entryKeys.map((key) => (
               <div key={key} className="space-y-1">
-                <Label
-                  htmlFor={controlId + "-" + key}
-                  className="text-body-small font-normal text-muted-foreground"
-                >
-                  {entryLabel(field, key)}
-                </Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label
+                    htmlFor={controlId + "-" + key}
+                    className="text-body-small font-normal text-muted-foreground"
+                  >
+                    {entryLabel(field, key)}
+                  </Label>
+                  {perEntryUnknown && (
+                    <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-body-small text-muted-foreground">
+                      <Checkbox
+                        checked={unknownKeys.includes(key)}
+                        onCheckedChange={(next) => toggleEntryUnknown(key, next === true)}
+                        aria-label={field.label + " " + entryLabel(field, key) + " 모름"}
+                      />
+                      모름
+                    </label>
+                  )}
+                </div>
                 {/* 칸이 정해진 입력이라도 선택지가 있으면 고르게 한다(⑨ GPU 사용 여부). */}
                 {field.choices ? (
                   <RadioGroup
@@ -261,9 +285,16 @@ export function ComposerFieldInput({
                 ) : (
                   <Input
                     id={controlId + "-" + key}
-                    className={cn(field.mono && "font-mono", field.numeric && "tabular-nums")}
+                    className={cn(
+                      field.mono && "font-mono",
+                      field.numeric && "tabular-nums",
+                      unknownKeys.includes(key) && "opacity-60",
+                    )}
                     inputMode={field.numeric ? "numeric" : undefined}
-                    aria-invalid={(invalid && entryValue(key).trim() === "") || undefined}
+                    disabled={unknownKeys.includes(key)}
+                    aria-invalid={
+                      (invalid && !unknownKeys.includes(key) && entryValue(key).trim() === "") || undefined
+                    }
                     value={entryValue(key)}
                     onChange={(event) => setEntry(key, event.target.value)}
                   />

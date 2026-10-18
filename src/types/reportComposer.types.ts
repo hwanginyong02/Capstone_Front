@@ -215,8 +215,19 @@ export interface ComposerField {
    * `OTHER_TEXT_MAX_LENGTH` 를 쓴다.
    */
   maxLength?: number;
-  /** "모름"을 고를 수 있다. 고르면 필수 점검을 통과하고 성적서에는 "제공되지 않음"이 된다. */
+  /**
+   * "모름"을 고를 수 있다. 고르면 필수 점검을 통과하고 성적서에는 "제공되지 않음"이 된다(2층 보고 항목).
+   *
+   * 칸이 정해진 글·숫자 묶음(⑥ 데이터 양, ⑨ 실행 환경)은 **칸마다** 모름을 고른다(`unknownPerEntry`,
+   * 값은 `ComposerFieldValue.unknownKeys`) — 일부만 알 때 아는 칸까지 버리지 않게(W3).
+   */
   allowsUnknown?: boolean;
+  /**
+   * 선택지 가운데 "모름"에 해당하는 저장값(⑨ GPU 사용 여부의 "Unknown"). 칸마다 고르는 선택지에 모름이 이미
+   * 있는 필드는 필드 모름 체크(`allowsUnknown`)를 두지 않는다 — 같은 화면에 "모름"이 두 번 나오던 것(W3).
+   * 성적서·AI 에는 "제공되지 않음"으로 적는다.
+   */
+  unknownChoice?: string;
   /** 입력 화면에 붙이는 한 줄 도움말. */
   help?: string;
   /**
@@ -379,8 +390,13 @@ export interface ComposerFieldValue {
   note?: string;
   /** `entries` 의 값 — 클래스별 수량, 하이퍼파라미터 줄. */
   entries?: Array<{ key: string; value: string }>;
-  /** "모름"을 골랐다. */
+  /** "모름"을 골랐다(필드 전체). */
   unknown?: boolean;
+  /**
+   * 칸별 "모름"(⑥ 데이터 양, ⑨ 실행 환경 — `unknownPerEntry`). 여기 든 칸은 값이 남아 있어도 빈 것으로
+   * 보고, 필수 점검은 통과하며 성적서·AI 에는 "제공되지 않음"이다(W3). 옛 필드 모름은 persist v15 가 옮겼다.
+   */
+  unknownKeys?: string[];
 }
 
 /** 카드 하나의 값 모음. 키는 `ComposerField.id` 다. */

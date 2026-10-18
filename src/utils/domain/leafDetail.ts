@@ -8,6 +8,7 @@
 import {
   conditionTriggerIds,
   fieldFormat,
+  canAnswerUnknown,
   fieldOfLeaf,
   fieldParts,
   getCard,
@@ -79,7 +80,7 @@ export function leafDetail(leaf: FlowLeaf): LeafDetail {
     meaning: text || undefined,
     format: format ? splitFormat(format) : undefined,
     parts: parts.length > 0 ? parts : undefined,
-    allowsUnknown: Boolean(field.allowsUnknown),
+    allowsUnknown: canAnswerUnknown(field),
     // 필드는 레지스트리의 입력 예시(`inputExample`), 칸 항목은 칸 설명 끝의 "예: …"다.
     example: part ? example : field.inputExample || example,
     file: field.input === "file",
