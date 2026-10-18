@@ -56,7 +56,14 @@ import type {
   ComposerValueMap,
   MaterialPicks,
 } from "../../types/reportComposer.types";
-import { getCard, isFieldPicked, isFieldReceived, isLeafReceived, isPartPicked } from "../../data/reportComposer";
+import {
+  getCard,
+  isEntryUnknown,
+  isFieldPicked,
+  isFieldReceived,
+  isLeafReceived,
+  isPartPicked,
+} from "../../data/reportComposer";
 import { buildLegacyPatch } from "../../utils/domain/composerLegacyMirror";
 import {
   currentClassEntries,
@@ -485,8 +492,11 @@ function buildTrainingDatasetInfo(input: MapWorkflowToReportInput): TrainingData
   const values = input.composer.trainingData;
   const known = (fieldId: string) => (values[fieldId]?.unknown ? undefined : values[fieldId]);
   const text = (fieldId: string) => (known(fieldId)?.text ?? "").trim();
+  // 칸별 "모름"(W3)인 칸도 빈 칸으로 — 3절 표와 같은 규칙(`reportMaterials` 의 `entryOf`).
   const entry = (fieldId: string, key: string) =>
-    known(fieldId)?.entries?.find((item) => item.key === key)?.value ?? "";
+    isEntryUnknown(values[fieldId], key)
+      ? ""
+      : (known(fieldId)?.entries?.find((item) => item.key === key)?.value ?? "");
 
   const name = text("trainingDatasetName");
   const training = parseCount(entry("trainingVolume", "Training"));

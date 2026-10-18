@@ -9,8 +9,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { buildReportInput } from "./mapWorkflowToFinalReport";
-import { buildReportMaterials } from "./reportMaterials";
+import { buildReportInput, mapWorkflowToFinalReport } from "./mapWorkflowToFinalReport";
+import { NOT_PROVIDED, buildClientInputs, buildReportMaterials } from "./reportMaterials";
 import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
 
 const source = () => useWorkflowStore.getState();
@@ -270,5 +270,99 @@ describe("[B5③] 학습 클래스 분포 — 지금 클래스의 칸만", () =>
     expect(buildReportInput(source()).composer!.trainingData.trainingClassVolume).toEqual({ unknown: true });
     useWorkflowStore.setState({ composerTrainingData: {} });
     expect(buildReportInput(source()).composer!.trainingData.trainingClassVolume).toBeUndefined();
+  });
+});
+
+/**
+ * W3 — 칸별 "모름"을 성적서 4절·3절, AI, 2층 점검에 싣는다. 모름인 칸만 "제공되지 않음"이고 아는 칸은 그대로다.
+ */
+describe("[W3] 칸별 모름 → 성적서·AI·2층", () => {
+  beforeEach(() => {
+    useWorkflowStore.setState({
+      composerModelEnv: {
+        runtimeEnv: {
+          entries: [
+            { key: "Operating system", value: "Ubuntu 22.04" },
+            { key: "CPU", value: "옛 값" },
+            { key: "GPU", value: "A100" },
+            { key: "Memory", value: "64GB" },
+            { key: "Software", value: "Python 3.11" },
+          ],
+          unknownKeys: ["CPU"],
+        },
+        gpuUsage: { entries: [{ key: "Training", value: "Yes" }, { key: "Inference", value: "Unknown" }] },
+      },
+      composerTrainingData: {
+        trainingVolume: {
+          entries: [
+            { key: "Training", value: "12000" },
+            { key: "Validation", value: "3000" },
+          ],
+          unknownKeys: ["Validation"],
+        },
+      },
+    });
+  });
+
+  it("4절: CPU 만 '제공되지 않음', 나머지 칸은 적은 값 — 잠근 칸에 남은 값은 싣지 않는다", () => {
+    const report = mapWorkflowToFinalReport(buildReportInput(source()));
+    expect(report.evalEnv.systemSpec).toEqual({
+      os: "Ubuntu 22.04",
+      cpu: NOT_PROVIDED,
+      gpu: "A100",
+      memory: "64GB",
+      software: "Python 3.11",
+    });
+  });
+
+  it("2층 7번은 CPU 하나만 빠졌다고 센다", () => {
+    const report = mapWorkflowToFinalReport(buildReportInput(source()));
+    const item7 = report.materialCheck!.reporting.items.find((item) => item.item === 7)!;
+    expect(item7).toMatchObject({ provided: false, missing: ["CPU"] });
+  });
+
+  it("3절: 학습 수만 알면 검증 줄만 '제공되지 않음'", () => {
+    const rows = buildReportMaterials(buildReportInput(source()).composer!, "binary").training;
+    expect(rows.find((row) => row.label === "학습 샘플 수")?.value).toBe("12,000개");
+    expect(rows.find((row) => row.label === "검증 샘플 수")?.value).toBeNull();
+  });
+
+  it("AI: 실행 환경 CPU·검증 샘플 수·추론 가속이 '제공되지 않음'으로 간다", () => {
+    const input = buildReportInput(source());
+    const materials = buildReportMaterials(input.composer!, "binary");
+    const inputs = buildClientInputs({
+      composer: input.composer!,
+      materials,
+      model: { name: "m", version: "v1", purpose: "", category: "" },
+      reportPurposeNote: "",
+      coreMetrics: [],
+      classLabelDescriptions: {},
+      // useReportData 와 같은 출처(성적서 4절과 같은 basicInfo.env*).
+      runtime: {
+        운영체제: input.basicInfo.envOS ?? "",
+        CPU: input.basicInfo.envCPU ?? "",
+        GPU: input.basicInfo.envGPU ?? "",
+        메모리: input.basicInfo.envMemory ?? "",
+        소프트웨어: input.basicInfo.envSoftware ?? "",
+      },
+    });
+    const env = inputs.environment as Record<string, string>;
+    expect(env.CPU).toBe(NOT_PROVIDED);
+    expect(env.운영체제).toBe("Ubuntu 22.04");
+    expect(env["학습 가속"]).toBe("예");
+    expect(env["추론 가속"]).toBe(NOT_PROVIDED);
+    const training = inputs.training_data as Record<string, string>;
+    expect(training["학습 샘플 수"]).toBe("12,000개");
+    expect(training["검증 샘플 수"]).toBe(NOT_PROVIDED);
+  });
+
+  it("옮기기 전 스냅샷의 필드 모름도 칸마다 '제공되지 않음'이다 — GPU 필드 모름 포함(N8)", () => {
+    useWorkflowStore.setState({
+      composerModelEnv: { runtimeEnv: { unknown: true, entries: [{ key: "CPU", value: "x" }] }, gpuUsage: { unknown: true, entries: [{ key: "Training", value: "Yes" }] } },
+    });
+    const input = buildReportInput(source());
+    expect(input.basicInfo.envCPU).toBe("");
+    const env = buildReportMaterials(input.composer!, "binary").environment;
+    expect(env.map((row) => row.value)).toEqual([null, null]);
   });
 });

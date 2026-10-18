@@ -13,7 +13,7 @@
  * 선택지는 영어 저장값으로 남고 화면·성적서는 한국어다. 성적서에 찍을 이름은 레지스트리의
  * `reportLabels` 가 정한다 — 매핑표를 여기 또 적으면 두 벌이 된다.
  */
-import { getCard } from "../../data/reportComposer";
+import { getCard, isEntryUnknown } from "../../data/reportComposer";
 import { completeEntryRows } from "../../utils/domain/composerFieldGate";
 import { josaEuroRo } from "./koreanJosa";
 import type { TaskType } from "../../data/evaluationData";
@@ -63,7 +63,9 @@ export function choiceLabel(
   return field.otherChoice === choice && other ? `${label}(${other})` : label;
 }
 
+/** 칸 하나의 값. 비었거나 그 칸을 "모름"으로 골랐으면(필드·칸별 — W3) "". */
 function entryOf(value: ComposerFieldValue | undefined, key: string): string {
+  if (isEntryUnknown(value, key)) return "";
   return value?.entries?.find((entry) => entry.key === key)?.value.trim() ?? "";
 }
 
@@ -103,7 +105,9 @@ export function describeValue(
     const to = entryOf(value, MONTH_RANGE_KEYS.to);
     main = from && to ? `${from} ~ ${to}` : null;
   } else if (field.input === "entries") {
-    const rows = (value.entries ?? []).filter((entry) => entry.value.trim() !== "");
+    const rows = (value.entries ?? []).filter(
+      (entry) => entry.value.trim() !== "" && !isEntryUnknown(value, entry.key),
+    );
     main = rows.length ? rows.map((entry) => `${entry.key} ${entry.value.trim()}`).join(" / ") : null;
   } else {
     main = value.text?.trim() || null;
@@ -131,9 +135,9 @@ function trainingRows(c: ReportComposerInput): MaterialRow[] {
   const on = c.cards.trainingData;
   const v = c.trainingData;
   const describe = (fieldId: string) => describeValue("trainingData", fieldId, v[fieldId]);
-  const volume = v.trainingVolume?.unknown ? undefined : v.trainingVolume;
+  // 학습 수만 알고 검증을 모름으로 골랐으면 검증 줄만 "제공되지 않음"이다(W3, `entryOf`).
   const count = (key: string) => {
-    const parsed = countOf(entryOf(volume, key));
+    const parsed = countOf(entryOf(v.trainingVolume, key));
     return parsed === null ? null : `${parsed.toLocaleString()}개`;
   };
   // 클래스마다 칸이 따로 있다. 한 줄로 적는다("정상 8,400 / 이탈 3,600").
@@ -220,11 +224,13 @@ function percentToRatio(text: string): string {
 function environmentRows(c: ReportComposerInput): MaterialRow[] {
   const on = c.cards.modelEnv;
   const gpu = c.modelEnv.gpuUsage;
-  // "모름"은 제공되지 않음으로 센다(재료 선택 점검 5절).
+  // "모름" 선택지(`unknownChoice`)는 제공되지 않음으로 센다(재료 선택 점검 5절, N8). 옛 필드 모름은 v15 가
+  // 두 칸 "모름"으로 옮겼고, 옮기기 전 스냅샷의 필드 모름도 `entryOf` 가 빈 값으로 본다.
+  const unknownAnswer = fieldOf("modelEnv", "gpuUsage").unknownChoice;
   const accel = (key: string) => {
-    if (!on || gpu?.unknown) return null;
+    if (!on) return null;
     const answer = entryOf(gpu, key);
-    if (!answer || answer === "Unknown") return null;
+    if (!answer || answer === unknownAnswer) return null;
     return choiceLabel("modelEnv", "gpuUsage", answer);
   };
   return [
