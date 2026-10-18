@@ -27,6 +27,7 @@ interface PickStatusBarProps {
 
 export function PickStatusBar({ counts, missingRequired, unplacedRecommended, compact, onPlaceLeaf }: PickStatusBarProps) {
   const anyMissing = missingRequired.length > 0 || unplacedRecommended.length > 0;
+  const doneRef = useRef<HTMLParagraphElement>(null);
 
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
@@ -64,10 +65,16 @@ export function PickStatusBar({ counts, missingRequired, unplacedRecommended, co
               </span>
             </>
           )}
-          <MissingPopover required={missingRequired} recommended={unplacedRecommended} onPlaceLeaf={onPlaceLeaf} />
+          <MissingPopover
+            required={missingRequired}
+            recommended={unplacedRecommended}
+            onPlaceLeaf={onPlaceLeaf}
+            onAllPlaced={() => doneRef.current?.focus()}
+          />
         </p>
       ) : (
-        <p className="flex items-center gap-2 text-sm text-foreground-secondary">
+        // 빠진 항목 보기에서 마지막 항목을 넣으면 팝업이 통째로 사라진다 — 포커스는 이 문장으로 온다.
+        <p ref={doneRef} tabIndex={-1} className="flex items-center gap-2 text-sm text-foreground-secondary outline-none">
           <CircleCheck className="size-4 shrink-0 text-primary" aria-hidden="true" />
           필수와 권장 항목을 모두 넣었어요.
         </p>
@@ -81,19 +88,27 @@ function MissingPopover({
   required,
   recommended,
   onPlaceLeaf,
+  onAllPlaced,
 }: {
   required: FlowLeaf[];
   recommended: FlowLeaf[];
   onPlaceLeaf: (cardId: ComposerCardId, leafId: string) => void;
+  /** 마지막 항목을 넣어 이 팝업이 사라질 때. */
+  onAllPlaced: () => void;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
-  /** 넣으면 그 줄이 사라진다 — 포커스가 body 로 떨어지지 않게 다음 [넣기], 없으면 목록으로 옮긴다. */
+  /**
+   * 넣으면 그 줄이 사라진다 — 포커스가 body 로 떨어지지 않게 다음 [넣기], 없으면 목록으로 옮긴다. 마지막
+   * 하나였으면 팝업이 사라지므로 바깥(`onAllPlaced`)에 맡긴다.
+   */
   const place = (cardId: ComposerCardId, leafId: string, button: HTMLElement) => {
     const buttons = [...(contentRef.current?.querySelectorAll<HTMLElement>("button[data-place]") ?? [])];
     const at = buttons.indexOf(button);
     const nextKey = (buttons[at + 1] ?? buttons[at - 1])?.dataset.place;
+    const last = buttons.length === 1;
     onPlaceLeaf(cardId, leafId);
     requestAnimationFrame(() => {
+      if (last) return onAllPlaced();
       const target = nextKey
         ? contentRef.current?.querySelector<HTMLElement>(`button[data-place="${nextKey}"]`)
         : contentRef.current;

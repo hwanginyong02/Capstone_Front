@@ -585,6 +585,22 @@ describe("하단 바와 다음", () => {
     expect(screen.getByRole("button", { name: "의뢰자 정보 성적서 용도 넣기" })).toHaveFocus();
   });
 
+  it("빠진 항목 보기에서 마지막 하나를 넣으면 팝업이 사라지고 포커스는 '모두 넣었어요' 문장으로 간다", async () => {
+    // 필수·권장을 모두 넣고 의뢰자 정보의 평가 의뢰일 하나만 남긴다.
+    for (const card of catalogCards("binary")) {
+      const ids = blockFillIds(card.id, "binary").filter((id) => !(card.id === "clientInfo" && id === "requestDate"));
+      if (ids.length > 0) useWorkflowStore.getState().setMaterialPick(card.id, ids);
+    }
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: "빠진 항목 보기" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "의뢰자 정보 평가 의뢰일 넣기" }));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(screen.queryByRole("button", { name: "빠진 항목 보기" })).not.toBeInTheDocument();
+    expect(screen.getByText("필수와 권장 항목을 모두 넣었어요.")).toHaveFocus();
+  });
+
   it("필수 블록 다섯을 블록째 넣고 다음 → 첫 입력 화면", async () => {
     renderPage();
     for (const block of ["의뢰자 정보", "평가 대상 모델", "평가 관점", "지표와 합격 기준"]) {
