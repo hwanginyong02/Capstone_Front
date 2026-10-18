@@ -155,6 +155,10 @@ describe("전용 화면이 받는 선택 항목 — 놓지 않았으면 성적�
 
   beforeEach(() => {
     useWorkflowStore.setState({
+      columnMapping: [
+        { originalName: "label", sampleValues: ["0", "1"], inferredRole: "y_true", confirmedRole: "y_true", modified: false, warnings: [] },
+      ],
+      metadata: { column_unique_values: { label: ["0", "1"] } },
       classLabelDescriptions: { "0": "정상", "1": "이탈" },
       trainingExampleFiles: [file("ok.png")],
       trainingUnsuitableExampleFiles: [file("bad.png")],
@@ -188,6 +192,26 @@ describe("전용 화면이 받는 선택 항목 — 놓지 않았으면 성적�
     const other = buildReportInput(source());
     expect(other.trainingExampleFiles.map((item) => item.name)).toEqual(["ok.png"]);
     expect(other.trainingUnsuitableExampleFiles).toEqual([]);
+  });
+
+  it("지금 클래스의 설명만 — 옛 파일·옛 정답 컬럼의 키는 싣지 않는다(N1)", () => {
+    useWorkflowStore.setState({ classLabelDescriptions: { "0": "정상", "1": "이탈", churn: "옛 파일의 클래스" } });
+    expect(buildReportInput(source()).classLabelDescriptions).toEqual({ "0": "정상", "1": "이탈" });
+
+    // 정답 컬럼을 바꾸면 그 컬럼의 클래스가 기준이다.
+    useWorkflowStore.setState({
+      columnMapping: [
+        { originalName: "label", sampleValues: ["0", "1"], inferredRole: "y_true", confirmedRole: "ignore", modified: true, warnings: [] },
+        { originalName: "status", sampleValues: ["churn"], inferredRole: "ignore", confirmedRole: "y_true", modified: true, warnings: [] },
+      ],
+      metadata: { column_unique_values: { label: ["0", "1"], status: ["churn", "stay"] } },
+    });
+    expect(buildReportInput(source()).classLabelDescriptions).toEqual({ churn: "옛 파일의 클래스" });
+  });
+
+  it("정답 컬럼이 없으면 설명을 싣지 않는다 — 3절도 클래스를 찍지 않는다", () => {
+    useWorkflowStore.setState({ columnMapping: [] });
+    expect(buildReportInput(source()).classLabelDescriptions).toEqual({});
   });
 
   it("AI 에 넘기는 설명도 같은 거른 값이다 — useReportData 가 스토어 값을 직접 넘기지 않는다", () => {

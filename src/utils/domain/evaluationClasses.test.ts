@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import type { MappingRow } from "../../types/mapping.types";
 import { mapWorkflowToFinalReport, type MapWorkflowToReportInput } from "../../lib/report/mapWorkflowToFinalReport";
 import { DEFAULT_BASIC_INFO } from "../../types/workflow.types";
-import { evaluationClassNames, keepPositiveClass } from "./evaluationClasses";
+import { currentClassEntries, evaluationClassNames, keepPositiveClass } from "./evaluationClasses";
 
 const row = (name: string, role: MappingRow["confirmedRole"], samples: string[] = []): MappingRow => ({
   originalName: name,
@@ -94,5 +94,15 @@ describe("세 곳이 같은 목록을 쓴다", () => {
       expect(source, file).toMatch(/evaluationClassNames\(/);
       expect(source, file).not.toMatch(/detected_classes\?\.length|detected_labels \?\?|split\(\/\[\|,\]\/\)/);
     }
+  });
+});
+
+describe("currentClassEntries (N1)", () => {
+  it("지금 클래스의 키만 남긴다", () => {
+    expect(currentClassEntries({ a: "x", old: "y", b: "" }, ["a", "b"])).toEqual({ a: "x", b: "" });
+  });
+
+  it("클래스 목록이 비면 아무것도 남지 않는다", () => {
+    expect(currentClassEntries({ a: "x" }, [])).toEqual({});
   });
 });

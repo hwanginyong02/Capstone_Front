@@ -62,3 +62,18 @@ export function keepPositiveClass(previous: string, classNames: readonly string[
   if (classNames.length === 0) return previous;
   return classNames.includes(previous) ? previous : fallback;
 }
+
+/**
+ * 지금 클래스의 값만 남긴다 — 다른 파일·다른 정답 컬럼에서 적어 둔 옛 클래스 키를 뺀다(N1).
+ *
+ * 클래스 레이블 설명은 클래스 값을 키로 저장된다. 파일을 바꾸거나 정답 컬럼을 바꾸면 옛 키가 남는데,
+ * 3절은 지금 클래스만 찍으면서 AI 에는 저장된 맵 전체가 갔다. 둘 다 이 함수를 거친 값을 쓴다.
+ * 클래스 목록이 비면(정답 컬럼 없음) 아무것도 남지 않는다 — 3절도 찍지 않는다.
+ */
+export function currentClassEntries(
+  values: Record<string, string>,
+  classNames: readonly string[],
+): Record<string, string> {
+  const current = new Set(classNames);
+  return Object.fromEntries(Object.entries(values).filter(([key]) => current.has(key)));
+}
