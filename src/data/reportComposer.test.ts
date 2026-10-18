@@ -28,7 +28,7 @@ import {
   pickKind,
   pickableIds,
 } from "./reportComposer";
-import type { TaskType } from "./evaluationData";
+import { MAPPABLE_ROLES_BY_TASK, getColumnDisplay, type TaskType } from "./evaluationData";
 import { REPORT_PURPOSE_LABEL } from "../lib/report/reportConstants";
 
 const TASK_TYPES: TaskType[] = ["binary", "multiclass", "multilabel"];
@@ -161,6 +161,83 @@ describe("전용 화면이 받는 필드 (dedicatedScreen)", () => {
     const beta = getCard("metrics").fields.find((field) => field.id === "beta");
     expect(beta?.conditionField).toBe("selectedMetrics");
     expect(beta?.requiredWhen).toBeUndefined();
+  });
+});
+
+/**
+ * ① 컬럼 매핑 화면이 받던 재료를 레지스트리 항목으로 옮겼다(재료 목록의 y_true·y_pred·score·
+ * prob_*·latency·id·클래스 레이블 설명·양성 클래스·결정 임계값). 입력은 매핑 화면이 그대로 받는다.
+ */
+describe("① 평가 데이터 — 컬럼 매핑 항목", () => {
+  const evalFields = (taskType: TaskType) => getCardFields("evalData", taskType);
+
+  it("결과 파일 뒤에 매핑 항목 일곱 개가 이 순서로 있다", () => {
+    expect(getCard("evalData").fields.map((field) => field.id)).toEqual([
+      "resultFile",
+      "yTrueColumn",
+      "predictionColumns",
+      "positiveClass",
+      "decisionThreshold",
+      "latencyColumn",
+      "sampleIdColumn",
+      "classLabelDescriptions",
+    ]);
+    for (const field of getCard("evalData").fields.slice(1)) {
+      expect(field.step, field.id).toBe("mapping");
+    }
+  });
+
+  it("유형마다 매핑할 수 있는 역할은 빠짐없이, 정확히 한 항목이 맡는다", () => {
+    for (const taskType of TASK_TYPES) {
+      const roles = MAPPABLE_ROLES_BY_TASK[taskType];
+      expect(roles.length).toBeGreaterThan(0);
+      for (const role of roles) {
+        const owners = evalFields(taskType).filter((field) => field.columnRoles?.includes(role));
+        expect(owners.map((field) => field.id), `${taskType} ${role}`).toHaveLength(1);
+      }
+    }
+  });
+
+  it("컬럼 항목만 역할을 갖고, 컬럼 항목은 역할이 있다", () => {
+    for (const field of COMPOSER_CARDS.flatMap((card) => card.fields)) {
+      expect(Boolean(field.columnRoles?.length), field.id).toBe(field.input === "column");
+    }
+  });
+
+  it("역할이 하나인 항목의 이름은 매핑 화면의 역할 이름과 같은 말이다", () => {
+    // "정답 컬럼" ↔ "정답 레이블", "지연시간 컬럼" ↔ "지연시간(ms)". 종전 매핑 화면은 '추론 응답시간'이었다.
+    const single = getCard("evalData").fields.filter((field) => field.columnRoles?.length === 1);
+    expect(single.map((field) => field.id)).toEqual(["yTrueColumn", "latencyColumn", "sampleIdColumn"]);
+    for (const field of single) {
+      const stem = field.label.replace(/ 컬럼$/, "");
+      expect(getColumnDisplay(field.columnRoles![0]).label, field.id).toContain(stem);
+    }
+  });
+
+  it("필수·선택 구분: 정답·예측은 필수, 양성 클래스는 이진만, 결정 임계값은 예측 컬럼과 함께 들어간다", () => {
+    const of = (id: string) => getCard("evalData").fields.find((field) => field.id === id)!;
+    expect(of("yTrueColumn").kind).toBe("required");
+    expect(of("predictionColumns").kind).toBe("required");
+    expect(of("positiveClass")).toMatchObject({ kind: "required", taskTypes: ["binary"] });
+    expect(of("decisionThreshold")).toMatchObject({
+      kind: "conditional",
+      conditionField: "predictionColumns",
+      taskTypes: ["binary", "multilabel"],
+    });
+    for (const id of ["latencyColumn", "sampleIdColumn", "classLabelDescriptions"]) {
+      expect(of(id).kind, id).toBe("optional");
+    }
+    expect(evalFields("multiclass").map((field) => field.id)).not.toContain("positiveClass");
+    expect(evalFields("multiclass").map((field) => field.id)).not.toContain("decisionThreshold");
+  });
+
+  it("형식 문구: 컬럼 하나, 클래스마다 한 줄 글 — 학습 클래스 양은 그대로 숫자다", () => {
+    const of = (id: string) => getCard("evalData").fields.find((field) => field.id === id)!;
+    expect(fieldFormat(of("yTrueColumn"))).toBe("컬럼 하나");
+    expect(fieldFormat({ ...of("predictionColumns"), format: undefined })).toBe("컬럼 하나 이상");
+    expect(fieldFormat(of("classLabelDescriptions"))).toBe("클래스마다 한 줄 글");
+    const classVolume = getCard("trainingData").fields.find((field) => field.id === "trainingClassVolume")!;
+    expect(fieldFormat(classVolume)).toBe("클래스마다 숫자");
   });
 });
 

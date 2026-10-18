@@ -248,10 +248,16 @@ const COLUMN_DISPLAY: Record<RequiredColumnCode, RequiredColumnDisplay> = {
   },
   latency: {
     code: "latency",
-    label: "추론 응답시간(ms)",
+    // 평가 흐름 만들기의 항목 이름("지연시간 컬럼")과 맞춘다 — 재료 선택 점검 2층 8번도 '지연시간'이다.
+    label: "지연시간(ms)",
     description: "선택. 샘플마다 걸린 추론 시간(밀리초)이며, 응답시간 통계(평균·p50·p95·p99)에 씁니다.",
   },
 };
+
+/** 매핑 역할 하나의 화면 이름과 설명. 레지스트리 ① 컬럼 항목의 이름이 이 이름과 맞는지 테스트가 본다. */
+export function getColumnDisplay(code: RequiredColumnCode): RequiredColumnDisplay {
+  return COLUMN_DISPLAY[code];
+}
 
 export function getAvailableMetrics(taskType?: string): MetricDefinition[] {
   if (!taskType || !isTaskType(taskType)) {
