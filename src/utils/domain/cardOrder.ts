@@ -125,6 +125,25 @@ export function placeAtLaneEnd(order: readonly ComposerCardId[], cardId: Compose
   return last === cardId ? current : moveCard(current, cardId, last, "after");
 }
 
+/**
+ * 블록을 흐름에 처음 놓은 뒤의 순서. 스토어(`applyMaterialPicks`)와 흐름도의 놓을 자리 미리보기가
+ * 이 함수 하나를 쓴다 — 미리 보인 자리와 실제로 놓이는 자리가 갈리지 않게.
+ *
+ * - 꺼져 있던 선택 블록은 레인 끝으로 간다(`placeAtLaneEnd`).
+ * - 잠긴 블록과 이미 켜진 선택 블록은 제자리다. 잠긴 블록을 레인 끝으로 보내면 ⑥ 을 먼저 놓고 ① 을
+ *   놓을 때 ① 이 ⑥ 뒤로 가 `ORDER_RULES` 를 깬다. 잠긴 블록은 순서 목록에 늘 들어 있어 제자리가
+ *   이미 규칙을 지킨다.
+ */
+export function orderAfterPlacing(
+  order: readonly ComposerCardId[],
+  selection: ComposerSelection,
+  cardId: ComposerCardId,
+): ComposerCardId[] {
+  const card = getCard(cardId);
+  if (card.locked || selection[cardId as OptionalCardId]) return normalizeCardOrder(order);
+  return placeAtLaneEnd(order, cardId);
+}
+
 /** 들어간 카드인지 — 필수 카드는 늘, 선택 카드는 넣었을 때. */
 export function isCardIncluded(card: ComposerCard, selection: ComposerSelection): boolean {
   return card.locked || Boolean(selection[card.id as OptionalCardId]);

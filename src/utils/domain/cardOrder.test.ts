@@ -14,6 +14,7 @@ import {
   moveLane,
   normalizeCardOrder,
   orderHints,
+  orderAfterPlacing,
   orderViolation,
   placeAtLaneEnd,
 } from "./cardOrder";
@@ -103,6 +104,31 @@ describe("카드 옮기기", () => {
       "groundTruth",
       "testData",
     ]);
+  });
+});
+
+describe("블록을 처음 놓은 뒤의 자리", () => {
+  const off = DEFAULT_COMPOSER_SELECTION;
+
+  it("꺼져 있던 선택 블록은 레인 끝으로 간다", () => {
+    const order = moveCard(DEFAULT_CARD_ORDER, "testData", "evalData", "before");
+    expect(laneCards(orderAfterPlacing(order, off, "testData"), "data")).toEqual([
+      "evalData",
+      "trainingData",
+      "groundTruth",
+      "testData",
+    ]);
+  });
+
+  it("이미 켜진 선택 블록은 제자리다", () => {
+    const order = moveCard(DEFAULT_CARD_ORDER, "testData", "evalData", "before");
+    expect(orderAfterPlacing(order, { ...off, testData: true }, "testData")).toEqual(order);
+  });
+
+  it("잠긴 블록은 제자리다 — 평가 데이터가 학습 데이터 뒤로 가 순서 규칙을 깨지 않는다", () => {
+    const placed = orderAfterPlacing(DEFAULT_CARD_ORDER, { ...off, trainingData: true }, "evalData");
+    expect(placed).toEqual(DEFAULT_CARD_ORDER);
+    expect(orderViolation(ids(includedCardsInOrder(placed, { ...off, trainingData: true })))).toBeNull();
   });
 });
 

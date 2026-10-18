@@ -42,7 +42,7 @@ import {
   pickKind,
   pickableIds,
 } from "../../data/reportComposer";
-import { DEFAULT_CARD_ORDER, normalizeCardOrder, placeAtLaneEnd } from "../domain/cardOrder";
+import { DEFAULT_CARD_ORDER, normalizeCardOrder, orderAfterPlacing } from "../domain/cardOrder";
 
 /**
  * 단계 번호·경로 상수는 이 파일을 떠났다.
@@ -773,7 +773,7 @@ interface WorkflowState {
   // Actions — 재료 고르기
   /**
    * 카드 하나의 항목을 바꾼다. 선택 카드면 항목이 하나 이상일 때 켜고, 비어 있으면 끈다. 새로 켜진
-   * 선택 카드는 그 레인 맨 아래로 간다(`placeAtLaneEnd`).
+   * 선택 카드는 그 레인 맨 아래로 간다(`orderAfterPlacing`).
    */
   setMaterialPick: (cardId: ComposerCardId, ids: string[]) => void;
   /** 여러 카드의 항목을 한 번에 바꾼다(추천 세트, 되돌리기). 준 카드만 바뀐다. */
@@ -833,7 +833,8 @@ const INITIAL_STATE = {
  * 카드 항목을 바꾸고 선택 카드의 켜짐(`composerCards`)과 순서를 맞춘다.
  *
  * 선택 카드는 항목이 하나라도 있으면 켜진다. 꺼져 있다가 켜진 카드는 그 레인 맨 아래로 보낸다 —
- * 넣지 않은 동안 남아 있던 옛 자리가 순서 규칙(`ORDER_RULES`)을 깨지 않게 한다.
+ * 넣지 않은 동안 남아 있던 옛 자리가 순서 규칙(`ORDER_RULES`)을 깨지 않게 한다. 잠긴 카드는
+ * 제자리다(`orderAfterPlacing`).
  */
 function applyMaterialPicks(
   state: Pick<WorkflowState, "materialPicks" | "composerCards" | "cardOrder">,
@@ -844,7 +845,7 @@ function applyMaterialPicks(
   for (const [cardId, ids] of Object.entries(changes) as Array<[ComposerCardId, string[]]>) {
     if (!(OPTIONAL_CARD_IDS as string[]).includes(cardId)) continue;
     const on = ids.length > 0;
-    if (on && !composerCards[cardId as OptionalCardId]) cardOrder = placeAtLaneEnd(cardOrder, cardId);
+    if (on) cardOrder = orderAfterPlacing(cardOrder, composerCards, cardId);
     composerCards[cardId as OptionalCardId] = on;
   }
   return { materialPicks: { ...state.materialPicks, ...changes }, composerCards, cardOrder };
