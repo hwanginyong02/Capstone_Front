@@ -154,54 +154,57 @@ export function DataValidation() {
       previousLabel="이전"
       nextLabel="다음"
     >
-      {submitError && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{submitError}</AlertDescription>
-        </Alert>
-      )}
-      {gaps.length > 0 && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            <p>필수 입력이 비어 있어 성적서를 만들 수 없습니다. 아래 단계에서 채운 뒤 다시 오세요.</p>
-            <ul aria-label="비어 있는 필수 입력" className="mt-2 flex flex-col gap-1">
-              {gaps.map((gap) => (
-                <li key={gap.stepId}>
-                  <button
-                    type="button"
-                    onClick={() => flow.goTo(gap.stepId)}
-                    className="underline underline-offset-4"
-                  >
-                    {gap.label}에서 채우기
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </AlertDescription>
-        </Alert>
-      )}
-      {gateMessage && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{gateMessage}</AlertDescription>
-        </Alert>
-      )}
-      <FileReuploadNotice />
-      {materialCheck && (
-        <MaterialCheckNotice check={materialCheck} onFix={handleFix} includedCards={includedCards} />
-      )}
-
-      {/* 백엔드가 평가 데이터·매핑 단계에서 내려보낸 안내를 여기 합쳐 보여준다(ISSUES.md B-03·B-04·A-12).
-          그 화면들에서 띄우면 사용자는 이미 다음 단계로 넘어간 뒤라 읽지 못한다. */}
-      <BackendNoticePanel
-        columnNotes={store.columnNotes}
-        mappingWarnings={store.mappingWarnings}
-      />
       <DataValidationContent
         validationData={validationData}
         isLoading={isLoading}
         error={error}
+        notices={
+          <>
+            {submitError && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{submitError}</AlertDescription>
+              </Alert>
+            )}
+            {gaps.length > 0 && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <p>필수 입력이 비어 있어 성적서를 만들 수 없습니다. 아래 단계에서 채운 뒤 다시 오세요.</p>
+                  <ul aria-label="비어 있는 필수 입력" className="mt-2 flex flex-col gap-1">
+                    {gaps.map((gap) => (
+                      <li key={gap.stepId}>
+                        <button
+                          type="button"
+                          onClick={() => flow.goTo(gap.stepId)}
+                          className="underline underline-offset-4"
+                        >
+                          {gap.label}에서 채우기
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+            {gateMessage && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{gateMessage}</AlertDescription>
+              </Alert>
+            )}
+            <FileReuploadNotice />
+            {materialCheck && (
+              <MaterialCheckNotice check={materialCheck} onFix={handleFix} includedCards={includedCards} />
+            )}
+            {/* 백엔드가 평가 데이터·매핑 단계에서 내려보낸 안내를 여기 합쳐 보여준다(ISSUES.md B-03·B-04·A-12).
+                그 화면들에서 띄우면 사용자는 이미 다음 단계로 넘어간 뒤라 읽지 못한다. */}
+            <BackendNoticePanel
+              columnNotes={store.columnNotes}
+              mappingWarnings={store.mappingWarnings}
+            />
+          </>
+        }
       />
     </WorkflowShell>
   );

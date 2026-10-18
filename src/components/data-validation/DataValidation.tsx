@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
@@ -32,6 +33,12 @@ interface DataValidationProps {
   isLoading: boolean;
   /** 에러 메시지 (있으면 에러 화면 표시) */
   error?: string | null;
+  /**
+   * 제목 바로 아래에 놓는 안내(입력 누락·재업로드·백엔드 안내·생성 전 안내). 페이지가 조립해 넘긴다.
+   * 본문 칸(`max-w`·좌우 여백) 안에 있어야 제목과 줄이 맞는다 — 종전에는 페이지가 이것들을 셸에
+   * 바로 넣어 화면 왼쪽 끝에 붙고 제목보다 위에 떴다.
+   */
+  notices?: ReactNode;
 }
 
 // ── 내부 UI 컴포넌트 ────────────────────────────────────────────────────────
@@ -115,12 +122,14 @@ export function DataValidation({
   validationData,
   isLoading,
   error,
+  notices,
 }: DataValidationProps) {
 
   // 로딩 상태
   if (isLoading) {
     return (
       <main className="mx-auto max-w-[1344px] space-y-6 px-8 pb-24 pt-12">
+        <div>{notices}</div>
         <div className="flex flex-col items-center justify-center gap-4 py-24">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">데이터를 검증하는 중…</p>
@@ -137,6 +146,7 @@ export function DataValidation({
         <div>
           <h1 className="mb-2 text-2xl font-bold text-foreground">데이터 검증</h1>
         </div>
+        <div>{notices}</div>
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
@@ -155,6 +165,7 @@ export function DataValidation({
           <h1 className="mb-2 text-2xl font-bold text-foreground">데이터 검증</h1>
           <p className="text-sm text-muted-foreground">검증 결과를 불러오지 못했습니다.</p>
         </div>
+        <div>{notices}</div>
       </main>
     );
   }
@@ -176,6 +187,8 @@ export function DataValidation({
           평가를 실행하기 전에 검증 결과를 확인하세요.
         </p>
       </div>
+      {/* 블록 div 로 감싸 안내의 아래 여백(mb-6)이 목록 간격과 겹쳐 접히게 한다. 비어도 간격이 늘지 않는다. */}
+      <div>{notices}</div>
 
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="outline">{TASK_TYPE_LABELS_KO[task_type as TaskType] || task_type}</Badge>
