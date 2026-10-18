@@ -184,3 +184,35 @@ describe("getRowMatchState — 맡아 둔 행", () => {
     expect(getRowMatchState(row("l", "ignore"), false).label).not.toBe("맡아 둠");
   });
 });
+
+describe("역할 선택지 이름 — '쓰지 않음' 하나(M7)", () => {
+  it("한국어 이름 뒤에 코드, ignore 는 '쓰지 않음 (ignore)'", () => {
+    const options = buildRoleOptions("binary", undefined, []);
+    expect(options.map((option) => option.label)).toEqual([
+      "샘플 ID (id)",
+      "정답 레이블 (y_true)",
+      "예측 레이블 (y_pred)",
+      "양성 클래스 점수 (score)",
+      "지연시간(ms) (latency)",
+      "쓰지 않음 (ignore)",
+    ]);
+  });
+
+  it("'지정 안 함'(unassigned) 선택지가 없다 — 표도 그 값을 그리지 않는다", async () => {
+    for (const task of TASKS) {
+      const values = buildRoleOptions(task, undefined, []).map((option) => option.value as string);
+      expect(values.length).toBeGreaterThan(1);
+      expect(values).not.toContain("unassigned");
+      expect(values.filter((value) => value === "ignore")).toHaveLength(1);
+    }
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const table = readFileSync(resolve(__dirname, "../../components/column-mapping/DetectedMappingTable.tsx"), "utf-8");
+    expect(table).not.toMatch(/unassigned|지정 안 함/);
+  });
+
+  it("역할이 빈(null) 옛 행은 문제로 칠하지 않는다", async () => {
+    const { getRowMatchState } = await import("./mappingHelpers");
+    expect(getRowMatchState(row("x", null), false)).toEqual({ label: "일치", tone: "secondary" });
+  });
+});

@@ -21,7 +21,8 @@ export function applyRoleChange(
   columnName: string,
   newRole: string,
 ): MappingRow[] {
-  const resolved = newRole === "unassigned" ? null : (newRole as MappingRole);
+  // '지정 안 함'(null) 선택지는 없앴다 — 남는 컬럼은 "쓰지 않음"(ignore) 하나로 치운다(M7).
+  const resolved = newRole as MappingRole;
 
   return rows.map((row) => {
     if (row.originalName !== columnName) return row;

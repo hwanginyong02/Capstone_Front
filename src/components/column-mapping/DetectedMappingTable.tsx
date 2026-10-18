@@ -58,7 +58,7 @@ export function DetectedMappingTable({
                   row.confirmedRole !== "prob_label_*" &&
                   (roleCounts[row.confirmedRole] ?? 0) > 1
                 );
-                const needsAttention = duplicate || row.confirmedRole === null || row.warnings.length > 0;
+                const needsAttention = duplicate || row.warnings.length > 0;
                 const matchState = getRowMatchState(row, duplicate);
 
                 return (
@@ -79,14 +79,14 @@ export function DetectedMappingTable({
                     <TableCell className="align-top">
                       <div className="flex flex-col gap-2">
                         <Select
-                          value={row.confirmedRole ?? "unassigned"}
+                          // 역할이 비어 있는 옛 행은 "쓰지 않음"으로 보인다(M7).
+                          value={row.confirmedRole ?? "ignore"}
                           onValueChange={(value) => handleRoleChange(row.originalName, value)}
                         >
                           <SelectTrigger className={cn("w-[210px]", duplicate && "border-destructive")}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="unassigned">지정 안 함</SelectItem>
                             {roleOptions.map((option) => (
                               <SelectItem key={option.value} value={option.value}>
                                 {option.label}

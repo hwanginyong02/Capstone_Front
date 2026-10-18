@@ -35,9 +35,7 @@ export function getRowMatchState(row: MappingRow, duplicate: boolean) {
   if (duplicate) {
     return { label: "겹침", tone: "destructive" as const };
   }
-  if (row.confirmedRole === null) {
-    return { label: "미지정", tone: "destructive" as const };
-  }
+  // 역할이 비어 있는(null) 옛 행은 "쓰지 않음"과 같다 — 백엔드로도 ignore 로 간다(M7).
   if (row.modified) {
     return { label: "고침", tone: "secondary" as const };
   }

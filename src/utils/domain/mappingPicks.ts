@@ -10,7 +10,7 @@
  * 맡아 둔다. 항목을 다시 놓으면 돌려준다. 사용자가 그 행의 역할을 직접 바꾸면 맡아 둔 값은 지운다
  * (`applyRoleChange`). `heldRole` 은 요청 본문에 실리지 않는다(요청 빌더는 컬럼·역할·샘플값만 담는다).
  */
-import { MAPPABLE_ROLES_BY_TASK, type TaskType } from "../../data/evaluationData";
+import { MAPPABLE_ROLES_BY_TASK, getColumnDisplay, type TaskType } from "../../data/evaluationData";
 import { getCard, getCardFields, isFieldPicked } from "../../data/reportComposer";
 import type { MappingRole, MappingRow } from "../../types/mapping.types";
 
@@ -72,7 +72,7 @@ export function restrictMappingRoles(
 }
 
 /**
- * 역할 드롭다운의 선택지. 받는 역할(`allowedMappingRoles`)에, 이미 배정된 역할 중 목록에 없는 것을
+ * 역할 드롭다운의 선택지(이름은 `roleOptionLabel`). 받는 역할(`allowedMappingRoles`)에, 이미 배정된 역할 중 목록에 없는 것을
  * 더한다 — 유형을 바꾸기 전의 값이 남아 있으면 Select 가 값을 못 찾아 빈 칸으로 그려지기 때문이다.
  * 숨긴 역할은 스토어가 이미 "쓰지 않음"으로 내렸으므로 여기서 되살아나지 않는다.
  */
@@ -85,5 +85,11 @@ export function buildRoleOptions(
   for (const role of assigned) {
     if (role !== "ignore" && !codes.includes(role)) codes.push(role);
   }
-  return [...codes, "ignore" as const].map((value) => ({ value, label: value }));
+  return [...codes, "ignore" as const].map((value) => ({ value, label: roleOptionLabel(value) }));
+}
+
+/** 역할 선택지 이름 — 한국어 이름 뒤에 코드(M7). 남는 컬럼을 치우는 선택지는 "쓰지 않음" 하나다. */
+export function roleOptionLabel(role: MappingRole): string {
+  if (role === "ignore") return "쓰지 않음 (ignore)";
+  return `${getColumnDisplay(role).label} (${role})`;
 }
