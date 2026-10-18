@@ -136,6 +136,15 @@ describe('"알려진 것 없음"은 "모름"과 다르다', () => {
   });
 });
 
+describe("전용 화면이 받는 필드", () => {
+  it("필수여도 여기서 따지지 않는다 — 값이 카드 값 모음 밖에 있다", () => {
+    const card = { ...학습데이터, fields: [{ ...학습데이터.fields[0], dedicatedScreen: true as const }] };
+    expect(getFieldIssue(card, card.fields[0], {})).toBeNull();
+    // 표시가 없으면 같은 빈 값이 빈칸이다.
+    expect(getFieldIssue(학습데이터, 학습데이터.fields[0], {})?.reason).toBe("missing");
+  });
+});
+
 describe("조건부 필드", () => {
   it("조건이 성립할 때만 필수가 된다", () => {
     const 일치율 = 정답라벨.fields.find((f) => f.id === "labelReviewerCount")!;

@@ -57,9 +57,10 @@ export function ComposerCardForm({
   showErrors = false,
   picks,
 }: ComposerCardFormProps) {
-  // 받지 않기로 한 필드와 조건이 성립하지 않은 조건부 필드는 그리지 않는다.
-  const fields = getCardFields(card.id, taskType).filter((field) =>
-    isFieldVisible(field, values, isFieldPicked(card, field, picks)),
+  // 받지 않기로 한 필드, 조건이 성립하지 않은 조건부 필드, 전용 화면이 받는 필드(⑥ 예시 파일)는
+  // 그리지 않는다.
+  const fields = getCardFields(card.id, taskType).filter(
+    (field) => !field.dedicatedScreen && isFieldVisible(field, values, isFieldPicked(card, field, picks)),
   );
   const issueOf = (fieldId: string) => issues.find((issue) => issue.fieldId === fieldId);
 

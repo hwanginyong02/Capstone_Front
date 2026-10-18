@@ -65,6 +65,16 @@ describe("⑤ 평가 관점 — 유형별 질문", () => {
   });
 });
 
+describe("전용 화면이 받는 필드는 그리지 않는다", () => {
+  it("⑥ 예시 파일 두 칸은 학습 데이터 화면의 예시 파일 칸이 받는다", () => {
+    renderForm("trainingData");
+
+    expect(screen.getByText("데이터 이름")).toBeInTheDocument();
+    expect(screen.queryByText("적합 예시 파일")).not.toBeInTheDocument();
+    expect(screen.queryByText("부적합 예시 파일")).not.toBeInTheDocument();
+  });
+});
+
 describe("카드 제목에는 번호가 없다", () => {
   it("이름만 적는다 — ⑥ 같은 기호는 사용자에게 뜻이 없다", () => {
     renderForm("trainingData");

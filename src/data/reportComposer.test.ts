@@ -157,6 +157,45 @@ describe("전용 화면이 받는 필드 (dedicatedScreen)", () => {
     }
   });
 
+  it("레지스트리 폼이 그리는 필드는 이것뿐이다", () => {
+    // 전용 화면 표시가 빠지면 레지스트리 폼이 파일·컬럼 칸을 그리게 된다. 목록을 리터럴로 고정한다.
+    const drawn = Object.fromEntries(
+      COMPOSER_CARDS.map((card) => [
+        card.id,
+        card.fields.filter((field) => !field.dedicatedScreen).map((field) => field.id),
+      ]),
+    );
+    expect(drawn).toEqual({
+      evalData: [],
+      metrics: ["metricRationale"],
+      clientInfo: [],
+      model: [],
+      perspective: ["criticalErrorType", "classPriority", "usageMode"],
+      trainingData: [
+        "trainingDatasetName",
+        "trainingDataSource",
+        "trainingVolume",
+        "trainingClassVolume",
+        "channelEffects",
+        "imbalanceHandling",
+        "trainingPeriod",
+        "trainingDescription",
+        "trainingDataFormat",
+        "trainingNotes",
+        "preprocessingMatch",
+      ],
+      testData: ["testDataSource", "testSourceRelation", "testPeriod"],
+      groundTruth: [
+        "labelAuthor",
+        "labelReview",
+        "labelReviewerCount",
+        "labelAgreementKind",
+        "labelAgreementValue",
+      ],
+      modelEnv: ["algorithm", "hyperparameters", "runtimeEnv", "gpuUsage"],
+    });
+  });
+
   it("조건을 값으로 읽을 수 없는 β 는 조건을 정하는 필드(지표)를 따로 적는다", () => {
     const beta = getCard("metrics").fields.find((field) => field.id === "beta");
     expect(beta?.conditionField).toBe("selectedMetrics");
@@ -356,7 +395,7 @@ describe("② 지표와 합격 기준", () => {
 });
 
 describe("⑥ 학습 데이터", () => {
-  it("재료 고르기에서 권장 6개와 선택 5개로 나뉜다 (docs/MATERIAL_PICKER.md §6)", () => {
+  it("재료 고르기에서 권장 6개와 선택 7개로 나뉜다 (docs/MATERIAL_PICKER.md §6)", () => {
     const card = getCard("trainingData");
     const of = (kind: string) =>
       card.fields.filter((field) => pickKind(card, field) === kind).map((field) => field.id);
@@ -375,6 +414,9 @@ describe("⑥ 학습 데이터", () => {
       "trainingNotes",
       // 학습·평가 전처리 일치 — ⑦ 에서 옮겨 왔다(persist v13, 서술 설계 D44).
       "preprocessingMatch",
+      // 예시 파일 두 칸 — 학습 데이터 화면의 예시 파일 칸이 받는다(전용 화면).
+      "trainingExamples",
+      "trainingUnsuitableExamples",
     ]);
   });
 
