@@ -130,6 +130,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         mono: true,
         step: "mapping",
         reportSection: "6절",
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 8 },
       },
       {
         id: "sampleIdColumn",
@@ -247,6 +248,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         step: "metrics",
         reportSection: "3절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "6.5.1", reportingItem: 12 },
       },
       {
         /**
@@ -296,6 +298,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           { key: "address", label: "주소", format: "텍스트", description: "회사 소재지입니다. 예: 서울시 강남구 테헤란로 123" },
         ],
         reportSection: "1절",
+        standardBasis: { standard: "ISO/IEC 17025", clause: "7.8.2.1 e)" },
       },
       {
         id: "reportPurpose",
@@ -403,6 +406,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         mono: true,
         reportSection: "2절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC 17025", clause: "7.8.2.1 g)" },
       },
       {
         id: "modelPurpose",
@@ -414,6 +418,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         description: "모델이 하는 일입니다. 예: 통신사 고객의 이탈 여부 예측",
         reportSection: "2절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC 17025", clause: "7.8.2.1 g)" },
       },
       {
         // 1절 대상 문장("본 모델은 {분류} 형식으로 구현되었으며…")에 끼워 찍혀 한 줄로 받는다.
@@ -426,6 +431,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         description: "모델이 어떤 종류인지 한 줄로 적습니다. 예: 분류 모델(신경망), 텍스트 분류",
         reportSection: "1절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC 17025", clause: "7.8.2.1 g)" },
       },
     ],
   },
@@ -464,9 +470,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         help:
           "놓침을 고르면 Recall 또는 β가 1보다 큰 Fβ가, 잘못 잡음을 고르면 Precision 또는 " +
           "β가 1보다 작은 Fβ가 지표에 있어야 합니다. 없으면 지표 화면에서 알려 줍니다.",
-        standardClause: "6.2.6",
         reportSection: "5절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "6.2.6" },
       },
       {
         id: "classPriority",
@@ -490,9 +496,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         help:
           "차례대로 매크로·가중·마이크로 평균 지표가 있어야 합니다. 클래스별 표를 고르면 세 평균이 " +
           "모두 있는 것으로 봅니다. 멀티레이블에서 큰 클래스 우선·개별 샘플 우선은 클래스별 표가 필요합니다.",
-        standardClause: "6.4.3",
         reportSection: "5절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "6.4.3" },
       },
       {
         id: "usageMode",
@@ -510,9 +516,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         help:
           "실시간 응답을 고르면 응답시간(latency) 컬럼을 매핑했는지 확인합니다. 없으면 생성 전에 알리고, " +
           "성적서에 응답 속도를 판단할 수 없다고 적습니다.",
-        standardClause: "6.6.2",
         reportSection: "5절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "6.6.2" },
       },
     ],
   },
@@ -541,6 +547,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         allowsUnknown: true,
         reportSection: "7절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 1 },
       },
       {
         /**
@@ -557,6 +564,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         allowsUnknown: true,
         reportSection: "7절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 1 },
       },
       {
         id: "trainingVolume",
@@ -575,6 +583,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         allowsUnknown: true,
         reportSection: "7절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 1 },
       },
       {
         id: "trainingClassVolume",
@@ -589,6 +598,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         allowsUnknown: true,
         reportSection: "7절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 1 },
       },
       {
         id: "channelEffects",
@@ -628,9 +638,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         help:
           "같은 클래스의 데이터가 서로 다른 장비, 처리 방식, 사람, 환경에서 모였는지입니다. " +
           "여러 개일 수 있습니다.",
-        standardClause: "5.3.8",
         reportSection: "7절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "5.3.8", reportingItem: 9 },
       },
       {
         /**
@@ -660,9 +670,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         otherChoice: "Other (free text)",
         allowsUnknown: true,
         help: "한쪽 클래스에 몰린 데이터를 어떻게 다뤘는지입니다. 여러 개일 수 있습니다.",
-        standardClause: "8절",
         reportSection: "7절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 3 },
       },
       {
         id: "trainingPeriod",
@@ -788,6 +798,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         allowsUnknown: true,
         reportSection: "4절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 2 },
       },
       {
         id: "testSourceRelation",
@@ -806,6 +817,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         help: "둘이 같은 곳에서 왔으면 점수가 실제보다 좋게 나올 수 있습니다.",
         reportSection: "4절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 2 },
       },
       {
         id: "testPeriod",
@@ -863,6 +875,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         allowsUnknown: true,
         reportSection: "4절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 4 },
       },
       {
         id: "labelReview",
@@ -885,6 +898,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         allowsUnknown: true,
         reportSection: "4절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 5 },
       },
       {
         /**
@@ -903,6 +917,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         mono: true,
         reportSection: "4절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절" },
       },
       {
         /**
@@ -961,6 +976,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           Other: "기타",
           "Not measured": "측정 안 함",
         },
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절" },
       },
       {
         // 단순 일치율은 화면에서 % 로 받는다(0~100). 카파·알파는 −1~1, 기타는 검사하지 않는다.
@@ -993,6 +1009,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         mono: true,
         reportSection: "3절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절" },
       },
     ],
   },
@@ -1015,6 +1032,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         allowsUnknown: true,
         reportSection: "2절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "5.3.10", reportingItem: 10 },
       },
       {
         id: "hyperparameters",
@@ -1027,6 +1045,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         allowsUnknown: true,
         reportSection: "2절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "5.3.10", reportingItem: 10 },
       },
       {
         /**
@@ -1066,6 +1085,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
             Software: "envSoftware",
           },
         },
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 7 },
       },
       {
         id: "gpuUsage",
@@ -1089,6 +1109,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         allowsUnknown: true,
         reportSection: "8절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "5.3.12", reportingItem: 11 },
       },
     ],
   },

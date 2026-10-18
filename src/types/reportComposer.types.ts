@@ -29,9 +29,11 @@ export type OptionalCardId = "trainingData" | "testData" | "groundTruth" | "mode
 /**
  * 필드 구분.
  *
- * 값은 세 가지다. 재료 고르기 화면의 네 번째 구분인 **권장**은 선택 카드 안의 `required`
- * 필드에서 유도한다 — TS 4213 이 성적서에 적으라고 요구하는 표준 보고 항목이다
- * (`pickKind`, docs/MATERIAL_PICKER.md §6). 같은 뜻을 두 벌로 적지 않는다.
+ * 값은 세 가지다. 재료 고르기 화면의 네 번째 구분인 **권장**은 유도한다 — TS 4213 이 성적서에
+ * 적으라고 요구하는 표준 보고 항목이다(docs/MATERIAL_PICKER.md §6). 출처는 필드마다 정확히 하나다.
+ * - 선택 카드 안의 `required` 필드: 카드에서 유도한다(`pickKind`).
+ * - 잠긴 카드 안의 `optional` 필드: `standardBasis.reportingItem` 이 있으면 권장이다(`leafKind` —
+ *   ① 지연시간 컬럼). 선택 카드에는 이 방식을 쓰지 않는다(테스트가 막는다).
  */
 export type FieldKind = "required" | "optional" | "conditional";
 
@@ -226,8 +228,8 @@ export interface ComposerField {
   reportSection?: string;
   /** AI 서술에 넘기는 값인지 — 개발자용. 카드에 보이지 않는다. */
   sentToAi?: boolean;
-  /** 근거 조항(KS X ISO/IEC TS 4213). ⑤ 평가 관점의 지표 점검이 쓸 값. */
-  standardClause?: string;
+  /** 표준 근거. 평가 흐름 만들기의 설명 팝업이 "표준 근거" 줄로 보인다. 없으면 그 줄을 그리지 않는다. */
+  standardBasis?: StandardBasis;
   /**
    * 같은 내용을 받던 **기존 저장소 필드**. 카드에 입력하면 여기에도 함께 쓴다.
    *
@@ -244,6 +246,24 @@ export interface ComposerField {
   legacy?:
     | { target: LegacyTarget; field: string }
     | { target: LegacyTarget; byKey: Record<string, string> };
+}
+
+/**
+ * 필드의 표준 근거. 성적서가 실제로 점검하는 것(1층 식별 항목, 2층 보고 항목, 3층 선언)에만 단다.
+ *
+ * 화면에는 조항 번호와 2층 항목 이름만 보인다. `requirement`(짧은 요구 문장)는 표준 원문과 대조를
+ * 마친 것만 적는다 — 풀어 쓴 초안을 근거처럼 보이면 거짓 표시가 된다.
+ */
+export interface StandardBasis {
+  standard: "ISO/IEC TS 4213" | "ISO/IEC 17025";
+  /** 조항. 화면에 그대로 보인다("6.2.6", "8절", "7.8.2.1 e)"). */
+  clause: string;
+  requirement?: string;
+  /**
+   * 재료 선택 점검 2층 번호(`lib/report/materialCheck.ts` 의 REPORTING_ITEMS, #1~#12). 성적서가 이
+   * 번호로 "제공되지 않음"을 센다(`reportMaterials.ts` 의 줄 번호와 같다).
+   */
+  reportingItem?: number;
 }
 
 /** 카드 값을 함께 흘려보낼 기존 저장소. */

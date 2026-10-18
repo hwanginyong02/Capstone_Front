@@ -30,6 +30,7 @@ import {
 } from "./reportComposer";
 import { MAPPABLE_ROLES_BY_TASK, getColumnDisplay, type TaskType } from "./evaluationData";
 import { REPORT_PURPOSE_LABEL } from "../lib/report/reportConstants";
+import { REPORTING_ITEMS } from "../lib/report/materialCheck";
 
 const TASK_TYPES: TaskType[] = ["binary", "multiclass", "multilabel"];
 
@@ -357,9 +358,11 @@ describe("⑤ 평가 관점 — 유형에 따라 다르지만 항상 두 개", (
 
   it("세 질문 모두 TS 4213 근거 조항을 갖는다", () => {
     // 근거 조항과 점검 대상이 없는 질문은 평가 관점이 아니라 일반 입력 필드다.
-    for (const field of getCard("perspective").fields) {
-      expect(field.standardClause, field.id).toBeTruthy();
-    }
+    expect(getCard("perspective").fields.map((field) => field.standardBasis)).toEqual([
+      { standard: "ISO/IEC TS 4213", clause: "6.2.6" },
+      { standard: "ISO/IEC TS 4213", clause: "6.4.3" },
+      { standard: "ISO/IEC TS 4213", clause: "6.6.2" },
+    ]);
   });
 });
 
@@ -491,7 +494,8 @@ describe("필수 (표준 보고) 유도", () => {
   });
 
   it("필수 카드의 필드는 표준 보고 항목이 아니다", () => {
-    // 필수 카드는 끌 수 없어 "제공되지 않음"이 될 수 없다.
+    // isStandardReportingField 는 pickKind 의 권장 유도 규칙이다. 잠긴 카드의 2층 보고 항목(① 지연시간
+    // 컬럼)은 standardBasis.reportingItem 이 맡는다(아래 "표준 근거").
     for (const id of REQUIRED_CARD_IDS) {
       const card = getCard(id);
       expect(card.fields.some((field) => isStandardReportingField(card, field)), id).toBe(false);
@@ -523,6 +527,89 @@ describe("필수 (표준 보고) 유도", () => {
     expect(channelEffects?.exclusiveChoice).toBe("None known");
     expect(channelEffects?.allowsUnknown).toBeUndefined();
     expect(channelEffects?.choices).not.toContain("모름");
+  });
+});
+
+/**
+ * 표준 근거 — 평가 흐름 만들기 설명 팝업의 "표준 근거" 줄. 성적서가 실제로 점검하는 항목에만 있다.
+ * 2층 번호(reportingItem)는 성적서가 "제공되지 않음"을 세는 번호(reportMaterials.ts 의 required(n, …))와 같다.
+ */
+describe("표준 근거 (standardBasis)", () => {
+  const allFields = COMPOSER_CARDS.flatMap((card) => card.fields);
+
+  it("2층 번호는 필드마다 이렇다 — 6번(TP·FP 건수)은 계산값이라 필드가 없다", () => {
+    const items = Object.fromEntries(
+      allFields
+        .filter((field) => field.standardBasis?.reportingItem !== undefined)
+        .map((field) => [field.id, field.standardBasis!.reportingItem]),
+    );
+    expect(items).toEqual({
+      metricRationale: 12,
+      latencyColumn: 8,
+      trainingDatasetName: 1,
+      trainingDataSource: 1,
+      trainingVolume: 1,
+      trainingClassVolume: 1,
+      channelEffects: 9,
+      imbalanceHandling: 3,
+      testDataSource: 2,
+      testSourceRelation: 2,
+      labelAuthor: 4,
+      labelReview: 5,
+      algorithm: 10,
+      hyperparameters: 10,
+      runtimeEnv: 7,
+      gpuUsage: 11,
+    });
+    const covered = new Set(Object.values(items));
+    expect([...REPORTING_ITEMS.map((row) => row.item)].filter((item) => !covered.has(item))).toEqual([6]);
+  });
+
+  it("선택 카드에서는 2층 번호가 있는 필드가 곧 권장 항목이다", () => {
+    for (const id of OPTIONAL_CARD_IDS) {
+      const card = getCard(id);
+      expect(card.fields.length).toBeGreaterThan(0);
+      for (const field of card.fields) {
+        expect(field.standardBasis?.reportingItem !== undefined, field.id).toBe(
+          pickKind(card, field) === "recommended",
+        );
+      }
+    }
+  });
+
+  it("잠긴 카드에서 2층 번호가 있는 것은 지표 선택 이유와 지연시간 컬럼뿐이다", () => {
+    const locked = REQUIRED_CARD_IDS.flatMap((id) =>
+      getCard(id).fields.filter((field) => field.standardBasis?.reportingItem !== undefined),
+    );
+    expect(locked.map((field) => [field.id, field.kind])).toEqual([
+      ["latencyColumn", "optional"],
+      ["metricRationale", "required"],
+    ]);
+  });
+
+  it("권장 항목과 평가 관점 질문은 모두 TS 4213 근거가 있다", () => {
+    const shouldHave = COMPOSER_CARDS.flatMap((card) =>
+      card.fields.filter((field) => pickKind(card, field) === "recommended" || card.id === "perspective"),
+    );
+    expect(shouldHave.length).toBeGreaterThan(0);
+    for (const field of shouldHave) expect(field.standardBasis?.standard, field.id).toBe("ISO/IEC TS 4213");
+  });
+
+  it("1층 식별 항목(회사 정보, 모델)은 ISO/IEC 17025 7.8.2.1 이다", () => {
+    const of = (cardId: "clientInfo" | "model", fieldId: string) =>
+      getCard(cardId).fields.find((field) => field.id === fieldId)?.standardBasis;
+    expect(of("clientInfo", "companyInfo")).toEqual({ standard: "ISO/IEC 17025", clause: "7.8.2.1 e)" });
+    for (const id of ["modelNameVersion", "modelPurpose", "modelCategory"]) {
+      expect(of("model", id), id).toEqual({ standard: "ISO/IEC 17025", clause: "7.8.2.1 g)" });
+    }
+  });
+
+  it("근거가 없는 필드는 줄을 빼고, 요구 문장은 아직 하나도 없다(대조 전)", () => {
+    // 의뢰자 정보의 용도·날짜·선택 칸, 결과 파일·매핑 컬럼, 지표 목록 등은 성적서가 점검하지 않는다.
+    for (const id of ["reportPurpose", "requestDate", "resultFile", "yTrueColumn", "selectedMetrics", "trainingPeriod"]) {
+      expect(allFields.find((field) => field.id === id)?.standardBasis, id).toBeUndefined();
+    }
+    expect(allFields.filter((field) => field.standardBasis?.requirement)).toEqual([]);
   });
 });
 
