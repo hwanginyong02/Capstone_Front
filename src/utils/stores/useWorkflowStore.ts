@@ -21,6 +21,7 @@ import type { ValidateDataResponseData } from "../../types/validation.types";
 import type { MaterialCheckAck } from "../../types/finalReport.types";
 import {
   DEFAULT_BASIC_INFO,
+  createDefaultBasicInfo,
   type BasicInfoFormData,
   type MetricDetailStateMap,
   type StepId,
@@ -1092,7 +1093,8 @@ export const useWorkflowStore = create<WorkflowState>()(
         })),
 
       // Reset
-      resetWorkflow: () => set(INITIAL_STATE),
+      // 새 평가를 시작하는 초기화다 — 평가 의뢰일을 지금의 오늘로 채운다(B1②).
+      resetWorkflow: () => set({ ...INITIAL_STATE, basicInfo: createDefaultBasicInfo() }),
     }),
     {
       name: WORKFLOW_STORAGE_KEY,

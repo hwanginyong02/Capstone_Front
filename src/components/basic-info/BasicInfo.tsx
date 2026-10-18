@@ -22,7 +22,7 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "../../utils/styling/styles";
 import type { BasicInfoFormData } from "../../types/workflow.types";
-import { fromIsoDate, toIsoDate } from "../../utils/domain/isoDate";
+import { fromIsoDate, toIsoDate, todayIsoDate } from "../../utils/domain/isoDate";
 import { NOTE_MAX_LENGTH, choiceLabel, getCard, isFieldPicked, isPartPicked } from "../../data/reportComposer";
 import { CharCount } from "../composer-input/CharCount";
 import { TEXTAREA_CLASS } from "../data-upload/shared";
@@ -64,6 +64,14 @@ export function ClientInfoForm({ formData, onFormDataChange, picks }: ClientInfo
     onFormDataChange((prev) => ({ ...prev, [field]: value }));
   };
   const show = clientPicks(picks);
+
+  // 평가 의뢰일이 비어 있으면 오늘을 저장한다 — 날짜 칸은 빈 값에도 오늘을 보이므로, 저장하지 않으면
+  // 보이는 날짜와 저장값이 갈려 "다음"이 막힌다(B1②). 이미 고른 날짜는 덮지 않는다.
+  const missingDate = !formData.contractDate;
+  React.useEffect(() => {
+    if (!missingDate) return;
+    onFormDataChange((prev) => (prev.contractDate ? prev : { ...prev, contractDate: todayIsoDate() }));
+  }, [missingDate, onFormDataChange]);
 
   return (
     <div className="space-y-10">

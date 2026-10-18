@@ -8,10 +8,12 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ClientInfo } from "./ClientInfo";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
+import { DEFAULT_BASIC_INFO } from "../types/workflow.types";
+import { todayIsoDate } from "../utils/domain/isoDate";
 
 function renderPage() {
   render(
@@ -118,5 +120,44 @@ describe("다음", () => {
     renderPage();
 
     expect(screen.getByRole("button", { name: "다음" })).toBeDisabled();
+  });
+});
+
+describe("[B1②] 평가 의뢰일 기본값은 평가를 시작한 날이다", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("빈 값 상수에는 날짜가 없다 — 모듈을 읽은 날로 굳지 않는다", () => {
+    expect(DEFAULT_BASIC_INFO.contractDate).toBe("");
+  });
+
+  it("새 평가(초기화)는 그때의 오늘을 넣는다 — 날이 바뀌면 바뀐 날", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 9, 18, 23, 59));
+    useWorkflowStore.getState().resetWorkflow();
+    expect(useWorkflowStore.getState().basicInfo.contractDate).toBe("2026-10-18");
+
+    vi.setSystemTime(new Date(2026, 9, 20, 9, 0));
+    useWorkflowStore.getState().resetWorkflow();
+    expect(useWorkflowStore.getState().basicInfo.contractDate).toBe("2026-10-20");
+  });
+
+  it("작업 유형을 바꿔도 고른 날짜를 덮지 않는다", () => {
+    useWorkflowStore.setState({ basicInfo: { ...useWorkflowStore.getState().basicInfo, contractDate: "2026-01-02" } });
+    useWorkflowStore.getState().setTaskType("multiclass");
+    expect(useWorkflowStore.getState().basicInfo.contractDate).toBe("2026-01-02");
+  });
+
+  it("저장값이 비어 있으면 화면이 오늘을 저장한다 — 보이는 날짜와 저장값이 같다", () => {
+    useWorkflowStore.setState({ basicInfo: { ...useWorkflowStore.getState().basicInfo, contractDate: "" } });
+    renderPage();
+    expect(useWorkflowStore.getState().basicInfo.contractDate).toBe(todayIsoDate());
+  });
+
+  it("이미 고른 날짜는 화면에 들어와도 그대로다", () => {
+    useWorkflowStore.setState({ basicInfo: { ...useWorkflowStore.getState().basicInfo, contractDate: "2026-01-02" } });
+    renderPage();
+    expect(useWorkflowStore.getState().basicInfo.contractDate).toBe("2026-01-02");
   });
 });

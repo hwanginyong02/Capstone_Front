@@ -76,6 +76,12 @@ export interface UploadedFileInfo {
   previewUrl?: string;
 }
 
+/**
+ * 기본정보의 빈 값. **평가 의뢰일은 비어 있다** — 이 상수는 모듈을 읽을 때 한 번 만들어지므로, 여기서
+ * 오늘을 계산하면 탭을 연 날짜로 굳는다(B1②: 자정을 넘기거나 며칠 띄워 둔 탭에서 새 평가를 시작하면
+ * 지난 날짜가 들어갔다). 오늘 날짜는 `createDefaultBasicInfo` 가 새 평가를 시작할 때, 또는 의뢰자
+ * 정보 화면이 빈 값을 볼 때 넣는다.
+ */
 export const DEFAULT_BASIC_INFO: BasicInfoFormData = {
   companyName: "",
   representative: "",
@@ -84,7 +90,7 @@ export const DEFAULT_BASIC_INFO: BasicInfoFormData = {
   phone: "",
   fax: "",
   address: "",
-  contractDate: todayIsoDate(),
+  contractDate: "",
   reportPurpose: "",
   reportPurposeNote: "",
   projectName: "",
@@ -102,3 +108,7 @@ export const DEFAULT_BASIC_INFO: BasicInfoFormData = {
   envSoftware: "",
 };
 
+/** 새 평가의 기본정보 — 평가 의뢰일은 부른 때의 오늘이다. */
+export function createDefaultBasicInfo(): BasicInfoFormData {
+  return { ...DEFAULT_BASIC_INFO, contractDate: todayIsoDate() };
+}
