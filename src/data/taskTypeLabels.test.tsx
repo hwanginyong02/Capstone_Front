@@ -12,6 +12,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import {
+  getColumnDisplay,
   isLegacyTaskTypeLabel,
   LEGACY_TASK_TYPE_LABELS,
   resolveTaskType,
@@ -128,6 +129,17 @@ describe("옛 발급본 유형 이름 판정 (isLegacyTaskTypeLabel, S10 마무�
     expect(taskTypeLabelsFor("Multi-label")).toBe(LEGACY_TASK_TYPE_LABELS);
     expect(taskTypeLabelsFor("다중 레이블 분류")).toBe(TASK_TYPE_LABELS_KO);
     expect(taskTypeLabelsFor(undefined)).toBe(TASK_TYPE_LABELS_KO);
+  });
+});
+
+describe("컬럼 설명의 유형 이름 (COLUMN_DISPLAY, S10 마무리)", () => {
+  it("정답·예측 컬럼 설명이 유형 이름표의 '다중 레이블 분류'를 쓴다 — '멀티레이블'이 아니다", () => {
+    expect(getColumnDisplay("y_true").description).toBe(
+      "실제 정답 값입니다. 다중 레이블 분류이면 정답 레이블 묶음을 한 가지 형식으로 적습니다.",
+    );
+    expect(getColumnDisplay("y_pred").description).toBe(
+      "모델이 예측한 값입니다. 다중 레이블 분류이면 y_true 와 같은 형식으로 예측 레이블 묶음을 적습니다.",
+    );
   });
 });
 

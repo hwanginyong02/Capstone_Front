@@ -283,6 +283,7 @@ const COLUMN_ORDER: RequiredColumnCode[] = [
   "latency",
 ];
 
+// 설명 문장의 유형 이름은 유형 이름표(TASK_TYPE_LABELS_KO)를 쓴다(W9 — S10 마무리, 종전 '멀티레이블').
 const COLUMN_DISPLAY: Record<RequiredColumnCode, RequiredColumnDisplay> = {
   id: {
     code: "id",
@@ -292,12 +293,12 @@ const COLUMN_DISPLAY: Record<RequiredColumnCode, RequiredColumnDisplay> = {
   y_true: {
     code: "y_true",
     label: "정답 레이블",
-    description: "실제 정답 값입니다. 멀티레이블이면 정답 레이블 묶음을 한 가지 형식으로 적습니다.",
+    description: `실제 정답 값입니다. ${TASK_TYPE_LABELS_KO.multilabel}이면 정답 레이블 묶음을 한 가지 형식으로 적습니다.`,
   },
   y_pred: {
     code: "y_pred",
     label: "예측 레이블",
-    description: "모델이 예측한 값입니다. 멀티레이블이면 y_true 와 같은 형식으로 예측 레이블 묶음을 적습니다.",
+    description: `모델이 예측한 값입니다. ${TASK_TYPE_LABELS_KO.multilabel}이면 y_true 와 같은 형식으로 예측 레이블 묶음을 적습니다.`,
   },
   score: {
     code: "score",
