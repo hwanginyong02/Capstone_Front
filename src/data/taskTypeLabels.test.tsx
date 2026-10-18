@@ -17,6 +17,7 @@ import { DEFAULT_BASIC_INFO } from "../types/workflow.types";
 import { ReportCoverSection } from "../components/report/sections/ReportCoverSection";
 import { DatasetSection } from "../components/report/sections/DatasetSection";
 import { MetricListSection } from "../components/report/sections/MetricListSection";
+import { DataValidation } from "../components/data-validation/DataValidation";
 
 const ROOT = resolve(__dirname, "../..");
 
@@ -127,4 +128,33 @@ describe("유형 대체값 한 곳 (resolveTaskType)", () => {
     const lines = readFileSync(join(ROOT, "src/data/evaluationData.ts"), "utf-8").split("\n");
     return lines.findIndex((line) => line.trim() === 'return taskType || "binary";') + 1;
   }
+});
+
+describe("검증 화면의 묶음 이름 — 성적서 6.0 과 같은 한국어 이름 (S7 검토)", () => {
+  it("다중 클래스 분류·다중 레이블 분류 묶음 이름과 설명", () => {
+    const item = (group: "multiclass" | "multilabel") => ({
+      name: `${group}_check`,
+      result: "ok",
+      handling: "-",
+      status: "pass" as const,
+      group,
+    });
+    render(
+      <DataValidation
+        isLoading={false}
+        validationData={{
+          task_type: "multiclass",
+          selected_metric_ids: [],
+          execution_summary: [],
+          validation_details: [item("multiclass"), item("multilabel")],
+          error_count: 0,
+          warning_count: 0,
+        }}
+      />,
+    );
+    expect(screen.getByText("다중 클래스 분류 검사")).toBeInTheDocument();
+    expect(screen.getByText("분류 유형이 다중 클래스 분류일 때 적용")).toBeInTheDocument();
+    expect(screen.getByText("다중 레이블 분류 검사")).toBeInTheDocument();
+    expect(screen.getByText("분류 유형이 다중 레이블 분류일 때 적용")).toBeInTheDocument();
+  });
 });
