@@ -91,12 +91,15 @@ export function DataUpload({
   const [sizeError, setSizeError] = useState<string | null>(null);
 
   const resolvedTaskType: TaskType = resolveTaskType(taskType);
-  const requiredColumns = useMemo(
-    () => uploadColumnCodes(resolvedTaskType, evalDataPicks).map(getColumnDisplay),
+  const columnCodes = useMemo(
+    () => uploadColumnCodes(resolvedTaskType, evalDataPicks),
     [resolvedTaskType, evalDataPicks],
   );
+  const requiredColumns = useMemo(() => columnCodes.map(getColumnDisplay), [columnCodes]);
+  // 파일 예시도 같은 판정으로 — 매핑할 수 없는 지연시간 열·안내를 예시에 두지 않는다(S10 마무리).
+  const exampleColumns = { latency: columnCodes.includes("latency") };
   // JSON 예시만 문자열로 쓴다. CSV 는 CsvExampleViewer 가 표로 그린다.
-  const jsonExample = getComposerJsonExample(resolvedTaskType);
+  const jsonExample = getComposerJsonExample(resolvedTaskType, exampleColumns);
 
   const openFilePicker = () => inputRef.current?.click();
 
@@ -197,7 +200,7 @@ export function DataUpload({
             <TabsContent value="csv">
               {/* 표로 그린다 — 줄글 덩어리로 두면 쉼표를 세어야 어느 칸이 비었는지 알 수 있다.
                   안내는 아래에 한 번만 쓰므로 여기서는 끈다. */}
-              <CsvExampleViewer taskType={resolvedTaskType} showNote={false} />
+              <CsvExampleViewer taskType={resolvedTaskType} showNote={false} columns={exampleColumns} />
             </TabsContent>
             <TabsContent value="json">
               <div className="bg-muted rounded-md p-4">
@@ -205,7 +208,7 @@ export function DataUpload({
               </div>
             </TabsContent>
           </Tabs>
-          <p className="text-sm text-muted-foreground">{getComposerColumnNote(resolvedTaskType)}</p>
+          <p className="text-sm text-muted-foreground">{getComposerColumnNote(resolvedTaskType, exampleColumns)}</p>
         </CardContent>
       </Card>
 

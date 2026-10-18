@@ -90,6 +90,53 @@ describe("업로드 화면의 컬럼 안내 — 매핑 선택지와 같은 함�
   });
 });
 
+describe("파일 예시도 같은 판정 — 지연시간을 놓지 않으면 latency_ms 열·안내가 없다 (S10 마무리)", () => {
+  it("예시 함수: 지연시간을 빼면 CSV·JSON·안내 문장에서 모두 빠지고, 넘기지 않으면 그대로", async () => {
+    const { getComposerColumnNote, getComposerCsvExample, getComposerJsonExample } = await import(
+      "../../data/templateExamples"
+    );
+    expect(getComposerCsvExample("binary")).toContain("latency_ms");
+    expect(getComposerCsvExample("binary", { latency: false })).toBe(
+      ["id,y_true,y_pred,score", "S001,1,1,0.91", "S002,0,1,0.62", "S003,0,0,0.08"].join("\n"),
+    );
+    expect(getComposerJsonExample("binary")).toContain('"latency_ms": 12');
+    expect(getComposerJsonExample("binary", { latency: false })).toContain('"score": 0.91 }');
+    expect(getComposerJsonExample("binary", { latency: false })).not.toContain("latency_ms");
+    expect(getComposerColumnNote("binary")).toContain("지연시간(latency_ms, 밀리초)은 선택입니다.");
+    expect(getComposerColumnNote("binary", { latency: false })).not.toMatch(/지연시간|latency_ms/);
+    // 지연시간 열이 없는 유형은 그대로다.
+    for (const task of ["multiclass", "multilabel"] as const) {
+      expect(getComposerCsvExample(task, { latency: false })).toBe(getComposerCsvExample(task));
+    }
+  });
+
+  it("업로드 화면: 놓지 않았으면 예시 표·JSON·안내에 없고, 놓았으면 있다", async () => {
+    const { render, screen, within } = await import("@testing-library/react");
+    const { DataUpload } = await import("./DataUpload");
+    const example = () => screen.getByText("y_true", { selector: "th" }).closest("table")!;
+
+    const view = render(
+      <DataUpload taskType="binary" uploadedFile={null} onUploadedFileChange={() => {}} evalDataPicks={[]} />,
+    );
+    expect(within(example()).queryByText("latency_ms")).not.toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/latency_ms/);
+    expect(screen.queryByText(/지연시간\(latency_ms, 밀리초\)은 선택입니다/)).not.toBeInTheDocument();
+    view.unmount();
+
+    const placed = render(
+      <DataUpload
+        taskType="binary"
+        uploadedFile={null}
+        onUploadedFileChange={() => {}}
+        evalDataPicks={["latencyColumn"]}
+      />,
+    );
+    expect(within(example()).getByText("latency_ms")).toBeInTheDocument();
+    expect(screen.getByText(/지연시간\(latency_ms, 밀리초\)은 선택입니다/)).toBeInTheDocument();
+    placed.unmount();
+  });
+});
+
 describe("화면 용어: '응답시간' 대신 '지연시간'(N2)", () => {
   it("입력 화면 문구에 '응답시간'이 없다 — 성적서 인쇄문(report/sections·materialCheck)은 판정 표 버전에 묶여 그대로", () => {
     const screens = [
