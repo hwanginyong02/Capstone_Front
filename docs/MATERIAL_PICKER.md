@@ -260,7 +260,7 @@ PR #54 이후 팀 피드백: 화면이 각 필드 설명을 보여 주는 데 �
 
 **글자 수 상한(B7).** AI 에 넘기는 고객 입력은 백엔드가 직렬화 길이 2만 자로 막고, 넘으면 서술 요청이 통째로 거절되어 성적서에 AI 서술이 하나도 실리지 않는다. 그래서 두 겹으로 막는다.
 - 칸마다 상한을 두고 남은 글자를 보인다: 한 줄 글 200자, 모델 용도·분류 100자(1절 문장 안에 끼워 찍힘), 학습 데이터 설명 2,000자, 비고 1,000자, 덧붙이는 글 500자, 기타 직접 입력 200자, 클래스 설명 클래스마다 200자.
-- 보내기 직전 `fitClientInputs` 가 길이를 상한의 90%(18,000자)에 맞춘다. 가장 긴 글부터 잘라 "…(이하 생략)"을 붙이고, 그래도 넘으면 클래스 설명을 뺀다. 백엔드는 공백이 든 구분자로 재 프론트보다 길게 세므로 10% 여유가 그 차이를 덮는다.
+- 보내기 직전 `fitClientInputs` 가 길이를 상한의 90%(18,000자)에 맞춘다. 가장 긴 글부터 잘라 "…(이하 생략)"을 붙이고, 그래도 넘으면 클래스 설명을 뺀다. 여유 10%는 배포 순서(옛 백엔드)와 지수 표기 실수 차이를 덮는다(§12.7).
 
 ### 12.2 흐름 규칙과 저장 이행(v15)
 
@@ -281,7 +281,7 @@ PR #54 이후 팀 피드백: 화면이 각 필드 설명을 보여 주는 데 �
 
 **넣고 빼기.**
 - `togglePlaced`: 넣을 수 없는 id(조건부·모르는 id)는 무시하고, 레지스트리 순서로 둔다. 다른 유형의 항목은 남긴다 — 유형을 바꿨다 돌아와도 다시 넣지 않게.
-- 블록째 넣기(`blockFillIds`)는 필수와 권장, 둘 다 없는 블록이면 선택 전부다.
+- 블록째 넣기(`blockFillIds`)는 필수와 권장이다(모든 블록에 둘 중 하나가 있다 — 불변식 테스트).
 - 필수 항목도, 잠긴 블록 전체도 뺄 수 있다. 다시 "다음"이 막힐 뿐 입력 쪽에는 영향이 없다. 조건을 정하는 항목을 빼면 조건부도 빠진다.
 - 키는 사용자가 넣거나 비울 때만 생긴다. 화면에 들어오기만 해서 키를 만들던 `initRequiredPicks` 는 지웠다 — 잠긴 카드의 `[]` 는 "사용자가 비웠다" 하나의 뜻이다.
 
@@ -446,8 +446,8 @@ AI 에 넘기는 클래스 설명도 같은 거른 값(`reportInput.classLabelDe
 
 **검증 화면의 생성 전 안내.** 2층 8번(지연시간)과 3층 지연시간 줄의 목적지는 컬럼 매핑이 아니라 **평가 데이터 › 지연시간 컬럼**이다(`targetOfItem(8)` — 레지스트리의 `standardBasis.reportingItem` 에서 찾는다).
 - "평가 흐름 만들기에서 넣기"는 늘 보인다. 그 항목을 강조하고, 넣고 "다음"을 누르면 컬럼 매핑으로 돌아온다.
-- "컬럼 매핑에서 고치기"는 지연시간 컬럼이 **놓여 있을 때만** 보인다. 놓지 않았으면 매핑 화면에 latency 역할이 없어 막다른 길이다. 판정은 검증 화면의 `canFixInInput`(항목을 가리키면 `isLeafReceived`, 아니면 블록을 넣었는지) 하나다.
-- 블록만 가리키는 항목(학습 데이터·정답 라벨 등)은 종전처럼 "평가 흐름 만들기에서 넣기"와, 블록을 넣었으면 "입력 화면에서 고치기".
+- "컬럼 매핑에서 고치기"는 지연시간 컬럼이 **놓여 있을 때만** 보인다. 놓지 않았으면 매핑 화면에 latency 역할이 없어 막다른 길이다. 판정은 `canFixInInputOf`(`components/workflow/MaterialCheckNotice.tsx` — 블록을 넣었고, 항목을 가리키면 그 항목 중 하나라도 `isLeafReceived`) 하나다.
+- 마무리(S10): 다른 보고 항목도 받는 항목 id 를 단다(`leavesOfReportingItem` — 레지스트리의 `reportingItem`). 그래서 블록은 넣었어도 그 항목을 넣지 않았으면(예: 정답 라벨은 넣고 신뢰성은 뺌) "평가 흐름 만들기에서 넣기"만 보이고, 누르면 그 항목을 강조한다. 같은 블록의 항목은 한 묶음이고(학습 데이터 1·3·9), 묶음은 받는 항목이 하나라도 있으면 "입력 화면에서 고치기"도 준다. 받는 항목을 찾지 못하는 보고 항목은 종전처럼 블록 기준이다.
 
 **매핑 곁가지(P1, 같은 라운드).**
 - **'지정 안 함' 삭제(M7).** 역할 선택지는 "쓰지 않음 (ignore)" 하나로 남는 컬럼을 치운다. 역할 이름은 한국어 뒤에 코드(`roleOptionLabel`). 역할이 비어 있는(null) 옛 행은 "쓰지 않음"으로 보이고 백엔드로도 ignore 로 간다.
@@ -456,7 +456,7 @@ AI 에 넘기는 클래스 설명도 같은 거른 값(`reportInput.classLabelDe
 - **클래스 목록 한 곳(B5①).** 매핑 화면(설명 칸·양성 클래스 선택지)·학습 데이터 화면(클래스별 데이터 양)·성적서 3절이 `evaluationClassNames(taskType, columnMapping, metadata)`(`utils/domain/evaluationClasses.ts`) 하나를 쓴다. 출처 순서는 정답 컬럼의 전체 고유값 → 분석이 찾은 클래스 → 정답 컬럼 샘플값.
 - **양성 클래스 지키기(B5④·M5).** 매핑에서 정답 컬럼을 바꿔 고른 양성 클래스가 새 목록에 없으면 비운다(다시 골라야 확정). 파일을 다시 올리면 전에 고른 값이 새 파일의 클래스에 있으면 지키고, 없으면 새 자동 판단을 쓴다(`keepPositiveClass`). 자동 판단 규칙 자체는 백엔드 몫이다.
 - **옛 클래스 키(N1).** 클래스 레이블 설명은 지금 클래스의 키만 성적서·AI 에 싣는다(`currentClassEntries`). 다른 파일·다른 정답 컬럼에서 적어 둔 키가 AI 에 가던 것을 막는다.
-- **업로드 화면 안내(M2·M4)·용어(N2).** 업로드 화면의 "매핑할 수 있는 컬럼"은 매핑 선택지와 같은 `allowedMappingRoles` 로 만든다 — 다중 클래스의 확률·샘플 ID 가 빠지던 것을 고치고, 놓지 않은 항목은 안내하지 않는다. 따로 있던 추론 시간 카드는 지우고 지연시간 이름은 `latency_ms` 하나, 단위는 밀리초로 안내한다. 입력 화면 문구의 '응답시간'은 '지연시간'으로 바꿨다. 성적서 인쇄문(6절 응답시간 지표 표, 검증 절 항목 이름, 3층 점검 문장)은 판정 표 버전·발급본과 묶여 그대로 둔다.
+- **업로드 화면 안내(M2·M4)·용어(N2).** 업로드 화면의 "매핑할 수 있는 컬럼"은 매핑 선택지와 같은 `allowedMappingRoles` 로 만든다 — 다중 클래스의 확률·샘플 ID 가 빠지던 것을 고치고, 놓지 않은 항목은 안내하지 않는다. 따로 있던 추론 시간 카드는 지우고 지연시간 이름은 `latency_ms` 하나, 단위는 밀리초로 안내한다. 입력 화면 문구의 '응답시간'은 '지연시간'으로 바꿨다. 성적서 인쇄문(6절 응답시간 지표 표, 검증 절 항목 이름, 3층 점검 문장)은 판정 표 버전·발급본과 묶여 그대로 둔다. 마무리(S10): 업로드 화면 "파일 예시"(표·JSON·안내 문장)의 `latency_ms` 열도 같은 판정(`uploadColumnCodes`)으로 지연시간을 놓았을 때만 보인다. 맡아 둔 행 안내는 역할 코드 대신 `roleOptionLabel`(예: "맡아 둠: 지연시간(ms) (latency)")이다.
 
 코드: `utils/domain/mappingPicks.ts`, `utils/stores/useWorkflowStore.ts`(`setColumnMapping`·`applyMaterialPicks`), `utils/domain/applyRoleChange.ts`, `components/column-mapping/`, `lib/report/mapWorkflowToFinalReport.ts`(`pickedDedicatedValues`·`buildDatasetInfo`), `hooks/useReportData.ts`, `pages/DataInfo.tsx`, `components/workflow/MaterialCheckNotice.tsx`, `pages/DataValidation.tsx`, `data/reportComposer.ts`(`isLeafReceived`), `utils/domain/evaluationClasses.ts`, `utils/domain/mappingHelpers.ts`, `components/data-upload/DataUpload.tsx`.
 
@@ -505,7 +505,8 @@ AI 에 넘기는 클래스 설명도 같은 거른 값(`reportInput.classLabelDe
 
 **작업 유형 이름과 대체값(W9).**
 - 화면과 성적서·AI 서술이 한국어 한 벌을 쓴다: 이진 분류 / 다중 클래스 분류 / 다중 레이블 분류(`TASK_TYPE_LABELS_KO`, 성적서 쪽 이름 `TASK_TYPE_LABELS` 는 같은 표). 사용자 결정으로 10-15 의 "출력은 영문 유지"를 뒤집었다. 백엔드 서술 지시문의 `TASK_TYPE_LABELS` 와 대조 테스트가 지킨다.
-- 표지·3절 평가 유형·5절 머리글은 성적서에 저장된 이름(`meta.taskTypeLabel`·`datasetInfo.taskTypeLabel`)을 찍으므로 발급본은 영문 그대로다. 5절 공통 지표 안내와 검증 절 묶음 이름은 그릴 때 표에서 읽어 옛 성적서도 한국어로 보인다. 검증 화면의 유형별 검사 묶음 이름(예: "다중 클래스 분류 검사")도 같은 표를 읽는다.
+- 표지·3절 평가 유형·5절 머리글은 성적서에 저장된 이름(`meta.taskTypeLabel`·`datasetInfo.taskTypeLabel`)을 찍으므로 발급본은 영문 그대로다. 검증 화면의 유형별 검사 묶음 이름(예: "다중 클래스 분류 검사")은 한국어 표를 읽는다.
+- 마무리(S10, 사용자 결정 "발급본은 그대로"): 5.1 공통 지표 안내와 6.0 검증 묶음 이름·설명은 그릴 때 정하므로, 저장된 유형 이름이 옛 영문 표(`LEGACY_TASK_TYPE_LABELS` — Binary / Multi-class / Multi-label)의 값이면 W9 이전 글자 그대로("(Binary / Multi-class / Multi-label 모두 적용)", "태스크 유형이 Binary인 경우 적용" 등), 아니면 한국어 표로 그린다. 판정은 `isLegacyTaskTypeLabel` 하나이고, 6.0 은 `taskTypeLabel` prop 으로 받는다. 컬럼 설명(`COLUMN_DISPLAY`)의 '멀티레이블'도 '다중 레이블 분류'로 바꿨다. 1.2 '평가 의뢰일' 이름표는 유형 이름 결정 밖이라 그대로 새 이름표다.
 - 유형이 비었을 때의 유형은 `resolveTaskType()`(`data/evaluationData.ts`, "binary") 한 곳이다. 종전에는 15곳이 따로 정해 같은 파일 안에서도 "multiclass"·"binary" 로 갈렸다. 소스 검사 테스트가 `x || "binary"` 꼴이 다른 곳에 생기지 않게 막는다. 정상 흐름에서는 유형 선택이 첫 화면이라 빈 값이 오지 않는다.
 
 **1.2 평가 의뢰일(B1③).** 1.2 신청인 표의 이름표를 화면 칸과 같은 '평가 의뢰일'로 바꿨다(종전 '계약일자'). 저장 키 `contractDate`·`meta.contractDate` 는 persist·발급본과 묶여 그대로 둔다. 이름표는 그릴 때 정하므로 발급본도 새 이름표로 보인다(값은 같다).
