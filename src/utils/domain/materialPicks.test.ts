@@ -177,10 +177,17 @@ describe("평가 흐름 — 막힘 안내와 강조", () => {
   it("처음 셋의 이름과 나머지 개수를 적는다 — 카탈로그 순서(의뢰자 정보부터)", () => {
     const { missingRequired } = flowStatus("binary", {});
     expect(describeMissingRequired(missingRequired)).toBe(
-      `넣지 않은 필수 항목이 있어요: 회사 정보, 성적서 용도, 평가 의뢰일 외 ${missingRequired.length - 3}개`,
+      "넣지 않은 필수 항목이 있어요: 회사 정보, 성적서 용도, 평가 의뢰일 외 12개",
     );
     expect(describeMissingRequired(missingRequired.slice(0, 2))).toBe(
       "넣지 않은 필수 항목이 있어요: 회사 정보, 성적서 용도",
+    );
+    // 꼭 셋이면 "외 0개"를 붙이지 않고, 넷이면 "외 1개"다.
+    expect(describeMissingRequired(missingRequired.slice(0, 3))).toBe(
+      "넣지 않은 필수 항목이 있어요: 회사 정보, 성적서 용도, 평가 의뢰일",
+    );
+    expect(describeMissingRequired(missingRequired.slice(0, 4))).toBe(
+      "넣지 않은 필수 항목이 있어요: 회사 정보, 성적서 용도, 평가 의뢰일 외 1개",
     );
   });
 
