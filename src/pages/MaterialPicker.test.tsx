@@ -307,9 +307,10 @@ describe("설명 팝업", () => {
     expect(within(dialog).getByRole("button", { name: "빼기" })).toBeInTheDocument();
   });
 
-  it("Esc 로 닫으면 포커스가 이름 버튼으로 돌아온다", async () => {
+  it("열면 포커스가 팝업으로 가고, Esc 로 닫으면 이름 버튼으로 돌아온다", async () => {
     renderPage();
-    await openLeaf("의뢰자 정보", "성적서 용도");
+    const dialog = await openLeaf("의뢰자 정보", "성적서 용도");
+    expect(dialog).toHaveFocus();
 
     await userEvent.keyboard("{Escape}");
 

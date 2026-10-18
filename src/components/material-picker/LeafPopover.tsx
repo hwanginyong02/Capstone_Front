@@ -5,7 +5,8 @@
  *
  * - 이름을 누르면 **열기만** 한다(토글 아님). 닫기는 Esc, 바깥 클릭, ✕. 그래서 두 번 누르기가
  *   "열고 넣기"가 되어 깜빡이지 않는다.
- * - 같은 이름을 다시 눌러도 닫혔다 열리지 않게, 이름 버튼을 누른 것은 바깥 클릭으로 치지 않는다.
+ * - 같은 이름을 다시 눌러도 닫혔다 열리지 않게, 이름 버튼을 누르거나 그리로 포커스가 가는 것은 바깥
+ *   동작으로 치지 않는다.
  * - 열리면 내용에 포커스가 가고(제목과 내용을 먼저 읽음), 닫히면 이름 버튼으로 돌아온다(N4).
  *   PopoverAnchor 는 Trigger 가 아니라 Radix 가 돌려줄 곳을 모르므로 직접 돌린다.
  * - 표준 근거가 없는 항목은 그 줄을 그리지 않는다(`leafDetail`).
@@ -85,7 +86,9 @@ export function LeafPopover({
           event.preventDefault();
           anchorRef.current?.focus();
         }}
-        onPointerDownOutside={(event) => {
+        // 바깥 클릭·포커스 이동이 자기 이름 버튼이면 닫지 않는다 — 두 번 누르기에서 둘째 클릭이 포커스를
+        // 이름 버튼으로 옮겨도 열린 채 둔다.
+        onInteractOutside={(event) => {
           if (anchorRef.current?.contains(event.target as Node)) event.preventDefault();
         }}
         className={cn(
