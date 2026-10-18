@@ -200,10 +200,15 @@ export function MaterialPicker() {
         }}
         diagram={{
           taskType,
+          order: cardOrder,
+          selection,
           lanes: laneOrder(cardOrder),
           cards: shownCards,
           blocks,
           blockedReason,
+          showMissing,
+          openLeafKey,
+          onOpenLeaf: setOpenLeafKey,
           actions,
         }}
       />

@@ -43,8 +43,8 @@ export function MaterialPicker({ tree, diagram }: MaterialPickerProps) {
             <div className="max-h-[60vh] w-full overflow-y-auto lg:max-h-none lg:w-70 lg:shrink-0 xl:w-76">
               <PickTree {...tree} />
             </div>
-            {/* 흐름도는 남은 높이를 다 쓰고 안에서 스크롤한다. */}
-            <div className="flex min-w-0 flex-1 flex-col lg:min-h-0 lg:overflow-y-auto">
+            {/* 흐름도는 남은 높이를 다 쓰고 안에서 스크롤한다(스크롤 단서는 흐름도가 그린다). */}
+            <div className="flex min-w-0 flex-1 flex-col lg:min-h-0">
               <PickDiagram {...diagram} />
             </div>
           </div>

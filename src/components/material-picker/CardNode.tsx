@@ -1,23 +1,27 @@
 /**
  * 흐름도의 블록 하나(docs/MATERIAL_PICKER.md §12.3).
  *
- * 왼쪽 세로축 위에 입력 순서 번호가 있고, 같은 단계의 다음 블록 번호까지 선으로 잇는다. 블록에는
- * **넣은 모든 항목**(필수 포함)이 칩으로 붙는다. 함께 들어감 항목은 조건 항목 바로 뒤에 점선 칩으로
- * 붙고 ✕가 없다. 칩은 ✕로 빼거나 트리로 끌어 뺀다.
+ * 왼쪽 위에 입력 순서 번호가 있고, 블록에는 **넣은 모든 항목**(필수 포함)이 칩으로 붙는다. 함께
+ * 들어감 항목은 조건 항목 바로 뒤에 점선 칩으로 붙는다. 블록끼리 잇는 선은 흐름도가 SVG 로 그린다.
  *
- * 블록 이름을 누르면 트리에서 그 블록을 펼쳐 보인다. 같은 단계 안에서는 끌거나 ▲▼로 순서를 바꾸고,
- * ✕로 블록째 뺀다(필수 블록도 — 다시 "다음"이 막힐 뿐이다).
+ * - 블록 이름을 누르면 트리에서 그 블록을 펼쳐 보인다.
+ * - 블록 전체를 끌거나 ▲▼ 로 같은 단계 안의 순서를 바꾸고, ✕ 로 블록째 뺀다(필수 블록도 — 다시
+ *   "다음"이 막힐 뿐이다). ▲▼✕ 는 마우스를 올리거나 포커스가 갈 때만 보인다(터치에선 늘).
+ * - 필수 항목이 덜 들어갔으면 바닥 줄에 남은 수를 적는다. "다음"을 누른 뒤엔 빨간 글자다. 권장
+ *   부족은 적지 않는다 — 하단 바가 맡는다.
  */
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState } from "react";
 import { useDrag, useDrop } from "react-dnd";
-import { ChevronDown, ChevronUp, GripVertical, X } from "lucide-react";
-import type { ComposerCard, ComposerCardId, FlowLeaf } from "../../types/reportComposer.types";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
+import type { TaskType } from "../../data/evaluationData";
+import type { ComposerCard, ComposerCardId } from "../../types/reportComposer.types";
 import type { DropPosition } from "../../utils/domain/cardOrder";
 import { categoryOf } from "../../data/reportComposer";
 import type { TreeBlock } from "../../utils/domain/materialPicks";
 import { FOCUS_RING, cn } from "../../utils/styling/styles";
-import { DND, dropPosition, type CardDragItem, type LeafDragItem, type PickerActions } from "./dnd";
-import { KindMarker } from "./KindMarker";
+import { DND, dropPosition, type CardDragItem, type PickerActions } from "./dnd";
+import { IconAction } from "./IconAction";
+import { LeafChip } from "./LeafChip";
 
 interface CardNodeProps {
   card: ComposerCard;
@@ -25,9 +29,16 @@ interface CardNodeProps {
   number: number;
   /** 이 블록의 트리 모델. 놓인 항목이 칩이 된다. */
   block: TreeBlock | undefined;
-  /** 같은 단계의 위·아래 카드. 없으면 그쪽으로 옮기는 버튼을 끈다. */
+  /** 같은 단계의 위·아래 블록. 없으면 그쪽으로 옮기는 버튼을 끈다. */
   previousCardId?: ComposerCardId;
   nextCardId?: ComposerCardId;
+  /** 트리에서 이 블록의 항목을 끌어 흐름도 위에 올려 둔 동안. */
+  dropTarget: boolean;
+  /** "다음"을 눌러 빠진 필수 항목을 보이는 중. */
+  showMissing: boolean;
+  taskType: TaskType | "";
+  openLeafKey: string | null;
+  onOpenLeaf: (key: string | null) => void;
   actions: PickerActions;
 }
 
@@ -37,6 +48,11 @@ export function CardNode({
   block,
   previousCardId,
   nextCardId,
+  dropTarget,
+  showMissing,
+  taskType,
+  openLeafKey,
+  onOpenLeaf,
   actions,
 }: CardNodeProps) {
   const ref = useRef<HTMLLIElement>(null);
@@ -48,10 +64,14 @@ export function CardNode({
       { leaf, companion: false },
       ...leaf.companions.filter((item) => item.placed).map((item) => ({ leaf: item, companion: true })),
     ]);
+  const missingRequired = block ? block.required.total - block.required.placed : 0;
 
-  const [{ isDragging }, drag, preview] = useDrag<CardDragItem, unknown, { isDragging: boolean }>({
+  const [{ isDragging }, drag] = useDrag<CardDragItem, unknown, { isDragging: boolean }>({
     type: DND.node,
-    item: { cardId: card.id },
+    item: () => {
+      actions.onDragBegin();
+      return { cardId: card.id };
+    },
     collect: (monitor) => ({ isDragging: monitor.isDragging() }),
   });
 
@@ -70,149 +90,104 @@ export function CardNode({
     collect: (monitor) => ({ isOver: monitor.isOver() && monitor.canDrop() }),
   });
 
-  preview(drop(ref));
+  drag(drop(ref));
   const showIndicator = isOver ? hoverPosition : null;
 
   return (
-    <li ref={ref} aria-label={card.name} className={cn("relative flex gap-2", isDragging && "opacity-40")}>
+    <li
+      ref={ref}
+      data-flow-node={card.id}
+      aria-label={card.name}
+      className={cn(
+        "group/node relative flex cursor-grab flex-col gap-2.5 rounded-lg border border-border-strong bg-card p-3 active:cursor-grabbing",
+        dropTarget && "ring-2 ring-primary",
+        isDragging && "opacity-40",
+      )}
+    >
       {showIndicator && (
         <span
           aria-hidden="true"
           className={cn(
             "absolute inset-x-0 h-0.5 rounded-full bg-primary",
-            showIndicator === "before" ? "-top-1.5" : "-bottom-1.5",
+            showIndicator === "before" ? "-top-3.5" : "-bottom-3.5",
           )}
         />
       )}
 
-      {/* 세로축 — 번호 아래로 다음 카드까지 선을 긋는다. 화살표는 레인 사이에만 쓴다. */}
-      <div className="relative flex w-6 shrink-0 justify-center pt-2.5">
+      <div className="flex items-start gap-2">
         <span
           aria-label={`입력 순서 ${number}번`}
-          className="relative z-10 flex size-6 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground"
+          className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground"
         >
           {number}
         </span>
-        {nextCardId && (
-          <span aria-hidden="true" className="absolute -bottom-[22px] left-1/2 top-8 w-px -translate-x-1/2 bg-border-strong" />
-        )}
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col gap-2.5 rounded-lg border border-border-strong bg-card p-3">
-        <div className="flex items-start gap-1.5">
-          <span
-            ref={(element) => {
-              drag(element);
-            }}
-            title="끌어서 순서 바꾸기"
-            className="mt-0.5 cursor-grab text-foreground-subtle active:cursor-grabbing"
-          >
-            <GripVertical className="size-4" aria-hidden="true" />
-          </span>
-          <button
-            type="button"
-            onClick={() => actions.onRevealBlock(card.id)}
-            className={cn("min-w-0 flex-1 rounded-sm pt-px text-left text-sm font-medium leading-5 text-foreground", FOCUS_RING)}
-          >
-            {card.name}
-          </button>
-          <span className="-mr-1 -mt-1 flex shrink-0 items-center">
-            <IconButton
-              label={`${card.name} 위로`}
-              disabled={!previousCardId}
-              onClick={() => previousCardId && actions.onMoveCard(card.id, previousCardId, "before")}
-            >
-              <ChevronUp className="size-4" />
-            </IconButton>
-            <IconButton
-              label={`${card.name} 아래로`}
-              disabled={!nextCardId}
-              onClick={() => nextCardId && actions.onMoveCard(card.id, nextCardId, "after")}
-            >
-              <ChevronDown className="size-4" />
-            </IconButton>
-            <IconButton label={`${card.name} 블록 빼기`} onClick={() => actions.onRemoveBlock(card.id)}>
-              <X className="size-4" />
-            </IconButton>
-          </span>
-        </div>
-
-        {chips.length > 0 && (
-          <ul aria-label={`${card.name}에 넣은 항목`} className="flex flex-wrap items-center gap-1.5">
-            {chips.map(({ leaf, companion }) => (
-              <PickChip key={leaf.leafId} leaf={leaf} companion={companion} actions={actions} />
-            ))}
-          </ul>
-        )}
-      </div>
-    </li>
-  );
-}
-
-function IconButton({
-  label,
-  disabled,
-  onClick,
-  children,
-}: {
-  label: string;
-  disabled?: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      disabled={disabled}
-      onClick={onClick}
-      className="flex size-7 items-center justify-center rounded-md text-foreground-subtle hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
-    >
-      {children}
-    </button>
-  );
-}
-
-/** 넣은 항목 칩. ✕로 빼거나 트리로 끌어 뺀다. 함께 들어감 칩은 점선이고 ✕가 없다. */
-function PickChip({
-  leaf,
-  companion,
-  actions,
-}: {
-  leaf: FlowLeaf;
-  companion: boolean;
-  actions: PickerActions;
-}) {
-  const [, drag] = useDrag<LeafDragItem>({
-    type: DND.chip,
-    item: { cardId: leaf.cardId, leafId: leaf.leafId, label: leaf.label },
-    canDrag: () => !companion,
-  });
-  return (
-    <li
-      ref={(element) => {
-        drag(element);
-      }}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border bg-card py-0.5 pl-2 text-xs text-foreground",
-        companion ? "border-dashed border-border-strong pr-2 text-foreground-secondary" : "cursor-grab border-border-strong pr-0.5",
-      )}
-    >
-      <KindMarker kind={leaf.kind} />
-      {leaf.label}
-      {!companion && (
         <button
           type="button"
-          aria-label={`${leaf.label} 빼기`}
-          onClick={() => actions.onToggleLeaf(leaf.cardId, leaf.leafId)}
+          onClick={() => actions.onRevealBlock(card.id)}
           className={cn(
-            "flex size-4 items-center justify-center rounded text-foreground-subtle hover:bg-muted hover:text-foreground",
+            "min-w-0 flex-1 rounded-sm pt-0.5 text-left text-sm font-medium leading-5 text-foreground",
             FOCUS_RING,
           )}
         >
-          <X className="size-3" />
+          {card.name}
         </button>
+        <span className="-mr-1.5 -mt-1 flex shrink-0 items-center">
+          <IconAction
+            label={`${card.name} 위로`}
+            reveal="node"
+            disabled={!previousCardId}
+            onClick={() => previousCardId && actions.onMoveCard(card.id, previousCardId, "before")}
+          >
+            <ChevronUp className="size-4" />
+          </IconAction>
+          <IconAction
+            label={`${card.name} 아래로`}
+            reveal="node"
+            disabled={!nextCardId}
+            onClick={() => nextCardId && actions.onMoveCard(card.id, nextCardId, "after")}
+          >
+            <ChevronDown className="size-4" />
+          </IconAction>
+          <IconAction label={`${card.name} 블록 빼기`} reveal="node" onClick={() => actions.onRemoveBlock(card.id)}>
+            <X className="size-4" />
+          </IconAction>
+        </span>
+      </div>
+
+      {chips.length > 0 && (
+        <ul aria-label={`${card.name}에 넣은 항목`} className="flex flex-wrap items-center gap-1.5">
+          {chips.map(({ leaf, companion }) => (
+            <LeafChip
+              key={leaf.leafId}
+              leaf={leaf}
+              companion={companion}
+              taskType={taskType}
+              openLeafKey={openLeafKey}
+              onOpenLeaf={onOpenLeaf}
+              actions={actions}
+            />
+          ))}
+        </ul>
+      )}
+
+      {missingRequired > 0 && (
+        <p
+          data-missing={showMissing || undefined}
+          className={cn(
+            "flex items-center gap-1.5 text-xs leading-[18px]",
+            showMissing ? "text-destructive" : "text-muted-foreground",
+          )}
+        >
+          필수 항목 {missingRequired}개를 더 넣어야 해요
+          <button
+            type="button"
+            onClick={() => actions.onRevealBlock(card.id)}
+            aria-label={`${card.name}의 빠진 필수 항목 보기`}
+            className={cn("rounded-sm font-medium underline underline-offset-2", FOCUS_RING)}
+          >
+            보기
+          </button>
+        </p>
       )}
     </li>
   );

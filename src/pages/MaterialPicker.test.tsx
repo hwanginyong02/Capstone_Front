@@ -51,16 +51,24 @@ const laneNames = () =>
   within(within(flow()).getByRole("list", { name: "단계" }))
     .getAllByRole("heading", { level: 2 })
     .map((heading) => heading.textContent);
-/** 흐름도의 블록, 입력 순서대로(왼쪽 단계부터, 단계 안에서는 위부터). */
+/** 흐름도의 블록, 입력 순서대로(왼쪽 단계부터, 단계 안에서는 위부터). 빈 단계에는 블록 목록이 없다. */
 const flowBlocks = () =>
   laneNames().flatMap((lane) => {
-    const list = within(flow()).getByRole("list", { name: `${lane} 블록` });
+    const list = within(flow()).queryByRole("list", { name: `${lane} 블록` });
+    if (!list) return [];
     return within(list)
       .queryAllByRole("listitem")
       .filter((item) => item.parentElement === list)
       .map((item) => item.getAttribute("aria-label"));
   });
 const node = (block: string) => within(flow()).getByRole("listitem", { name: block });
+/** 흐름도의 연결선, "출발→도착". */
+const edges = () =>
+  [...flow().querySelectorAll("[data-edge-from]")].map(
+    (path) => `${path.getAttribute("data-edge-from")}→${path.getAttribute("data-edge-to")}`,
+  );
+const edgeAttr = (from: string, to: string, attribute: string) =>
+  flow().querySelector(`[data-edge-from="${from}"][data-edge-to="${to}"]`)?.getAttribute(attribute);
 const status = () => screen.getByRole("status", { name: "항목 현황" });
 const next = () => screen.getByRole("button", { name: "다음" });
 
@@ -209,7 +217,11 @@ describe("넣고 빼기 — 바로 반영", () => {
 
     expect(within(list).getByText("함께 들어가 있어요")).toBeInTheDocument();
     const chips = within(node("의뢰자 정보")).getByRole("list", { name: "의뢰자 정보에 넣은 항목" });
-    expect(within(chips).getAllByRole("listitem").map((item) => item.textContent)).toEqual(["성적서 용도", "과제 정보"]);
+    // 칩 이름 버튼(설명 팝업을 여는 것)과 그 구분 글자 — 마커는 읽히지 않으므로 구분은 설명으로 읽는다.
+    const names = within(chips).getAllByRole("button", { expanded: false });
+    expect(names.map((button) => button.textContent)).toEqual(["성적서 용도", "과제 정보"]);
+    expect(names[0]).toHaveAccessibleDescription("필수 항목");
+    expect(names[1]).toHaveAccessibleDescription("함께 들어감 항목");
     // 함께 들어간 칩에는 ✕ 가 없다.
     expect(within(chips).queryByRole("button", { name: "과제 정보 빼기" })).not.toBeInTheDocument();
     expect(status()).toHaveTextContent("필수 항목 1/15");
@@ -377,7 +389,7 @@ describe("흐름도", () => {
   it("단계를 옮기면 입력 순서가 바뀌고, 다음은 그 첫 화면으로 간다", async () => {
     fillRequired();
     renderPage();
-    await userEvent.click(screen.getByRole("button", { name: "모델 왼쪽으로" }));
+    await userEvent.click(screen.getByRole("button", { name: "모델 단계 앞으로" }));
 
     expect(laneNames()).toEqual(["모델", "의뢰 정보", "데이터", "평가 기준"]);
     expect(within(node("평가 대상 모델")).getByLabelText("입력 순서 1번")).toBeInTheDocument();
@@ -388,7 +400,7 @@ describe("흐름도", () => {
 
   it("평가 기준 단계는 블록을 하나도 놓지 않았어도 데이터 앞으로 옮길 수 없다 — 규칙은 필수 블록을 늘 포함한다", async () => {
     renderPage();
-    await userEvent.click(screen.getByRole("button", { name: "평가 기준 왼쪽으로" }));
+    await userEvent.click(screen.getByRole("button", { name: "평가 기준 단계 앞으로" }));
 
     expect(screen.getByRole("alert")).toHaveTextContent("지표와 합격 기준은 평가 데이터 뒤에 둬야 해요");
     expect(laneNames()).toEqual(["의뢰 정보", "모델", "데이터", "평가 기준"]);
@@ -405,6 +417,89 @@ describe("흐름도", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "테스트 데이터 위로" }));
     expect(flowBlocks().slice(2, 5)).toEqual(["평가 데이터", "테스트 데이터", "학습 데이터"]);
+  });
+
+  it("빈 흐름의 연결선은 시작 → 빈 자리 넷 → 검증 → 확인과 생성이고, 빈 자리에 닿는 선은 점선이다", () => {
+    renderPage();
+
+    const list = edges();
+    expect(list.length).toBeGreaterThan(0);
+    expect(list).toEqual([
+      "start→slot:info",
+      "slot:info→slot:model",
+      "slot:model→slot:data",
+      "slot:data→slot:criteria",
+      "slot:criteria→validation",
+      "validation→report",
+    ]);
+    expect(edgeAttr("start", "slot:info", "data-edge-style")).toBe("dashed");
+    expect(edgeAttr("slot:criteria", "validation", "data-edge-style")).toBe("dashed");
+    expect(edgeAttr("validation", "report", "data-edge-style")).toBe("solid");
+    // 단말은 단계 정의의 이름이다.
+    for (const name of ["시작", "검증", "확인과 생성"]) expect(within(flow()).getByText(name)).toBeInTheDocument();
+  });
+
+  it("같은 단계의 블록 사이는 inLane, 단계를 넘으면 crossLane 실선이다", async () => {
+    renderPage();
+    await addLeaf("평가 대상 모델", "모델 분류");
+    await userEvent.click(within(tree()).getByRole("button", { name: "모델 설정과 실행 환경 권장 항목 모두 넣기" }));
+    await addLeaf("평가 관점", "사용 방식");
+
+    expect(edges()).toEqual([
+      "start→slot:info",
+      "slot:info→model",
+      "model→modelEnv",
+      "modelEnv→slot:data",
+      "slot:data→perspective",
+      "perspective→validation",
+      "validation→report",
+    ]);
+    expect(edgeAttr("model", "modelEnv", "data-edge-kind")).toBe("inLane");
+    expect(edgeAttr("model", "modelEnv", "data-edge-style")).toBe("solid");
+    expect(edgeAttr("slot:info", "model", "data-edge-kind")).toBe("crossLane");
+    expect(edgeAttr("perspective", "validation", "data-edge-kind")).toBe("end");
+  });
+
+  it("블록 바닥 줄에 남은 필수 수를 적는다 — 다 넣으면 사라진다", async () => {
+    renderPage();
+    await addLeaf("의뢰자 정보", "회사 정보");
+
+    expect(node("의뢰자 정보")).toHaveTextContent("필수 항목 2개를 더 넣어야 해요");
+    await userEvent.click(within(node("의뢰자 정보")).getByRole("button", { name: "의뢰자 정보의 빠진 필수 항목 보기" }));
+    expect(blockRow("의뢰자 정보").closest("li")).toHaveAttribute("data-revealed", "true");
+
+    await addLeaf("의뢰자 정보", "성적서 용도");
+    await addLeaf("의뢰자 정보", "평가 의뢰일");
+    expect(node("의뢰자 정보")).not.toHaveTextContent(/필수 항목 \d+개를 더/);
+  });
+
+  it("다음을 누르면 단계 머리에 아예 놓지 않은 필수 블록 수가 나온다(N7)", async () => {
+    renderPage();
+    // 데이터 단계에 선택 블록만 놓으면 빈 자리가 사라진다 — 평가 데이터가 빠진 것이 흐름도에 안 보인다.
+    await userEvent.click(within(tree()).getByRole("button", { name: "학습 데이터 권장 항목 모두 넣기" }));
+    const dataLane = within(flow()).getByRole("listitem", { name: "데이터 단계" });
+    expect(within(dataLane).queryByText(/필수 블록/)).not.toBeInTheDocument();
+
+    await userEvent.click(next());
+
+    expect(within(dataLane).getByText("필수 블록 1개가 빠졌어요")).toBeInTheDocument();
+    expect(within(within(flow()).getByRole("listitem", { name: "평가 기준 단계" })).getByText("필수 블록 2개가 빠졌어요")).toBeInTheDocument();
+  });
+
+  it("단계·블록·칩 버튼은 마우스를 올릴 때만 보이지만 DOM 에 남아 키보드로 닿는다", async () => {
+    renderPage();
+    await addLeaf("의뢰자 정보", "회사 정보");
+
+    const buttons = [
+      within(flow()).getByRole("button", { name: "모델 단계 앞으로" }),
+      within(flow()).getByRole("button", { name: "의뢰자 정보 위로" }),
+      within(flow()).getByRole("button", { name: "의뢰자 정보 블록 빼기" }),
+      within(node("의뢰자 정보")).getByRole("button", { name: "회사 정보 빼기" }),
+    ];
+    for (const button of buttons) {
+      expect(button.className).toContain("can-hover:opacity-0");
+      expect(button.className).not.toMatch(/(^|\s)(hidden|invisible)(\s|$)/);
+    }
   });
 
   it("평가 관점을 지표 뒤로 옮기면 막고 이유를 보인다(D4)", async () => {
