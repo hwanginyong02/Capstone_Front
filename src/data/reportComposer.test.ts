@@ -288,6 +288,28 @@ describe("① 평가 데이터 — 컬럼 매핑 항목", () => {
   });
 });
 
+describe("성적서 인쇄 절 (W4)", () => {
+  it("필드마다 실제로 찍히는 절이다", () => {
+    const sections = Object.fromEntries(
+      COMPOSER_CARDS.map((card) => [card.id, [...new Set(card.fields.map((field) => field.reportSection ?? "-"))]]),
+    );
+    expect(sections).toEqual({
+      // 결과 파일·매핑 컬럼은 3절 데이터셋 개요, 지연시간은 6절 시험 결과, 샘플 ID 는 찍지 않는다.
+      evalData: ["3절", "6절", "-"],
+      // 지표·β·지표 선택 이유는 5절 시험항목, 합격 기준·핵심 지표는 6절 시험 결과.
+      metrics: ["5절", "6절"],
+      clientInfo: ["1절"],
+      // 이름·버전은 2절 시험 범위, 용도·분류는 1절 대상 문장.
+      model: ["2절", "1절"],
+      perspective: ["5절"],
+      trainingData: ["3절"],
+      testData: ["3절"],
+      groundTruth: ["3절"],
+      modelEnv: ["4절"],
+    });
+  });
+});
+
 describe("글자 수 상한 (B7)", () => {
   it("칸이 나뉘지 않은 글 칸은 모두 상한이 있다 — 클래스마다 받는 글도", () => {
     const textFields = COMPOSER_CARDS.flatMap((card) => card.fields).filter(

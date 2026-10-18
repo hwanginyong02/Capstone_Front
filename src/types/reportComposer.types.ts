@@ -231,9 +231,12 @@ export interface ComposerField {
   format?: string;
   /** 재료 고르기 화면에서 여러 줄로 쪼개 보일 항목. `entryKeys` 가 있는 필드는 거기서 만든다. */
   parts?: FieldPart[];
-  /** 성적서의 어느 절에 들어가는지 — 개발자용. 카드에 보이지 않는다. */
+  /** 성적서의 어느 절에 찍히는지 — 개발자용. 카드에 보이지 않는다. 테스트가 리터럴 표로 고정한다. */
   reportSection?: string;
-  /** AI 서술에 넘기는 값인지 — 개발자용. 카드에 보이지 않는다. */
+  /**
+   * AI 서술에 넘기는 고객 입력(`buildClientInputs` 의 client_inputs)에 이 값이 실리는지 — 개발자용.
+   * 카드에 보이지 않는다. ⑥⑦⑨ 글 칸은 테스트가 실제로 실리는지와 대조한다.
+   */
   sentToAi?: boolean;
   /** 표준 근거. 평가 흐름 만들기의 설명 팝업이 "표준 근거" 줄로 보인다. 없으면 그 줄을 그리지 않는다. */
   standardBasis?: StandardBasis;

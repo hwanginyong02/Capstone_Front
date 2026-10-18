@@ -20,6 +20,8 @@ import {
   type ReportComposerInput,
 } from "./reportMaterials";
 import type { MaterialRow } from "../../types/finalReport.types";
+import { getCard } from "../../data/reportComposer";
+import type { ComposerValueMap } from "../../types/reportComposer.types";
 
 function composer(overrides: Partial<ReportComposerInput> = {}): ReportComposerInput {
   return {
@@ -250,6 +252,40 @@ describe("AI 에 넘기는 고객 입력 (서술 설계 D25, D34)", () => {
     expect(inputs.core_metrics).toEqual(["Accuracy(M1)"]);
     expect(inputs.class_label_descriptions).toEqual({ "0": "stays" });
     expect(inputs.declarations).toEqual({ "위험 방향": "비슷함", "사용 방식": "배치" });
+  });
+});
+
+/**
+ * 레지스트리의 sentToAi 표시가 실제와 같은지(W4). 글 칸마다 다른 표식을 넣고, AI 에 넘기는 고객 입력에
+ * 그 표식이 실리는지 본다. 종전에는 학습 데이터 형식·설명·비고가 실리는데도 표시가 없었다.
+ */
+describe("AI 전달 표시(sentToAi)는 실제로 실리는 것과 같다 (W4)", () => {
+  const cards = ["trainingData", "testData", "modelEnv"] as const;
+  const marked = cards.flatMap((cardId) =>
+    getCard(cardId)
+      .fields.filter((field) => field.input === "text" || field.input === "textarea")
+      .map((field) => ({ cardId, field, mark: `표식-${field.id}` })),
+  );
+
+  it("⑥⑦⑨ 의 글 칸마다 표식이 실리는 것 ⇔ sentToAi", () => {
+    expect(marked.length).toBeGreaterThan(5);
+    const values: Record<string, ComposerValueMap> = { trainingData: {}, testData: {}, modelEnv: {} };
+    for (const { cardId, field, mark } of marked) values[cardId][field.id] = { text: mark };
+    const input = composer({ cards: ALL_ON, ...values });
+    const text = JSON.stringify(
+      buildClientInputs({
+        composer: input,
+        materials: buildReportMaterials(input, "binary"),
+        model: { name: "A", version: "v1", purpose: "", category: "" },
+        reportPurposeNote: "",
+        coreMetrics: [],
+        classLabelDescriptions: {},
+        runtime: {},
+      }),
+    );
+    for (const { field, mark } of marked) {
+      expect(text.includes(mark), field.id).toBe(field.sentToAi === true);
+    }
   });
 });
 
