@@ -194,7 +194,7 @@ PR #54 이후 팀 피드백: 화면이 각 필드 설명을 보여 주는 데 �
 
 재료 고르기 화면을 **평가 흐름 만들기**로 바꾼다. 빈 흐름도에서 시작해 왼쪽 트리의 항목을 단계에 넣으면 블록이 생기고, 필수 항목을 모두 넣어야 "다음"으로 간다. 함께 정한 것: 입력 재료 목록 중 레지스트리 밖에서 받던 재료(매핑 컬럼·양성 클래스·결정 임계값·모델 분류·예시 파일 등)도 트리 항목으로 넣어, "넣지 않으면 받지 않는다" 규칙을 모든 입력에 맞춘다.
 
-하위 절은 작업 순서대로 채운다: 12.1 레지스트리, 12.2 흐름 규칙과 저장 이행(v15), 12.3 화면·용어·표준 근거(요청서 요지와 사용자 결정 포함), 12.4 매핑, 12.5 모름과 입력 점검, 12.6 지표·판정·성적서·발급. 아직 비어 있는 절은 해당 작업이 끝나면 적는다.
+하위 절은 작업 순서대로 채운다: 12.1 레지스트리, 12.2 흐름 규칙과 저장 이행(v15), 12.3 화면·용어·표준 근거(요청서 요지와 사용자 결정 포함), 12.4 매핑, 12.5 모름과 입력 점검, 12.6 지표·판정·성적서·발급, 12.7 백엔드와 맞춘 것. 아직 비어 있는 절은 해당 작업이 끝나면 적는다.
 
 ### 12.1 레지스트리 — 항목, 표시, 개수
 
@@ -519,3 +519,28 @@ AI 에 넘기는 클래스 설명도 같은 거른 값(`reportInput.classLabelDe
 - 발급자 칸은 두지 않는다(인증이 없어 확인할 수 없는 이름이 서명란에 찍힌다 — 기관 기본값을 쓴다).
 
 코드: `utils/domain/validation.ts`(`DEFAULT_BETA`·`newMetricDetail`·`TARGET_DIGITS`·`fitsTargetDigits`·목표값 범위), `utils/domain/passCriteria.ts`, `utils/domain/layerOne.ts`, `pages/TestItems.tsx`, `pages/DataValidation.tsx`, `lib/report/metricValueFormat.ts`(`formatTargetCriteria`), `lib/report/computeVerdict.ts`(`coreMetricsSource`), `lib/report/reportConstants.ts`(`verdictRuleText`), `lib/report/assembleEvaluatedReport.ts`, `lib/report/mapWorkflowToFinalReport.ts`, `data/evaluationData.ts`(`TASK_TYPE_LABELS_KO`·`resolveTaskType`), `components/report/`, `components/ui/dialog.tsx`, `hooks/useIssuance.ts`, `lib/report/issuanceApi.ts`.
+
+### 12.7 백엔드와 맞춘 것 (P1, 같은 라운드)
+
+백엔드가 같은 라운드에 바꾼 것(검증 항목 두 개, 업로드·발급 문구와 상한, 양성 클래스 기본값)에 화면을 맞추고, 두 저장소에 사본이 있는 값은 테스트로 대조한다. 대조 테스트는 옆에 백엔드 저장소가 있을 때만 돈다(프론트만 받는 CI 에서는 건너뜀).
+
+**확률 컬럼 이름 규칙(M3).** 다중 클래스·다중 레이블에서 예측 컬럼 없이 확률만 매핑하면, 백엔드는 컬럼 이름에서 접두어를 떼어 낸 나머지를 클래스·레이블 이름으로 본다. 접두어는 `prob_`·`probability_`·`score_`·`p_` 넷이다(`PROBABILITY_COLUMN_PREFIXES`, `data/evaluationData.ts` — 백엔드 `PROB_COLUMN_PREFIXES` 의 사본).
+- 업로드 화면의 클래스별·레이블별 확률 안내와 매핑 화면 필수 컬럼 카드 아래에 같은 한 문장을 보인다(`probabilityColumnNameRule` — 예: prob_cat, prob_dog / score_sports, score_news). 이진은 확률 컬럼이 하나라 이름을 보지 않아 안내하지 않는다.
+- 이름이 맞지 않으면 검증 화면이 "확률 컬럼 이름" 오류로 막는다(백엔드가 평가와 같은 함수로 미리 판정 — 종전에는 확인과 생성에서야 400). 결과 칸은 백엔드의 한국어 문구를 그대로 싣는다(영문 낱말 바꾸기를 하지 않음 — 클래스 이름이 망가진다).
+
+**새 검증 항목의 한국어 이름(M3·M4).** "Probability column names" → 확률 컬럼 이름(오류), "Latency unit" → 지연시간 단위(경고 — 값이 모두 1 미만이라 초 단위로 적은 것 같음, ms 로 읽고 진행). 이름 표(`CHECK_NAME_KO`, `lib/report/mapValidationResultToReport.ts`)는 검증 화면과 성적서 6절이 같이 쓴다. 표에 없던 매핑 백스톱 네 항목(유형에 맞지 않는 역할, 정답·예측 같은 컬럼, 한 컬럼에 여러 역할, 빈 데이터)도 더했다. 테스트가 백엔드 `validation_checks.py` 의 `name="…"` 와 `*_CHECK = "…"` 상수 정의를 모아 모두 표에 있는지 본다.
+
+**양성 클래스 자동 판단 경고(M5).** 기본값은 백엔드 한 함수가 정한다(숫자는 큰 값, 알려진 쌍은 정해진 값, 그 밖의 두 문자열은 정렬 뒤쪽 — 예: cat/dog → dog). 프론트는 양성을 따로 고르지 않고 업로드 분석의 값을 쓴다. 자동으로 정하지 못했으면 매핑 화면이 "양성 클래스를 자동으로 정하지 못해 정렬 순서상 뒤 값을 임시로 골랐습니다. …"라고 알린다(`POSITIVE_CLASS_AMBIGUOUS_MESSAGE`).
+
+**업로드 크기 안내(M6).** 상한은 20 MiB(`MAX_UPLOAD_BYTES`, 백엔드와 대조). 표기는 MiB 다(`formatMib` — 백엔드 `format_mib` 와 같은 규칙). 넘으면 올리기 전에 "파일이 너무 큽니다(이름, x MiB). 평가 파일은 20 MiB 이하만 올릴 수 있습니다."로 막는다 — 둘째 문장은 백엔드 413 과 같은 글이고, 지금 크기는 소수 한 자리에서 올려 적어 상한과 같아 보이지 않게 한다.
+
+**발급 글 상한(B16).** 발급 비고·정정 사유 칸의 200자(`ISSUANCE_TEXT_MAX_CHARS`)를 백엔드 `MAX_ISSUANCE_TEXT_CHARS` 와 대조한다.
+
+**고객 입력 길이 여유(B7).** 백엔드가 이제 공백 없는 JSON 으로 재므로 보통은 프론트 `JSON.stringify` 길이와 같다. 서술 요청을 상한의 90%(`CLIENT_INPUTS_TARGET_CHARS`)에 맞추는 여유는 배포 순서(옛 백엔드)와 지수 표기 실수(파이썬 `1e-07` 이 한 자 길다)의 차이를 덮는다.
+
+**같이 정한 것.**
+- 하이퍼파라미터 이름이 같은 줄이 둘 이상이면 입력 점검에서 막는다(`duplicateName` — "같은 이름이 두 번 있어요: lr"). 4절 표는 줄마다 싣고 AI 는 이름을 키로 받아 뒤 값만 남아, 둘의 줄 수가 갈렸다. 판정은 `completeEntryRows` 옆 `duplicateEntryNames` 하나(다 적은 줄만, 앞뒤 공백을 떼고 대소문자는 구분)이고, 지금 당장 틀린 값이라 "다음"을 누르기 전에도 칸 아래에 보이며 겹친 이름 칸을 표시한다. "모름"이면 따지지 않는다.
+- 업로드 도움말 문장의 유형 이름도 유형 이름표(`TASK_TYPE_LABELS_KO`)의 "다중 레이블 분류"를 쓴다(종전 "멀티레이블").
+- 예시 파일의 형식(MIME)이 비어 오면(일부 브라우저의 HEIC 등) 확장자로 이미지인지 본다(`isExampleImage`). 받을지·축소본을 만들지·"미리보기 없음"을 알릴지가 이 함수 하나를 쓴다. 브라우저가 형식을 알려 준 파일은 그 형식을 믿는다.
+
+코드: `data/evaluationData.ts`(`PROBABILITY_COLUMN_PREFIXES`·`probabilityColumnNameRule`), `components/data-upload/DataUpload.tsx`, `components/column-mapping/RequiredColumnsCard.tsx`·`BinaryClassificationCard.tsx`, `lib/report/mapValidationResultToReport.ts`, `lib/upload/uploadLimits.ts`, `lib/report/issuanceApi.ts`, `lib/report/reportMaterials.ts`, `utils/domain/composerFieldGate.ts`(`duplicateEntryNames`), `components/composer-input/`, `utils/image/examplePreview.ts`(`isExampleImage`).
