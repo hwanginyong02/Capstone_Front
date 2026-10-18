@@ -1,3 +1,5 @@
+import type { MetricDetailState } from "../../types/workflow.types";
+
 /**
  * 평가 데이터 유효성 검사 규칙
  *
@@ -113,11 +115,33 @@ export function resolveTargetValue(metricId: string, raw: string | undefined): n
  * (지표 화면이 그 값을 막는다).
  */
 export function resolveBeta(metricDetails: Record<string, { beta?: string } | undefined> | null | undefined): number {
-  return parseFloat(metricDetails?.["M5"]?.beta || "1.0");
+  return parseFloat(metricDetails?.["M5"]?.beta || DEFAULT_BETA);
 }
+
+/**
+ * Fβ(M5)의 β 기본값. β 칸의 처음 값, 저장값이 없을 때의 화면 표시, 평가 요청이 모두 이 하나를 쓴다.
+ * 종전에는 목표값을 β 보다 먼저 적으면 M5 줄이 `beta: ""` 로 만들어져 β 칸이 비고 "다음"이 잠겼다(B3).
+ */
+export const DEFAULT_BETA = "1.0";
 
 /** β 입력이 쓸 수 있는 값인가(0 보다 큰 숫자). 지표 화면과 검증 화면의 1층 재확인이 같은 규칙을 쓴다. */
 export function isBetaValid(raw: string | undefined): boolean {
-  const beta = raw ?? "1.0";
+  const beta = raw ?? DEFAULT_BETA;
   return beta.trim() !== "" && Number.isFinite(Number(beta)) && Number(beta) > 0;
+}
+
+/**
+ * 지표 하나의 처음 상세 값. β 칸과 목표값 칸 중 어느 쪽을 먼저 적어도 이 함수로 줄을 만든다 —
+ * Fβ(M5)는 β 가 `DEFAULT_BETA` 로 시작한다. 다른 지표의 β 는 쓰이지 않아 비워 둔다.
+ */
+export function newMetricDetail(id: string, name: string): MetricDetailState {
+  return {
+    id,
+    name,
+    description: "",
+    targetValue: "",
+    beta: id === "M5" ? DEFAULT_BETA : "",
+    positiveClass: "",
+    completed: false,
+  };
 }

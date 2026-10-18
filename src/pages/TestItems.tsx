@@ -10,7 +10,7 @@ import { focusFirstIssue } from "../components/composer-input/focusFirstIssue";
 import { getCard, getCardFields } from "../data/reportComposer";
 import { getFieldIssue, type FieldIssue } from "../utils/domain/composerFieldGate";
 import { passCriteriaState } from "../utils/domain/passCriteria";
-import { isBetaValid } from "../utils/domain/validation";
+import { DEFAULT_BETA, isBetaValid, newMetricDetail } from "../utils/domain/validation";
 import { materialCheckFor, recommendedMetricIdsFor } from "../utils/domain/purposeRecommendation";
 import { unavailableMetricReasons } from "../utils/domain/metricAvailability";
 import { METRICS } from "../data/evaluationData";
@@ -72,20 +72,12 @@ export function TestItems() {
     .filter((issue): issue is FieldIssue => issue !== null);
   const blockingMetricCardIssues = metricCardIssues.filter((issue) => issue.reason !== "missing");
 
-  const beta = store.metricDetails["M5"]?.beta ?? "1.0";
+  const beta = store.metricDetails["M5"]?.beta ?? DEFAULT_BETA;
   const betaInvalid = store.selectedMetricIds.includes("M5") && !isBetaValid(beta);
 
   const handleBetaChange = (value: string) => {
     store.setMetricDetails((prev) => {
-      const existing = prev.M5 ?? {
-        id: "M5",
-        name: "F-beta Score",
-        description: "",
-        targetValue: "",
-        positiveClass: "",
-        completed: false,
-        beta: "1.0",
-      };
+      const existing = prev.M5 ?? newMetricDetail("M5", "F-beta Score");
       return { ...prev, M5: { ...existing, beta: value } };
     });
   };
@@ -99,15 +91,8 @@ export function TestItems() {
 
   const updateTarget = (metricId: string, name: string, value: string) => {
     store.setMetricDetails((prev) => {
-      const existing = prev[metricId] ?? {
-        id: metricId,
-        name,
-        description: "",
-        beta: "",
-        positiveClass: "",
-        completed: false,
-        targetValue: "",
-      };
+      // β 칸보다 목표값을 먼저 적어도 M5 의 β 는 기본값으로 시작한다(B3, `newMetricDetail`).
+      const existing = prev[metricId] ?? newMetricDetail(metricId, name);
       return { ...prev, [metricId]: { ...existing, targetValue: value } };
     });
   };

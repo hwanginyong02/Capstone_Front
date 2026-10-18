@@ -102,6 +102,38 @@ describe("합격 목표값 — 평가 전에 받는다", () => {
   });
 });
 
+describe("β 기본값 1.0 (B3)", () => {
+  it("M5 를 고르고 목표값을 먼저 적어도 β 는 1.0 이고 오류가 없으며 '다음'이 열린다", async () => {
+    useWorkflowStore.setState({ selectedMetricIds: ["M4", "M5", "M17"], metricDetails: {} });
+    renderPage();
+
+    await userEvent.type(screen.getByRole("textbox", { name: "M4 목표값" }), "0.8");
+    await userEvent.type(screen.getByRole("textbox", { name: "M5 목표값" }), "0.7");
+    await userEvent.type(screen.getByRole("textbox", { name: "M17 목표값" }), "0.6");
+
+    expect(useWorkflowStore.getState().metricDetails.M5?.beta).toBe("1.0");
+    expect(screen.getByRole("textbox", { name: "β" })).toHaveValue("1.0");
+    expect(screen.queryByText("β는 0보다 큰 숫자여야 합니다.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다음" })).toBeEnabled();
+  });
+
+  it("β 를 직접 지우면 여전히 오류이고 '다음'이 잠긴다", async () => {
+    useWorkflowStore.setState({
+      selectedMetricIds: ["M4", "M5", "M17"],
+      metricDetails: withTargets(["M4", "M17"]),
+    });
+    renderPage();
+    await userEvent.type(screen.getByRole("textbox", { name: "M5 목표값" }), "0.7");
+    expect(screen.getByRole("button", { name: "다음" })).toBeEnabled();
+
+    await userEvent.clear(screen.getByRole("textbox", { name: "β" }));
+
+    expect(useWorkflowStore.getState().metricDetails.M5?.beta).toBe("");
+    expect(screen.getByText("β는 0보다 큰 숫자여야 합니다.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다음" })).toBeDisabled();
+  });
+});
+
 describe("매핑으로 계산할 수 없는 지표 (docs/MATERIAL_PICKER.md §3)", () => {
   const mapped = (...roles: ("y_true" | "y_pred" | "score")[]) =>
     roles.map((role) => ({
