@@ -46,6 +46,7 @@ import {
   placeableIds,
 } from "../../data/reportComposer";
 import { orderPlaced } from "../domain/materialPicks";
+import { restrictMappingRoles } from "../domain/mappingPicks";
 import { DEFAULT_CARD_ORDER, moveCard, normalizeCardOrder, orderAfterPlacing } from "../domain/cardOrder";
 
 /**
@@ -910,9 +911,9 @@ const INITIAL_STATE = {
  * 제자리다(`orderAfterPlacing`).
  */
 function applyMaterialPicks(
-  state: Pick<WorkflowState, "materialPicks" | "composerCards" | "cardOrder">,
+  state: Pick<WorkflowState, "materialPicks" | "composerCards" | "cardOrder" | "taskType" | "columnMapping">,
   changes: MaterialPicks,
-): Pick<WorkflowState, "materialPicks" | "composerCards" | "cardOrder"> {
+): Partial<WorkflowState> {
   const composerCards = { ...state.composerCards };
   let cardOrder = state.cardOrder;
   for (const [cardId, ids] of Object.entries(changes) as Array<[ComposerCardId, string[]]>) {
@@ -921,7 +922,19 @@ function applyMaterialPicks(
     if (on) cardOrder = orderAfterPlacing(cardOrder, composerCards, cardId);
     composerCards[cardId as OptionalCardId] = on;
   }
-  return { materialPicks: { ...state.materialPicks, ...changes }, composerCards, cardOrder };
+  const materialPicks = { ...state.materialPicks, ...changes };
+  // ① 의 항목이 바뀌면 매핑이 받는 역할도 바뀐다 — 뺀 항목의 역할은 맡아 두고, 다시 넣은 항목의 역할은
+  // 돌려준다(docs/MATERIAL_PICKER.md §12.4). 매핑이 바뀌면 가용 지표는 이 매핑의 답이 아니다.
+  const columnMapping =
+    "evalData" in changes
+      ? restrictMappingRoles(state.columnMapping, state.taskType, materialPicks.evalData)
+      : state.columnMapping;
+  return {
+    materialPicks,
+    composerCards,
+    cardOrder,
+    ...(columnMapping !== state.columnMapping ? { columnMapping, availableMetricIds: null } : {}),
+  };
 }
 
 /** persist 저장소 키. 테스트와 운영이 같은 값을 보도록 export 한다. */
@@ -1039,7 +1052,13 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Step 5
       setColumnMapping: (value) =>
         set((state) => {
-          const next = typeof value === "function" ? value(state.columnMapping) : value;
+          // 모든 매핑 쓰기(업로드의 분석 결과·역할 변경·시연 시드)가 여기를 지난다. 평가 흐름에 놓지
+          // 않은 항목의 역할은 받지 않는다 — 맡아 둔다(docs/MATERIAL_PICKER.md §12.4).
+          const next = restrictMappingRoles(
+            typeof value === "function" ? value(state.columnMapping) : value,
+            state.taskType,
+            state.materialPicks.evalData,
+          );
           // 매핑이 바뀌면 확정 응답의 가용 지표는 이 매핑의 답이 아니다. 지표 화면이 낡은 답으로
           // 지표를 막거나 열지 않도록 비운다 — 그때는 지금 매핑으로 다시 계산한다.
           return next === state.columnMapping ? {} : { columnMapping: next, availableMetricIds: null };
