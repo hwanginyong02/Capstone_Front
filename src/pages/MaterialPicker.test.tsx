@@ -497,8 +497,11 @@ describe("흐름도", () => {
       within(node("의뢰자 정보")).getByRole("button", { name: "회사 정보 빼기" }),
     ];
     for (const button of buttons) {
-      expect(button.className).toContain("can-hover:opacity-0");
-      expect(button.className).not.toMatch(/(^|\s)(hidden|invisible)(\s|$)/);
+      // 버튼 자신이나 그 도구 막대가 마우스 기기에서만 숨는다.
+      expect(button.closest('[class*="can-hover:opacity-0"]')).not.toBeNull();
+      for (let element: HTMLElement | null = button; element && element !== flow(); element = element.parentElement) {
+        expect(element.className).not.toMatch(/(^|\s)(hidden|invisible)(\s|$)/);
+      }
     }
   });
 

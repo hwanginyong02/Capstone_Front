@@ -6,7 +6,8 @@
  *
  * - 블록 이름을 누르면 트리에서 그 블록을 펼쳐 보인다.
  * - 블록 전체를 끌거나 ▲▼ 로 같은 단계 안의 순서를 바꾸고, ✕ 로 블록째 뺀다(필수 블록도 — 다시
- *   "다음"이 막힐 뿐이다). ▲▼✕ 는 마우스를 올리거나 포커스가 갈 때만 보인다(터치에선 늘).
+ *   "다음"이 막힐 뿐이다). ▲▼✕ 는 블록 위 테두리에 떠 있고 마우스를 올리거나 포커스가 갈 때만 보인다
+ *   (터치에선 늘).
  * - 필수 항목이 덜 들어갔으면 바닥 줄에 남은 수를 적는다. "다음"을 누른 뒤엔 빨간 글자다. 권장
  *   부족은 적지 않는다 — 하단 바가 맡는다.
  */
@@ -22,6 +23,7 @@ import { FOCUS_RING, cn } from "../../utils/styling/styles";
 import { DND, dropPosition, type CardDragItem, type PickerActions } from "./dnd";
 import { IconAction } from "./IconAction";
 import { LeafChip } from "./LeafChip";
+import { REVEAL } from "./controlStyles";
 
 interface CardNodeProps {
   card: ComposerCard;
@@ -104,6 +106,34 @@ export function CardNode({
         isDragging && "opacity-40",
       )}
     >
+      {/* 블록 위 테두리에 떠 있는 도구 막대 — 이름 폭을 차지하지 않게. 마우스·포커스 때만 보인다(터치에선 늘). */}
+      <span
+        className={cn(
+          "absolute -top-3 right-2 z-20 flex items-center rounded-md border border-border-strong bg-card",
+          REVEAL.node,
+        )}
+      >
+        <IconAction
+          label={`${card.name} 위로`}
+          disabled={!previousCardId}
+          onClick={() => previousCardId && actions.onMoveCard(card.id, previousCardId, "before")}
+          className="size-6"
+        >
+          <ChevronUp className="size-4" />
+        </IconAction>
+        <IconAction
+          label={`${card.name} 아래로`}
+          disabled={!nextCardId}
+          onClick={() => nextCardId && actions.onMoveCard(card.id, nextCardId, "after")}
+          className="size-6"
+        >
+          <ChevronDown className="size-4" />
+        </IconAction>
+        <IconAction label={`${card.name} 블록 빼기`} onClick={() => actions.onRemoveBlock(card.id)} className="size-6">
+          <X className="size-4" />
+        </IconAction>
+      </span>
+
       {showIndicator && (
         <span
           aria-hidden="true"
@@ -125,33 +155,12 @@ export function CardNode({
           type="button"
           onClick={() => actions.onRevealBlock(card.id)}
           className={cn(
-            "min-w-0 flex-1 rounded-sm pt-0.5 text-left text-sm font-medium leading-5 text-foreground",
+            "min-w-0 flex-1 break-keep rounded-sm pt-0.5 text-left text-sm font-medium leading-5 text-foreground",
             FOCUS_RING,
           )}
         >
           {card.name}
         </button>
-        <span className="-mr-1.5 -mt-1 flex shrink-0 items-center">
-          <IconAction
-            label={`${card.name} 위로`}
-            reveal="node"
-            disabled={!previousCardId}
-            onClick={() => previousCardId && actions.onMoveCard(card.id, previousCardId, "before")}
-          >
-            <ChevronUp className="size-4" />
-          </IconAction>
-          <IconAction
-            label={`${card.name} 아래로`}
-            reveal="node"
-            disabled={!nextCardId}
-            onClick={() => nextCardId && actions.onMoveCard(card.id, nextCardId, "after")}
-          >
-            <ChevronDown className="size-4" />
-          </IconAction>
-          <IconAction label={`${card.name} 블록 빼기`} reveal="node" onClick={() => actions.onRemoveBlock(card.id)}>
-            <X className="size-4" />
-          </IconAction>
-        </span>
       </div>
 
       {chips.length > 0 && (
