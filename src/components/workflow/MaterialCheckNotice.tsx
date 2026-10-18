@@ -94,7 +94,7 @@ export function MaterialCheckNotice({ check, onFix, includedCards = new Set() }:
     return (
       <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <button type="button" onClick={() => onFix(target)} className={LINK}>
-          재료 고르기에서 넣기
+          평가 흐름 만들기에서 넣기
         </button>
         {includedCards.has(target.cardId) && (
           <button type="button" onClick={() => onFix({ kind: "cardInput", cardId: target.cardId })} className={LINK}>
@@ -109,7 +109,7 @@ export function MaterialCheckNotice({ check, onFix, includedCards = new Set() }:
     <section aria-label="생성 전 안내" className="mb-6 rounded-lg border border-border-strong bg-card px-5 py-4">
       <p className="flex items-center gap-2 text-sm font-medium text-foreground">
         <Info className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        성적서에 부족하게 표시될 재료가 있습니다.
+        성적서에 부족하게 표시될 항목이 있습니다.
       </p>
       <p className="mt-1 text-sm text-foreground-secondary">
         진행은 막지 않습니다. "다음"을 누르면 이 안내를 확인하고 진행한 것으로 성적서 6.0에 기록됩니다

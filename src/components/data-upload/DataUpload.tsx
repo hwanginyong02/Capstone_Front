@@ -113,7 +113,7 @@ export function DataUpload({
       <div>
         <h1 className="text-2xl font-bold text-foreground mb-2">평가 데이터</h1>
         <p className="text-sm text-muted-foreground">
-          모델이 낸 예측 결과 파일을 올리세요. 다음 단계에서 컬럼을 매핑합니다.
+          모델이 낸 예측 결과 파일을 올리세요. 다음 화면에서 컬럼을 매핑합니다.
         </p>
       </div>
 

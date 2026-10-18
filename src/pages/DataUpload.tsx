@@ -39,7 +39,7 @@ export function DataUpload() {
 
   const handleNext = async () => {
     if (!store.rawFile) {
-      setFileError("평가 데이터 파일이 없습니다. 이 단계에서 다시 올려 주세요.");
+      setFileError("평가 데이터 파일이 없습니다. 이 화면에서 다시 올려 주세요.");
       return;
     }
 

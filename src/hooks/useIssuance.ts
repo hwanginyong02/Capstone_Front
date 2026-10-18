@@ -61,7 +61,7 @@ export function useIssuance(
     alert(
       `성적서 데이터가 발급 용량 한도를 넘습니다(${Math.round(bytes / 1024).toLocaleString()} KB / ` +
         `${ISSUE_CONTENT_MAX_BYTES / 1024} KB). 대개 학습 데이터 예시 이미지 때문입니다. ` +
-        "데이터 정보 단계에서 예시 이미지를 지우고 다시 올리면 인쇄용 크기로 줄어듭니다.",
+        "학습 데이터 화면에서 예시 이미지를 지우고 다시 올리면 인쇄용 크기로 줄어듭니다.",
     );
     return true;
   }

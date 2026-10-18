@@ -50,7 +50,7 @@ export function useDataValidation(): UseDataValidationResult {
     }
 
     if (!store.rawFile) {
-      setError("업로드된 파일이 없습니다. 데이터 업로드 단계로 돌아가 주세요.");
+      setError("업로드된 파일이 없습니다. 평가 데이터 화면으로 돌아가 주세요.");
       return;
     }
 

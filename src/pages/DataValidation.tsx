@@ -172,7 +172,7 @@ export function DataValidation() {
               <Alert variant="destructive" className="mb-6">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  <p>필수 입력이 비어 있어 성적서를 만들 수 없습니다. 아래 단계에서 채운 뒤 다시 오세요.</p>
+                  <p>필수 입력이 비어 있어 성적서를 만들 수 없습니다. 아래 화면에서 채운 뒤 다시 오세요.</p>
                   <ul aria-label="비어 있는 필수 입력" className="mt-2 flex flex-col gap-1">
                     {gaps.map((gap) => (
                       <li key={gap.stepId}>

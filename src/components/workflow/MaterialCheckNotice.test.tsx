@@ -42,11 +42,13 @@ describe("MaterialCheckNotice", () => {
     render(
       <MaterialCheckNotice check={materialCheckFixture({ missingLatencyAndLabel: true, realTime: true })} onFix={onFix} />,
     );
+    expect(screen.getByText("성적서에 부족하게 표시될 항목이 있습니다.")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/재료/);
     expect(screen.getByText(/보고 항목 11개 중 2개가/)).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "맞지 않는 목적별 점검" })).toHaveTextContent("사용 방식 → 지연시간");
-    // 넣지 않은 카드: 재료 고르기만(입력 화면에는 칸이 없다).
+    // 넣지 않은 카드: 평가 흐름 만들기만(입력 화면에는 칸이 없다).
     expect(screen.queryByRole("button", { name: "입력 화면에서 고치기" })).not.toBeInTheDocument();
-    screen.getByRole("button", { name: "재료 고르기에서 넣기" }).click();
+    screen.getByRole("button", { name: "평가 흐름 만들기에서 넣기" }).click();
     expect(onFix).toHaveBeenCalledWith({ kind: "card", cardId: "groundTruth" });
     // 지연시간(8번)은 컬럼 매핑 단계로.
     screen.getByRole("button", { name: "넣으러 가기" }).click();
@@ -57,7 +59,7 @@ describe("MaterialCheckNotice", () => {
 });
 
 describe("넣은 카드의 항목", () => {
-  it("재료 고르기와 입력 화면 두 갈래를 모두 준다", () => {
+  it("평가 흐름 만들기와 입력 화면 두 갈래를 모두 준다", () => {
     const onFix = vi.fn();
     render(
       <MaterialCheckNotice

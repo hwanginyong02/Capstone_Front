@@ -27,7 +27,7 @@ export function RequiredColumnsCard({
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
-            지표는 뒤의 "지표와 합격 기준" 단계에서 고릅니다. 지금은 평가에 꼭 필요한 정답과
+            지표는 뒤의 "지표와 합격 기준" 화면에서 고릅니다. 지금은 평가에 꼭 필요한 정답과
             예측(또는 확률) 컬럼만 확인합니다. 확률 컬럼을 매핑하지 않으면 AUROC 같은 곡선 지표는
             지표 화면에서 고를 수 없습니다.
           </AlertDescription>

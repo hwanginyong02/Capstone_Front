@@ -71,7 +71,7 @@ export function describeMappingValidity(
     case "no_task_type":
       return "분류 유형이 정해지지 않았습니다. 작업 유형 화면에서 다시 시작하세요.";
     case "no_mapped_rows":
-      return "역할이 지정된 컬럼이 없습니다. 평가 데이터 단계에서 파일을 다시 올리세요.";
+      return "역할이 지정된 컬럼이 없습니다. 평가 데이터 화면에서 파일을 다시 올리세요.";
     case "duplicate_roles":
       return "같은 역할이 여러 컬럼에 지정됐습니다. 겹친 것을 정리하세요.";
     case "missing_roles":

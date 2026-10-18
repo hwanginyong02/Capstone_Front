@@ -135,13 +135,13 @@ describe("순서 규칙 — 깨면 놓지 못한다", () => {
   it("지표와 합격 기준은 평가 데이터 뒤다 — 평가 기준 레인을 데이터 레인 앞으로 옮길 수 없다", () => {
     const order = moveLane(DEFAULT_CARD_ORDER, "criteria", "data", "before");
     const included = ids(includedCardsInOrder(order, DEFAULT_COMPOSER_SELECTION));
-    expect(orderViolation(included)).toMatch(/지표와 합격 기준은 평가 데이터 뒤/);
+    expect(orderViolation(included)).toMatch(/평가 기준 단계는 데이터 단계보다 앞에 둘 수 없어요/);
   });
 
   it("학습 데이터는 평가 데이터 뒤다 — 클래스별 데이터 양에 클래스 목록이 필요하다", () => {
     const order = moveCard(DEFAULT_CARD_ORDER, "trainingData", "evalData", "before");
     const included = ids(includedCardsInOrder(order, { ...DEFAULT_COMPOSER_SELECTION, trainingData: true }));
-    expect(orderViolation(included)).toMatch(/학습 데이터는 평가 데이터 뒤/);
+    expect(orderViolation(included)).toMatch(/학습 데이터 블록은 평가 데이터 블록 뒤/);
   });
 
   it("빠진 카드에는 규칙을 묻지 않는다", () => {
@@ -165,7 +165,7 @@ describe("[D4] 평가 관점은 지표보다 앞이다 — 권고가 아니라 �
   it("평가 관점을 지표 뒤로 옮기면 막는다 — 지표 추천이 관점의 답을 읽는다", () => {
     const order = moveCard(DEFAULT_CARD_ORDER, "perspective", "metrics", "after");
     const included = ids(includedCardsInOrder(order, DEFAULT_COMPOSER_SELECTION));
-    expect(orderViolation(included)).toMatch(/지표와 합격 기준은 평가 관점 뒤/);
+    expect(orderViolation(included)).toMatch(/지표와 합격 기준 블록은 평가 관점 블록 뒤/);
   });
 
   it("기본 순서는 규칙을 지킨다", () => {

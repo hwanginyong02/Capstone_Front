@@ -402,7 +402,7 @@ describe("흐름도", () => {
     renderPage();
     await userEvent.click(screen.getByRole("button", { name: "평가 기준 단계 앞으로" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent("지표와 합격 기준은 평가 데이터 뒤에 둬야 해요");
+    expect(screen.getByRole("alert")).toHaveTextContent("평가 기준 단계는 데이터 단계보다 앞에 둘 수 없어요");
     expect(laneNames()).toEqual(["의뢰 정보", "모델", "데이터", "평가 기준"]);
   });
 
@@ -413,7 +413,7 @@ describe("흐름도", () => {
     renderPage();
 
     await userEvent.click(screen.getByRole("button", { name: "학습 데이터 위로" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("학습 데이터는 평가 데이터 뒤에 둬야 해요");
+    expect(screen.getByRole("alert")).toHaveTextContent("학습 데이터 블록은 평가 데이터 블록 뒤에 둬야 해요");
 
     await userEvent.click(screen.getByRole("button", { name: "테스트 데이터 위로" }));
     expect(flowBlocks().slice(2, 5)).toEqual(["평가 데이터", "테스트 데이터", "학습 데이터"]);
@@ -510,7 +510,7 @@ describe("흐름도", () => {
     renderPage();
     await userEvent.click(screen.getByRole("button", { name: "평가 관점 아래로" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent("지표와 합격 기준은 평가 관점 뒤에 둬야 해요");
+    expect(screen.getByRole("alert")).toHaveTextContent("지표와 합격 기준 블록은 평가 관점 블록 뒤에 둬야 해요");
     expect(flowBlocks().slice(-2)).toEqual(["평가 관점", "지표와 합격 기준"]);
   });
 });
