@@ -15,11 +15,11 @@ import {
   getValidationGateReason,
 } from "../utils/domain/validationGate";
 import { FileReuploadNotice } from "../components/workflow/FileReuploadNotice";
-import { MaterialCheckNotice, type MaterialCheckTarget } from "../components/workflow/MaterialCheckNotice";
+import { canFixInInputOf, MaterialCheckNotice, type MaterialCheckTarget } from "../components/workflow/MaterialCheckNotice";
 import { layerOneGaps, type LayerOneGap } from "../utils/domain/layerOne";
-import { getCard, isLeafReceived, stepOfLeaf } from "../data/reportComposer";
+import { getCard, stepOfLeaf } from "../data/reportComposer";
 import type { MaterialCheckResult } from "../types/finalReport.types";
-import type { ComposerCardId, FlowEntryState } from "../types/reportComposer.types";
+import type { FlowEntryState } from "../types/reportComposer.types";
 
 /** 평가 실행(성적서 생성) 중 발생한 예외를 사용자가 읽을 수 있는 문장으로 바꾼다. */
 function describeSubmitError(err: unknown): string {
@@ -88,11 +88,9 @@ export function DataValidation() {
       : { cardId: target.cardId, returnStep: getCard(target.cardId).steps[0] };
     navigate("/app/composer", { state: entry });
   };
-  /** 입력 화면에서 고칠 수 있는가 — 항목을 가리키면 그 항목을 받는지, 아니면 블록을 넣었는지. */
+  /** 입력 화면에서 고칠 수 있는가 — 블록을 넣었고, 항목을 가리키면 그 항목을 받는지(`canFixInInputOf`). */
   const canFixInInput = (target: Extract<MaterialCheckTarget, { kind: "card" }>) =>
-    target.leafIds?.length
-      ? target.leafIds.every((leafId) => isLeafReceived(target.cardId, leafId, store.materialPicks[target.cardId]))
-      : Boolean((store.composerCards as Partial<Record<ComposerCardId, boolean>>)[target.cardId]);
+    canFixInInputOf(target, store.composerCards, store.materialPicks);
 
   // 이 핸들러에서 예외가 나면 React 는 잡아주지 않는다(ErrorBoundary 도 없음).
   // 감싸지 않으면 "버튼을 눌러도 아무 일도 안 일어나는" 무증상 실패가 된다.

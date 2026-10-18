@@ -11,10 +11,10 @@
  */
 import { Info } from "lucide-react";
 import { METRICS } from "../../data/evaluationData";
-import { fieldOfLeaf, getCard, stepOfLeaf } from "../../data/reportComposer";
+import { COMPOSER_CARDS, fieldOfLeaf, getCard, isLeafReceived, stepOfLeaf } from "../../data/reportComposer";
 import { getStepDefinition } from "../../data/workflowSteps";
 import type { MaterialCheckItem, MaterialCheckLine, MaterialCheckResult } from "../../types/finalReport.types";
-import type { ComposerCardId } from "../../types/reportComposer.types";
+import type { ComposerCardId, ComposerSelection, MaterialPicks } from "../../types/reportComposer.types";
 import type { StepId } from "../../types/workflow.types";
 
 /**
@@ -30,21 +30,33 @@ export type MaterialCheckTarget =
   | { kind: "cardInput"; cardId: ComposerCardId; stepId?: StepId }
   | { kind: "step"; stepId: StepId };
 
-/** 잠긴 블록 중 이 2층 보고 항목을 받는 항목 — 레지스트리의 `standardBasis.reportingItem` 에서 찾는다. */
-function lockedLeafOfItem(item: number): MaterialCheckTarget | null {
-  const card = getCard("evalData");
-  const field = card.fields.find((candidate) => candidate.standardBasis?.reportingItem === item);
-  return field ? { kind: "card", cardId: card.id, leafIds: [field.id] } : null;
+/**
+ * 2층 보고 항목 → 그 값을 받는 블록과 항목 id — 레지스트리의 `standardBasis.reportingItem` 에서 찾는다.
+ * 받는 항목이 없으면(6번처럼 시스템이 계산하는 항목) null. 한 항목의 필드는 한 블록에 있다(테스트가 지킨다).
+ */
+export function leavesOfReportingItem(item: number): { cardId: ComposerCardId; leafIds: string[] } | null {
+  for (const card of COMPOSER_CARDS) {
+    const leafIds = card.fields
+      .filter((field) => field.standardBasis?.reportingItem === item)
+      .map((field) => field.id);
+    if (leafIds.length > 0) return { cardId: card.id, leafIds };
+  }
+  return null;
 }
 
-/** 2층 보고 항목 → 그 값을 받는 곳(재료 선택 점검 4.2 "받는 입력"). 8번(지연시간)은 평가 데이터 › 지연시간 컬럼. */
+/**
+ * 2층 보고 항목 → 그 값을 받는 곳(재료 선택 점검 4.2 "받는 입력"). 블록과 함께 그 항목을 받는 항목 id
+ * (`leafIds`)를 단다 — 블록은 넣었어도 그 항목을 넣지 않았으면 입력 화면에 칸이 없어서다(S10 마무리).
+ * 8번(지연시간)은 평가 데이터 › 지연시간 컬럼. 12번(멀티레이블 지표 선택 기준)은 지표 화면.
+ * 레지스트리에서 항목을 찾지 못하면 종전대로 블록만 가리킨다.
+ */
 export function targetOfItem(item: number): MaterialCheckTarget {
-  const locked = lockedLeafOfItem(item);
-  if (locked) return locked;
+  if (item === 12) return { kind: "step", stepId: "metrics" };
+  const leaves = leavesOfReportingItem(item);
+  if (leaves) return { kind: "card", ...leaves };
   if (item === 2) return { kind: "card", cardId: "testData" };
   if (item === 4 || item === 5) return { kind: "card", cardId: "groundTruth" };
   if (item === 7 || item === 10 || item === 11) return { kind: "card", cardId: "modelEnv" };
-  if (item === 12) return { kind: "step", stepId: "metrics" };
   return { kind: "card", cardId: "trainingData" }; // 1·3·9
 }
 
@@ -66,27 +78,56 @@ interface ItemGroup {
   items: MaterialCheckItem[];
 }
 
-/** 고칠 곳이 같은 항목끼리 묶는다. 묶음 순서는 그 묶음의 첫 항목 순서다. */
+/**
+ * 고칠 곳이 같은 항목끼리 묶는다 — 블록이 같으면 한 묶음이고, 묶음의 `leafIds` 는 그 항목들의 항목 id
+ * 를 모은 것이다(하나라도 블록만 가리키면 묶음도 블록만). 묶음 순서는 그 묶음의 첫 항목 순서다.
+ */
 export function groupByTarget(items: MaterialCheckItem[]): ItemGroup[] {
   const groups: ItemGroup[] = [];
   for (const item of items) {
     const target = targetOfItem(item.item);
-    const key =
-      target.kind === "step"
-        ? "step:" + target.stepId
-        : "card:" + target.cardId + (target.kind === "card" && target.leafIds ? ":" + target.leafIds.join(",") : "");
+    const key = target.kind === "step" ? "step:" + target.stepId : "card:" + target.cardId;
     const group = groups.find((candidate) => candidate.key === key);
-    if (group) group.items.push(item);
-    else groups.push({ key, target, items: [item] });
+    if (!group) {
+      groups.push({ key, target, items: [item] });
+      continue;
+    }
+    group.items.push(item);
+    if (group.target.kind === "card" && target.kind === "card") {
+      const leafIds =
+        group.target.leafIds && target.leafIds ? [...new Set([...group.target.leafIds, ...target.leafIds])] : undefined;
+      group.target = { kind: "card", cardId: target.cardId, ...(leafIds ? { leafIds } : {}) };
+    }
   }
   return groups;
 }
 
-/** 묶음 머리에 쓰는 이름 — 블록이면 블록 이름(항목을 가리키면 "블록 › 항목"), 단계면 단계 표시줄의 이름. */
+/**
+ * 입력 화면에서 고칠 수 있는가 — 블록을 넣었고(잠긴 블록은 늘 들어 있다), 항목을 가리키면 그 항목 중
+ * 하나라도 입력 화면이 받는가(`isLeafReceived`). 놓지 않은 항목뿐이면 입력 화면에 칸이 없으니 "평가 흐름
+ * 만들기에서 넣기"만 보인다(S10 마무리). 묶음이 항목 여럿이면(학습 데이터 1·3·9) 받는 항목이 하나라도
+ * 있을 때 입력 화면이 쓸모 있다.
+ */
+export function canFixInInputOf(
+  target: Extract<MaterialCheckTarget, { kind: "card" }>,
+  composerCards: Partial<ComposerSelection>,
+  materialPicks: MaterialPicks,
+): boolean {
+  const placed = getCard(target.cardId).locked || Boolean((composerCards as Partial<Record<ComposerCardId, boolean>>)[target.cardId]);
+  if (!placed) return false;
+  if (!target.leafIds?.length) return true;
+  return target.leafIds.some((leafId) => isLeafReceived(target.cardId, leafId, materialPicks[target.cardId]));
+}
+
+/**
+ * 묶음 머리에 쓰는 이름 — 블록 이름, 단계면 단계 표시줄의 이름. 잠긴 블록의 항목 하나를 가리키면 "블록 ›
+ * 항목"이다(지연시간 — 블록은 늘 들어 있어 항목이 고칠 곳이다). 선택 블록은 묶음 안 항목 이름이 이미
+ * 무엇이 빠졌는지 말하므로 블록 이름만 쓴다.
+ */
 export function targetName(target: MaterialCheckTarget): string {
   if (target.kind === "step") return getStepDefinition(target.stepId).label;
   const card = getCard(target.cardId);
-  const leafId = target.kind === "card" ? target.leafIds?.[0] : undefined;
+  const leafId = target.kind === "card" && card.locked && target.leafIds?.length === 1 ? target.leafIds[0] : undefined;
   const field = leafId ? fieldOfLeaf(target.cardId, leafId) : undefined;
   return field ? `${card.name} › ${field.label}` : card.name;
 }

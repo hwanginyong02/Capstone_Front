@@ -270,8 +270,10 @@ describe("생성 전 안내 → 평가 흐름 만들기", () => {
     const button = [...fix].find((item) => item.closest("li")?.textContent?.includes("정답 라벨 구축 방법"));
     await userEvent.click(button!);
 
+    // 그 보고 항목을 받는 항목(라벨 작성 주체)을 강조하게 넘긴다(S10 마무리).
     expect(JSON.parse(screen.getByTestId("composer-state").textContent!)).toEqual({
       cardId: "groundTruth",
+      leafIds: ["labelAuthor"],
       returnStep: getCard("groundTruth").steps[0],
     });
   });
