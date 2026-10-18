@@ -1433,6 +1433,21 @@ export function isFieldReceived(
 }
 
 /**
+ * 입력 쪽에서 이 항목을 받는가 — 항목 id(칸 항목이면 그 필드)로 `isFieldReceived` 를 부른다.
+ * `cardPicks` 는 그 카드의 picks 다. 없으면(평가 흐름 만들기 이전의 상태) 받는다. 모르는 id 면 false.
+ *
+ * 전용 화면이 받는 항목(① 클래스 레이블 설명·⑥ 예시 파일)과 검증 화면의 "컬럼 매핑에서 고치기"가 쓴다.
+ */
+export function isLeafReceived(
+  cardId: ComposerCardId,
+  leafId: string,
+  cardPicks: readonly string[] | undefined,
+): boolean {
+  const field = fieldOfLeaf(cardId, leafId);
+  return field !== undefined && isFieldReceived(getCard(cardId), field, cardPicks);
+}
+
+/**
  * ② 에서 고를 수 있는 지표.
  *
  * 레지스트리가 목록을 들지 않고 `getAvailableMetrics` 에 그대로 넘긴다 — 그쪽이 SPEC.md 와
