@@ -138,6 +138,24 @@ describe("6.1 판정 규칙 문구", () => {
     );
   });
 
+  it("핵심 지표가 기본값 그대로면 그렇게 적는다 (W8)", () => {
+    render(
+      <KpiResultSection kpiResults={withCore} taskType="binary" meta={meta()} showVerdictRule coreMetricsSource="default" />,
+    );
+    const rule = screen.getByText(/^판정 규칙:/);
+    expect(rule.textContent).toContain(
+      "핵심 지표는 분류 유형의 기본값을 의뢰자가 바꾸지 않고 사용하였다(Accuracy(M1)).",
+    );
+    expect(rule.textContent).not.toContain("의뢰자가 지정하였다");
+  });
+
+  it("의뢰자가 골랐으면(client) 종전 문장", () => {
+    render(
+      <KpiResultSection kpiResults={withCore} taskType="binary" meta={meta()} showVerdictRule coreMetricsSource="client" />,
+    );
+    expect(screen.getByText(/^판정 규칙:/).textContent).toContain("핵심 지표는 의뢰자가 지정하였다(Accuracy(M1)).");
+  });
+
   it("옛 규칙으로 판정한 성적서에는 찍지 않는다", () => {
     render(<KpiResultSection kpiResults={withCore} taskType="binary" meta={meta()} />);
     expect(screen.queryByText(/^판정 규칙:/)).not.toBeInTheDocument();

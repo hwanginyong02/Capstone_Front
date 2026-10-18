@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   computeMargin,
   computeVerdict,
+  coreMetricsSource,
   isJudged,
   isNearTarget,
   resolveCoreMetricIds,
@@ -112,6 +113,19 @@ describe("resolveCoreMetricIds", () => {
     expect(
       resolveCoreMetricIds("binary", ["M1", "M21"], { coreMetrics: { choices: ["M4", "M21", "M1"] } }),
     ).toEqual(["M1"]);
+  });
+});
+
+describe("coreMetricsSource — 핵심 지표를 누가 정했나 (W8)", () => {
+  it("손대지 않았으면 기본값(default)", () => {
+    expect(coreMetricsSource(undefined)).toBe("default");
+    expect(coreMetricsSource({})).toBe("default");
+    expect(coreMetricsSource({ coreMetrics: {} })).toBe("default");
+  });
+
+  it("한 번이라도 골랐으면 의뢰자(client) — 기본값과 같게 되돌려도, 비워도", () => {
+    expect(coreMetricsSource({ coreMetrics: { choices: ["M1", "M4"] } })).toBe("client");
+    expect(coreMetricsSource({ coreMetrics: { choices: [] } })).toBe("client");
   });
 });
 

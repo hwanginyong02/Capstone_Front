@@ -1,6 +1,7 @@
 import type {
   ClassReportRow,
   ClassReportTable,
+  CoreMetricsSource,
   FinalReportMeta,
   KpiResult,
 } from "../../../types/finalReport.types";
@@ -38,6 +39,8 @@ interface KpiResultSectionProps {
   confidenceIntervalNote?: string;
   /** 목표값 자릿수(`FinalReportData.targetDigits`, B10). 없으면 종전 둘째 자리. */
   targetDigits?: number;
+  /** 핵심 지표의 출처(W8). 판정 규칙 문장이 두 갈래로 읽는다. 없으면 종전 문장. */
+  coreMetricsSource?: CoreMetricsSource;
 }
 
 /**
@@ -60,6 +63,7 @@ export function KpiResultSection({
   showVerdictRule = false,
   confidenceIntervalNote,
   targetDigits,
+  coreMetricsSource,
 }: KpiResultSectionProps) {
   const showCi = confidenceIntervalNote !== undefined;
   // 6.1 은 고객이 정한 핵심 지표다(판정 규칙 D19 의 핵심 지표와 같다). 핵심 지표 표시가 없는 옛
@@ -138,6 +142,7 @@ export function KpiResultSection({
             {verdictRuleText(
               kpiResults.filter((r) => r.isCore).map((r) => `${r.name}(${r.metricId})`),
               hasNearTargetMarks(kpiResults),
+              coreMetricsSource,
             )}
           </p>
         )}

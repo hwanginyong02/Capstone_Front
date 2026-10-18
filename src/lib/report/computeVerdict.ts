@@ -18,7 +18,7 @@
  * 종전에는 ②의 두 경우를 조건부 합격으로 적어, 확인하지 못한 것을 합격처럼 보이게 했다.
  */
 import type { TaskType } from "../../data/evaluationData";
-import type { KpiResult } from "../../types/finalReport.types";
+import type { CoreMetricsSource, KpiResult } from "../../types/finalReport.types";
 import type { ComposerValueMap } from "../../types/reportComposer.types";
 import { metricNeedsTargetValue } from "../../utils/domain/validation";
 
@@ -38,6 +38,15 @@ export const DEFAULT_CORE_METRIC_IDS: Record<TaskType, string[]> = {
 };
 
 /**
+ * 핵심 지표를 누가 정했나 — 의뢰자가 합격 기준 표에서 한 번이라도 바꿨으면 "client", 손대지 않아 유형별
+ * 기본값을 쓰면 "default"(W8). 바꿨다가 기본값과 같게 되돌려도 "client" 다 — 의뢰자가 고른 것이다.
+ * `resolveCoreMetricIds` 가 어느 목록을 쓸지도 이 판정 하나로 정한다. 6.1 판정 규칙 문장이 이 값을 읽는다.
+ */
+export function coreMetricsSource(composerMetrics?: ComposerValueMap): CoreMetricsSource {
+  return composerMetrics?.coreMetrics?.choices !== undefined ? "client" : "default";
+}
+
+/**
  * 이번 판정에 쓸 핵심 지표.
  *
  * 사용자가 고른 값이 있으면 그것을, 없으면 유형별 기본값을 쓴다. 어느 쪽이든 **고른 지표
@@ -51,8 +60,10 @@ export function resolveCoreMetricIds(
   selectedMetricIds: string[],
   composerMetrics?: ComposerValueMap,
 ): string[] {
-  const chosen = composerMetrics?.coreMetrics?.choices;
-  const base = chosen ?? DEFAULT_CORE_METRIC_IDS[taskType] ?? [];
+  const base =
+    coreMetricsSource(composerMetrics) === "client"
+      ? composerMetrics!.coreMetrics!.choices!
+      : DEFAULT_CORE_METRIC_IDS[taskType] ?? [];
   const selected = new Set(selectedMetricIds);
   return base.filter((id) => selected.has(id) && metricNeedsTargetValue(id));
 }

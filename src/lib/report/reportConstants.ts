@@ -3,6 +3,7 @@
  * 백엔드 API 도입 시 일부는 응답으로 대체됨.
  */
 import type {
+  CoreMetricsSource,
   EvalEnvironment,
   MaterialCheckResult,
   PerformerInfo,
@@ -59,12 +60,24 @@ export const REPORT_PURPOSE_OVERVIEW: Record<ReportPurposeKey, string> = {
  * 문구의 마지막 문장(`NEAR_TARGET_SENTENCE`)은 아슬아슬 표시(`KpiResult.nearTarget`, 서술 설계 D12)를
  * 붙인 성적서에만 찍는다(`nearTargetMarked`). 그 표시가 생기기 전 성적서는 8.3 에 표시한 적이 없어,
  * 넣으면 성적서가 하지 않은 일을 했다고 적게 된다 — 그 성적서는 종전 문안 그대로다.
+ *
+ * 핵심 지표 문장은 `coreSource`(W8, `FinalReportData.coreMetricsSource`)로 두 갈래다. 기본값을 그대로
+ * 썼는데 "의뢰자가 지정하였다"고 적으면 사실과 다르다.
  */
-export function verdictRuleText(coreMetrics: string[], nearTargetMarked = false): string {
+export function verdictRuleText(
+  coreMetrics: string[],
+  nearTargetMarked = false,
+  coreSource?: CoreMetricsSource,
+): string {
   const core = coreMetrics.length > 0 ? coreMetrics.join(", ") : "지정 없음";
+  // 핵심 지표를 의뢰자가 손대지 않았으면 그 사실대로 적는다(W8). 출처 키가 없는 옛 성적서는 종전 문장.
+  const coreSentence =
+    coreSource === "default"
+      ? `핵심 지표는 분류 유형의 기본값을 의뢰자가 바꾸지 않고 사용하였다(${core}).`
+      : `핵심 지표는 의뢰자가 지정하였다(${core}).`;
   return (
-    "판정 규칙: 목표값이 설정되고 산출에 성공한 지표를 판정 대상으로 하며, 핵심 지표는 의뢰자가 " +
-    `지정하였다(${core}). 핵심 지표가 하나라도 목표에 미달하면 불합격, 핵심 지표가 산출되지 ` +
+    "판정 규칙: 목표값이 설정되고 산출에 성공한 지표를 판정 대상으로 하며, " +
+    `${coreSentence} 핵심 지표가 하나라도 목표에 미달하면 불합격, 핵심 지표가 산출되지 ` +
     "않았거나 판정 대상 지표가 없으면 판정 불가, 핵심 지표는 모두 충족하였으나 그 외 지표 중 " +
     "미달이 있으면 조건부 합격, 모든 판정 대상 지표가 목표를 충족하면 합격으로 판정한다. 판정은 " +
     "측정값을 목표값과 직접 비교하였으며 측정 불확도는 반영하지 않았다." +

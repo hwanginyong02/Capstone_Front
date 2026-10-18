@@ -18,7 +18,7 @@ import { resolveTargetValue } from "../../utils/domain/validation";
 import { buildDatasetDiagnosis } from "./buildDatasetDiagnosis";
 import { buildFactSheet, type FactSheet } from "./buildFactSheet";
 import { buildClassReportTable } from "./classReportTable";
-import { buildConclusion, resolveCoreMetricIds } from "./computeVerdict";
+import { buildConclusion, coreMetricsSource, resolveCoreMetricIds } from "./computeVerdict";
 import {
   attachConfidenceIntervals,
   confidenceIntervalNote,
@@ -340,6 +340,8 @@ export function assembleEvaluatedReport(
     // 같은 사실이 여기에만 실려 온다.
     evaluationWarnings: Array.isArray(result.warnings) ? result.warnings : [],
     kpiResults: updatedKpiResults,
+    // 핵심 지표를 누가 정했나(W8) — 위 핵심 지표 목록과 같은 값(스토어의 ② 카드 값)으로 판정한다.
+    coreMetricsSource: coreMetricsSource(inputs.composerMetrics),
     // 클래스별 표(M22) — 평균 줄까지. M22 만 골라도 보인다.
     classReport,
     confusionCounts,
