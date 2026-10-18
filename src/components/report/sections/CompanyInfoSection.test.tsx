@@ -223,3 +223,19 @@ describe("1.4 제약사항 — constraintsFor 한 곳에서 조립 (고정 문�
     expect(titles()[4]).toBe("통계적 유의성 검정:");
   });
 });
+
+describe("1.2 평가 의뢰일 이름표 (B1③)", () => {
+  it("화면 칸과 같은 '평가 의뢰일' 한 줄, '계약일자'는 없다", () => {
+    render(
+      <CompanyInfoSection
+        applicant={applicant}
+        performer={performer}
+        evalScope={scope}
+        meta={{ ...meta, contractDate: "2026-10-01" }}
+      />,
+    );
+    expect(screen.getAllByRole("cell").filter((td) => td.textContent === "평가 의뢰일")).toHaveLength(1);
+    expect(rowValue("평가 의뢰일")).toBe("2026-10-01");
+    expect(screen.queryByText("계약일자")).not.toBeInTheDocument();
+  });
+});

@@ -67,7 +67,8 @@ export function CompanyInfoSection({
                 ...(applicant.fax ? [{ label: "FAX번호", value: applicant.fax }] : []),
                 ...(applicant.homepage ? [{ label: "홈페이지", value: applicant.homepage }] : []),
                 { label: "주소",           value: applicant.address },
-                ...(meta.contractDate ? [{ label: "계약일자", value: meta.contractDate }] : []),
+                // 화면 칸 이름과 같은 '평가 의뢰일'(B1③). 저장 키 contractDate 는 발급본과 묶여 그대로 둔다.
+                ...(meta.contractDate ? [{ label: "평가 의뢰일", value: meta.contractDate }] : []),
               ]}
             />
           </div>
