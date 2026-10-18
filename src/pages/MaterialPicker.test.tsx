@@ -22,6 +22,7 @@ function renderPage(state?: { cardId: string }) {
         <Route path="/app/composer" element={<MaterialPicker />} />
         <Route path="/app/client-info" element={<div data-testid="step-client-info" />} />
         <Route path="/app/model" element={<div data-testid="step-model" />} />
+        <Route path="/app/data-validation" element={<div data-testid="step-validation" />} />
         <Route path="/app" element={<div data-testid="task-type" />} />
       </Routes>
     </MemoryRouter>,
@@ -322,6 +323,22 @@ describe("추천 세트와 하단 현황", () => {
     await userEvent.click(screen.getByRole("button", { name: "다음" }));
 
     expect(screen.getByTestId("step-client-info")).toBeInTheDocument();
+  });
+
+  it("다음은 처음 미완료 입력 화면으로 간다 — 다 마쳤으면 검증으로", async () => {
+    useWorkflowStore.setState({ completedStepIds: ["clientInfo"] });
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: "다음" }));
+    expect(screen.getByTestId("step-model")).toBeInTheDocument();
+  });
+
+  it("입력 화면을 모두 마친 사용자는 검증으로 간다", async () => {
+    useWorkflowStore.setState({
+      completedStepIds: ["clientInfo", "model", "upload", "mapping", "perspective", "metrics"],
+    });
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: "다음" }));
+    expect(screen.getByTestId("step-validation")).toBeInTheDocument();
   });
 });
 

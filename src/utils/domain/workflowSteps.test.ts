@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildStepList,
   canEnterStepId,
+  composerNextStep,
   nextStepId,
   pathToStepId,
   prevStepId,
@@ -388,5 +389,30 @@ describe("단계 ↔ 경로", () => {
     for (const id of buildStepList(FULL)) {
       expect(pathToStepId(stepIdToPath(id, "run-1"))).toBe(id);
     }
+  });
+});
+
+describe("평가 흐름 만들기의 다음", () => {
+  const steps = buildStepList({ ...DEFAULT_COMPOSER_SELECTION, testData: true });
+
+  it("새 사용자는 첫 입력 화면으로 간다", () => {
+    expect(composerNextStep(steps, [])).toBe(steps[0]);
+    expect(steps[0]).toBe("clientInfo");
+  });
+
+  it("돌아갈 화면을 넘겨받았고 목록에 있으면 거기로 간다", () => {
+    expect(composerNextStep(steps, ["clientInfo"], "testData")).toBe("testData");
+    expect(composerNextStep(steps, [], "mapping")).toBe("mapping");
+  });
+
+  it("돌아갈 화면이 목록에 없으면(그 블록을 다시 뺐으면) 처음 미완료 입력 화면으로 간다", () => {
+    expect(composerNextStep(steps, ["clientInfo"], "groundTruth")).toBe(steps[1]);
+  });
+
+  it("입력 화면을 모두 마쳤으면 검증으로 간다 — 성적서가 아니다", () => {
+    const inputs = steps.filter((id) => id !== "validation" && id !== "report");
+    expect(inputs.length).toBeGreaterThan(0);
+    expect(composerNextStep(steps, inputs)).toBe("validation");
+    expect(composerNextStep(steps, [...inputs, "validation"])).toBe("validation");
   });
 });

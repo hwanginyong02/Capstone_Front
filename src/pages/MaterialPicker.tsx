@@ -6,7 +6,7 @@ import { PickStatusBar } from "../components/material-picker/PickStatusBar";
 import { FIELD_PANEL_ID } from "../components/material-picker/FieldPanel";
 import type { PickerActions } from "../components/material-picker/dnd";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
-import { buildStepList } from "../utils/domain/workflowSteps";
+import { buildStepList, composerNextStep } from "../utils/domain/workflowSteps";
 import {
   includedCardsInOrder,
   laneOrder,
@@ -133,11 +133,11 @@ export function MaterialPicker() {
     setUndo(null);
   };
 
-  /** 정한 순서의 첫 단계로 간다. */
+  /** 처음 미완료 입력 화면으로 간다 — 다 마쳤으면 검증(`composerNextStep`). */
   const handleNext = () => {
     const state = useWorkflowStore.getState();
-    const [firstStep] = buildStepList(state.composerCards, state.cardOrder);
-    navigate(getStepDefinition(firstStep).path ?? "/app/client-info");
+    const steps = buildStepList(state.composerCards, state.cardOrder);
+    navigate(getStepDefinition(composerNextStep(steps, state.completedStepIds)).path ?? "/app/client-info");
   };
 
   return (
