@@ -327,6 +327,13 @@ describe("[W3] 칸별 모름 → 성적서·AI·2층", () => {
     expect(rows.find((row) => row.label === "검증 샘플 수")?.value).toBeNull();
   });
 
+  it("3절 학습 데이터 표(trainingDatasetInfo)도 검증 칸의 잠긴 값을 싣지 않는다", () => {
+    const info = mapWorkflowToFinalReport(buildReportInput(source())).trainingDatasetInfo!;
+    expect(info.trainingSampleCount).toBe(12000);
+    // 0 은 DatasetSection 이 줄을 그리지 않는 값이다 — 잠긴 "3000" 이 찍히면 안 된다.
+    expect(info.validationSampleCount).toBe(0);
+  });
+
   it("AI: 실행 환경 CPU·검증 샘플 수·추론 가속이 '제공되지 않음'으로 간다", () => {
     const input = buildReportInput(source());
     const materials = buildReportMaterials(input.composer!, "binary");
