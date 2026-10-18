@@ -529,6 +529,38 @@ describe("하단 바와 다음", () => {
     expect(screen.queryByText(/품질/)).not.toBeInTheDocument();
   });
 
+  it("권장·선택을 넣으면 그 자리의 수만 오른다 — 필수 수와 안내 문장은 그대로다", async () => {
+    renderPage();
+    await userEvent.click(within(tree()).getByRole("button", { name: "테스트 데이터 권장 항목 모두 넣기" }));
+    await addLeaf("의뢰자 정보", "과제 번호");
+
+    expect(status()).toHaveTextContent("필수 항목 0/15");
+    expect(status()).toHaveTextContent("권장 2/15");
+    expect(status()).toHaveTextContent("선택 1/13");
+    expect(screen.getByText("필수 항목 15개를 더 넣어야 다음으로 갈 수 있어요.")).toBeInTheDocument();
+  });
+
+  it("필수를 다 넣으면 안내가 빠진 권장 수로 바뀐다", async () => {
+    fillRequired();
+    renderPage();
+
+    expect(status()).toHaveTextContent("필수 항목 15/15");
+    // 필수 블록째 넣기는 그 블록의 권장도 넣는다 — 평가 데이터의 지연시간 컬럼 하나.
+    expect(status()).toHaveTextContent("권장 1/15");
+    expect(
+      screen.getByText('권장 항목 14개가 빠졌어요. 빠진 항목은 성적서에 "제공되지 않음"으로 찍혀요.'),
+    ).toBeInTheDocument();
+  });
+
+  it("다중 클래스는 필수 0/14 · 권장 0/15 · 선택 0/13 이다", () => {
+    useWorkflowStore.setState({ taskType: "multiclass" });
+    renderPage();
+
+    expect(status()).toHaveTextContent("필수 항목 0/14");
+    expect(status()).toHaveTextContent("권장 0/15");
+    expect(status()).toHaveTextContent("선택 0/13");
+  });
+
   it("같은 수를 자리마다 따로 고정한다 — 트리 블록 줄의 필수 0/3", () => {
     renderPage();
 
