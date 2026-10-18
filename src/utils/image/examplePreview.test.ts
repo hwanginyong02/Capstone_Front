@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import {
   EXAMPLE_FILE_ACCEPT,
   isAcceptedExampleFile,
+  isExampleImage,
   kilobytes,
   previewBudgetMessage,
   splitExampleFiles,
@@ -91,6 +92,27 @@ describe("[B15] 예시 파일 형식과 용량 안내", () => {
     expect(isAcceptedExampleFile({ name: "run.exe", type: "application/x-msdownload" })).toBe(false);
     expect(isAcceptedExampleFile({ name: "notes.txt", type: "text/plain" })).toBe(false);
     expect(isAcceptedExampleFile({ name: "csv", type: "" })).toBe(false);
+  });
+
+  it("[S9] 형식이 빈 이미지(일부 브라우저의 HEIC 등)는 확장자로 이미지로 보고 받는다", () => {
+    expect(isAcceptedExampleFile({ name: "IMG_0001.HEIC", type: "" })).toBe(true);
+    expect(isAcceptedExampleFile({ name: "scan.heif", type: "" })).toBe(true);
+    expect(isAcceptedExampleFile({ name: "photo.jpg", type: "" })).toBe(true);
+    expect(isAcceptedExampleFile({ name: "notes.txt", type: "" })).toBe(false);
+    // 끌어 놓기·고르기가 쓰는 나누기도 같다(jsdom 은 이미지를 읽지 못해 화면 대신 함수로 본다).
+    const heic = new File(["x"], "IMG_0001.HEIC", { type: "" });
+    expect(splitExampleFiles([heic]).accepted).toEqual([heic]);
+  });
+
+  it("[S9] isExampleImage — image/* 이거나, 형식이 비었거나 'unknown'(저장된 정보)일 때만 확장자로 본다", () => {
+    expect(isExampleImage({ name: "a.png", type: "image/png" })).toBe(true);
+    expect(isExampleImage({ name: "noext", type: "image/heic" })).toBe(true);
+    expect(isExampleImage({ name: "a.heic", type: "" })).toBe(true);
+    expect(isExampleImage({ name: "a.HEIC", type: "unknown" })).toBe(true);
+    // 브라우저가 형식을 알려 준 파일은 그 형식을 믿는다.
+    expect(isExampleImage({ name: "a.heic", type: "application/octet-stream" })).toBe(false);
+    expect(isExampleImage({ name: "rows.csv", type: "" })).toBe(false);
+    expect(isExampleImage({ name: "png", type: "" })).toBe(false);
   });
 
   it("나누어도 고른 순서를 지킨다", () => {

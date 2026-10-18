@@ -71,6 +71,11 @@ describe("[B15] 예시 파일", () => {
     expect(screen.getByTestId("unsuitable")).not.toHaveTextContent("run.exe");
   });
 
+  it("[S9] 형식이 빈 채 저장된 HEIC 도 이미지로 보고 미리보기가 없다고 알린다", () => {
+    render(<Harness initial={[{ name: "photo.heic", size: "2 MB", type: "unknown" }]} />);
+    expect(screen.getByRole("note")).toHaveTextContent("미리보기를 만들 수 없는 이미지 형식입니다: photo.heic");
+  });
+
   it("미리보기 합계가 권장값을 넘으면 합계와 권장값을 숫자로 알린다", () => {
     const big = (name: string): UploadedFileInfo => ({
       name,

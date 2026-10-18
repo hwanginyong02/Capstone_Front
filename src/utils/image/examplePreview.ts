@@ -21,6 +21,34 @@ export const EXAMPLE_PREVIEW_BUDGET_BYTES = 600 * 1024;
 /** 예시 파일로 받는 형식 — 파일 고르기 창의 `accept` 와 끌어 놓기 확인이 같은 목록을 쓴다(B15). */
 export const EXAMPLE_FILE_ACCEPT = "image/*,.csv,.json,application/json,text/csv";
 
+/** 형식(MIME)이 비었을 때 이미지로 보는 확장자 — 일부 브라우저는 HEIC 등의 형식을 비워 준다. */
+export const IMAGE_FILE_EXTENSIONS = [
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".bmp",
+  ".svg",
+  ".tif",
+  ".tiff",
+  ".heic",
+  ".heif",
+  ".avif",
+] as const;
+
+/**
+ * 이미지 예시 파일인가. 형식이 `image/*` 이면 이미지다. 형식이 비었으면(브라우저가 모르는 형식 — 저장된
+ * 정보에는 "unknown" 으로 남는다) 확장자로 본다. 받을지(`isAcceptedExampleFile`), 축소본을 만들지
+ * (`toUploadedFileInfoAsync`), 미리보기가 없다고 알릴지(학습 데이터 화면)가 이 함수 하나를 쓴다.
+ */
+export function isExampleImage(file: { name: string; type: string }): boolean {
+  if (file.type.startsWith("image/")) return true;
+  if (file.type !== "" && file.type !== "unknown") return false;
+  const name = file.name.toLowerCase();
+  return IMAGE_FILE_EXTENSIONS.some((extension) => name.endsWith(extension));
+}
+
 /**
  * 예시 파일로 받는 형식인가 — 이미지·CSV·JSON. 파일 고르기 창의 `accept` 는 끌어 놓기에 적용되지 않고
  * 사용자가 "모든 파일"로 바꿀 수도 있어 따로 확인한다(B15).
@@ -28,7 +56,7 @@ export const EXAMPLE_FILE_ACCEPT = "image/*,.csv,.json,application/json,text/csv
 export function isAcceptedExampleFile(file: { name: string; type: string }): boolean {
   const name = file.name.toLowerCase();
   return (
-    file.type.startsWith("image/") ||
+    isExampleImage(file) ||
     file.type === "text/csv" ||
     file.type === "application/json" ||
     name.endsWith(".csv") ||

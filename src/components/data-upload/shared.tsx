@@ -13,7 +13,7 @@ import { Card, CardContent } from "../ui/card";
 import { Label } from "../ui/label";
 import type { UploadedFileInfo } from "../../types/workflow.types";
 import { formatFileSize } from "../../utils/format/format";
-import { makeExamplePreview } from "../../utils/image/examplePreview";
+import { isExampleImage, makeExamplePreview } from "../../utils/image/examplePreview";
 
 /** 디자인 시스템에 Textarea 컴포넌트가 없어 Input 스타일을 모사한 textarea 클래스 */
 export const TEXTAREA_CLASS =
@@ -32,7 +32,7 @@ export function toUploadedFileInfo(file: File): UploadedFileInfo {
  * 있다(`utils/image/examplePreview.ts`). 브라우저가 그릴 수 없는 이미지면 미리보기 없이 돌려준다.
  */
 export async function toUploadedFileInfoAsync(file: File): Promise<UploadedFileInfo> {
-  const previewUrl = file.type.startsWith("image/") ? (await makeExamplePreview(file)) ?? undefined : undefined;
+  const previewUrl = isExampleImage(file) ? (await makeExamplePreview(file)) ?? undefined : undefined;
   return { ...toUploadedFileInfo(file), previewUrl };
 }
 

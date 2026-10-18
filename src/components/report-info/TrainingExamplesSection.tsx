@@ -13,6 +13,7 @@ import { ExampleUploadSlot, toUploadedFileInfoAsync } from "../data-upload/share
 import {
   EXAMPLE_FILE_ACCEPT,
   EXAMPLE_PREVIEW_BUDGET_BYTES,
+  isExampleImage,
   previewBudgetMessage,
   previewBytes,
   splitExampleFiles,
@@ -76,7 +77,7 @@ export function TrainingExamplesSection({
     ...(showUnsuitable ? trainingUnsuitableExampleFiles : []),
   ];
   // 브라우저가 그릴 수 없는 이미지(HEIC 등) — 성적서에는 파일명과 크기만 적힌다.
-  const withoutPreview = allExamples.filter((f) => f.type.startsWith("image/") && !f.previewUrl);
+  const withoutPreview = allExamples.filter((f) => isExampleImage(f) && !f.previewUrl);
   const totalPreviewBytes = previewBytes(allExamples);
   const overBudget = totalPreviewBytes > EXAMPLE_PREVIEW_BUDGET_BYTES;
 
