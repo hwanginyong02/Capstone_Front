@@ -129,6 +129,40 @@ describe("필드 스키마", () => {
   });
 });
 
+/**
+ * 레지스트리 폼(`ComposerCardForm`)이 그릴 수 없는 필드는 전용 화면이 받는다. 표시가 빠지면
+ * 레지스트리 폼이 파일 칸이나 컬럼 칸을 엉뚱하게 그리거나, 필드 점검이 전용 화면의 값을 못 찾아
+ * 빈칸으로 막는다.
+ */
+describe("전용 화면이 받는 필드 (dedicatedScreen)", () => {
+  const allFields = COMPOSER_CARDS.flatMap((card) => card.fields);
+
+  it("파일·지표·컬럼 입력, 지표마다 받는 칸, 칸이 나뉜 필드는 모두 전용 화면이 받는다", () => {
+    const needsScreen = allFields.filter(
+      (field) =>
+        field.input === "file" ||
+        field.input === "metricSelect" ||
+        field.input === "column" ||
+        field.entryKeysFrom === "metrics" ||
+        field.parts !== undefined,
+    );
+    expect(needsScreen.length).toBeGreaterThan(0);
+    for (const field of needsScreen) expect(field.dedicatedScreen, field.id).toBe(true);
+  });
+
+  it("③ 의뢰자 정보·④ 평가 대상 모델은 손으로 쓴 폼이 받는다 — 모든 필드가 전용 화면이다", () => {
+    for (const cardId of ["clientInfo", "model"] as const) {
+      for (const field of getCard(cardId).fields) expect(field.dedicatedScreen, field.id).toBe(true);
+    }
+  });
+
+  it("조건을 값으로 읽을 수 없는 β 는 조건을 정하는 필드(지표)를 따로 적는다", () => {
+    const beta = getCard("metrics").fields.find((field) => field.id === "beta");
+    expect(beta?.conditionField).toBe("selectedMetrics");
+    expect(beta?.requiredWhen).toBeUndefined();
+  });
+});
+
 describe("⑤ 평가 관점 — 유형에 따라 다르지만 항상 두 개", () => {
   it.each(TASK_TYPES)("%s 는 질문 두 개를 받는다", (taskType) => {
     expect(getCardFields("perspective", taskType)).toHaveLength(2);

@@ -8,7 +8,7 @@
  * 레지스트리 **본체**는 `src/data/reportComposer.ts`, 값을 담는 스토어 필드는
  * `src/utils/stores/useWorkflowStore.ts` 의 `composer*` 들이다.
  */
-import type { TaskType } from "../data/evaluationData";
+import type { RequiredColumnCode, TaskType } from "../data/evaluationData";
 import type { StepId } from "./workflow.types";
 
 /** 카드 9개. 앞 5개가 필수(잠김), 뒤 4개가 선택이다. */
@@ -72,7 +72,8 @@ export type FieldInput =
   | "date" // 날짜 하나 (③ 의뢰일)
   | "monthRange" // 시작 월 ~ 끝 월 (⑥ ⑦ 수집 기간). 값은 entries 의 From·To 로 둔다
   | "entries" // 키-값 줄 추가 (클래스별 수량, 하이퍼파라미터)
-  | "metricSelect"; // 지표 선택 (기존 지표 선택 화면이 담당)
+  | "metricSelect" // 지표 선택 (기존 지표 선택 화면이 담당)
+  | "column"; // 컬럼 매핑 화면에서 컬럼에 역할을 준다 (① 정답·예측·지연시간 컬럼)
 
 /** `monthRange` 의 두 칸. 저장소에 들어가는 키라 화면 문구와 따로 둔다. */
 export const MONTH_RANGE_KEYS = { from: "From", to: "To" } as const;
@@ -111,13 +112,27 @@ export interface ComposerField {
    * 조건부 필드가 **실제로 필수가 되는 조건**. `conditionLabel` 이 사람에게 보여주는 문구라면
    * 이쪽은 입력 점검이 읽는 값이다 — 같은 카드의 다른 필드가 이 값일 때 필수가 된다.
    *
-   * 조건이 카드 밖에 있는 필드(② 의 β 는 지표 선택에 달려 있다)에는 두지 않는다. 그런 필드는
-   * 그 조건을 아는 화면이 따로 검사한다.
+   * 조건을 값으로 읽을 수 없는 필드(② 의 β 는 고른 지표 목록에, ① 결정 임계값은 매핑 결과에
+   * 달려 있다)에는 두지 않고 `conditionField` 를 단다. 그런 필드는 그 조건을 아는 화면이 따로 검사한다.
    *
    * 배열이면 **모두** 성립해야 한다. ⑧ 라벨 일치도 값은 "복수 검수"이면서 "측정한 종류"일 때만
    * 받는다 — 앞의 조건이 풀리면(검수 방식을 바꾸면) 뒤의 값도 함께 사라져야 한다.
    */
   requiredWhen?: FieldCondition | FieldCondition[];
+  /**
+   * 조건부 필드의 **조건을 정하는 필드**(같은 카드) — 조건을 값으로 읽을 수 없어 `requiredWhen` 을
+   * 둘 수 없을 때만 적는다(② β ← 지표, ① 결정 임계값 ← 예측 컬럼). 평가 흐름 만들기에서 그 필드를
+   * 넣으면 이 필드가 함께 들어간다. 조건을 정하는 필드는 `conditionTriggerIds` 한 곳에서 읽는다.
+   */
+  conditionField?: string;
+  /**
+   * 레지스트리 폼(`ComposerCardForm`)이 아니라 **전용 화면이 받는다**(업로드·컬럼 매핑·지표·③④ 폼).
+   * 레지스트리 폼은 그리지 않고 필드 점검(`getFieldIssue`)도 건너뛴다 — 전용 화면이 따로 검사한다.
+   * 평가 흐름 만들기의 트리·설명 팝업·개수에는 똑같이 나타난다.
+   */
+  dedicatedScreen?: true;
+  /** `input: "column"` 전용 — 이 항목이 받는 컬럼 매핑 역할. 유형마다 역할 하나는 정확히 한 항목에 든다. */
+  columnRoles?: RequiredColumnCode[];
   /** 이 필드를 보여줄 분류 유형. 없으면 전 유형. */
   taskTypes?: TaskType[];
   input: FieldInput;

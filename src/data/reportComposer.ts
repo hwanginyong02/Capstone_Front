@@ -43,6 +43,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     fields: [
       {
         id: "resultFile",
+        dedicatedScreen: true,
         label: "결과 파일",
         inputExample: "predictions.csv (CSV 또는 JSON, 20 MiB 이하)",
         kind: "required",
@@ -66,6 +67,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     fields: [
       {
         id: "selectedMetrics",
+        dedicatedScreen: true,
         label: "지표",
         inputExample: "아래 지표 목록에서 고름 (최소 1개)",
         kind: "required",
@@ -77,6 +79,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       },
       {
         id: "passCriteria",
+        dedicatedScreen: true,
         label: "합격 기준",
         inputExample: "Accuracy ≥ 0.85",
         kind: "required",
@@ -90,6 +93,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       },
       {
         id: "beta",
+        dedicatedScreen: true,
+        conditionField: "selectedMetrics",
         label: "β",
         inputExample: "1.0",
         kind: "conditional",
@@ -150,6 +155,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
          * (`components/test-items/PassCriteriaCard.tsx`).
          */
         id: "coreMetrics",
+        dedicatedScreen: true,
         label: "핵심 지표",
         inputExample: "유형별 기본값: Accuracy · F1 (이진). 최소 1개",
         kind: "required",
@@ -171,6 +177,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     fields: [
       {
         id: "companyInfo",
+        dedicatedScreen: true,
         label: "회사 정보",
         inputExample:
           "회사명: (주)테스트기업 · 대표자: 홍길동 · " +
@@ -189,6 +196,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       },
       {
         id: "reportPurpose",
+        dedicatedScreen: true,
         label: "성적서 용도",
         inputExample: "내부 검증 / 외부 제출 / 과제 산출물 (덧붙이는 글 가능)",
         kind: "required",
@@ -204,6 +212,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       },
       {
         id: "projectInfo",
+        dedicatedScreen: true,
         label: "과제 정보",
         inputExample: "과제명 · 과제 기관",
         kind: "conditional",
@@ -219,6 +228,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       },
       {
         id: "contactExtra",
+        dedicatedScreen: true,
         label: "홈페이지·팩스",
         inputExample: "https://example.com · 02-1234-5679",
         kind: "optional",
@@ -232,6 +242,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       },
       {
         id: "projectNumber",
+        dedicatedScreen: true,
         label: "과제 번호",
         inputExample: "2026-PRJ-001",
         kind: "optional",
@@ -242,6 +253,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       },
       {
         id: "requestDate",
+        dedicatedScreen: true,
         label: "평가 의뢰일",
         inputExample: "기본값 오늘",
         kind: "optional",
@@ -263,6 +275,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     fields: [
       {
         id: "modelNameVersion",
+        dedicatedScreen: true,
         label: "모델 이름·버전",
         inputExample: "이름: ChurnPredictor · 버전: v1.0.0 (버전 기본값 v1.0.0)",
         kind: "required",
@@ -278,6 +291,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       },
       {
         id: "modelPurpose",
+        dedicatedScreen: true,
         label: "모델 용도",
         inputExample: "통신사 고객 이탈 예측",
         kind: "required",
@@ -1069,12 +1083,14 @@ export function fieldFormat(field: ComposerField): string {
     case "multi":
       return withNote("여러 개 선택: " + choiceList(field));
     case "entries":
-      if (field.entryKeysFrom === "classes") return "클래스마다 숫자";
+      if (field.entryKeysFrom === "classes") return field.numeric ? "클래스마다 숫자" : "클래스마다 한 줄 글";
       if (field.entryKeysFrom === "metrics") return "지표마다 값";
       if (field.entryKeys) return fieldParts(field).map((part) => part.label).join(" · ");
       return "\"이름 = 값\" 줄 추가";
     case "metricSelect":
       return "지표 선택";
+    case "column":
+      return field.columnRoles && field.columnRoles.length > 1 ? "컬럼 하나 이상" : "컬럼 하나";
   }
 }
 
