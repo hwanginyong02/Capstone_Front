@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { ArrowLeft, BadgeCheck, Download, Home, LayoutDashboard, RefreshCw, Stamp } from "lucide-react";
 import { Button } from "../../ui/button";
@@ -90,11 +90,24 @@ export function ReportLayout({
   const [dialog, setDialog] = useState<"issue" | "reissue" | null>(null);
   const [note, setNote] = useState("");
   const trimmedNote = note.trim();
+  // 대화상자를 연 버튼. 버튼이 Radix 의 DialogTrigger 가 아니라 닫힐 때 Radix 가 포커스를 돌려줄 곳을
+  // 모른다 — 그대로 두면 Esc·취소 뒤 포커스가 문서 맨 앞(body)으로 가서 키보드 사용자가 자리를 잃는다.
+  const openerRef = useRef<HTMLElement | null>(null);
 
   const openDialog = (kind: "issue" | "reissue") => {
     if (busy) return;
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setNote("");
     setDialog(kind);
+  };
+
+  // 닫히면 연 버튼으로 포커스를 돌린다. 발급이 끝나 버튼이 바뀌었으면(화면에 없으면) Radix 기본 동작에 맡긴다.
+  const restoreFocus = (event: Event) => {
+    const opener = openerRef.current;
+    openerRef.current = null;
+    if (!opener?.isConnected) return;
+    event.preventDefault();
+    opener.focus();
   };
 
   const confirmIssue = () => {
@@ -198,7 +211,7 @@ export function ReportLayout({
       </header>
 
       <Dialog open={dialog !== null} onOpenChange={(open) => !open && setDialog(null)}>
-        <DialogContent>
+        <DialogContent onCloseAutoFocus={restoreFocus}>
           {dialog === "issue" && (
             <>
               <DialogHeader>

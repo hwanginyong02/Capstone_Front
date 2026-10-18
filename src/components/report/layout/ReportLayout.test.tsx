@@ -2,7 +2,7 @@
  * 발급·정정 발급 대화상자(B16) — 종전 window.confirm·prompt 대신 화면 안 대화상자.
  * 정정 사유가 비면 칸 아래 안내와 버튼 잠금, 발급에는 비고 칸(선택). 두 칸 모두 상한은 백엔드와 같은 값.
  */
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -98,5 +98,30 @@ describe("발급 대화상자", () => {
 
     expect(onIssue).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("대화상자를 닫으면 연 버튼으로 포커스가 돌아온다(키보드 사용자가 자리를 잃지 않게)", () => {
+  it("발급 대화상자를 Esc 로 닫으면 '발급' 버튼에 포커스가 있다", async () => {
+    renderLayout({ canIssue: true, onIssue: vi.fn() });
+    const opener = screen.getByRole("button", { name: "발급" });
+
+    await userEvent.click(opener);
+    expect(screen.getByRole("dialog", { name: "성적서 발급" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(document.activeElement).toBe(opener));
+  });
+
+  it("정정 발급 대화상자를 취소로 닫으면 '정정 발급' 버튼에 포커스가 있다", async () => {
+    renderLayout({ issued: true, reportId: "RPT-2026-0001", onReissue: vi.fn() });
+    const opener = screen.getByRole("button", { name: "정정 발급" });
+
+    await userEvent.click(opener);
+    await userEvent.click(within(screen.getByRole("dialog", { name: "정정 발급" })).getByRole("button", { name: "취소" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(document.activeElement).toBe(opener));
   });
 });
