@@ -1,7 +1,8 @@
 /**
  * 의뢰자 정보 화면 — ③ 만 받는다(docs/MATERIAL_PICKER.md §5).
  *
- * 선택 항목(홈페이지·팩스·과제 번호·평가 의뢰일)은 재료 고르기에서 체크한 것만 보인다. ④ 모델 정보와
+ * 선택 항목(홈페이지·팩스·과제 번호)은 재료 고르기에서 체크한 것만 보인다. 평가 의뢰일은 필수라 늘
+ * 보인다. ④ 모델 정보와
  * ② 합격 기준은 각자의 단계가 받는다.
  */
 import { render, screen } from "@testing-library/react";
@@ -42,7 +43,14 @@ describe("받는 것", () => {
 
     expect(screen.getByText("팩스")).toBeInTheDocument();
     expect(screen.queryByText("홈페이지")).not.toBeInTheDocument();
-    expect(screen.queryByText("평가 의뢰일")).not.toBeInTheDocument();
+  });
+
+  it("평가 의뢰일은 필수 항목이라 체크와 상관없이 늘 보인다", () => {
+    // 1층 검사가 이 값을 요구한다. 종전에는 고르지 않으면 숨어, 비어 있을 때 고칠 칸 없이 막혔다.
+    useWorkflowStore.setState({ materialPicks: { clientInfo: [] } });
+    renderPage();
+
+    expect(screen.getByText("평가 의뢰일")).toBeInTheDocument();
   });
 
   it("과제 번호는 용도와 무관하다 — 체크했으면 용도가 과제 산출물이 아니어도 보인다", () => {
@@ -63,6 +71,18 @@ describe("받는 것", () => {
     expect(screen.getByText("홈페이지")).toBeInTheDocument();
     expect(screen.getByText("팩스")).toBeInTheDocument();
     expect(screen.getByText("평가 의뢰일")).toBeInTheDocument();
+  });
+});
+
+describe("성적서 용도 선택지는 레지스트리 한 벌이다", () => {
+  it("레지스트리의 저장값으로 저장하고, 과제 산출물이면 과제 정보를 받는다", async () => {
+    renderPage();
+
+    expect(screen.getByText("지원 과제의 증빙으로 냅니다")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("과제 산출물"));
+
+    expect(useWorkflowStore.getState().basicInfo.reportPurpose).toBe("project");
+    expect(screen.getByText("과제명")).toBeInTheDocument();
   });
 });
 

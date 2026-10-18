@@ -198,16 +198,26 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         id: "reportPurpose",
         dedicatedScreen: true,
         label: "성적서 용도",
-        inputExample: "내부 검증 / 외부 제출 / 과제 산출물 (덧붙이는 글 가능)",
+        inputExample: "내부 검증 / 외부 제출 / 과제 산출물",
         kind: "required",
         input: "single",
         description: "성적서를 어디에 쓰는지입니다. 과제 산출물을 고르면 과제 정보를 받습니다. 예: 고객사나 기관에 내면 외부 제출",
+        // 저장값은 `basicInfo.reportPurpose` 가 실제로 담는 값이다(성적서의 ReportPurposeKey 와 같다).
+        // 종전 레지스트리는 영어 문장을 적어 두어 어디에도 저장되지 않는 값이었고, 과제 정보의 조건이
+        // 성립할 수 없었다.
         choiceLabels: {
-          "Internal review": "내부 검증",
-          "External submission": "외부 제출",
-          "Project submission": "과제 산출물",
+          internal: "내부 검증",
+          external: "외부 제출",
+          project: "과제 산출물",
         },
-        choices: ["Internal review", "External submission", "Project submission"],
+        choiceDescriptions: {
+          internal: "사내 품질 확인이나 모델 모니터링에 씁니다",
+          external: "고객사나 심사 기관에 냅니다",
+          project: "지원 과제의 증빙으로 냅니다",
+        },
+        choices: ["internal", "external", "project"],
+        // 글은 `basicInfo.reportPurposeNote` 에 담긴다(전용 화면이 받는다).
+        allowsNote: true,
         reportSection: "1절",
       },
       {
@@ -217,7 +227,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "과제명 · 과제 기관",
         kind: "conditional",
         conditionLabel: "성적서 용도에서 과제 산출물 선택 시",
-        requiredWhen: { field: "reportPurpose", equals: "Project submission" },
+        requiredWhen: { field: "reportPurpose", equals: "project" },
         input: "text",
         description: "성적서를 제출할 과제의 정보입니다.",
         parts: [
@@ -256,9 +266,11 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         dedicatedScreen: true,
         label: "평가 의뢰일",
         inputExample: "기본값 오늘",
-        kind: "optional",
+        // 성적서 1.2 와 표지 시험 기간의 시작일이다. 1층 검사(basicInfoValidity)가 늘 요구하므로 필수다 —
+        // 종전에는 선택이라 고르지 않으면 칸이 숨었는데, 빈 값이면 고칠 칸 없이 "다음"이 막혔다.
+        kind: "required",
         input: "date",
-        description: "시험을 의뢰한 날짜입니다. 고르지 않으면 오늘 날짜로 들어갑니다. 예: 2026-10-15",
+        description: "시험을 의뢰한 날짜입니다. 처음에는 평가를 시작한 날로 채워집니다. 예: 2026-10-15",
         reportSection: "1절",
       },
     ],
@@ -298,6 +310,18 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         input: "text",
         description: "모델이 하는 일입니다. 예: 통신사 고객의 이탈 여부 예측",
         reportSection: "2절",
+        sentToAi: true,
+      },
+      {
+        // 1절 대상 문장("본 모델은 {분류} 형식으로 구현되었으며…")에 끼워 찍혀 한 줄로 받는다.
+        id: "modelCategory",
+        dedicatedScreen: true,
+        label: "모델 분류",
+        inputExample: "분류 모델 (신경망)",
+        kind: "required",
+        input: "text",
+        description: "모델이 어떤 종류인지 한 줄로 적습니다. 예: 분류 모델(신경망), 텍스트 분류",
+        reportSection: "1절",
         sentToAi: true,
       },
     ],

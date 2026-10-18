@@ -29,6 +29,7 @@ import {
   pickableIds,
 } from "./reportComposer";
 import type { TaskType } from "./evaluationData";
+import { REPORT_PURPOSE_LABEL } from "../lib/report/reportConstants";
 
 const TASK_TYPES: TaskType[] = ["binary", "multiclass", "multilabel"];
 
@@ -160,6 +161,60 @@ describe("전용 화면이 받는 필드 (dedicatedScreen)", () => {
     const beta = getCard("metrics").fields.find((field) => field.id === "beta");
     expect(beta?.conditionField).toBe("selectedMetrics");
     expect(beta?.requiredWhen).toBeUndefined();
+  });
+});
+
+describe("③ 의뢰자 정보·④ 평가 대상 모델", () => {
+  const fieldOf = (cardId: "clientInfo" | "model", fieldId: string) => {
+    const field = getCard(cardId).fields.find((item) => item.id === fieldId);
+    if (!field) throw new Error(fieldId);
+    return field;
+  };
+
+  it("평가 의뢰일은 필수다 — 1층 검사가 늘 요구한다", () => {
+    expect(fieldOf("clientInfo", "requestDate").kind).toBe("required");
+  });
+
+  it("모델 분류는 필수 한 줄 글이고 AI 에 넘긴다", () => {
+    const field = fieldOf("model", "modelCategory");
+    expect(field.kind).toBe("required");
+    expect(field.input).toBe("text");
+    expect(field.sentToAi).toBe(true);
+    expect(getCard("model").fields.map((item) => item.id)).toEqual([
+      "modelNameVersion",
+      "modelPurpose",
+      "modelCategory",
+    ]);
+  });
+
+  it("성적서 용도의 저장값은 성적서가 읽는 키와 같다", () => {
+    const field = fieldOf("clientInfo", "reportPurpose");
+    expect(field.choices).toEqual(Object.keys(REPORT_PURPOSE_LABEL));
+    expect(field.allowsNote).toBe(true);
+    for (const choice of field.choices ?? []) {
+      expect(field.choiceDescriptions?.[choice], choice).toBeTruthy();
+    }
+  });
+
+  it("조건부 필드가 기다리는 값은 조건을 정하는 필드의 선택지 안에 있다", () => {
+    // 종전에는 과제 정보가 "Project submission" 을 기다렸는데, 성적서 용도는 "project" 를 저장해
+    // 조건이 영영 성립하지 않았다.
+    const conditions = COMPOSER_CARDS.flatMap((card) =>
+      card.fields.flatMap((field) => {
+        if (!field.requiredWhen) return [];
+        const list = Array.isArray(field.requiredWhen) ? field.requiredWhen : [field.requiredWhen];
+        return list.map((condition) => ({ card, field, condition }));
+      }),
+    );
+    expect(conditions.length).toBeGreaterThan(0);
+    for (const { card, field, condition } of conditions) {
+      const trigger = card.fields.find((item) => item.id === condition.field);
+      const expected = [condition.equals, ...(condition.in ?? [])].filter(
+        (value): value is string => value !== undefined,
+      );
+      expect(expected.length, field.id).toBeGreaterThan(0);
+      for (const value of expected) expect(trigger?.choices, `${field.id} ← ${value}`).toContain(value);
+    }
   });
 });
 
@@ -402,11 +457,11 @@ describe("재료 고르기 — 대분류와 필드 구분 (docs/MATERIAL_PICKER.
       "runtimeEnv",
       "gpuUsage",
     ]);
+    // 평가 의뢰일은 필수 항목이 되어 체크 대상에서 빠졌다.
     expect(pickableIds("clientInfo", "binary")).toEqual([
       "contactExtra:website",
       "contactExtra:fax",
       "projectNumber",
-      "requestDate",
     ]);
     expect(pickableIds("perspective", "binary")).toEqual([]);
   });

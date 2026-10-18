@@ -178,6 +178,8 @@ export interface ComposerField {
    * 성적서는 `reportLabels` 를 쓴다. 없는 키는 저장값을 그대로 보인다(`choiceLabel`).
    */
   choiceLabels?: Record<string, string>;
+  /** 선택지 이름 아래 회색으로 보이는 한 줄 설명(③ 성적서 용도의 카드). 키는 `choices` 의 값이다. */
+  choiceDescriptions?: Record<string, string>;
   /**
    * 성적서에 찍을 선택지 이름. 재료 목록이 정한 이름이 있어 화면 이름과 다를 수 있다
    * (예: "Missed (FN)" → 화면 "놓침(FN)", 성적서 "FN이 더 위험"). 키는 `choices` 의 값이다.

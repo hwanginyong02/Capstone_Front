@@ -7,8 +7,8 @@
  * 시험 환경은 ⑨ 모델 설정과 실행 환경 카드가 받는다(성적서는 그 값을 `basicInfo.env*` 로 옮겨
  * 읽는다 — `buildReportInput`).
  *
- * ③ 의 선택 항목(홈페이지·팩스·과제 번호·평가 의뢰일)은 재료 고르기에서 체크한 것만 보인다
- * (`picks`). 평가 의뢰일을 고르지 않으면 오늘 날짜가 그대로 들어간다.
+ * ③ 의 선택 항목(홈페이지·팩스·과제 번호)은 재료 고르기에서 체크한 것만 보인다(`picks`). 평가
+ * 의뢰일은 필수 항목이라 늘 보인다. 성적서 용도의 선택지는 레지스트리(`reportPurpose`)에서 읽는다.
  */
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -23,7 +23,7 @@ import { CalendarIcon } from "lucide-react";
 import { cn } from "../../utils/styling/styles";
 import type { BasicInfoFormData } from "../../types/workflow.types";
 import { fromIsoDate, toIsoDate } from "../../utils/domain/isoDate";
-import { getCard, isFieldPicked, isPartPicked } from "../../data/reportComposer";
+import { choiceLabel, getCard, isFieldPicked, isPartPicked } from "../../data/reportComposer";
 import { TEXTAREA_CLASS } from "../data-upload/shared";
 
 type FormDataSetter = (
@@ -41,9 +41,11 @@ function clientPicks(picks: readonly string[] | undefined) {
     website: isPartPicked(field("contactExtra"), "website", picks),
     fax: isPartPicked(field("contactExtra"), "fax", picks),
     projectNumber: isFieldPicked(card, field("projectNumber"), picks),
-    requestDate: isFieldPicked(card, field("requestDate"), picks),
   };
 }
+
+/** 성적서 용도의 선택지 — 저장값·이름·설명 모두 레지스트리 한 벌이다. */
+const PURPOSE_FIELD = getCard("clientInfo").fields.find((item) => item.id === "reportPurpose")!;
 
 interface ClientInfoFormProps {
   formData: BasicInfoFormData;
@@ -94,18 +96,16 @@ export function ClientInfoForm({ formData, onFormDataChange, picks }: ClientInfo
             <Input value={formData.address} onChange={(e) => update("address", e.target.value)} />
           </Field>
 
-          {show.requestDate && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* 스토어는 ISO 날짜 문자열을 들고, Date 변환은 이 UI 경계에서만 한다
-                  (ISSUES.md E-09 — 상태가 localStorage 를 왕복해도 타입이 붕괴하지 않게). */}
-              <DateField
-                label="평가 의뢰일"
-                required
-                value={fromIsoDate(formData.contractDate) ?? new Date()}
-                onChange={(value) => update("contractDate", toIsoDate(value ?? new Date()))}
-              />
-            </div>
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* 스토어는 ISO 날짜 문자열을 들고, Date 변환은 이 UI 경계에서만 한다
+                (ISSUES.md E-09 — 상태가 localStorage 를 왕복해도 타입이 붕괴하지 않게). */}
+            <DateField
+              label="평가 의뢰일"
+              required
+              value={fromIsoDate(formData.contractDate) ?? new Date()}
+              onChange={(value) => update("contractDate", toIsoDate(value ?? new Date()))}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -118,9 +118,15 @@ export function ClientInfoForm({ formData, onFormDataChange, picks }: ClientInfo
         <CardContent className="space-y-5">
           <RadioGroup value={formData.reportPurpose} onValueChange={(value) => update("reportPurpose", value)}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <ChoiceCard id="internal" title="내부 검증" description="사내 품질 확인이나 모델 모니터링에 씁니다" selected={formData.reportPurpose === "internal"} />
-              <ChoiceCard id="external" title="외부 제출" description="고객사나 심사 기관에 냅니다" selected={formData.reportPurpose === "external"} />
-              <ChoiceCard id="project" title="과제 산출물" description="지원 과제의 증빙으로 냅니다" selected={formData.reportPurpose === "project"} />
+              {(PURPOSE_FIELD.choices ?? []).map((choice) => (
+                <ChoiceCard
+                  key={choice}
+                  id={choice}
+                  title={choiceLabel(PURPOSE_FIELD, choice)}
+                  description={PURPOSE_FIELD.choiceDescriptions?.[choice] ?? ""}
+                  selected={formData.reportPurpose === choice}
+                />
+              ))}
             </div>
           </RadioGroup>
 
