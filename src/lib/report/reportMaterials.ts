@@ -384,8 +384,9 @@ function rawClientInputs(source: ClientInputsSource): ClientInputs {
 export const CLIENT_INPUTS_MAX_CHARS = 20_000;
 
 /**
- * 프론트가 맞추는 길이 — 상한의 90%. 백엔드는 `json.dumps` 의 기본 구분자(", "·": ")로 재어 프론트의
- * `JSON.stringify` 보다 공백만큼 길게 센다. 그 차이와 배포 순서를 이 여유가 덮는다.
+ * 프론트가 맞추는 길이 — 상한의 90%. 백엔드는 이제 공백 없는 JSON 으로 잰다(`client_inputs_length`, B7)라
+ * 보통은 `JSON.stringify` 길이와 같다. 남은 10% 는 두 가지 차이를 덮는 여유다: 배포 순서(공백을 넣어 재던 옛
+ * 백엔드가 아직 떠 있을 때)와 지수 표기 실수(파이썬 `1e-07` 이 JS `1e-7` 보다 한 자 길다).
  */
 export const CLIENT_INPUTS_TARGET_CHARS = Math.floor(CLIENT_INPUTS_MAX_CHARS * 0.9);
 
