@@ -40,8 +40,8 @@ export function RemainingNotice({ issues }: RemainingNoticeProps) {
     );
   }
 
-  // 이름이나 값 하나만 적은 줄(⑨ 하이퍼파라미터) — 비어 있다고 하면 어느 칸인지 모른다.
-  const incomplete = issues.find((issue) => issue.reason === "incompleteRow");
+  // 이름이나 값 하나만 적은 줄, 이름이 같은 줄(⑨ 하이퍼파라미터) — 비어 있다고 하면 어느 칸인지 모른다.
+  const incomplete = issues.find((issue) => issue.reason === "duplicateName" || issue.reason === "incompleteRow");
   if (incomplete) {
     return (
       <p className="text-body-small text-muted-foreground">

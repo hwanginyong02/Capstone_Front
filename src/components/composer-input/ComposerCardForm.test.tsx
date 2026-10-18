@@ -565,6 +565,33 @@ describe("[B6②] 하이퍼파라미터 줄 — 이름과 값 둘 다", () => {
   });
 });
 
+/** 이름이 같은 하이퍼파라미터 줄 — 지금 당장 틀린 값이라 다음을 누르기 전에도 보인다. */
+describe("[S9] 하이퍼파라미터 이름이 같은 줄", () => {
+  const values: ComposerValueMap = {
+    algorithm: { text: "XGBoost" },
+    hyperparameters: {
+      entries: [
+        { key: "lr", value: "0.1" },
+        { key: "lr", value: "0.2" },
+      ],
+    },
+  };
+  const picks = ["algorithm", "hyperparameters"];
+
+  it("칸 아래 안내와 겹친 이름 칸의 오류 표시 — 다음을 누르기 전에도", () => {
+    renderForm("modelEnv", { values, picks });
+    expect(screen.getByText("같은 이름이 두 번 있어요: lr")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "하이퍼파라미터 이름 1" })).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("textbox", { name: "하이퍼파라미터 이름 2" })).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("textbox", { name: "하이퍼파라미터 값 1" })).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("하단 한 줄이 이유를 말한다", () => {
+    render(<RemainingNotice issues={getCardIssues(getCard("modelEnv"), "binary", values, true, picks)} />);
+    expect(screen.getByText("하이퍼파라미터: 같은 이름이 두 번 있어요: lr")).toBeInTheDocument();
+  });
+});
+
 /** W3 — 칸이 정해진 묶음은 칸마다 모름. GPU 사용 여부는 칸마다 고르는 "모름"만 있다. */
 describe("[W3] 칸별 모름", () => {
   const picks = ["runtimeEnv", "gpuUsage"];

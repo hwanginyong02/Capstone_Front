@@ -18,6 +18,7 @@ import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { TEXTAREA_CLASS } from "../data-upload/shared";
 import { cn } from "../../utils/styling/styles";
 import {
+  duplicateEntryNames,
   isFieldRequired,
   isFreeEntriesField,
   isOtherChosen,
@@ -108,6 +109,7 @@ export function ComposerFieldInput({
 
   const controlId = "field-" + field.id;
   const isFreeEntries = isFreeEntriesField(field);
+  const duplicatedNames = isFreeEntries ? duplicateEntryNames(value?.entries) : [];
   const required = isFieldRequired(field, siblingValues);
   const otherChosen = isOtherChosen(field, value);
   const otherText = value?.otherText ?? "";
@@ -341,7 +343,13 @@ export function ComposerFieldInput({
                   className="font-mono"
                   placeholder="이름"
                   aria-label={field.label + " 이름 " + (index + 1)}
-                  aria-invalid={(invalid && entry.key.trim() === "" && entry.value.trim() !== "") || undefined}
+                  aria-invalid={
+                    (invalid &&
+                      ((entry.key.trim() === "" && entry.value.trim() !== "") ||
+                        // 이름이 같은 줄(duplicateName) — 판정은 점검과 같은 함수다.
+                        (entry.value.trim() !== "" && duplicatedNames.includes(entry.key.trim())))) ||
+                    undefined
+                  }
                   value={entry.key}
                   onChange={(event) => {
                     const next = [...entries];

@@ -112,6 +112,9 @@ export function ComposerCardForm({
                   시작 월과 끝 월을 모두 넣고, 시작 월이 끝 월보다 늦지 않게 하세요.
                 </p>
               )}
+              {issue?.reason === "duplicateName" && (
+                <p className="mt-1 text-body-small text-destructive">{issue.message}</p>
+              )}
               {showErrors && issue?.reason === "incompleteRow" && (
                 <p className="mt-1 text-body-small text-destructive">{issue.message}</p>
               )}

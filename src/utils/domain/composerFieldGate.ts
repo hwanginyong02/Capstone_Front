@@ -43,11 +43,20 @@ export interface FieldIssue {
    * `invalidPeriod` — 기간의 한쪽만 적었거나 시작이 끝보다 늦다.
    * `incompatible` — 고른 선택지가 다른 칸의 값과 맞지 않는다(⑧ 라벨러 2명인데 Fleiss의 카파).
    * `incompleteRow` — 줄을 추가하는 칸(⑨ 하이퍼파라미터)에 이름과 값 중 하나만 적은 줄이 있다(B6②).
+   * `duplicateName` — 같은 칸에 이름이 같은 줄이 둘 이상 있다. 4절 표는 줄마다, AI 는 이름을 키로 받아
+   *   (뒤 값만 남아) 둘의 줄 수가 갈린다.
    *
    * `missing`·`incompleteRow` 말고는 **지금 당장 틀린 값**이라 다음을 누르기 전부터 표시한다. 이 둘은
    * 아직 덜 적은 것이라(이름을 적고 값으로 넘어가는 중일 수 있다) 넘어가려 한 뒤에야 표시한다.
    */
-  reason: "missing" | "exclusive" | "outOfRange" | "invalidPeriod" | "incompatible" | "incompleteRow";
+  reason:
+    | "missing"
+    | "exclusive"
+    | "outOfRange"
+    | "invalidPeriod"
+    | "incompatible"
+    | "incompleteRow"
+    | "duplicateName";
   /** 화면에 그대로 적을 설명. `incompatible` 처럼 이유가 선택지마다 다른 경우에 쓴다. */
   message?: string;
   /**
@@ -77,6 +86,26 @@ export function hasIncompleteRow(entries: ReadonlyArray<{ key: string; value: st
 
 /** `incompleteRow` 의 안내 — 칸 아래와 하단 한 줄이 같은 글을 쓴다. */
 export const INCOMPLETE_ROW_MESSAGE = "이름과 값을 모두 적어 주세요.";
+
+/**
+ * 다 적은 줄(`completeEntryRows`) 중 이름이 두 번 이상 나온 이름 — 앞뒤 공백을 떼고 비교하며, 처음 나온
+ * 순서다. 성적서 4절 표(줄마다)와 AI(이름을 키로 — 뒤 값만 남는다)가 같은 줄 수를 갖도록 입력에서 막는다.
+ */
+export function duplicateEntryNames(entries: ReadonlyArray<{ key: string; value: string }> | undefined): string[] {
+  const seen = new Set<string>();
+  const duplicated: string[] = [];
+  for (const entry of completeEntryRows(entries)) {
+    const name = entry.key.trim();
+    if (seen.has(name) && !duplicated.includes(name)) duplicated.push(name);
+    seen.add(name);
+  }
+  return duplicated;
+}
+
+/** `duplicateName` 의 안내 — 칸 아래와 하단 한 줄이 같은 글을 쓴다. */
+export function duplicateNameMessage(names: readonly string[]): string {
+  return `같은 이름이 두 번 있어요: ${names.join(", ")}`;
+}
 
 /**
  * 값이 채워져 있는가. "모름"은 채운 것으로 센다.
@@ -322,6 +351,12 @@ export function getFieldIssue(
   // 이름만, 또는 값만 적은 줄 — 성적서는 이 줄을 버리므로 받지 않는다(B6②). 모름이면 따지지 않는다.
   if (isFreeEntriesField(field) && !value?.unknown && hasIncompleteRow(value?.entries)) {
     return { ...issue("incompleteRow"), message: INCOMPLETE_ROW_MESSAGE };
+  }
+
+  // 이름이 같은 줄 — 4절 표와 AI 의 줄 수가 갈린다. 지금 당장 틀린 값이라 바로 표시한다.
+  if (isFreeEntriesField(field) && !value?.unknown) {
+    const duplicated = duplicateEntryNames(value?.entries);
+    if (duplicated.length > 0) return { ...issue("duplicateName"), message: duplicateNameMessage(duplicated) };
   }
 
   if (isFieldRequired(field, values) && !hasValue(field, value, classNames)) return issue("missing");

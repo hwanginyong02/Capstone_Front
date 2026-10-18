@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import {
   INCOMPLETE_ROW_MESSAGE,
   completeEntryRows,
+  duplicateEntryNames,
   getCardIssues,
   getFieldIssue,
   hasValue,
@@ -689,6 +690,44 @@ describe("[B6②] 하이퍼파라미터 줄은 이름과 값 둘 다", () => {
       ]),
     ).toEqual([{ key: "a", value: "1" }]);
     expect(completeEntryRows(undefined)).toEqual([]);
+  });
+
+  it("[S9] 이름이 같은 줄이 둘이면 duplicateName — 4절 표와 AI 의 줄 수가 갈리지 않게 막는다", () => {
+    expect(
+      issue([
+        { key: "lr", value: "0.1" },
+        { key: "max_depth", value: "6" },
+        { key: " lr ", value: "0.2" },
+      ]),
+    ).toEqual({
+      cardId: "modelEnv",
+      fieldId: "hyperparameters",
+      label: "하이퍼파라미터",
+      reason: "duplicateName",
+      message: "같은 이름이 두 번 있어요: lr",
+      allowsUnknown: true,
+    });
+    // 겹친 이름이 여럿이면 처음 나온 순서로 모두 적는다.
+    expect(
+      issue([
+        { key: "b", value: "1" },
+        { key: "a", value: "1" },
+        { key: "a", value: "2" },
+        { key: "b", value: "2" },
+        { key: "a", value: "3" },
+      ])?.message,
+    ).toBe("같은 이름이 두 번 있어요: a, b");
+  });
+
+  it("[S9] 대소문자가 다르면 다른 이름, 다 적지 않은 줄은 겹침으로 세지 않는다(그 줄은 incompleteRow)", () => {
+    expect(issue([{ key: "lr", value: "0.1" }, { key: "LR", value: "0.2" }])).toBeNull();
+    expect(duplicateEntryNames([{ key: "lr", value: "0.1" }, { key: "lr", value: "" }])).toEqual([]);
+    expect(issue([{ key: "lr", value: "0.1" }, { key: "lr", value: "" }])?.reason).toBe("incompleteRow");
+    expect(duplicateEntryNames(undefined)).toEqual([]);
+  });
+
+  it("[S9] '모름'이면 겹친 이름도 따지지 않는다", () => {
+    expect(issue([{ key: "lr", value: "0.1" }, { key: "lr", value: "0.2" }], true)).toBeNull();
   });
 
   it("칸이 정해진 묶음(⑥ 데이터 양)에는 이 규칙을 적용하지 않는다", () => {
