@@ -303,6 +303,8 @@ PR #54 이후 팀 피드백: 화면이 각 필드 설명을 보여 주는 데 �
 | ⑥ 학습 데이터가 켜져 있음 | 올려 둔 예시 파일의 항목 |
 | 키가 없는 카드, 다른 선택 카드 | 그대로 |
 | 지표가 평가 관점보다 앞인 순서 | 관점을 지표 바로 앞으로(D4 규칙이 생겨 그대로 두면 모든 순서 이동이 막힘) |
+| ⑥ 데이터 양·⑨ 실행 환경의 필드 "모름" | 모든 칸의 칸별 모름(`unknownKeys`)으로(W3, §12.5) |
+| ⑨ GPU 사용 여부의 필드 "모름" | 두 칸 모두 "모름"(`Unknown`) 선택지로 — 필드 모름 체크를 없애 그대로 두면 체크박스 없이 잠김 |
 
 합집합이라 여러 번 돌려도 같다. v11 이하 저장분은 v12 가 잠긴 카드 키를 늘 만들어 두므로 v15 까지 지나면 필수가 채워진다. `placeableIds`·`leafKind` 는 v15 가 부르므로 뜻을 바꾸려면 새 함수를 더한다(v12 의 `pickableIds`·`pickKind` 와 같은 이유).
 
@@ -457,6 +459,35 @@ AI 에 넘기는 클래스 설명도 같은 거른 값(`reportInput.classLabelDe
 - **업로드 화면 안내(M2·M4)·용어(N2).** 업로드 화면의 "매핑할 수 있는 컬럼"은 매핑 선택지와 같은 `allowedMappingRoles` 로 만든다 — 다중 클래스의 확률·샘플 ID 가 빠지던 것을 고치고, 놓지 않은 항목은 안내하지 않는다. 따로 있던 추론 시간 카드는 지우고 지연시간 이름은 `latency_ms` 하나, 단위는 밀리초로 안내한다. 입력 화면 문구의 '응답시간'은 '지연시간'으로 바꿨다. 성적서 인쇄문(6절 응답시간 지표 표, 검증 절 항목 이름, 3층 점검 문장)은 판정 표 버전·발급본과 묶여 그대로 둔다.
 
 코드: `utils/domain/mappingPicks.ts`, `utils/stores/useWorkflowStore.ts`(`setColumnMapping`·`applyMaterialPicks`), `utils/domain/applyRoleChange.ts`, `components/column-mapping/`, `lib/report/mapWorkflowToFinalReport.ts`(`pickedDedicatedValues`·`buildDatasetInfo`), `hooks/useReportData.ts`, `pages/DataInfo.tsx`, `components/workflow/MaterialCheckNotice.tsx`, `pages/DataValidation.tsx`, `data/reportComposer.ts`(`isLeafReceived`), `utils/domain/evaluationClasses.ts`, `utils/domain/mappingHelpers.ts`, `components/data-upload/DataUpload.tsx`.
+
+### 12.5 모름과 입력 점검 (P1, 같은 라운드)
+
+**모름 규칙 하나(W3).** 2층 보고 항목의 "모름"은 성적서·AI 에 **"제공되지 않음"**으로 적고 2층 점검에서 빠진 것으로 센다. 2층 항목이 아닌 선택 항목의 "모름" 선택지(⑥ 학습·평가 전처리 일치)는 의뢰자의 진술이라 "모름"으로 찍는다(그대로 둔 것).
+
+- **칸마다 모름.** 칸이 정해진 글·숫자 묶음 — ⑥ 데이터 양(학습·검증)과 ⑨ 실행 환경(운영체제·CPU·GPU·메모리·소프트웨어) — 은 필드 모름 체크 대신 칸마다 "모름" 체크가 있다(`unknownPerEntry`, 값은 `ComposerFieldValue.unknownKeys`). 고른 칸은 잠기고(적어 둔 값은 남아 다시 풀면 돌아온다) 필수 점검은 통과한다. 종전에는 다섯 칸을 다 채우거나 필드 전체를 모름으로 해야 했고, 학습 수만 알 때도 둘 다 모름이어야 했다.
+- **성적서·AI·2층.** 모름인 칸만 "제공되지 않음"이다 — CPU 만 모르면 4절 CPU 줄만, AI 의 실행 환경 CPU 만 "제공되지 않음"이고 2층 7번(추론 환경)은 빠진 칸으로 `CPU` 하나를 적는다. 검증 수만 모르면 3절 '검증 샘플 수' 줄만 "제공되지 않음". 판정은 `isEntryUnknown`(필드 모름 또는 칸별 모름) 하나를 4절 환경 칸(`buildLegacyPatch`)·3절 표본 수(`reportMaterials`·`buildTrainingDatasetInfo`)가 같이 쓴다.
+- **GPU 사용 여부의 겹친 모름.** 칸(학습·추론)마다 예/아니오/모름 선택지가 있어 필드 모름 체크를 없앴다(`unknownChoice: "Unknown"`). 같은 화면에 "모름"이 두 번 나오던 것을 정리한 것이다. 성적서·AI 에는 원래부터 "제공되지 않음"으로 찍혔다(N8 — 설계 초안의 "모름으로 찍힌다"는 틀린 기술이었다).
+- **저장 이행.** 옛 필드 모름은 persist v15 의 하위 단계(`migrateUnknownPerEntryV15`)가 옮긴다 — 데이터 양·실행 환경은 모든 칸의 모름으로, GPU 는 두 칸 "모름"으로(§12.2 표). 레지스트리·화면·이행을 한 커밋으로 바꿨다 — GPU 필드 모름만 먼저 없애면 남은 `unknown` 이 체크박스 없이 입력을 잠가 갇힌다. 옮긴 값에는 `unknown` 이 남지 않아 여러 번 돌려도 같다. 판 번호는 15 그대로(배포 전이라 v15 를 제자리에서 고쳤다).
+- 클래스마다 칸이 있는 ⑥ 클래스별 데이터 양과 한 칸짜리 필드는 종전처럼 필드 모름 하나다.
+
+**학습 클래스 분포는 지금 클래스를 모두(B5②③·N6).** 사용자 결정 "학습 클래스 분포 모두 입력(또는 모름)".
+- ⑥ 클래스별 데이터 양은 지금 클래스(`evaluationClassNames`, §12.4)를 **모두** 채우거나 "모름"이어야 다음으로 간다. 화면이 칸을 만드는 목록과 점검이 쓰는 목록이 같다(`getCardIssues(…, classNames)`). 종전에는 한 칸만 채워도 통과했다.
+- 다른 파일·다른 정답 컬럼에서 적어 둔 옛 클래스 칸은 세지 않고, 그 칸의 틀린 값도 따지지 않는다(화면에 없어 고칠 수 없다).
+- 클래스 목록이 비면(정답 컬럼이 없거나 클래스를 찾지 못함) "모름"만 통과한다 — 빈 목록의 "모두 채움"은 늘 참이라 빈칸이 통과하던 함정(N6).
+- 성적서 입력을 만들 때(`buildReportInput`) 옛 클래스 칸을 뺀다(`currentClassVolume`). 3절 '학습 클래스 분포'·AI·9절 분포 차이가 같은 값을 쓴다.
+- 9절 '학습↔평가 분포 차이'는 평가 데이터에 1건 이상 있는 클래스가 학습 분포에 하나라도 없으면 견주지 않는다. 일부 클래스만 적은 분포로 비율을 내면 적은 클래스 몫이 부풀어 거짓 차이가 났다.
+- 일부만 적어 둔 진행 중 사용자는 학습 데이터 화면에서 막힌다(의도). 점검 표 버전은 그대로다(규칙이 아니라 입력이 바뀜).
+
+**하이퍼파라미터 줄은 이름과 값 둘 다(B6②).** 이름만, 또는 값만 적은 줄이 있으면 "이름과 값을 모두 적어 주세요."로 막는다(`incompleteRow` — 빈칸처럼 "다음"을 누른 뒤에 칸 아래에 보이고, 하단 한 줄은 바로 말한다). 둘 다 빈 줄은 아직 쓰지 않은 줄이라 세지 않는다. 다 적은 줄이 하나도 없으면 빈칸이다. 필수 점검과 4절 표·AI 가 `completeEntryRows` 하나를 쓴다 — 종전에는 값만 적은 줄로 통과하고 성적서는 그 줄을 버려 "제공되지 않음"이 찍혔다. 알고리즘과 하이퍼파라미터를 한 항목으로 묶는 것(B6①)은 설계로 닫았다(§12.2).
+
+**회사 정보 공백(B11).** ③ 의뢰자 정보의 필수 칸(회사명·대표자·사업자등록번호·연락처·주소·평가 의뢰일·성적서 용도, 과제면 과제 이름·기관)은 trim 해서 본다(`isClientInfoValid` — 화면의 다음 버튼과 검증 화면의 1층 재확인이 같이 쓴다). 성적서 1.2 신청인 칸도 다듬어 싣고 공백뿐이면 "—", 과제 이름이 공백뿐이면 과제 정보를 싣지 않는다.
+
+**예시 파일(B15).** 적합·부적합 예시 파일은 둘 다 선택 항목이라 두 칸 모두 '선택' 배지를 단다.
+- 파일 고르기는 여러 개를 한 번에 받고(`multiple`), 끌어 놓기는 파일이 이미 있어도 칸 전체에서 받는다. 축소본을 파일마다 차례로 만들어 고른 순서를 지킨다.
+- 이미지·CSV·JSON 만 받는다(`isAcceptedExampleFile` — 고르기 창의 `accept` 와 같은 목록, 끌어 놓기에도 적용). 그 밖의 파일은 "올릴 수 없는 형식이라 뺐습니다: {이름}. 이미지·CSV·JSON 파일만 올릴 수 있어요."로 알리고 뺀다.
+- 미리보기 합계가 권장 600 KB(1 KB = 1,024 바이트)를 넘으면 합계·권장값·발급 상한(1,024 KB)을 숫자로 적어 경고한다. 발급 때 1 MiB 에서 이미 막으므로 경고로 둔다. 발급 용량 안내의 화면 이름은 이미 "학습 데이터 화면"이다(B15+).
+
+코드: `data/reportComposer.ts`(`unknownPerEntry`·`isEntryUnknown`·`canAnswerUnknown`, GPU `unknownChoice`), `components/composer-input/ComposerFieldInput.tsx`, `utils/domain/composerFieldGate.ts`(`hasValue(…, classNames)`·`completeEntryRows`·`incompleteRow`), `utils/stores/useWorkflowStore.ts`(`migrateUnknownPerEntryV15`), `utils/domain/composerLegacyMirror.ts`, `lib/report/reportMaterials.ts`, `lib/report/mapWorkflowToFinalReport.ts`(`buildReportInput`·`buildApplicant`), `utils/domain/evaluationClasses.ts`(`currentClassVolume`), `lib/report/problemList.ts`(`distributionShift`), `utils/domain/basicInfoValidity.ts`, `components/report-info/TrainingExamplesSection.tsx`, `components/data-upload/shared.tsx`(`ExampleUploadSlot`), `utils/image/examplePreview.ts`.
 
 ### 12.6 지표·판정·성적서·발급 (P1, 같은 라운드)
 
