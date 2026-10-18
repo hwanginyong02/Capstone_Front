@@ -395,3 +395,56 @@ PR #54 이후 팀 피드백: 화면이 각 필드 설명을 보여 주는 데 �
 이 표는 레지스트리(`src/data/reportComposer.ts`)에서 옮겨 적었다. 레지스트리가 정본이고, 바뀌면 이 표도 고친다.
 
 코드: `pages/MaterialPicker.tsx`(상태·`flowStatus` 한 번·게이트), `components/material-picker/`(`MaterialPicker`, `PickTree`, `LeafPopover`, `PickDiagram`, `DiagramLane`, `DiagramTerminal`, `DiagramEdges`, `CardNode`, `LeafChip`, `KindMarker`, `KindLegend`, `PickStatusBar`, `NextBlockedNotice`, `IconAction`, `controlStyles.ts`, `kindStyles.ts`, `diagramGeometry.ts`, `dnd.ts`), `utils/domain/flowChart.ts`, `utils/domain/leafDetail.ts`, `layout/components/AppHeader.tsx`, `layout/components/StepRail.tsx`.
+
+### 12.4 매핑 — 놓지 않으면 받지 않는다
+
+**규칙.** ① 평가 데이터의 매핑 재료도 "넣지 않으면 받지 않는다"를 따른다.
+
+| 매핑 재료 | 항목(구분) | 놓지 않으면 |
+|---|---|---|
+| y_true | 정답 컬럼(필수) | 늘 받음 |
+| y_pred · score · prob_class_* · prob_label_* | 예측 컬럼(필수 하나 — 예측 레이블과 확률은 서로 대신함) | 늘 받음 |
+| 양성 클래스 | 필수(이진) | 늘 받음 |
+| 결정 임계값 | 함께 들어감(예측 컬럼) | 매핑 화면의 조건(확률만 있을 때)대로 |
+| id | 샘플 ID 컬럼(선택) | 역할 선택지에서 뺌, 이미 배정된 행은 **맡아 둠** |
+| latency | 지연시간 컬럼(권장) | 역할 선택지에서 뺌, 이미 배정된 행은 **맡아 둠** |
+| 클래스 레이블 설명 | 선택 | 설명 카드를 숨기고, 적어 둔 설명은 성적서·AI 에 싣지 않음 |
+| ignore | 항목이 아님 | 늘 있음(남는 컬럼을 치울 수단) |
+
+확률을 따로 고르는 항목으로 두지 않는다 — 조건이 "예측 **또는** 확률"이라 둘로 쪼개면 서로에 달린 조건이 생기고, 숨기면 AUROC 같은 지표가 원인 없이 꺼지며, 자동 매핑이 찾은 확률 컬럼을 버리게 된다. 백엔드 계약은 그대로다: 샘플 ID·지연시간은 원래 선택 역할이고, 내린 행은 ignore 로 가서 중복 ID 검사·지연시간 통계가 돌지 않는다("받지 않음"의 뜻 그대로).
+
+**판정 한 곳, 적용 두 곳.** 받는 역할은 `allowedMappingRoles(taskType, evalDataPicks)`(`utils/domain/mappingPicks.ts`) 하나가 정한다 — 유형의 매핑 역할 중 그 역할을 받는 ① 항목을 받는 것(`isFieldPicked`) + ignore. picks 가 없으면(평가 흐름 이전·시연) 모두 받는다. 적용은 스토어의 두 쓰기 지점에서만 한다.
+- `setColumnMapping` — 업로드의 분석 결과·매핑 화면의 역할 변경·시연 시드가 모두 여기를 지난다.
+- `setMaterialPick` — ① 의 항목이 바뀌면 지금 매핑에 다시 적용한다.
+- 둘 다 매핑이 실제로 바뀌었을 때만 가용 지표(`availableMetricIds`)를 비운다(`restrictMappingRoles` 는 바뀐 것이 없으면 같은 배열을 돌려준다).
+
+출력마다 거르지 않고 스토어에서 막는 이유: 매핑을 읽어 요청·성적서를 만드는 곳이 여럿(매핑 확정·검증·평가 요청, 성적서 매퍼, 지표 가용성)이라 출력마다 거르면 역할 변환이 두 벌이던 때처럼 다시 어긋난다.
+
+**맡아 두기(`heldRole`).** 받지 않게 된 역할은 지우지 않는다. 그 행을 `confirmedRole: "ignore"` 로 내리고 원래 역할을 `MappingRow.heldRole` 에 둔다.
+- 맡아 둔 행은 `modified: false` 다(사용자가 고친 것이 아님). 자동 매핑 결과(`inferredRole`)는 그대로다.
+- 그 항목을 다시 넣으면 원래 역할로 돌아온다. 블록 ✕·항목 빼기가 매핑을 잃지 않고, 검증에서 지연시간이 빠졌을 때 평가 흐름에 넣기만 하면 숨겨 두었던 지연시간 컬럼이 돌아온다(검증 화면은 매핑이 바뀌면 다시 검증한다).
+- 사용자가 그 행의 역할을 직접 바꾸면 맡아 둔 값은 지운다(`applyRoleChange`) — 사용자의 결정이 우선이다.
+- 유형의 매핑 역할이 아닌 값(유형을 바꾸기 전의 값)은 숨김 규칙 대상이 아니다.
+- `heldRole` 은 요청 본문에 실리지 않는다(요청 빌더는 컬럼·역할·샘플값만 담는다). 새 선택 키라 저장 판(persist)을 올리지 않는다.
+- 알려진 한계: 규칙 폴백이 잘못 잡은 샘플 ID 도 맡아 뒀다가 샘플 ID 항목을 넣으면 되살아난다. 겹치면 매핑 확정이 "같은 역할이 여러 컬럼에" 로 막혀 사용자가 보게 된다.
+
+**매핑 화면.** 역할 선택지는 `buildRoleOptions` 가 `allowedMappingRoles` 로 만든다. 맡아 둔 행은 컬럼 이름 아래 "맡아 둠" 배지와 "맡아 둠: latency — 평가 흐름에 '지연시간 컬럼'을 넣으면 이 역할로 돌아옵니다.", 그리고 "평가 흐름 만들기에서 넣기"(그 항목과 돌아올 화면 `mapping` 을 `FlowEntryState` 로 넘김)를 보인다. 클래스 레이블 설명 카드는 그 항목을 받을 때만 그린다.
+
+**성적서·AI 에서 거르기.** 전용 화면이 받는 선택 항목은 카드 값 그룹 밖(스토어의 따로 된 키)에 있어, `buildReportInput` 의 `pickedDedicatedValues` 가 따로 거른다. 그 블록의 picks 가 없으면 그대로 싣는다.
+
+| 값 | 받지 않을 때 |
+|---|---|
+| 클래스 레이블 설명 | `{}` |
+| 적합 예시 파일 · 부적합 예시 파일 | 칸마다 `[]` |
+| 매핑 역할 | 스토어 불변식이 이미 걸렀다 |
+
+AI 에 넘기는 클래스 설명도 같은 거른 값(`reportInput.classLabelDescriptions`)이다 — 종전에는 스토어 값을 직접 넘겨 받지 않은 설명이 AI 에 갔다. 3절 표는 **설명을 적은 클래스만** 싣고, 하나도 없으면 표를 만들지 않는다(B14). 종전에는 빈 설명도 "설명 미입력" 줄로 찍어, 설명을 받지 않은 성적서에도 표가 생겼다. 이미 발급된 성적서는 저장된 대로 그린다.
+
+**⑥ 예시 파일.** 적합·부적합 예시 파일은 둘 다 선택 항목이다. 학습 데이터 화면은 넣은 칸만 그리고, 둘 다 빼면 예시 절이 없다. 용량 안내도 보이는 칸의 파일만 센다.
+
+**검증 화면의 생성 전 안내.** 2층 8번(지연시간)과 3층 지연시간 줄의 목적지는 컬럼 매핑이 아니라 **평가 데이터 › 지연시간 컬럼**이다(`targetOfItem(8)` — 레지스트리의 `standardBasis.reportingItem` 에서 찾는다).
+- "평가 흐름 만들기에서 넣기"는 늘 보인다. 그 항목을 강조하고, 넣고 "다음"을 누르면 컬럼 매핑으로 돌아온다.
+- "컬럼 매핑에서 고치기"는 지연시간 컬럼이 **놓여 있을 때만** 보인다. 놓지 않았으면 매핑 화면에 latency 역할이 없어 막다른 길이다. 판정은 검증 화면의 `canFixInInput`(항목을 가리키면 `isLeafReceived`, 아니면 블록을 넣었는지) 하나다.
+- 블록만 가리키는 항목(학습 데이터·정답 라벨 등)은 종전처럼 "평가 흐름 만들기에서 넣기"와, 블록을 넣었으면 "입력 화면에서 고치기".
+
+코드: `utils/domain/mappingPicks.ts`, `utils/stores/useWorkflowStore.ts`(`setColumnMapping`·`applyMaterialPicks`), `utils/domain/applyRoleChange.ts`, `components/column-mapping/`, `lib/report/mapWorkflowToFinalReport.ts`(`pickedDedicatedValues`·`buildDatasetInfo`), `hooks/useReportData.ts`, `pages/DataInfo.tsx`, `components/workflow/MaterialCheckNotice.tsx`, `pages/DataValidation.tsx`, `data/reportComposer.ts`(`isLeafReceived`).
