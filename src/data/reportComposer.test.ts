@@ -966,6 +966,14 @@ describe("재료 목록과 맞춘 형태", () => {
     expect(fieldOf("testData", "testPeriod")?.input).toBe("monthRange");
   });
 
+  it("⑧ 정답 라벨 신뢰성의 화면 이름은 성적서 이름과 같다 (W1)", () => {
+    const field = fieldOf("groundTruth", "labelReview")!;
+    expect(field.label).toBe("정답 라벨 신뢰성");
+    for (const choice of field.choices ?? []) {
+      expect(choiceLabel(field, choice), choice).toBe(field.reportLabels?.[choice]);
+    }
+  });
+
   it("⑧ 라벨 구축 방법은 Other 를 포함해 다섯 가지다", () => {
     const field = fieldOf("groundTruth", "labelAuthor");
     expect(field?.choices).toHaveLength(5);

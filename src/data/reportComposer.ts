@@ -871,13 +871,13 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       {
         id: "labelAuthor",
         label: "라벨 작성 주체",
-        inputExample: "전문가 / 외부 작업자 / 프로그램·규칙 / 실제 결과 기록 / 기타",
+        inputExample: "전문가 / 크라우드소싱(외부 작업자) / 프로그램·규칙 / 실제 결과 기록 / 기타",
         kind: "required",
         input: "single",
         description: "정답을 붙인 주체입니다. 실제 결과 기록은 사후에 확인된 결과를 정답으로 쓴 경우입니다. 예: 의사가 진단명을 붙였으면 전문가",
         choiceLabels: {
           "Domain experts": "전문가",
-          "Outside workers": "외부 작업자",
+          "Outside workers": "크라우드소싱(외부 작업자)",
           "A program or rule": "프로그램·규칙",
           "Recorded outcomes": "실제 결과 기록",
           "Other (free text)": "기타(직접 입력)",
@@ -904,15 +904,22 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       },
       {
         id: "labelReview",
-        label: "라벨 검수 방식",
-        inputExample: "복수 교차 검수 / 1인 검수 / 검수 없음",
+        // 화면 이름은 성적서에 찍히는 사실과 같은 말로 쓴다(W1). 종전 화면은 '1인 검수'였는데 성적서는
+        // '단일 라벨러'로 찍어, 한 사람이 붙이고 다른 한 사람이 검수한 경우가 다른 사실로 인쇄됐다.
+        label: "정답 라벨 신뢰성",
+        inputExample: "복수 라벨러 합의 / 단일 라벨러 / 검토 없음",
         kind: "required",
         input: "single",
-        description: "붙인 정답을 어떻게 다시 확인했는지입니다. 예: 두 사람이 따로 붙이고 맞춰 봤으면 복수 교차 검수",
+        description: "정답을 몇 사람이 붙였고 서로 맞춰 봤는지입니다. 예: 두 사람이 따로 붙이고 맞춰 봤으면 복수 라벨러 합의",
         choiceLabels: {
-          "Several reviewers": "복수 교차 검수",
-          "One reviewer": "1인 검수",
-          "No review": "검수 없음",
+          "Several reviewers": "복수 라벨러 합의",
+          "One reviewer": "단일 라벨러",
+          "No review": "검토 없음",
+        },
+        choiceDescriptions: {
+          "Several reviewers": "두 사람 이상이 따로 붙이고 맞춰 봤어요",
+          "One reviewer": "한 사람이 붙였어요",
+          "No review": "붙인 정답을 다시 확인하지 않았어요",
         },
         choices: ["Several reviewers", "One reviewer", "No review"],
         reportLabels: {
@@ -934,7 +941,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         label: "라벨러 수",
         inputExample: "3",
         kind: "conditional",
-        conditionLabel: "라벨 검수 방식에서 복수 교차 검수 선택 시",
+        conditionLabel: "정답 라벨 신뢰성에서 복수 라벨러 합의 선택 시",
         requiredWhen: { field: "labelReview", equals: "Several reviewers" },
         input: "number",
         description: "정답을 붙인 사람 수입니다. 예: 3",
@@ -958,7 +965,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample:
           "단순 일치율 / Cohen의 카파 / Fleiss의 카파 / Krippendorff의 알파 / 기타 / 측정 안 함",
         kind: "conditional",
-        conditionLabel: "라벨 검수 방식에서 복수 교차 검수 선택 시",
+        conditionLabel: "정답 라벨 신뢰성에서 복수 라벨러 합의 선택 시",
         requiredWhen: { field: "labelReview", equals: "Several reviewers" },
         input: "single",
         description: "라벨러끼리 일치도를 무엇으로 쟀는지입니다. 라벨러가 2명이면 Fleiss의 카파, 3명 이상이면 Cohen의 카파를 고를 수 없습니다. 예: 두 사람이면 Cohen의 카파",

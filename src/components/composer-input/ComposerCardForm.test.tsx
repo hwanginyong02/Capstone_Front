@@ -65,6 +65,19 @@ describe("⑤ 평가 관점 — 유형별 질문", () => {
   });
 });
 
+describe("⑧ 정답 라벨 신뢰성 — 성적서와 같은 말 (W1)", () => {
+  it("선택지 이름이 성적서 표기와 같고, 무엇을 뜻하는지 한 줄 설명이 붙는다", () => {
+    renderForm("groundTruth");
+
+    expect(screen.getByText("정답 라벨 신뢰성")).toBeInTheDocument();
+    for (const name of ["복수 라벨러 합의", "단일 라벨러", "검토 없음"]) {
+      expect(screen.getByRole("radio", { name: new RegExp("^" + name) }), name).toBeInTheDocument();
+    }
+    expect(screen.getByText("한 사람이 붙였어요")).toBeInTheDocument();
+    expect(screen.queryByText("1인 검수")).not.toBeInTheDocument();
+  });
+});
+
 describe("글자 수 상한 (B7)", () => {
   it("긴 설명 칸은 상한을 넘겨 받지 않고 남은 글자를 늘 보인다", () => {
     renderForm("trainingData", { values: { trainingDescription: { text: "가".repeat(1_990) } } });
@@ -366,7 +379,7 @@ describe("선택지 타일", () => {
     renderForm("groundTruth", { values: { labelAuthor: { text: "Domain experts" } } });
 
     const chosen = screen.getByRole("radio", { name: "전문가" }).closest("label");
-    const other = screen.getByRole("radio", { name: "외부 작업자" }).closest("label");
+    const other = screen.getByRole("radio", { name: "크라우드소싱(외부 작업자)" }).closest("label");
 
     expect(chosen?.className).toContain("border-primary");
     expect(other?.className).not.toContain("border-primary");

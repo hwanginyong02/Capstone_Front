@@ -140,7 +140,14 @@ export function ComposerFieldInput({
                 className={cn(TILE_BASE, value?.text === choice ? TILE_ON : TILE_OFF)}
               >
                 <RadioGroupItem shape="square" value={choice} />
-                <span className="text-body-medium text-foreground">{choiceLabel(field, choice)}</span>
+                <span className="text-body-medium text-foreground">
+                  {choiceLabel(field, choice)}
+                  {field.choiceDescriptions?.[choice] && (
+                    <span className="block text-body-small text-muted-foreground">
+                      {field.choiceDescriptions[choice]}
+                    </span>
+                  )}
+                </span>
               </label>
             ))}
           </RadioGroup>
