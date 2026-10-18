@@ -199,3 +199,50 @@ describe("생성 전 안내와 '다음' (재료 선택 점검 6절)", () => {
     expect(saved.reportData.materialCheck.printed.summary[2].value).toMatch(/^확인 후 진행 \(/);
   });
 });
+
+describe("생성 전 안내 → 평가 흐름 만들기", () => {
+  it("넣으러 가면 그 블록과 돌아올 입력 화면을 넘긴다(FlowEntryState)", async () => {
+    const { MemoryRouter: Router, Routes, Route, useLocation } = await import("react-router");
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const { materialCheckFixture } = await import("../test/materialCheckFixture");
+    const { FILLED_LAYER_ONE } = await import("../test/layerOneFixture");
+    const { getCard } = await import("../data/reportComposer");
+    useWorkflowStore.setState({ ...FILLED_LAYER_ONE, materialCheckAck: null });
+    mockUseDataValidation.mockReturnValue({
+      validationData: { error_count: 0 },
+      isLoading: false,
+      error: null,
+      buildEvaluationResult: vi.fn(() => ({
+        workflowSnapshot: {},
+        reportData: {
+          evalScope: { version: "v1" },
+          meta: { reportId: "R" },
+          materialCheck: materialCheckFixture({ missingLatencyAndLabel: true }),
+        },
+      })),
+    });
+    function Composer() {
+      return <pre data-testid="composer-state">{JSON.stringify(useLocation().state)}</pre>;
+    }
+    render(
+      <Router initialEntries={["/app/data-validation"]}>
+        <Routes>
+          <Route path="/app/data-validation" element={<DataValidation />} />
+          <Route path="/app/composer" element={<Composer />} />
+        </Routes>
+      </Router>,
+    );
+
+    const list = screen.getByRole("list", { name: "빠진 보고 항목" });
+    const fix = list.querySelectorAll("button");
+    expect(fix.length).toBeGreaterThan(0);
+    // 정답 라벨 구축 방법 → 정답 라벨 블록.
+    const button = [...fix].find((item) => item.closest("li")?.textContent?.includes("정답 라벨 구축 방법"));
+    await userEvent.click(button!);
+
+    expect(JSON.parse(screen.getByTestId("composer-state").textContent!)).toEqual({
+      cardId: "groundTruth",
+      returnStep: getCard("groundTruth").steps[0],
+    });
+  });
+});

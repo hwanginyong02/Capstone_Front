@@ -19,7 +19,7 @@ import { MaterialCheckNotice, type MaterialCheckTarget } from "../components/wor
 import { layerOneGaps, type LayerOneGap } from "../utils/domain/layerOne";
 import { getCard } from "../data/reportComposer";
 import type { MaterialCheckResult } from "../types/finalReport.types";
-import type { ComposerCardId } from "../types/reportComposer.types";
+import type { ComposerCardId, FlowEntryState } from "../types/reportComposer.types";
 
 /** 평가 실행(성적서 생성) 중 발생한 예외를 사용자가 읽을 수 있는 문장으로 바꾼다. */
 function describeSubmitError(err: unknown): string {
@@ -81,8 +81,10 @@ export function DataValidation() {
       flow.goTo(getCard(target.cardId).steps[0]);
       return;
     }
-    // 재료 고르기에서 그 카드를 연다 — 넣지 않은 카드나 체크하지 않은 항목은 입력 화면에 칸이 없다.
-    navigate("/app/composer", { state: { cardId: target.cardId } });
+    // 평가 흐름 만들기에서 그 블록을 펼친다 — 넣지 않은 항목은 입력 화면에 칸이 없다. 넣고 "다음"을
+    // 누르면 그 블록의 입력 화면으로 돌아간다(`composerNextStep`).
+    const entry: FlowEntryState = { cardId: target.cardId, returnStep: getCard(target.cardId).steps[0] };
+    navigate("/app/composer", { state: entry });
   };
   const includedCards = new Set(
     (Object.entries(store.composerCards) as Array<[ComposerCardId, boolean]>)
