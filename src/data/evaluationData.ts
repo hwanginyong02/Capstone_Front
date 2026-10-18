@@ -56,6 +56,16 @@ export const TASK_TYPE_LABELS_KO: Record<TaskType, string> = {
   multilabel: "다중 레이블",
 };
 
+/**
+ * 유형 한 줄 설명 — 진입 화면의 유형 카드와 머리의 분류 유형 툴팁이 같이 쓴다(같은 문장을 두 벌 두지
+ * 않는다). 세 문장은 같은 골격이다 — 나란히 읽을 때 바뀌는 부분만 눈에 들어와야 차이가 드러난다.
+ */
+export const TASK_TYPE_DESCRIPTIONS_KO: Record<TaskType, string> = {
+  binary: "샘플 하나를 두 범주 중 하나로 나눕니다.",
+  multiclass: "샘플 하나를 여러 범주 중 하나로 나눕니다.",
+  multilabel: "샘플 하나에 맞는 범주를 여러 개 붙입니다.",
+};
+
 export const METRICS: MetricDefinition[] = [
   { id: "M1", name: "Accuracy", subtitle: "전체 정확도", description: "모델이 맞게 예측한 비율입니다.", supportedTaskTypes: ["binary", "multiclass"], formula: "(TP + TN) / Total", isCommon: true },
   { id: "M2", name: "Precision", subtitle: "양성 예측의 정밀도", description: "양성으로 예측한 것 중 실제 양성인 비율입니다.", supportedTaskTypes: ["binary", "multiclass", "multilabel"], additionalFields: ["positiveClass"], formula: "binary: TP/(TP+FP) · 그 외: 클래스별 TP/(TP+FP) 의 macro 평균", isCommon: true },
