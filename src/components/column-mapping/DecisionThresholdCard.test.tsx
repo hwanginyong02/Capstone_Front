@@ -1,6 +1,14 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { DecisionThresholdCard, parseThresholdText, thresholdApplies, withinUnitInterval } from "./DecisionThresholdCard";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import {
+  DecisionThresholdCard,
+  parseThresholdText,
+  requestDecisionThreshold,
+  thresholdApplies,
+  withinUnitInterval,
+} from "./DecisionThresholdCard";
 import type { MappingRole, MappingRow } from "../../types/mapping.types";
 
 /**
@@ -208,5 +216,34 @@ describe("thresholdApplies — 카드와 확정 검사가 같이 쓰는 판정",
     expect(thresholdApplies("binary", [row("y", "y_true")])).toBe(false);
     expect(thresholdApplies("multiclass", [row("y", "y_true"), row("c", "prob_class_*")])).toBe(false);
     expect(thresholdApplies("multilabel", [row("y", "y_true"), row("c", "prob_label_*")])).toBe(true);
+  });
+});
+
+describe("requestDecisionThreshold — 요청에 실을 값(S2 P1, 결정 임계값 잔여값)", () => {
+  it("지금 매핑에서 쓰이지 않으면 null — 범위 밖 옛 값이 422 를 부르지 않게", () => {
+    const withPred = [row("y", "y_true"), row("p", "y_pred"), row("s", "score")];
+    expect(requestDecisionThreshold("binary", withPred, 1.7)).toBeNull();
+    expect(requestDecisionThreshold("multiclass", [row("y", "y_true"), row("c", "prob_class_*")], 0.3)).toBeNull();
+  });
+
+  it("쓰일 때는 그대로 — 스칼라, 그리고 null 은 null(기본값 0.5)", () => {
+    const scoreOnly = [row("y", "y_true"), row("s", "score")];
+    expect(requestDecisionThreshold("binary", scoreOnly, 0.7)).toBe(0.7);
+    expect(requestDecisionThreshold("binary", scoreOnly, null)).toBeNull();
+  });
+
+  it("레이블별 값은 지금 확률 컬럼의 키만 남긴다(낡은 키 정리), 남는 게 없으면 null", () => {
+    const rows = [row("y", "y_true"), row("s_a", "prob_label_*"), row("s_b", "prob_label_*")];
+    expect(requestDecisionThreshold("multilabel", rows, { s_a: 0.6, old_col: 2, s_b: 0.7 })).toEqual({ s_a: 0.6, s_b: 0.7 });
+    expect(requestDecisionThreshold("multilabel", rows, { gone: 0.4 })).toBeNull();
+  });
+});
+
+describe("검증·평가 요청이 requestDecisionThreshold 를 거친다(배선)", () => {
+  // 두 훅은 요청 본문을 안에서 만든다 — 저장값을 그대로 싣는 줄로 되돌아가면 실패한다.
+  it.each(["../../hooks/useDataValidation.ts", "../../hooks/useReportData.ts"])("%s", (rel) => {
+    const source = readFileSync(resolve(__dirname, rel), "utf-8");
+    expect(source).toMatch(/decision_threshold: requestDecisionThreshold\(/);
+    expect(source).not.toMatch(/decision_threshold:\s*(store|workflowState)\.decisionThreshold/);
   });
 });

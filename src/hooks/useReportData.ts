@@ -23,6 +23,7 @@ import { fetchNarrative } from "../lib/report/fetchNarrative";
 import { translateRoleToBackend } from "../lib/mapping/translateRoleToBackend";
 import { resolveBeta } from "../utils/domain/validation";
 import { resolveTaskType } from "../data/evaluationData";
+import { requestDecisionThreshold } from "../components/column-mapping/DecisionThresholdCard";
 
 interface UseReportDataResult {
   data: FinalReportData | null;
@@ -107,7 +108,10 @@ export function useReportData(id: string): UseReportDataResult {
           beta: beta,
           // 하드 예측이 없을 때 확률에서 예측을 파생하는 기준(ISSUES.md A-01).
           // 성적서 합격 목표값(threshold)과는 다른 개념이라 필드명이 분리돼 있다.
-          decision_threshold: workflowState.decisionThreshold,
+          // 지금 매핑에서 쓰이는 값만(S2 P1) — 검증 요청과 같은 함수.
+          decision_threshold: requestDecisionThreshold(
+            resolveTaskType(workflowState.taskType), workflowState.columnMapping, workflowState.decisionThreshold,
+          ),
         };
 
         const formData = new FormData();
