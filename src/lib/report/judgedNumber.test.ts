@@ -54,6 +54,11 @@ describe("판정·마진·아슬아슬이 같은 차이를 본다(재현 값)", 
     expect(isNearTarget(kpi(0.103, 0.1))).toBe(false);
   });
 
+  it("폭 쪽의 잡음도 걷는다 — 목표 0.07 × 3% 는 0.0021000000000000003 이라 꼭 3% 인 0.0721·0.0679 가 아슬아슬로 잡혔다", () => {
+    expect(isNearTarget(kpi(0.0721, 0.07))).toBe(false);
+    expect(isNearTarget(kpi(0.0679, 0.07))).toBe(false);
+  });
+
   it("3% 안쪽은 그대로 아슬아슬이다", () => {
     expect(isNearTarget(kpi(0.8239, 0.8))).toBe(true);
     expect(isNearTarget(kpi(0.7761, 0.8))).toBe(true);

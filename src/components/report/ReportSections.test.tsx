@@ -82,6 +82,11 @@ describe("ReportSections — 6.1 에 judgedValueDigits 를 넘긴다 (S2 판정 
     expect(valueCells()).toEqual(["0.7996"]);
   });
 
+  it("6.2 상세 표(비핵심 지표)도 같은 규칙", () => {
+    render(<ReportSections data={report({ kpiResults: [{ ...failing, metricId: "M2", name: "Precision", isCore: false }] })} />);
+    expect(valueCells()).toEqual(["0.7996"]);
+  });
+
   it("키가 없는 옛 발급본은 발급 당시처럼 셋째 자리", () => {
     render(<ReportSections data={report({ kpiResults: [failing], judgedValueDigits: undefined })} />);
     expect(valueCells()).toEqual(["0.800"]);
