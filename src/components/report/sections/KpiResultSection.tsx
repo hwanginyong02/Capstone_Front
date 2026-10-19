@@ -83,7 +83,12 @@ export function KpiResultSection({
       <div className="bg-slate-50 border border-slate-200 rounded-md p-4 text-sm text-slate-700 space-y-2">
         <h4 className="font-semibold text-slate-800">성능 평가 산출 기준</h4>
         <ul className="list-disc list-inside space-y-1">
-          <li>본 성적서의 모든 성능 산출 결과 및 기준 수치는 원본 데이터에서 소수점 셋째 자리로 반올림 표기되었습니다.</li>
+          <li>
+            본 성적서의 모든 성능 산출 결과 및 기준 수치는 원본 데이터에서 소수점 셋째 자리로 반올림 표기되었습니다.
+            {/* S2 판정 자릿수 — 자릿수를 늘려 찍는 성적서에만. 옛 발급본은 발급 당시 문장 그대로다. */}
+            {judgedValueDigits &&
+              " 다만 판정 대상 지표 중 셋째 자리로 반올림하면 판정과 어긋나 보이는 값은 판정과 같게 읽히도록 자릿수를 늘려 표기하였습니다."}
+          </li>
           {taskType === "binary" && (
             <li>본 성적서의 이진 분류 평가 지표는 사용자가 매핑 단계에서 지정한 {meta?.positiveClass ? `[ ${meta.positiveClass} ]` : "Target"} 클래스 기준으로 산출되었습니다.</li>
           )}

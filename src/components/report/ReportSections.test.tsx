@@ -80,6 +80,8 @@ describe("ReportSections — 6.1 에 judgedValueDigits 를 넘긴다 (S2 판정 
     expect(data.judgedValueDigits).toBe(true);
     render(<ReportSections data={data} />);
     expect(valueCells()).toEqual(["0.7996"]);
+    // 6.0 일러두기의 "셋째 자리로 반올림" 문장도 늘려 찍은 값이 있을 수 있다고 밝힌다.
+    expect(screen.getByText(/자릿수를 늘려 표기하였습니다/)).toBeInTheDocument();
   });
 
   it("6.2 상세 표(비핵심 지표)도 같은 규칙", () => {
@@ -90,5 +92,6 @@ describe("ReportSections — 6.1 에 judgedValueDigits 를 넘긴다 (S2 판정 
   it("키가 없는 옛 발급본은 발급 당시처럼 셋째 자리", () => {
     render(<ReportSections data={report({ kpiResults: [failing], judgedValueDigits: undefined })} />);
     expect(valueCells()).toEqual(["0.800"]);
+    expect(screen.queryByText(/자릿수를 늘려 표기하였습니다/)).not.toBeInTheDocument();
   });
 });
