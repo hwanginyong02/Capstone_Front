@@ -1,6 +1,7 @@
 import { useParams } from "react-router";
 import { isLegacyLayout } from "../../lib/report/normalizeReportContent";
-import { useReportData } from "../../hooks/useReportData";
+import { useStoredReport } from "../../hooks/useReportData";
+import { NotPrintableState, ReportNotFoundState } from "../../components/report/ReportStateNotices";
 import { usePrintOnReady } from "../../hooks/usePrintOnReady";
 import { PrintLayout } from "../../components/report/layout/PrintLayout";
 import { PageBreak } from "../../components/report/layout/PageBreak";
@@ -21,10 +22,12 @@ import { SignatureSection } from "../../components/report/sections/SignatureSect
 
 export function ReportPrint() {
   const { id = "" } = useParams();
-  const { data, narrativePending } = useReportData(id);
-  const containerRef = usePrintOnReady(data, narrativePending);
+  // 저장된 완성본만 읽는다 — 인쇄 탭은 평가·서술 작업을 시작하지 않는다(서술 라운드 S3b).
+  const { data, status } = useStoredReport(id);
+  const containerRef = usePrintOnReady(data, status === "ready");
 
-  if (!data) return null;
+  if (status === "not_found" || !data) return <ReportNotFoundState />;
+  if (status === "not_printable") return <NotPrintableState />;
 
   return (
     <PrintLayout>

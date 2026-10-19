@@ -240,8 +240,8 @@ describe("requestDecisionThreshold — 요청에 실을 값(S2 P1, 결정 임계
 });
 
 describe("검증·평가 요청이 requestDecisionThreshold 를 거친다(배선)", () => {
-  // 두 훅은 요청 본문을 안에서 만든다 — 저장값을 그대로 싣는 줄로 되돌아가면 실패한다.
-  it.each(["../../hooks/useDataValidation.ts", "../../hooks/useReportData.ts"])("%s", (rel) => {
+  // 검증 훅과 평가 요청 스냅샷(서술 라운드 S3b)은 요청 본문을 안에서 만든다 — 저장값을 그대로 싣는 줄로 되돌아가면 실패한다.
+  it.each(["../../hooks/useDataValidation.ts", "../../lib/report/evaluationRequest.ts"])("%s", (rel) => {
     const source = readFileSync(resolve(__dirname, rel), "utf-8");
     expect(source).toMatch(/decision_threshold: requestDecisionThreshold\(/);
     expect(source).not.toMatch(/decision_threshold:\s*(store|workflowState)\.decisionThreshold/);

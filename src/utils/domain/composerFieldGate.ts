@@ -189,6 +189,28 @@ export function rangeFor(field: ComposerField, values: ComposerValueMap): Number
 }
 
 /**
+ * ⑧ 라벨 일치도 값의 단위 안내와 비율 의심 경고(서술 라운드 S3b, 점검 나-13). 막지 않는다.
+ *
+ * 단순 일치율은 0~100(%)으로 받는데, 0.82 처럼 비율로 넣어도 범위 안이라 통과하고 성적서·AI 에는 0.0082 로 간다
+ * (`percentToRatio`). 1 이하 값은 비율로 넣었을 가능성이 높아 확인을 부탁한다(1% 이하 일치율은 현실에서 드물다).
+ * 단순 일치율이 아니면(카파·알파) 아무것도 돌려주지 않는다.
+ */
+export function labelAgreementNotice(
+  field: ComposerField,
+  values: ComposerValueMap,
+): { unit: string; warning: string | null } | null {
+  if (field.id !== "labelAgreementValue") return null;
+  if ((values.labelAgreementKind?.text ?? "") !== "Percent agreement") return null;
+  const raw = (values.labelAgreementValue?.text ?? "").trim();
+  const value = Number(raw);
+  const warning =
+    raw !== "" && Number.isFinite(value) && value > 0 && value <= 1
+      ? `단순 일치율은 % 숫자로 넣습니다. ${raw} 은(는) ${raw}% 로 인쇄됩니다 — ${Math.round(value * 100)}% 라면 ${Math.round(value * 100)} 을(를) 넣으세요.`
+      : null;
+  return { unit: "%", warning };
+}
+
+/**
  * 값이 **있는데 틀렸는가.** 비어 있는 것은 여기서 보지 않는다 — 그건 필수 점검의 몫이고,
  * 선택 필드를 비워 두는 것은 허용된다.
  */

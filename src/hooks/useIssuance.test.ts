@@ -10,7 +10,7 @@ vi.mock("../lib/report/issuanceApi", async (importOriginal) => {
   return { ...actual, issueReport: vi.fn(), reissueReport: vi.fn() };
 });
 
-import { issueReport } from "../lib/report/issuanceApi";
+import { issueReport, reissueReport } from "../lib/report/issuanceApi";
 import { useIssuance } from "./useIssuance";
 import { ISSUE_CONTENT_MAX_BYTES } from "../utils/image/examplePreview";
 import type { FinalReportData } from "../types/finalReport.types";
@@ -65,3 +65,38 @@ describe("발급 비고 (B16)", () => {
   });
 });
 
+
+
+/** 서술 라운드 S3b — 끝나지 않은 서술은 완성본이 아니다. 발급·정정 발급 모두 서술 done 이어야 한다. */
+describe("서술이 끝나지 않으면 발급·정정 발급을 잠근다", () => {
+  it("서술이 끝나지 않았으면 발급할 수 없고 요청도 보내지 않는다", async () => {
+    vi.mocked(issueReport).mockClear();
+    const { result } = renderHook(() => useIssuance("run-1", report(1_000), false));
+    expect(result.current.canIssue).toBe(false);
+    await act(() => result.current.issue());
+    expect(issueReport).not.toHaveBeenCalled();
+  });
+
+  it("완성본 표시(isEvaluated)가 없으면 서술 상태가 done 이어도 잠근다", () => {
+    const draft = { ...report(1_000), isEvaluated: false } as FinalReportData;
+    expect(renderHook(() => useIssuance("run-1", draft, true)).result.current.canIssue).toBe(false);
+  });
+
+  it("발급된 성적서도 서술이 끝나지 않았으면 정정 발급을 보내지 않는다", async () => {
+    vi.mocked(reissueReport).mockClear();
+    const issued = { ...report(1_000), meta: { reportId: "RPT-2026-0001", issuedAt: "x" } } as unknown as FinalReportData;
+    const { result } = renderHook(() => useIssuance("run-1", issued, false));
+    await act(() => result.current.reissue("오타 수정"));
+    expect(reissueReport).not.toHaveBeenCalled();
+  });
+
+  it("서술이 끝난 완성본은 정정 발급을 보낸다", async () => {
+    vi.spyOn(window, "alert").mockImplementation(() => {});
+    vi.mocked(reissueReport).mockClear();
+    vi.mocked(reissueReport).mockRejectedValueOnce(new Error("network"));
+    const issued = { ...report(1_000), meta: { reportId: "RPT-2026-0001", issuedAt: "x" } } as unknown as FinalReportData;
+    const { result } = renderHook(() => useIssuance("run-1", issued, true));
+    await act(() => result.current.reissue("오타 수정"));
+    expect(reissueReport).toHaveBeenCalledTimes(1);
+  });
+});

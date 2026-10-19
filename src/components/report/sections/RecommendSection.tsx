@@ -6,6 +6,7 @@ import type {
 } from "../../../types/finalReport.types";
 import { SectionTitle } from "../shared/SectionTitle";
 import { NarrativeSourceBadge } from "../shared/NarrativeSourceBadge";
+import { narrativePlaceholder, recommendationPlaceholder } from "../shared/narrativePlaceholder";
 import { cn } from "../../../utils/styling/styles";
 import { problemLabel } from "../../../lib/report/problemList";
 
@@ -36,7 +37,7 @@ const RECOMMENDATION_PENDING = "권고 생성 예정";
 const PLACEHOLDER = "자동 서술 생성(LLM) 연동 예정 — 계산된 지표를 바탕으로 한 권고가 표시됩니다.";
 
 /** 서술 블록: 텍스트가 있으면 인용, 없으면 "생성 예정" 플레이스홀더 */
-function NarrativeBlock({ title, text }: { title: string; text: string }) {
+function NarrativeBlock({ title, text, source }: { title: string; text: string; source?: NarrativeSource }) {
   const hasText = (text ?? "").trim().length > 0;
   return (
     <div className="space-y-2">
@@ -47,7 +48,7 @@ function NarrativeBlock({ title, text }: { title: string; text: string }) {
         </blockquote>
       ) : (
         <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-xs text-slate-400">
-          {PLACEHOLDER}
+          {narrativePlaceholder(source, PLACEHOLDER)}
         </p>
       )}
     </div>
@@ -76,9 +77,11 @@ function PriorityBadge({ priority }: { priority: ReportRecommendation["priority"
 function ProblemTable({
   problems,
   recommendations,
+  source,
 }: {
   problems: Problem[];
   recommendations: ReportRecommendation[];
+  source?: NarrativeSource;
 }) {
   const ids = new Set(problems.map((p) => p.id));
   const rows: Array<{ priority: ReportRecommendation["priority"]; label: string; rec?: ReportRecommendation }> = [];
@@ -115,7 +118,7 @@ function ProblemTable({
               </>
             ) : (
               <>
-                <td className="py-2.5 pr-4 text-xs text-slate-400">{RECOMMENDATION_PENDING}</td>
+                <td className="py-2.5 pr-4 text-xs text-slate-400">{recommendationPlaceholder(source, RECOMMENDATION_PENDING)}</td>
                 <td className="py-2.5 text-xs text-slate-400">—</td>
               </>
             )}
@@ -135,10 +138,10 @@ export function RecommendSection({ recommendations, narrative, source, problems 
       </div>
 
       {/* 9.1 데이터셋 보완 및 품질 개선 전략 */}
-      <NarrativeBlock title="데이터셋 보완 및 품질 개선 전략" text={narrative.dataQuality} />
+      <NarrativeBlock title="데이터셋 보완 및 품질 개선 전략" text={narrative.dataQuality} source={source} />
 
       {/* 9.2 모델 고도화 및 운영 관리 가이드 */}
-      <NarrativeBlock title="모델 고도화 및 운영 관리 가이드" text={narrative.modelOps} />
+      <NarrativeBlock title="모델 고도화 및 운영 관리 가이드" text={narrative.modelOps} source={source} />
 
       {/* 권고 표 — 문제 목록이 있는 성적서는 문제 번호 표(0개면 고정 문구 6), 없으면 종전 표 */}
       {problems !== undefined ? (
@@ -147,11 +150,11 @@ export function RecommendSection({ recommendations, narrative, source, problems 
             {NO_PROBLEM_SENTENCE}
           </p>
         ) : (
-          <ProblemTable problems={problems} recommendations={recommendations} />
+          <ProblemTable problems={problems} recommendations={recommendations} source={source} />
         )
       ) : recommendations.length === 0 ? (
         <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-xs text-slate-400">
-          권고 항목은 자동 서술 생성(LLM) 연동 시 표시됩니다.
+          {narrativePlaceholder(source, "권고 항목은 자동 서술 생성(LLM) 연동 시 표시됩니다.")}
         </p>
       ) : (
       <table className="w-full text-sm border-collapse">

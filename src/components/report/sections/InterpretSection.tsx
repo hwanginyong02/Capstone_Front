@@ -7,6 +7,7 @@ import type {
 import { derivationStatement, perLabelThresholds } from "../../../lib/report/derivationText";
 import { SectionTitle } from "../shared/SectionTitle";
 import { NarrativeSourceBadge } from "../shared/NarrativeSourceBadge";
+import { narrativePlaceholder } from "../shared/narrativePlaceholder";
 
 interface InterpretSectionProps {
   interpretation: InterpretationData;
@@ -34,7 +35,17 @@ const PLACEHOLDER =
   "자동 서술 생성(LLM) 연동 예정 — 계산된 지표·혼동행렬을 바탕으로 한 정밀 분석이 표시됩니다.";
 
 /** 서술 블록: LLM이 채운 텍스트가 있으면 인용, 없으면 "생성 예정" 플레이스홀더 */
-function NarrativeBlock({ title, text, children }: { title: string; text: string; children?: React.ReactNode }) {
+function NarrativeBlock({
+  title,
+  text,
+  source,
+  children,
+}: {
+  title: string;
+  text: string;
+  source?: NarrativeSource;
+  children?: React.ReactNode;
+}) {
   const hasText = (text ?? "").trim().length > 0;
   return (
     <div className="space-y-2">
@@ -46,7 +57,7 @@ function NarrativeBlock({ title, text, children }: { title: string; text: string
         </blockquote>
       ) : (
         <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-xs text-slate-400">
-          {PLACEHOLDER}
+          {narrativePlaceholder(source, PLACEHOLDER)}
         </p>
       )}
     </div>
@@ -146,13 +157,14 @@ export function InterpretSection({
       {/* 7.1 앞 고정 문구 9 — 파생 예측 사실 */}
       {derivedPrediction && <DerivationNote fact={derivedPrediction} />}
 
-      <NarrativeBlock title="혼동 행렬 기반 클래스 간 간섭 분석" text={interp.confusionAnalysis}>
+      <NarrativeBlock title="혼동 행렬 기반 클래스 간 간섭 분석" text={interp.confusionAnalysis} source={source}>
         {confusionCounts && <ConfusionCountsTable counts={confusionCounts} />}
         {errorRatioSentence && <p className="text-sm text-slate-700">{errorRatioSentence}</p>}
       </NarrativeBlock>
       <NarrativeBlock
         title="데이터 분포 유의성 및 클래스 편향성 평가"
         text={interp.distributionAnalysis}
+        source={source}
       >
         {/* 7.2 고정 문구 12 — 정답 라벨 주의 */}
         {labelCautionSentence && <p className="text-sm text-slate-700">{labelCautionSentence}</p>}

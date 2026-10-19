@@ -19,7 +19,7 @@ import type {
   ComposerValueMap,
   NumberRange,
 } from "../../types/reportComposer.types";
-import { isFieldVisible, rangeFor, type FieldIssue } from "../../utils/domain/composerFieldGate";
+import { isFieldVisible, labelAgreementNotice, rangeFor, type FieldIssue } from "../../utils/domain/composerFieldGate";
 
 /** 숫자 칸의 허용 범위를 문장으로. 무엇이 틀렸는지가 아니라 무엇을 넣으면 되는지를 말한다. */
 function describeRange(range: NumberRange): string {
@@ -94,6 +94,20 @@ export function ComposerCardForm({
                   (showErrors && Boolean(issue))
                 }
               />
+              {(() => {
+                const notice = labelAgreementNotice(field, values);
+                if (!notice) return null;
+                return (
+                  <>
+                    <p className="mt-1 text-body-small text-muted-foreground">단위: {notice.unit} (예: 82)</p>
+                    {notice.warning && (
+                      <p role="status" className="mt-1 text-body-small text-warning-strong">
+                        {notice.warning}
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
               {issue?.reason === "exclusive" && (
                 <p className="mt-1 text-body-small text-destructive">
                   다른 선택지와 함께 고를 수 없는 답입니다: {choiceLabel(field, field.exclusiveChoice ?? "")}

@@ -2,6 +2,7 @@ import { CheckCircle2, AlertTriangle, XCircle, CircleHelp } from "lucide-react";
 import type { BenchmarkRef, ConclusionData, NarrativeSource } from "../../../types/finalReport.types";
 import { SectionTitle } from "../shared/SectionTitle";
 import { NarrativeSourceBadge } from "../shared/NarrativeSourceBadge";
+import { narrativePlaceholder } from "../shared/narrativePlaceholder";
 import { cn } from "../../../utils/styling/styles";
 import { formatMetricValue } from "../../../lib/report/metricValueFormat";
 
@@ -54,7 +55,7 @@ interface ConclusionSectionProps {
 }
 
 /** 서술 블록: LLM이 채울 텍스트가 있으면 인용, 없으면 "생성 예정" 플레이스홀더 표시 */
-function NarrativeBlock({ title, text }: { title: string; text: string }) {
+function NarrativeBlock({ title, text, source }: { title: string; text: string; source?: NarrativeSource }) {
   const hasText = (text ?? "").trim().length > 0;
   return (
     <div className="space-y-2">
@@ -65,7 +66,7 @@ function NarrativeBlock({ title, text }: { title: string; text: string }) {
         </blockquote>
       ) : (
         <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-xs text-slate-400">
-          자동 서술 생성(LLM) 연동 예정 — 현재는 규칙 기반 판정·점수만 표시됩니다.
+          {narrativePlaceholder(source, "자동 서술 생성(LLM) 연동 예정 — 현재는 규칙 기반 판정·점수만 표시됩니다.")}
         </p>
       )}
     </div>
@@ -123,12 +124,12 @@ export function ConclusionSection({
         {conclusion.benchmarkRefs && conclusion.benchmarkRefs.length > 0 && (
           <BenchmarkTable refs={conclusion.benchmarkRefs} />
         )}
-        <NarrativeBlock title="도메인 성능 벤치마크" text={conclusion.benchmark} />
+        <NarrativeBlock title="도메인 성능 벤치마크" text={conclusion.benchmark} source={source} />
       </div>
 
       {/* 8.2 전반적 성능 및 일반화 능력 총평 — 일반화 고정 문구(11a·11b)는 의뢰자 답으로 정해 서술 아래 찍는다. */}
       <div className="space-y-3">
-        <NarrativeBlock title="전반적 성능 및 일반화 능력 총평" text={conclusion.narrative} />
+        <NarrativeBlock title="전반적 성능 및 일반화 능력 총평" text={conclusion.narrative} source={source} />
         {sourceRelationSentence && (
           <p className="text-sm leading-relaxed text-slate-700">{sourceRelationSentence}</p>
         )}
@@ -136,7 +137,7 @@ export function ConclusionSection({
 
       {/* 8.3 기술적 취약점 및 잠재적 리스크 요약 — 아슬아슬 지표 표시는 규칙으로 정해 서술 아래 찍는다. */}
       <div className="space-y-3">
-        <NarrativeBlock title="기술적 취약점 및 잠재적 리스크 요약" text={conclusion.risks} />
+        <NarrativeBlock title="기술적 취약점 및 잠재적 리스크 요약" text={conclusion.risks} source={source} />
         {nearTargetNote && (
           <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">
             {nearTargetNote}

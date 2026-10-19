@@ -386,8 +386,15 @@ export interface RecommendationNarrative {
   modelOps: string;
 }
 
-/** 서술 출처 — 추적성 배지용. llm: LLM 생성, fallback: 규칙 기반, error: 호출 실패(빈 서술). */
-export type NarrativeSource = "llm" | "fallback" | "error";
+/**
+ * 서술 출처 — 추적성 배지용. llm: LLM 생성, fallback: 규칙 기반, error: 호출 실패(빈 서술 — 옛 저장본에만 있다).
+ * pending·failed 는 **화면 전용**이다(서술 라운드 S3b): 서술을 기다리는 중·만들지 못함일 때 성적서 훅이 그리기 직전에
+ * 얹는 값으로, 저장하지 않는다. 섹션은 이 값으로 빈 서술 자리의 안내 문구를 고른다.
+ */
+export type NarrativeSource = "llm" | "fallback" | "error" | "pending" | "failed";
+
+/** 칸(소절 번호) 하나의 출처 — 서술 작업 응답의 section_sources. fixed 는 고정 문구. */
+export type NarrativeSectionSource = "llm" | "fallback" | "fixed";
 
 /** 7절 정밀 분석 서술 (LLM /api/generate-narrative 의 interpretation). */
 export interface InterpretationData {
@@ -506,6 +513,16 @@ export interface FinalReportData {
   recommendations: ReportRecommendation[];
   /** 7·8·9절 서술의 출처(추적성 배지). 미평가/미생성 시 undefined. */
   narrativeSource?: NarrativeSource;
+  /**
+   * 칸(소절 번호 7.1·7.2·8.1·8.2·8.3·9 …)마다 서술 출처(서술 라운드 S3b, 작업 응답 section_sources).
+   * 칸별 표시는 S7 에서 그린다. 이 칸이 생기기 전 저장본에는 없다.
+   */
+  narrativeSections?: Record<string, NarrativeSectionSource>;
+  /**
+   * 서술까지 끝난 완성본인가. 이것이 true 일 때만 발급·PDF·인쇄가 열린다(서술 라운드 S3b — 끝나지 않은 서술은
+   * 완성본이 아니다). 성적서 훅이 서술 작업이 끝났을(done) 때만 세운다.
+   */
+  isEvaluated?: boolean;
   /**
    * 평가 전처리가 만든 경고(백엔드 `EvaluateResponse.warnings`).
    * 종전에는 프론트에 소비처가 없어 그대로 버려졌다(ISSUES.md D-16).

@@ -17,6 +17,7 @@ import {
 import { FileReuploadNotice } from "../components/workflow/FileReuploadNotice";
 import { canFixInInputOf, MaterialCheckNotice, type MaterialCheckTarget } from "../components/workflow/MaterialCheckNotice";
 import { layerOneGaps, type LayerOneGap } from "../utils/domain/layerOne";
+import { buildEvaluationRequestSnapshot } from "../lib/report/evaluationRequest";
 import { getCard, stepOfLeaf } from "../data/reportComposer";
 import type { MaterialCheckResult } from "../types/finalReport.types";
 import type { FlowEntryState } from "../types/reportComposer.types";
@@ -125,6 +126,9 @@ export function DataValidation() {
         reportId: reportData.meta.reportId,
         workflowSnapshot,
         reportData,
+        // 성적서 화면은 지금 입력이 아니라 이 스냅샷으로 평가한다 — 다른 평가를 연 뒤 돌아와도 이 평가의 입력·파일로
+        // 평가한다(서술 라운드 S3b, 점검 유-8). 파일은 지문만 남긴다.
+        evaluationRequest: buildEvaluationRequestSnapshot(useWorkflowStore.getState()),
       });
 
       // 저장에 성공한 뒤에만 단계를 넘긴다(실패 시 검증 화면에 머물러 재시도 가능).
