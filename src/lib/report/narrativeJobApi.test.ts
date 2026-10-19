@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { createNarrativeJob, fetchNarrativeJob, mapNarrativeResult, toBenchmarkRefs } from "./narrativeJobApi";
+import { createNarrativeJob, fetchNarrativeJob, isRetryable, mapNarrativeResult, toBenchmarkRefs } from "./narrativeJobApi";
 import type { NarrativeRequestPayload } from "./buildFactSheet";
 
 /**
@@ -56,6 +56,18 @@ describe("결과 매핑(mapNarrativeResult)", () => {
     expect(n.recommendations).toEqual([]);
     expect(n.sectionSources).toEqual({});
     expect(n.source).toBe("fallback");
+  });
+
+  it("고정 문구 칸(fixed)은 전체 출처를 정할 때 빼고 본다", () => {
+    expect(mapNarrativeResult({ section_sources: { ...allSources("llm"), "9": "fixed" } }).source).toBe("llm");
+    expect(mapNarrativeResult({ section_sources: { "9": "fixed" } }).source).toBe("fallback");
+  });
+
+  it("rejected 만 다시 만들기로 풀리지 않는다", () => {
+    expect(isRetryable("rejected")).toBe(false);
+    for (const f of ["timeout", "lost", "error", "expired", "unreachable", "gave_up", "create_failed"] as const) {
+      expect(isRetryable(f)).toBe(true);
+    }
   });
 
   it("칸 하나라도 llm 이 아니면 전체 출처는 fallback, 모르는 출처 값은 fallback 으로 읽는다", () => {
@@ -189,6 +201,12 @@ describe("작업 만들기(createNarrativeJob)", () => {
   it.each([
     ["422", () => respond({ detail: [] }, 422)],
     ["413", () => respond({ detail: "too big" }, 413)],
+  ])("서버가 요청을 받지 않으면(%s) rejected — 같은 요청으로는 다시 만들 수 없다", async (_name, arrange) => {
+    arrange();
+    expect(await createNarrativeJob(PAYLOAD)).toEqual({ kind: "failed", failure: "rejected" });
+  });
+
+  it.each([
     ["500", () => respond({}, 500)],
     ["번호 없음", () => respond({ status: "running" })],
     ["네트워크", () => fetchMock.mockRejectedValueOnce(new Error("network"))],

@@ -24,9 +24,23 @@ export type NarrativeJobStage = "queued" | "generating" | "checking" | "regenera
 /**
  * 실패 종류. 앞의 넷은 백엔드가 알려 준다(timeout: 전체 10분 제한, lost: 서버 재시작 등으로 멈춤, error: 작업 중 오류,
  * expired: 결과 글 보관 시간 지남). 뒤의 둘은 프론트가 정한다 — unreachable: 조회가 거듭 실패(서버에 닿지 않음),
- * create_failed: 작업을 만들지 못함(네트워크·422·413·5xx). 모두 "서술 다시 만들기"로 푼다.
+ * gave_up: 작업을 만든 뒤 너무 오래 기다림(서버가 끝을 알리지 않음), create_failed: 작업을 만들지 못함(네트워크·5xx), rejected: 서버가 요청을 받지 않음(413 본문 2MB 초과·422 형식 오류 —
+ * 같은 요청을 다시 보내도 같으므로 다시 만들기로 풀리지 않는다). rejected 를 뺀 나머지는 "서술 다시 만들기"로 푼다.
  */
-export type NarrativeFailure = "timeout" | "lost" | "error" | "expired" | "unreachable" | "create_failed";
+export type NarrativeFailure =
+  | "timeout"
+  | "lost"
+  | "error"
+  | "expired"
+  | "unreachable"
+  | "gave_up"
+  | "create_failed"
+  | "rejected";
+
+/** 다시 만들기로 풀리는 실패인가 — 같은 요청을 다시 보내도 같은 실패(rejected)는 아니다. */
+export function isRetryable(failure: NarrativeFailure | undefined): boolean {
+  return failure !== "rejected";
+}
 
 export interface NarrativeFields {
   interpretation: InterpretationData;
@@ -95,7 +109,9 @@ function toSectionSources(raw: unknown): Record<string, NarrativeSectionSource> 
 /** 끝난 작업의 result(snake_case) → 리포트 필드. 빠진 칸은 빈 값, 모르는 출처는 fallback 으로 둔다. */
 export function mapNarrativeResult(n: any): NarrativeFields {
   const sectionSources = toSectionSources(n?.section_sources);
-  const values = Object.values(sectionSources);
+  // 고정 문구(fixed) 칸은 AI·규칙 어느 쪽도 아니라 전체 출처를 정할 때 뺀다 — S5 에서 고정 칸이 생겨도 AI 성적서가
+  // 통째로 '규칙 기반' 배지를 달지 않게. 칸별 표시는 S7.
+  const values = Object.values(sectionSources).filter((v) => v !== "fixed");
   return {
     interpretation: {
       confusionAnalysis: n?.interpretation?.confusion_analysis ?? "",
@@ -140,9 +156,9 @@ export function mapNarrativeResult(n: any): NarrativeFields {
 export type CreateJobResult =
   | { kind: "started"; jobId: string; benchmarkRefs: BenchmarkRef[] }
   | { kind: "finished"; fields: NarrativeFields; benchmarkRefs: BenchmarkRef[] }
-  | { kind: "failed"; failure: Extract<NarrativeFailure, "create_failed"> };
+  | { kind: "failed"; failure: Extract<NarrativeFailure, "create_failed" | "rejected"> };
 
-/** 작업을 만든다. 실패(네트워크·422·413·5xx)는 던지지 않고 실패로 돌려준다. */
+/** 작업을 만든다. 실패(네트워크·5xx → create_failed, 413·422 → rejected)는 던지지 않고 실패로 돌려준다. */
 export async function createNarrativeJob(payload: NarrativeRequestPayload): Promise<CreateJobResult> {
   try {
     const resp = await fetch(apiUrl("/api/narrative/jobs"), {
@@ -150,6 +166,7 @@ export async function createNarrativeJob(payload: NarrativeRequestPayload): Prom
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    if (resp.status === 413 || resp.status === 422) return { kind: "failed", failure: "rejected" };
     if (!resp.ok) return { kind: "failed", failure: "create_failed" };
     const body = await resp.json();
     const benchmarkRefs = toBenchmarkRefs(body?.benchmark_refs);

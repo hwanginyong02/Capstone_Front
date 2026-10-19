@@ -35,6 +35,8 @@ interface ReportLayoutProps {
    * 보여 준다. 발급 버튼은 숨기지 않고 잠근다 — 왜 못 하는지 보여야 한다.
    */
   lockReason?: string;
+  /** 인쇄(PDF)만 잠근 이유(예: 결과 저장 실패). 발급은 서버 보관이라 막지 않는다. */
+  printLockReason?: string;
 }
 
 /** 대화상자 안의 여러 줄 입력 칸. 상한은 백엔드와 같은 `ISSUANCE_TEXT_MAX_CHARS` 다. */
@@ -89,7 +91,9 @@ export function ReportLayout({
   onIssue,
   onReissue,
   lockReason,
+  printLockReason,
 }: ReportLayoutProps) {
+  const pdfLockReason = lockReason ?? printLockReason;
   const navigate = useNavigate();
   const lockNoteId = useId();
   // 발급·정정 발급은 화면 안 대화상자로 받는다(B16). 종전 window.prompt 는 빈 사유를 말없이 버리고
@@ -211,17 +215,17 @@ export function ReportLayout({
             size="sm"
             variant={issued ? "default" : "ghost"}
             onClick={onDownload}
-            disabled={!!lockReason}
-            title={lockReason}
-            aria-describedby={lockReason ? lockNoteId : undefined}
+            disabled={!!pdfLockReason}
+            title={pdfLockReason}
+            aria-describedby={pdfLockReason ? lockNoteId : undefined}
             className="gap-1.5"
           >
             <Download className="size-4" />
             PDF 다운로드
           </Button>
-          {lockReason && (
+          {pdfLockReason && (
             <span id={lockNoteId} className="text-xs text-muted-foreground">
-              {lockReason}
+              {pdfLockReason}
             </span>
           )}
         </div>

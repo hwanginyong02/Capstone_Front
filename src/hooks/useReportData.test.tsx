@@ -8,7 +8,9 @@
  * - 없는 id 는 평가하지 않고 "찾을 수 없음", 다른 파일이면 "다시 올려 주세요".
  * - 대기 중에는 PDF·발급이 잠긴다.
  */
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -30,7 +32,9 @@ import {
   storedRun,
   stubFetch,
 } from "./reportJob.harness";
-import { narrativePolling } from "./useReportData";
+import { NARRATIVE_INPUT_MAX_CHARS, narrativePolling, storableInput, useReportData } from "./useReportData";
+import { renderHook } from "@testing-library/react";
+import { Report } from "../pages/report/Report";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { useWorkspaceStore } from "../utils/stores/useWorkspaceStore";
 import { NARRATIVE_FAILED_TEXT, NARRATIVE_PENDING_TEXT } from "../components/report/shared/narrativePlaceholder";
@@ -67,7 +71,10 @@ describe("성공 — 평가 1회·작업 1회, 단계는 화면에만", () => {
 
     // 작업이 생기면 8.1 표가 서술보다 먼저 보인다(작업 생성 응답의 benchmark_refs).
     await screen.findByText(/AI 정성 서술\(7·8·9절\)을 만드는 중입니다/);
-    expect(screen.getAllByText(NARRATIVE_PENDING_TEXT).length).toBeGreaterThan(0);
+    // 빈 서술 칸 일곱(7.1·7.2·8.1·8.2·8.3·9.1·9.2) 모두가 '만드는 중'이다 — 한 칸이라도 옛 '연동 예정'이면 개수가 준다.
+    expect(screen.getAllByText(NARRATIVE_PENDING_TEXT)).toHaveLength(7);
+    expect(screen.queryByText(/연동 예정|생성 예정/)).toBeNull();
+    expect(screen.getAllByText("권고를 만드는 중").length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: /도메인 성능 벤치마크/ }).parentElement!.parentElement).toHaveTextContent(
       `${BENCHMARK_REF.ref_low.toFixed(2)}`,
     );
@@ -133,6 +140,42 @@ describe("성공 — 평가 1회·작업 1회, 단계는 화면에만", () => {
     expect(fetchStub.count("POST", JOBS)).toBe(1);
   });
 
+  it("React StrictMode(개발)에서 효과가 두 번 돌아도 평가·작업 생성은 각 1회", async () => {
+    const fetchStub = stubFetch({ views: [{ body: runningView("queued") }] });
+    seedStores();
+    render(
+      <StrictMode>
+        <MemoryRouter initialEntries={[`/report/${RUN_ID}`]}>
+          <Routes>
+            <Route path="/report/:id" element={<Report />} />
+          </Routes>
+        </MemoryRouter>
+      </StrictMode>,
+    );
+    await screen.findByRole("status");
+    expect(fetchStub.count("POST", EVALUATE)).toBe(1);
+    expect(fetchStub.count("POST", JOBS)).toBe(1);
+  });
+
+  it("평가가 실패한 뒤 run 의 다른 칸이 바뀌어도 평가를 다시 부르지 않는다(의존성에 run 객체가 없다)", async () => {
+    const fetchStub = stubFetch({ evaluate: [{ status: 500, body: { detail: "평가 서버 오류" } }] });
+    seedStores();
+    renderReportPage();
+    await screen.findByText(/평가 서버 오류/);
+    act(() => {
+      useWorkspaceStore.getState().updateRun(RUN_ID, (r) => ({ ...r, modelName: "이름을 바꿈" }));
+    });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(fetchStub.count("POST", EVALUATE)).toBe(1);
+  });
+
+  it("다시 만들기용 요청은 상한 안일 때만 저장한다", () => {
+    const small = { task_type: "binary", report_purpose: "internal", fact_sheet: {} } as any;
+    expect(storableInput(small)).toBe(small);
+    const big = { ...small, client_inputs: { memo: "가".repeat(NARRATIVE_INPUT_MAX_CHARS) } };
+    expect(storableInput(big)).toBeNull();
+  });
+
   it("서버가 행 없이 결과를 바로 주면(작업 행 상한) 조회 없이 완성본이다", async () => {
     const fetchStub = stubFetch({
       create: [{ body: { job_id: null, status: "done", stage: "done", benchmark_refs: [BENCHMARK_REF], result: doneView("x", "fallback").result } }],
@@ -182,7 +225,8 @@ describe("실패 → 서술 다시 만들기", () => {
     seedStores();
     renderReportPage();
     await screen.findByText(new RegExp(text));
-    expect(screen.getAllByText(NARRATIVE_FAILED_TEXT).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(NARRATIVE_FAILED_TEXT)).toHaveLength(7);
+    expect(screen.getAllByText("권고를 만들지 못함").length).toBeGreaterThan(0);
     expect(storedRun()!.narrative).toMatchObject({ status: "failed", failure });
     expect(storedRun()!.reportData.isEvaluated).toBe(false);
     expect(pdfButton()).toBeDisabled();
@@ -210,17 +254,115 @@ describe("실패 → 서술 다시 만들기", () => {
     seedStores();
     renderReportPage();
     await screen.findByText(/서버에 연결되지 않아/);
-    expect(storedRun()!.narrative).toMatchObject({ status: "failed", failure: "unreachable" });
-    expect(fetchStub.count("GET", JOB)).toBe(narrativePolling.maxConsecutiveUnreachable);
+    expect(storedRun()!.narrative).toMatchObject({ status: "failed", failure: "unreachable", jobId: "job-1" });
+    expect(fetchStub.count("GET", JOB)).toBeGreaterThan(1);
   });
 
-  it("작업을 만들지 못하면(네트워크·422·413) 실패 띠 — 1단계 성적서는 남는다", async () => {
+  it("닿지 않은 뒤 '서술 진행 다시 확인'은 새 작업을 만들지 않고 원래 작업을 다시 조회한다", async () => {
+    const fetchStub = stubFetch({ views: [new Error("network")] });
+    seedStores();
+    renderReportPage();
+    const button = await screen.findByRole("button", { name: "서술 진행 다시 확인" });
+    fetchStub.views.splice(0, fetchStub.views.length, { body: doneView("job-1") });
+    fireEvent.click(button);
+    await screen.findByText("AI 총평", { exact: false });
+    expect(fetchStub.count("POST", JOBS)).toBe(1); // 원래 작업이 끝나 있었다 — 유료 작업을 하나 더 만들지 않는다
+    expect(storedRun()!.narrative).toEqual({ status: "done", jobId: "job-1" });
+  });
+
+  it("한 번이라도 닿으면 끊김 시간을 다시 센다(잠깐씩 끊기는 연결로 실패하지 않는다)", async () => {
+    const gate = deferred<void>();
+    setTimeout(() => gate.resolve(), 120);
+    const fetchStub = stubFetch({
+      views: [new Error("network"), gate.promise.then(() => ({ body: runningView("generating") })), new Error("network"), { body: doneView() }],
+    });
+    seedStores();
+    narrativePolling.unreachableGiveUpMs = 60;
+    renderReportPage();
+    await screen.findByText("AI 총평", { exact: false });
+    expect(storedRun()!.narrative).toEqual({ status: "done", jobId: "job-1" });
+    expect(fetchStub.count("GET", JOB)).toBe(4);
+  });
+
+  it("다시 만들기를 연달아 눌러도 작업은 하나만 만든다", async () => {
+    const created = deferred<void>();
+    const fetchStub = stubFetch({
+      create: [{ body: createdResponse("job-1") }, created.promise.then(() => ({ body: createdResponse("job-2") }))],
+      views: [{ body: failedView("error", "job-1") }],
+    });
+    seedStores();
+    renderReportPage();
+    const button = await screen.findByRole("button", { name: "서술 다시 만들기" });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    fetchStub.views.splice(0, fetchStub.views.length, { body: doneView("job-2") });
+    await act(async () => created.resolve());
+    await screen.findByText("AI 총평", { exact: false });
+    expect(fetchStub.count("POST", JOBS)).toBe(2);
+  });
+
+  it("늦게 온 옛 작업의 결과가 새 작업 상태를 덮지 않는다", async () => {
+    const late = deferred<void>();
+    // 첫 조회(job-1)는 붙잡아 두고, 그 뒤 조회(job-2)는 진행 중을 받는다.
+    stubFetch({ views: [late.promise.then(() => ({ body: doneView("job-1") })), { body: runningView("generating", "job-2") }] });
+    seedStores();
+    renderReportPage();
+    await waitFor(() => expect(storedRun()!.narrative?.jobId).toBe("job-1"));
+    act(() => {
+      useWorkspaceStore.getState().updateRun(RUN_ID, (r) => ({
+        ...r,
+        narrative: { status: "pending", jobId: "job-2", input: null, startedAt: new Date().toISOString() },
+      }));
+    });
+    await act(async () => late.resolve());
+    await new Promise((r) => setTimeout(r, 30));
+    expect(storedRun()!.narrative).toMatchObject({ status: "pending", jobId: "job-2" });
+    expect(storedRun()!.reportData.isEvaluated).toBe(false);
+  });
+
+  it("서버가 요청을 받지 않으면(413·422) 다시 만들기를 주지 않는다 — 같은 요청은 같은 실패다", async () => {
     stubFetch({ create: [{ status: 413, body: {} }] });
+    seedStores();
+    renderReportPage();
+    await screen.findByText(/서버가 서술 요청을 받지 않았습니다/);
+    expect(storedRun()!.narrative).toMatchObject({ status: "failed", failure: "rejected" });
+    expect(screen.queryByRole("button", { name: "서술 다시 만들기" })).toBeNull();
+  });
+
+  it("작업을 만들지 못하면(네트워크·5xx) 실패 띠와 다시 만들기 — 1단계 성적서는 남는다", async () => {
+    stubFetch({ create: [{ status: 500, body: {} }] });
     seedStores();
     renderReportPage();
     await screen.findByText(/서술 작업을 시작하지 못했습니다/);
     expect(storedRun()!.narrative).toMatchObject({ status: "failed", failure: "create_failed", jobId: null });
     expect(storedRun()!.reportData.kpiResults.length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "서술 다시 만들기" })).toBeInTheDocument();
+  });
+
+  it("새로고침 뒤에도 기다린 시간은 작업을 만든 시각부터 센다", async () => {
+    stubFetch({ views: [{ body: runningView("generating", "job-9") }] });
+    seedStores({ rawFile: null });
+    const report = (await import("../lib/report/mapWorkflowToFinalReport")).mapWorkflowToFinalReport(
+      (await import("./reportJob.harness")).workflowSnapshot(),
+    );
+    const longAgo = new Date(Date.now() - narrativePolling.giveUpMs - 60_000).toISOString();
+    useWorkspaceStore.getState().updateRun(RUN_ID, (r) => ({
+      ...r,
+      reportData: { ...report, isEvaluated: false },
+      narrative: { status: "pending", jobId: "job-9", input: null, startedAt: longAgo },
+    }));
+    renderReportPage();
+    await screen.findByText(/너무 오래 끝나지 않아/);
+    expect(storedRun()!.narrative).toMatchObject({ status: "failed", failure: "gave_up" });
+    expect(screen.getByRole("button", { name: "서술 진행 다시 확인" })).toBeInTheDocument();
+  });
+
+  it("평가 응답 조립에서 예외가 나도 '평가 중'에 멈추지 않고 오류 화면", async () => {
+    stubFetch({ evaluate: [{ body: { n_samples: 1 } }] });
+    seedStores();
+    renderReportPage();
+    expect(await screen.findByText(/success_metrics|Cannot read/)).toBeInTheDocument();
+    expect(storedRun()!.narrative).toBeUndefined();
   });
 
   it("작업 생성 뒤 시간이 너무 지나면 시간 초과로 끝낸다(서버가 끝을 알리지 않아도)", async () => {
@@ -230,8 +372,8 @@ describe("실패 → 서술 다시 만들기", () => {
     narrativePolling.giveUpMs = 30;
     try {
       renderReportPage();
-      await screen.findByText(/제한 시간/);
-      expect(storedRun()!.narrative).toMatchObject({ status: "failed", failure: "timeout" });
+      await screen.findByText(/너무 오래 끝나지 않아/);
+      expect(storedRun()!.narrative).toMatchObject({ status: "failed", failure: "gave_up" });
     } finally {
       narrativePolling.giveUpMs = original;
     }
@@ -363,8 +505,74 @@ describe("저장 실패", () => {
       renderReportPage();
       expect(await screen.findByText(/저장 공간이 가득 차/)).toBeInTheDocument();
       expect(screen.getByText(/새로고침하거나 인쇄 화면을 열면 사라집니다/)).toBeInTheDocument();
+      // 작업 번호를 저장하지 못했으니 새로고침하면 서술을 다시 만든다고 알린다.
+      expect(screen.getByText(/새로고침하면 서술을 다시 만들어 비용이 다시 듭니다/)).toBeInTheDocument();
     } finally {
       setItem.mockRestore();
     }
+  });
+});
+
+
+describe("잠금 불변식", () => {
+  it("완성본 표시가 있어도 서술이 실패 상태면 PDF·발급을 잠근다", async () => {
+    stubFetch();
+    seedStores({ rawFile: null });
+    const report = (await import("../lib/report/mapWorkflowToFinalReport")).mapWorkflowToFinalReport(
+      (await import("./reportJob.harness")).workflowSnapshot(),
+    );
+    useWorkspaceStore.getState().updateRun(RUN_ID, (r) => ({
+      ...r,
+      reportData: { ...report, isEvaluated: true },
+      narrative: { status: "failed", jobId: "job-1", failure: "error", input: null },
+    }));
+    renderReportPage();
+    await screen.findByRole("button", { name: "서술 다시 만들기" });
+    expect(pdfButton()).toBeDisabled();
+    expect(issueButton()).toBeDisabled();
+  });
+
+  it("완성본 저장에 실패하면 PDF 를 잠그고 저장 실패를 이유로 말한다(인쇄 탭은 저장본만 읽는다)", async () => {
+    stubFetch({ views: [{ body: doneView() }] });
+    seedStores();
+    const original = Storage.prototype.setItem;
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key: string, value: string) {
+      if (value.includes('"status":"done"')) throw new DOMException("quota", "QuotaExceededError");
+      return original.call(this, key, value);
+    });
+    try {
+      renderReportPage();
+      await screen.findByText("AI 총평", { exact: false });
+      await waitFor(() => expect(pdfButton()).toBeDisabled());
+      expect(screen.getByText(/결과를 저장하지 못해 인쇄 화면이 완성본을 읽을 수 없습니다/)).toBeInTheDocument();
+      expect(issueButton()).toBeEnabled(); // 발급은 서버 보관이라 막지 않는다
+    } finally {
+      setItem.mockRestore();
+    }
+  });
+});
+
+
+describe("다시 만들기 — 훅을 직접 부를 때", () => {
+  it("응답을 기다리는 동안 두 번 불러도 작업은 하나만 만든다(버튼 밖에서 부르는 경로)", async () => {
+    const created = deferred<void>();
+    const fetchStub = stubFetch({
+      create: [{ body: createdResponse("job-1") }, created.promise.then(() => ({ body: createdResponse("job-2") }))],
+      views: [{ body: failedView("error", "job-1") }, { body: runningView("queued", "job-2") }],
+    });
+    seedStores();
+    const { result } = renderHook(() => useReportData(RUN_ID));
+    await waitFor(() => expect(result.current.narrative.phase).toBe("failed"));
+    let first!: Promise<void>;
+    let second!: Promise<void>;
+    act(() => {
+      first = result.current.retryNarrative();
+      second = result.current.retryNarrative();
+    });
+    await act(async () => {
+      created.resolve();
+      await Promise.all([first, second]);
+    });
+    expect(fetchStub.count("POST", JOBS)).toBe(2); // 처음 1 + 다시 만들기 1
   });
 });

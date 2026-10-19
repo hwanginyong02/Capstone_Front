@@ -11,9 +11,9 @@ export function ReportLoadingState() {
           <div className="absolute inset-2 rounded-full border-4 border-slate-200 border-t-teal-500 animate-ping opacity-75"></div>
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-slate-800">Running the evaluation…</h2>
+          <h2 className="text-xl font-semibold text-slate-800">평가를 실행하는 중입니다…</h2>
           <p className="text-sm text-slate-500">
-            Computing the ISO/IEC TS 4213 metrics you selected. This can take a moment.
+            고른 ISO/IEC TS 4213 지표를 계산하고 있습니다. 잠시 걸릴 수 있습니다.
           </p>
         </div>
       </div>

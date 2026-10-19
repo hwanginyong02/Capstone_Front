@@ -17,7 +17,7 @@
  * 같은 run 의 평가는 모듈 단위로 한 번만 돈다(`evaluationsInFlight`). React StrictMode 는 개발 중에 효과를 두 번 실행하고,
  * 인쇄 탭·두 화면이 같은 run 을 열 수도 있다 — 그때마다 평가와 서술 작업이 둘씩 나가면 안 된다.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { apiUrl } from "@/lib/apiBase";
 import type { BenchmarkRef, FinalReportData, NarrativeSource } from "../types/finalReport.types";
@@ -44,8 +44,12 @@ import { resolveTaskType } from "../data/evaluationData";
 export const narrativePolling = {
   /** 조회 간격. */
   intervalMs: 2000,
-  /** 조회가 연달아 이만큼 실패하면(서버에 닿지 않음) 실패(unreachable)로 끝낸다. */
-  maxConsecutiveUnreachable: 5,
+  /**
+   * 조회가 이 시간 동안 내내 닿지 않으면(마지막 성공 뒤) 실패(unreachable)로 끝낸다. 횟수가 아니라 시간으로 센다 —
+   * 와이파이가 몇 초 끊기거나 Render 가 잠깐 5xx 를 줄 때 작업을 실패로 굳히면, 서버에서는 원래 작업이 계속 도는데
+   * 사용자는 다시 만들기로 유료 작업을 하나 더 만든다(S3b 검토). 실패로 끝낸 뒤에도 다시 만들기는 원래 작업부터 다시 본다.
+   */
+  unreachableGiveUpMs: 60_000,
   /** 작업을 만든 뒤 이만큼 지나도 끝나지 않으면 시간 초과로 끝낸다(서버 전체 제한 10분 + 여유 — 서버가 유실을 먼저 알린다). */
   giveUpMs: 12 * 60_000,
 };
@@ -105,7 +109,7 @@ function getRun(id: string): WorkspaceEvaluationRun | undefined {
 }
 
 /** 서술 요청을 저장할 수 있는 크기인가. */
-function storableInput(payload: NarrativeRequestPayload): NarrativeRequestPayload | null {
+export function storableInput(payload: NarrativeRequestPayload): NarrativeRequestPayload | null {
   try {
     return JSON.stringify(payload).length <= NARRATIVE_INPUT_MAX_CHARS ? payload : null;
   } catch {
@@ -142,6 +146,17 @@ async function postEvaluate(file: File, run: WorkspaceEvaluationRun): Promise<an
 }
 
 async function evaluateAndStartNarrative(id: string, file: File): Promise<EvaluationOutcome> {
+  // 평가 요청뿐 아니라 응답 조립(assembleEvaluatedReport·buildClientInputs)에서 나는 예외도 오류 화면으로 보낸다 —
+  // 밖으로 새면 화면이 '평가 중'에서 멈춘다(S3b 검토). 평가가 성공해도 조립이 실패하면 서술 작업은 만들지 않는다.
+  try {
+    return await evaluateAndStartNarrativeUnsafe(id, file);
+  } catch (err: any) {
+    console.error("Evaluation assembly failed:", err);
+    return { error: err?.message || String(err), saveError: null };
+  }
+}
+
+async function evaluateAndStartNarrativeUnsafe(id: string, file: File): Promise<EvaluationOutcome> {
   const run = getRun(id);
   if (!run?.evaluationRequest) return { error: "평가 요청을 찾을 수 없습니다.", saveError: null };
   const snapshot = run.evaluationRequest;
@@ -204,7 +219,12 @@ async function evaluateAndStartNarrative(id: string, file: File): Promise<Evalua
   // 1단계 성적서는 완성본이 아니다(isEvaluated=false) — 서술이 끝나야(done) 완성본이 된다.
   const input = storableInput(payload);
   const saveError = saveRun(id, (r) => applyCreated(r, stage1Report, created, input));
-  return { error: null, saveError };
+  // 작업 번호를 저장하지 못했으면 새로고침 뒤 이어 조회할 수 없다 — 평가와 서술 작업을 다시 만들게 되니 알린다.
+  const notice =
+    saveError && created.kind === "started"
+      ? `${saveError} 서술이 끝날 때까지 이 화면을 닫거나 새로고침하지 마세요 — 새로고침하면 서술을 다시 만들어 비용이 다시 듭니다.`
+      : saveError;
+  return { error: null, saveError: notice };
 }
 
 function startEvaluation(id: string, file: File): Promise<EvaluationOutcome> {
@@ -299,10 +319,12 @@ export function useReportData(id: string): UseReportDataResult {
   const run = useWorkspaceStore((state) => state.evaluationRuns.find((item) => item.id === id));
   const rawFile = useWorkflowStore((state) => state.rawFile);
   const [providedFile, setProvidedFile] = useState<File | null>(null);
-  const [evalState, setEvalState] = useState<{ status: ReportStatus; error: string | null }>({
-    status: "ready",
+  // 아직 서술을 시작하지 않은 run 은 첫 화면부터 '평가 중'으로 둔다 — 'ready' 로 시작하면 효과가 상태를 정하기 전에
+  // 미평가 초안과 빨간 안내가 한 번 그려진다(S3b 검토).
+  const [evalState, setEvalState] = useState<{ status: ReportStatus; error: string | null }>(() => ({
+    status: run && narrativePhaseOf(run) === "none" ? "loading" : "ready",
     error: null,
-  });
+  }));
   const [stage, setStage] = useState<NarrativeJobStage | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
@@ -349,7 +371,7 @@ export function useReportData(id: string): UseReportDataResult {
     }
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    let unreachable = 0;
+    let unreachableSince: number | null = null;
     const startedAt = Date.parse(getRun(id)?.narrative?.startedAt ?? "") || Date.now();
 
     const finish = (err: string | null) => {
@@ -361,15 +383,15 @@ export function useReportData(id: string): UseReportDataResult {
       if (view.kind === "done") return finish(saveDone(id, jobId, view));
       if (view.kind === "failed") return finish(saveFailed(id, jobId, view.failure));
       if (view.kind === "unreachable") {
-        unreachable += 1;
-        if (unreachable >= narrativePolling.maxConsecutiveUnreachable) {
+        unreachableSince ??= Date.now();
+        if (Date.now() - unreachableSince >= narrativePolling.unreachableGiveUpMs) {
           return finish(saveFailed(id, jobId, "unreachable"));
         }
       } else {
-        unreachable = 0;
+        unreachableSince = null;
         setStage(view.stage);
       }
-      if (Date.now() - startedAt > narrativePolling.giveUpMs) return finish(saveFailed(id, jobId, "timeout"));
+      if (Date.now() - startedAt > narrativePolling.giveUpMs) return finish(saveFailed(id, jobId, "gave_up"));
       timer = setTimeout(tick, narrativePolling.intervalMs);
     };
     setStage((prev) => prev ?? "queued");
@@ -380,9 +402,22 @@ export function useReportData(id: string): UseReportDataResult {
     };
   }, [id, phase, jobId]);
 
+  const retryingRef = useRef(false);
   const retryNarrative = useCallback(async () => {
     const current = getRun(id);
-    if (!current || current.narrative?.status !== "failed" || retrying) return;
+    // 연달아 누르면 상태가 바뀌기 전 두 번째 호출이 들어온다 — ref 로 막는다(작업이 둘 생기지 않게).
+    if (!current || current.narrative?.status !== "failed" || retryingRef.current) return;
+    const { failure, jobId: oldJobId } = current.narrative;
+    // 서버에 닿지 않았거나 프론트가 기다리다 포기한 경우, 원래 작업은 서버에서 아직 돌거나 끝났을 수 있다. 새 유료 작업을
+    // 만들기 전에 원래 작업 번호로 다시 조회한다 — 서버가 실패·유실을 알리면 그때 다시 만들기가 새 작업을 만든다.
+    if (oldJobId && (failure === "unreachable" || failure === "gave_up")) {
+      const err = saveRun(id, (r) => ({
+        ...r,
+        narrative: { ...r.narrative!, status: "pending", failure: undefined, startedAt: new Date().toISOString() },
+      }));
+      if (err) setSaveError(err);
+      return;
+    }
     const input = current.narrative.input;
     if (!input) {
       // 저장해 둔 요청이 없으면(너무 컸음) 평가부터 다시 — 서술 상태를 지우면 평가 효과가 파일을 찾는다.
@@ -390,15 +425,17 @@ export function useReportData(id: string): UseReportDataResult {
       if (err) setSaveError(err);
       return;
     }
+    retryingRef.current = true;
     setRetrying(true);
     try {
       const created = await createNarrativeJob(input);
       const err = saveRun(id, (r) => applyCreated(r, r.reportData, created, input));
       if (err) setSaveError(err);
     } finally {
+      retryingRef.current = false;
       setRetrying(false);
     }
-  }, [id, retrying]);
+  }, [id]);
 
   const provideFile = useCallback((next: File) => setProvidedFile(next), []);
 

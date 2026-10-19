@@ -15,6 +15,7 @@ import {
   ReportNeedsFileState,
   ReportNeedsReevaluationState,
   ReportNotFoundState,
+  SAVE_LOCK_REASON,
   SaveErrorBanner,
 } from "../../components/report/ReportStateNotices";
 import { BackendNoticePanel } from "../../components/workflow/BackendNoticePanel";
@@ -28,7 +29,9 @@ export function Report() {
   const data = issuance.data; // 발급 반영본(있으면) — 섹션은 이 값을 렌더한다
   // 끝나지 않은 서술은 완성본이 아니다 — 인쇄(PDF)·발급·정정 발급을 잠근다(서술 라운드 S3b, 계획 원칙 4).
   const locked = narrative.phase !== "done" || !data?.isEvaluated;
-  const { download } = usePdfDownload(id, !locked);
+  // 저장에 실패했으면 인쇄 화면(새 탭, 저장본만 읽음)이 완성본을 못 읽는다 — PDF 도 잠그고 그 이유를 말한다(S3b 검토).
+  const printLocked = locked || !!report.saveError;
+  const { download } = usePdfDownload(id, !printLocked);
   const migrationNote = useWorkspaceStore(
     (state) => state.evaluationRuns.find((r) => r.id === id)?.migrationNote,
   );
@@ -53,6 +56,7 @@ export function Report() {
       issued={issuance.issued}
       canIssue={issuance.canIssue}
       lockReason={locked ? NARRATIVE_LOCK_REASON : undefined}
+      printLockReason={!locked && report.saveError ? SAVE_LOCK_REASON : undefined}
       reportId={data.meta.reportId}
       busy={issuance.busy}
       onIssue={issuance.issue}

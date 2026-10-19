@@ -283,6 +283,7 @@ export function resetAll() {
 export function fastPolling(): () => void {
   const original = { ...narrativePolling };
   narrativePolling.intervalMs = 5;
+  narrativePolling.unreachableGiveUpMs = 40;
   return () => Object.assign(narrativePolling, original);
 }
 

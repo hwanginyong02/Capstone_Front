@@ -203,9 +203,12 @@ export function labelAgreementNotice(
   if ((values.labelAgreementKind?.text ?? "") !== "Percent agreement") return null;
   const raw = (values.labelAgreementValue?.text ?? "").trim();
   const value = Number(raw);
+  // 성적서·AI 에는 % 를 100 으로 나눈 비율로 적힌다(`percentToRatio`) — 경고도 실제로 적힐 값을 말한다.
+  const asPercent = Number((value * 100).toFixed(4));
+  const printed = Number((value / 100).toFixed(4));
   const warning =
     raw !== "" && Number.isFinite(value) && value > 0 && value <= 1
-      ? `단순 일치율은 % 숫자로 넣습니다. ${raw} 은(는) ${raw}% 로 인쇄됩니다 — ${Math.round(value * 100)}% 라면 ${Math.round(value * 100)} 을(를) 넣으세요.`
+      ? `단순 일치율은 % 숫자로 넣습니다. ${raw} 을(를) 넣으면 ${raw}% 로 처리되어 성적서에는 ${printed} 로 적힙니다 — ${asPercent}% 라면 ${asPercent} 을(를) 넣으세요.`
       : null;
   return { unit: "%", warning };
 }

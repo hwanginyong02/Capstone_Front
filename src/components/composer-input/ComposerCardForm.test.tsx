@@ -642,3 +642,27 @@ describe("[W3] 칸별 모름", () => {
     expect(screen.getAllByRole("radio", { name: "모름" })).toHaveLength(2);
   });
 });
+
+/** 서술 라운드 S3b(점검 나-13) — 단순 일치율 % 단위 안내와 1 이하 경고가 화면에 나온다. */
+describe("⑧ 라벨 일치도 — 단순 일치율 단위·비율 경고", () => {
+  // 일치도 칸은 '여러 명 검수'일 때만 나온다(검수 방식을 받아야 함).
+  const PICKS = ["labelAuthor", "labelReview"];
+  const agreement = (value: string) => ({
+    labelReview: { text: "Several reviewers" },
+    labelAgreementKind: { text: "Percent agreement" },
+    labelAgreementValue: { text: value },
+  }) as unknown as ComposerValueMap;
+
+  it("1 이하이면 % 단위 안내와 실제로 적힐 값으로 경고한다", () => {
+    renderForm("groundTruth", { values: agreement("0.82"), picks: PICKS });
+    expect(screen.getByText("단위: % (예: 82)")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("성적서에는 0.0082 로 적힙니다");
+    expect(screen.getByRole("status")).toHaveTextContent("82 을(를) 넣으세요");
+  });
+
+  it("% 숫자면 단위 안내만", () => {
+    renderForm("groundTruth", { values: agreement("82"), picks: PICKS });
+    expect(screen.getByText("단위: % (예: 82)")).toBeInTheDocument();
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+});

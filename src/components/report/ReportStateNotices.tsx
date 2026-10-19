@@ -11,7 +11,7 @@ import { Link } from "react-router";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import type { FileFingerprint } from "../../lib/report/evaluationRequest";
-import type { NarrativeFailure, NarrativeJobStage } from "../../lib/report/narrativeJobApi";
+import { isRetryable, type NarrativeFailure, type NarrativeJobStage } from "../../lib/report/narrativeJobApi";
 
 /** 진행 단계 이름(화면용). */
 export const NARRATIVE_STAGE_LABEL: Record<NarrativeJobStage, string> = {
@@ -30,11 +30,16 @@ export const NARRATIVE_FAILURE_TEXT: Record<NarrativeFailure, string> = {
   error: "서술을 만드는 중 서버에서 오류가 났습니다.",
   expired: "서술 결과의 보관 시간이 지났습니다.",
   unreachable: "서버에 연결되지 않아 서술 진행을 확인하지 못했습니다.",
+  gave_up: "서술이 너무 오래 끝나지 않아 기다리기를 멈췄습니다.",
   create_failed: "서술 작업을 시작하지 못했습니다.",
+  rejected:
+    "서버가 서술 요청을 받지 않았습니다(요청이 너무 크거나 형식이 맞지 않음 — 클래스가 아주 많은 경우 등). 같은 요청으로는 다시 만들 수 없습니다.",
 };
 
 /** 인쇄·PDF·발급을 잠근 이유(화면용). */
 export const NARRATIVE_LOCK_REASON = "서술이 끝나지 않아 인쇄·발급할 수 없습니다.";
+/** 저장 실패로 인쇄를 잠근 이유 — 인쇄 화면(새 탭)은 저장된 완성본만 읽으므로 저장이 안 됐으면 인쇄할 수 없다. */
+export const SAVE_LOCK_REASON = "결과를 저장하지 못해 인쇄 화면이 완성본을 읽을 수 없습니다. 저장 공간을 비운 뒤 다시 여세요.";
 
 function CenteredState({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -119,6 +124,10 @@ export function ReportNeedsReevaluationState() {
         이전 판에서 만든 평가라 성적서를 다시 만드는 데 필요한 입력이 남아 있지 않거나, 서술이 빈 채로 저장된 평가입니다.
         데이터 검증 화면에서 평가를 다시 실행해 주세요.
       </p>
+      <p className="mt-2 text-xs text-muted-foreground">
+        다시 실행하면 지금 평가 흐름에 들어 있는 입력으로 새 평가가 만들어지고, 이 기록은 그대로 남습니다(워크스페이스에서
+        지울 수 있습니다).
+      </p>
       <Link to="/app/data-validation" className={linkClass}>
         검증 화면으로 이동
       </Link>
@@ -140,6 +149,8 @@ export function NarrativeStatusBanner({
   retrying: boolean;
   onRetry: () => void;
 }) {
+  // 서버에 닿지 않았거나 기다리다 포기했으면 다시 만들기는 원래 작업부터 다시 본다 — 버튼 이름도 그렇게.
+  const recheck = failure === "unreachable" || failure === "gave_up";
   if (phase === "pending") {
     return (
       <div
@@ -163,10 +174,12 @@ export function NarrativeStatusBanner({
             {failure ? NARRATIVE_FAILURE_TEXT[failure] : "서술을 만들지 못했습니다."} 지표·차트는 확정됐지만 서술이 없어
             인쇄·발급할 수 없습니다.
           </span>
-          <Button size="sm" variant="outline" className="shrink-0 gap-1.5" disabled={retrying} onClick={onRetry}>
-            <RefreshCw className="size-4" />
-            {retrying ? "다시 만드는 중..." : "서술 다시 만들기"}
-          </Button>
+          {isRetryable(failure) && (
+            <Button size="sm" variant="outline" className="shrink-0 gap-1.5" disabled={retrying} onClick={onRetry}>
+              <RefreshCw className="size-4" />
+              {retrying ? "다시 만드는 중..." : recheck ? "서술 진행 다시 확인" : "서술 다시 만들기"}
+            </Button>
+          )}
         </AlertDescription>
       </Alert>
     );
@@ -192,7 +205,8 @@ export function IssuedEmptyNarrativeNotice() {
       <AlertTriangle className="h-4 w-4" />
       <AlertDescription>
         이 성적서는 서술(7·8·9절)이 비어 있는 채로 발급됐습니다. 발급본은 바꿀 수 없으므로 정정 발급으로만 고칠 수
-        있습니다.
+        있는데, 이 화면에서 서술을 다시 만들어 정정하는 길은 아직 없습니다. 지금은 데이터 검증 화면에서 다시 평가해 새
+        성적서로 발급해 주세요.
       </AlertDescription>
     </Alert>
   );
@@ -203,6 +217,9 @@ export function NotPrintableState() {
   return (
     <CenteredState title="서술이 끝나지 않아 인쇄할 수 없습니다">
       <p>성적서 화면에서 서술이 끝난 뒤(또는 서술을 다시 만든 뒤) PDF 다운로드를 다시 눌러 주세요.</p>
+      <p className="mt-2 text-xs text-muted-foreground">
+        성적서 화면에서 서술이 끝났는데도 이 안내가 보이면, 결과를 브라우저에 저장하지 못한 것일 수 있습니다(저장 공간 부족).
+      </p>
     </CenteredState>
   );
 }

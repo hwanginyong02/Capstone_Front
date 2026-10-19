@@ -219,6 +219,9 @@ describe("생성 전 안내와 '다음' (재료 선택 점검 6절)", () => {
     next.click();
     expect(useWorkflowStore.getState().materialCheckAck).toBeNull();
     expect(addEvaluationRun).toHaveBeenCalledTimes(1);
+    // 성적서 화면이 지금 입력이 아니라 이 스냅샷으로 평가한다(서술 라운드 S3b) — run 에 평가 요청이 얼려 들어간다.
+    const saved = (addEvaluationRun.mock.calls[0] as unknown[])[0] as any;
+    expect(saved.evaluationRequest).toMatchObject({ version: 1, payload: { selected_metric_ids: useWorkflowStore.getState().selectedMetricIds } });
   });
 
   it("저장되는 성적서에 '확인 후 진행'이 실린다(기록을 남긴 뒤 다시 만든 결과)", async () => {

@@ -73,10 +73,15 @@ describe("migrateWorkspaceState", () => {
 
   it("발급 여부는 run 의 번호나 성적서 메타 번호로 본다", () => {
     const out = migrateWorkspaceState(
-      { evaluationRuns: [run("meta-only", { ...EMPTY, isEvaluated: true, meta: { reportId: "RPT-1" } })] },
+      {
+        evaluationRuns: [
+          run("meta-only", { ...EMPTY, isEvaluated: true, meta: { reportId: "RPT-1" } }),
+          run("run-only", { ...EMPTY, isEvaluated: true, meta: { reportId: "" } }, { reportId: "RPT-2" }),
+        ],
+      },
       2,
     );
-    expect(out.evaluationRuns[0].migrationNote).toBe("issued_empty_narrative");
+    expect(out.evaluationRuns.map((r: any) => r.migrationNote)).toEqual(["issued_empty_narrative", "issued_empty_narrative"]);
   });
 
   it("v1 → v2 → v3 를 차례로 지난다 — 문자열 interpretation 을 고친 뒤 빈 서술도 판정한다", () => {
