@@ -71,6 +71,7 @@ export function ReportPrint() {
             showVerdictRule={data.conclusion.judgedCount !== undefined}
           confidenceIntervalNote={data.confidenceIntervalNote}
           targetDigits={data.targetDigits}
+          judgedValueDigits={data.judgedValueDigits}
           coreMetricsSource={data.coreMetricsSource}
           />
         </PageBreak>

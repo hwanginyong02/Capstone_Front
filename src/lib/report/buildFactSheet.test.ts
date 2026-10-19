@@ -241,6 +241,25 @@ describe("아슬아슬 margin·near_target (설계 D12)", () => {
     ]);
   });
 
+  it("value_text — 판정 대상 지표의 인쇄 문자열(S2): 셋째 자리, 판정과 어긋나 보이면 자릿수를 늘림", () => {
+    const fs = buildFactSheet(
+      input({
+        kpiResults: [
+          metric({ metricId: "M4", value: 0.7996, threshold: 0.8, status: "fail" }), // "0.800" 은 합격으로 읽힘
+          metric({ metricId: "M1", value: 0.7999999999999999, threshold: 0.8, status: "pass" }),
+          metric({ metricId: "M8", value: 0.1004, threshold: 0.1, higherIsBetter: false, status: "fail" }),
+          metric({ metricId: "M2", value: 0.7996, threshold: null }),
+        ],
+      }),
+    );
+    expect(fs.metrics.map((m) => [m.metric_id, m.value_text])).toEqual([
+      ["M4", "0.7996"],
+      ["M1", "0.800"],
+      ["M8", "0.1004"],
+      ["M2", null], // 판정 대상이 아니면 싣지 않는다
+    ]);
+  });
+
   it("음수 목표(MCC −0.1)", () => {
     const fs = buildFactSheet(input({ kpiResults: [metric({ metricId: "M5", value: -0.0985, threshold: -0.1 })] }));
     expect(fs.metrics[0].margin).toBe(0.0015);
@@ -260,7 +279,8 @@ describe("문제 목록·임계값 조정 여지·불균형 영향", () => {
     evidence: { "F1 Score": { value: 0.71, target: 0.8 } },
     note: null,
   };
-  const gain = { max_f1: 0.8421, current_f1: 0.7012, gain: 0.1409, best_threshold: 0.37 };
+  // S2: 엔진 판정(notable)·표시 문자열(gain_text·display)도 함께 실려 서술(백엔드)이 같은 판정·표기를 읽는다.
+  const gain = { max_f1: 0.8421, current_f1: 0.7012, gain: 0.1409, best_threshold: 0.37, notable: true, gain_text: "0.1409" };
   const effect = {
     level: "affected" as const,
     imbalance_ratio: 3.2,
@@ -268,6 +288,7 @@ describe("문제 목록·임계값 조정 여지·불균형 영향", () => {
     majority_minus_minority_f1: 0.18,
     majority_class: "neg",
     minority_class: "pos",
+    display: { imbalance_ratio: "3.2", accuracy_minus_macro_f1: "0.12", majority_minus_minority_f1: "0.18" },
   };
 
   it("problems·f1_threshold_gain·imbalance_effect 를 그대로 싣는다", () => {

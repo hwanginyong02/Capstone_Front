@@ -20,6 +20,7 @@ import type {
 import type { ConfusionMatrixData } from "../../types/report.types";
 import { buildClassReportTable } from "./classReportTable";
 import { computeMargin, isJudged, isNearTarget } from "./computeVerdict";
+import { formatJudgedValue } from "./judgedNumber";
 
 export interface FactSheetMetric {
   metric_id: string;
@@ -38,6 +39,12 @@ export interface FactSheetMetric {
    */
   margin: number | null;
   near_target: boolean;
+  /**
+   * 판정 대상 지표 값의 인쇄 문자열(S2) — 성적서 6.1·6.2 표와 같은 규칙(`formatJudgedValue`): 셋째 자리이되,
+   * 판정과 어긋나 보이면 자릿수를 늘린다. 서술이 값을 인용할 때 이 표기를 쓰게 한다(백엔드 S4b 가 읽음).
+   * 판정 대상이 아니면 null.
+   */
+  value_text: string | null;
 }
 
 export interface FactSheetPerClass {
@@ -243,6 +250,10 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
       // 4자리로 반올림해 싣는다 — 아슬아슬 판정은 반올림 전 값으로 이미 했다.
       margin: round4(computeMargin(r)),
       near_target: isNearTarget(r),
+      value_text:
+        isJudged(r) && r.threshold !== null && !isInfoOnly
+          ? formatJudgedValue(r.value, r.threshold, r.higherIsBetter !== false, r.status === "pass")
+          : null,
     };
   });
 

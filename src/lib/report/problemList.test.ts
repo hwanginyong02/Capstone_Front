@@ -181,6 +181,11 @@ describe("임계값 부적합 — gain ≥ 0.10 (이진)", () => {
     expect(kinds(input({ thresholdGain: gain(0.0999) }))).toEqual([]);
   });
 
+  it("엔진 notable 이 있으면 그것을 따른다(S2) — 실제 0.09996 은 4자리로 0.1 이지만 부적합이 아니다", () => {
+    expect(kinds(input({ thresholdGain: { ...gain(0.1), notable: false, gain_text: "0.09996" } }))).toEqual([]);
+    expect(kinds(input({ thresholdGain: { ...gain(0.0999), notable: true } }))).toEqual(["threshold_tuning"]);
+  });
+
   it("근거는 응답 값 그대로, 이진이 아니면 보지 않는다", () => {
     const [p] = buildProblemList(input({ thresholdGain: gain(0.2) }));
     expect(p).toMatchObject({ title: "임계값 부적합", priority: "MEDIUM", source_section: "8.3" });
@@ -446,6 +451,10 @@ describe("파서 — 모양이 틀리면 null", () => {
     expect(parseF1ThresholdGain({ ...ok, gain: "0.2" })).toBeNull();
     expect(parseF1ThresholdGain({ ...ok, gain: -0.1 })).toBeNull();
     expect(parseF1ThresholdGain({ ...ok, best_threshold: null })).toBeNull();
+    // 엔진 판정·표시 문자열(S2)은 모양이 맞을 때만 싣는다.
+    const withNotable = { ...ok, notable: true, gain_text: "0.1409" };
+    expect(parseF1ThresholdGain(withNotable)).toEqual(withNotable);
+    expect(parseF1ThresholdGain({ ...ok, notable: "yes", gain_text: 0.14 })).toEqual(ok);
   });
 
   it("imbalance_effect", () => {
@@ -465,5 +474,24 @@ describe("파서 — 모양이 틀리면 null", () => {
     expect(parseImbalanceEffect({ ...ok, accuracy_minus_macro_f1: "x" })).toBeNull();
     expect(parseImbalanceEffect({ ...ok, minority_class: 1 })).toBeNull();
     expect(parseImbalanceEffect(null)).toBeNull();
+  });
+
+  it("imbalance_effect.display(S2) — 표시 문자열은 모양이 맞을 때만 싣고, 틀려도 숫자 칸은 산다", () => {
+    const base = {
+      level: "mild",
+      imbalance_ratio: 1.5,
+      accuracy_minus_macro_f1: 0.0,
+      majority_minus_minority_f1: -0.0213,
+      majority_class: "neg",
+      minority_class: "pos",
+    };
+    const display = { imbalance_ratio: "1.49996", accuracy_minus_macro_f1: "0", majority_minus_minority_f1: "-0.0213" };
+    expect(parseImbalanceEffect({ ...base, display })).toEqual({ ...base, display });
+    expect(parseImbalanceEffect({ ...base, display: { ...display, imbalance_ratio: 1.49996 } })).toEqual(base);
+    // 멀티레이블은 정확도 차이 표시가 null 이어야 한다.
+    const ml = { ...base, accuracy_minus_macro_f1: null };
+    const mlDisplay = { ...display, accuracy_minus_macro_f1: null };
+    expect(parseImbalanceEffect({ ...ml, display: mlDisplay })).toEqual({ ...ml, display: mlDisplay });
+    expect(parseImbalanceEffect({ ...ml, display })).toEqual(ml);
   });
 });

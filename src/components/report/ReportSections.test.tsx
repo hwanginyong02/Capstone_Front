@@ -66,3 +66,24 @@ describe("ReportSections — 6.1 에 targetDigits·coreMetricsSource 를 넘긴�
     expect(screen.getByText(/핵심 지표는 의뢰자가 지정하였다/)).toBeInTheDocument();
   });
 });
+
+describe("ReportSections — 6.1 에 judgedValueDigits 를 넘긴다 (S2 판정 자릿수)", () => {
+  // 실제 미달 0.7996 · 목표 0.8 — 셋째 자리로는 "0.800 / ≥ 0.800 / 불합격"이라 판정과 어긋나 보인다.
+  const failing: KpiResult = {
+    metricId: "M1", name: "Accuracy", value: 0.7996, threshold: 0.8, status: "fail", higherIsBetter: true, isCore: true,
+  };
+  const valueCells = () =>
+    [...document.querySelectorAll("td")].map((td) => td.textContent ?? "").filter((text) => /^0\.\d+$/.test(text));
+
+  it("새 성적서는 판정과 어긋나 보이는 값을 넷째 자리로 찍는다", () => {
+    const data = report({ kpiResults: [failing] });
+    expect(data.judgedValueDigits).toBe(true);
+    render(<ReportSections data={data} />);
+    expect(valueCells()).toEqual(["0.7996"]);
+  });
+
+  it("키가 없는 옛 발급본은 발급 당시처럼 셋째 자리", () => {
+    render(<ReportSections data={report({ kpiResults: [failing], judgedValueDigits: undefined })} />);
+    expect(valueCells()).toEqual(["0.800"]);
+  });
+});

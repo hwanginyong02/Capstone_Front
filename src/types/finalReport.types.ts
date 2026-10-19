@@ -197,6 +197,13 @@ export interface F1ThresholdGain {
   current_f1: number;
   gain: number;
   best_threshold: number;
+  /**
+   * 엔진이 반올림 전 gain 으로 정한 '임계값 부적합'(≥ 0.10, S2). 9절 문제가 이 값을 따른다 — 실제 0.09996 은
+   * 4자리로 0.1 이지만 부적합이 아니다. 이 키가 없는 응답(옛 백엔드)은 4자리 gain 으로 판정한다.
+   */
+  notable?: boolean;
+  /** gain 의 표시 문자열 — 판정과 같은 쪽으로 읽히게 자릿수를 늘림(S2). 옛 응답에는 없다. */
+  gain_text?: string;
 }
 
 /**
@@ -210,6 +217,15 @@ export interface ImbalanceEffect {
   majority_minus_minority_f1: number;
   majority_class: string;
   minority_class: string;
+  /**
+   * 세 값의 표시 문자열(S2) — 엔진이 판정과 같은 쪽으로 읽히게 자릿수를 늘렸다(IR 1.49996 은 넷째 자리로 1.5 지만
+   * '경미'라 "1.49996"). 사실 시트로 서술에 간다. 옛 응답에는 없다.
+   */
+  display?: {
+    imbalance_ratio: string;
+    accuracy_minus_macro_f1: string | null;
+    majority_minus_minority_f1: string;
+  };
 }
 
 /** 문제 종류 9종(서술 설계 D22). 이 순서가 번호 순서다(우선순위 순, 같은 우선순위는 표 순서). */
@@ -411,6 +427,12 @@ export interface FinalReportData {
    * 이 값을 읽는다. 이 키가 생기기 전 성적서에는 없고, 없으면 종전 둘째 자리(`LEGACY_TARGET_DIGITS`)다.
    */
   targetDigits?: number;
+  /**
+   * 판정 대상 지표 값을 판정과 같은 쪽으로 읽히게 찍는가(S2, 사용자 결정 "판정 자릿수"). 새 성적서는 true —
+   * 셋째 자리 반올림이 판정과 어긋나 보이면(실제 미달 0.7996 이 "0.800 / ≥ 0.800 / 불합격") 6.1·6.2 표가
+   * 자릿수를 늘려 찍는다(`judgedNumber.formatJudgedValue`). 이 키가 없는 옛 발급본은 발급 당시처럼 셋째 자리다.
+   */
+  judgedValueDigits?: boolean;
   /**
    * 핵심 지표를 의뢰자가 정했나(client), 유형별 기본값을 그대로 썼나(default) — W8, `coreMetricsSource`.
    * 6.1 판정 규칙 문장이 두 갈래로 읽는다. 이 키가 생기기 전 성적서에는 없고 종전 문장("의뢰자가 지정")이다.

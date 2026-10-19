@@ -9,6 +9,7 @@
 import type { KpiResult } from "../../types/finalReport.types";
 import { computeMargin, isJudged, isNearTarget } from "./computeVerdict";
 import { formatMetricValue } from "./metricValueFormat";
+import { formatJudgedValue } from "./judgedNumber";
 
 /**
  * 판정 대상 지표에 margin·nearTarget 을 붙인다. 판정 대상이 아닌 지표(정보성·측정 불가)는 그대로 둔다.
@@ -38,7 +39,9 @@ export function nearTargetNote(kpiResults: KpiResult[]): string | null {
     .map((r) => {
       const bound = r.higherIsBetter === false ? "이하" : "이상";
       const outcome = r.status === "pass" ? "충족" : "미달";
-      return `${r.name}(${r.metricId}) ${formatMetricValue(r.value)}(목표 ${formatMetricValue(r.threshold)} ${bound}, ${outcome})`;
+      // 값은 판정과 같은 쪽으로 읽히게 찍는다(S2) — 미달 0.7996 이 "0.800(목표 0.800 이상, 미달)"이 되지 않게.
+      const value = formatJudgedValue(r.value, r.threshold!, r.higherIsBetter !== false, r.status === "pass");
+      return `${r.name}(${r.metricId}) ${value}(목표 ${formatMetricValue(r.threshold)} ${bound}, ${outcome})`;
     });
   if (items.length === 0) return null;
   return `목표값과의 차이가 목표값의 3% 미만인 지표(근소 차이): ${items.join(", ")}.`;

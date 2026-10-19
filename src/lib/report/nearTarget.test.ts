@@ -59,6 +59,13 @@ describe("nearTargetNote — 8.3 한 줄", () => {
     );
   });
 
+  it("판정과 어긋나 보이는 값은 자릿수를 늘린다(S2) — 미달 0.7996 이 '0.800(… 미달)'로 찍히지 않게", () => {
+    const rows = attachNearTarget([kpi({ metricId: "M4", name: "F1 Score", value: 0.7996, threshold: 0.8, status: "fail" })]);
+    expect(nearTargetNote(rows)).toBe(
+      "목표값과의 차이가 목표값의 3% 미만인 지표(근소 차이): F1 Score(M4) 0.7996(목표 0.800 이상, 미달).",
+    );
+  });
+
   it("아슬아슬 지표가 없으면 null", () => {
     expect(nearTargetNote(attachNearTarget([kpi({ value: 0.9 })]))).toBeNull();
   });

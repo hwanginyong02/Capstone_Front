@@ -39,6 +39,8 @@ interface KpiResultSectionProps {
   confidenceIntervalNote?: string;
   /** 목표값 자릿수(`FinalReportData.targetDigits`, B10). 없으면 종전 둘째 자리. */
   targetDigits?: number;
+  /** 판정과 어긋나 보이는 값의 자릿수를 늘릴지(`FinalReportData.judgedValueDigits`, S2). 없으면 종전 셋째 자리. */
+  judgedValueDigits?: boolean;
   /** 핵심 지표의 출처(W8). 판정 규칙 문장이 두 갈래로 읽는다. 없으면 종전 문장. */
   coreMetricsSource?: CoreMetricsSource;
 }
@@ -63,6 +65,7 @@ export function KpiResultSection({
   showVerdictRule = false,
   confidenceIntervalNote,
   targetDigits,
+  judgedValueDigits,
   coreMetricsSource,
 }: KpiResultSectionProps) {
   const showCi = confidenceIntervalNote !== undefined;
@@ -125,6 +128,7 @@ export function KpiResultSection({
                 showCi={showCi}
                 ci={r.ci}
                 targetDigits={targetDigits}
+                judgedValueDigits={judgedValueDigits}
               />
             ))}
             {kpiCore.length === 0 && (
@@ -176,6 +180,7 @@ export function KpiResultSection({
                 showCi={showCi}
                 ci={r.ci}
                 targetDigits={targetDigits}
+                judgedValueDigits={judgedValueDigits}
               />
             ))}
           </tbody>

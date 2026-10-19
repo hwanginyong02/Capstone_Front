@@ -2,6 +2,7 @@ import { PassBadge } from "./PassBadge";
 import type { KpiConfidenceInterval } from "../../../types/finalReport.types";
 import { cn } from "../../../utils/styling/styles";
 import { formatTargetCriteria } from "../../../lib/report/metricValueFormat";
+import { formatJudgedValue } from "../../../lib/report/judgedNumber";
 
 interface MetricRowProps {
   metricId: string;
@@ -23,10 +24,15 @@ interface MetricRowProps {
   ci?: KpiConfidenceInterval;
   /** 목표값 자릿수(`FinalReportData.targetDigits`). 없으면 종전 둘째 자리. */
   targetDigits?: number;
+  /**
+   * 값이 판정과 어긋나 보이면 자릿수를 늘려 찍는다(`FinalReportData.judgedValueDigits`, S2) — 실제 미달 0.7996 을
+   * "0.800 / ≥ 0.800 / 불합격" 대신 "0.7996". 없으면(옛 발급본) 종전 셋째 자리.
+   */
+  judgedValueDigits?: boolean;
   className?: string;
 }
 
-export function MetricRow({ metricId, name, formula, value, threshold, status, higherIsBetter, isCore, showCi = false, ci, targetDigits, className }: MetricRowProps) {
+export function MetricRow({ metricId, name, formula, value, threshold, status, higherIsBetter, isCore, showCi = false, ci, targetDigits, judgedValueDigits, className }: MetricRowProps) {
   // 표시 모드
   // 1) 목표값 있음(threshold !== null) → 일반 KPI (값 + 기준 + 판정). 0·음수 목표도 여기다.
   // 2) 목표값 없음                      → 정보 제공 (값은 표시, 기준 "—", "ℹ 정보 제공")
@@ -52,7 +58,11 @@ export function MetricRow({ metricId, name, formula, value, threshold, status, h
         <td className="py-2.5 pr-4 font-mono text-xs text-slate-500">{formula}</td>
       )}
       <td className="py-2.5 pr-4 font-semibold tabular-nums text-slate-900">
-        {isVisualOnly || isUnavailable ? "—" : value.toFixed(3)}
+        {isVisualOnly || isUnavailable
+          ? "—"
+          : judgedValueDigits && isThresholded && threshold !== null && (status === "pass" || status === "fail")
+            ? formatJudgedValue(value, threshold, higherIsBetter !== false, status === "pass")
+            : value.toFixed(3)}
       </td>
       {showCi && (
         <td className="py-2.5 pr-4 tabular-nums text-slate-600">

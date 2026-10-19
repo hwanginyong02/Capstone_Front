@@ -75,7 +75,11 @@ export function parseF1ThresholdGain(raw: unknown): F1ThresholdGain | null {
   const gain = finite(raw.gain);
   const best = finite(raw.best_threshold);
   if (maxF1 === null || currentF1 === null || gain === null || best === null || gain < 0) return null;
-  return { max_f1: maxF1, current_f1: currentF1, gain, best_threshold: best };
+  const parsed: F1ThresholdGain = { max_f1: maxF1, current_f1: currentF1, gain, best_threshold: best };
+  // 엔진 판정(S2) — 모양이 맞을 때만 싣는다. 없으면(옛 백엔드) 문제 목록이 4자리 gain 으로 판정한다.
+  if (typeof raw.notable === "boolean") parsed.notable = raw.notable;
+  if (typeof raw.gain_text === "string") parsed.gain_text = raw.gain_text;
+  return parsed;
 }
 
 const IMBALANCE_LEVELS: readonly ImbalanceEffect["level"][] = ["affected", "no_distortion", "mild"];
@@ -97,7 +101,7 @@ export function parseImbalanceEffect(raw: unknown): ImbalanceEffect | null {
   ) {
     return null;
   }
-  return {
+  const parsed: ImbalanceEffect = {
     level,
     imbalance_ratio: ratio,
     accuracy_minus_macro_f1: accuracyGap,
@@ -105,6 +109,18 @@ export function parseImbalanceEffect(raw: unknown): ImbalanceEffect | null {
     majority_class: raw.majority_class,
     minority_class: raw.minority_class,
   };
+  const display = parseImbalanceDisplay(raw.display, accuracyGap === null);
+  if (display) parsed.display = display;
+  return parsed;
+}
+
+/** 불균형 영향의 표시 문자열(S2). 모양이 하나라도 틀리면 null — 숫자 칸만으로 그대로 간다. */
+function parseImbalanceDisplay(raw: unknown, noAccuracyGap: boolean): ImbalanceEffect["display"] | null {
+  if (!isRecord(raw)) return null;
+  const { imbalance_ratio: ir, accuracy_minus_macro_f1: acc, majority_minus_minority_f1: cls } = raw;
+  if (typeof ir !== "string" || typeof cls !== "string") return null;
+  if (noAccuracyGap ? acc !== null : typeof acc !== "string") return null;
+  return { imbalance_ratio: ir, accuracy_minus_macro_f1: acc as string | null, majority_minus_minority_f1: cls };
 }
 
 /** 정답 라벨 주의에 걸린 답 하나 — 무엇(구축 방법/신뢰성)이 어떤 값(성적서 이름)인지. */
@@ -326,7 +342,8 @@ export function buildProblemList(input: ProblemListInput): Problem[] {
     };
   }
 
-  if (taskType === "binary" && thresholdGain && thresholdGain.gain >= THRESHOLD_GAIN_MIN) {
+  // 임계값 부적합은 엔진이 반올림 전 값으로 정한 notable 을 따른다(S2). 옛 응답(키 없음)만 4자리 gain 으로.
+  if (taskType === "binary" && thresholdGain && (thresholdGain.notable ?? thresholdGain.gain >= THRESHOLD_GAIN_MIN)) {
     found.threshold_tuning = { evidence: { ...thresholdGain } };
   }
 

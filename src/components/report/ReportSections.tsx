@@ -67,6 +67,7 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         showVerdictRule={data.conclusion.judgedCount !== undefined}
         confidenceIntervalNote={data.confidenceIntervalNote}
         targetDigits={data.targetDigits}
+        judgedValueDigits={data.judgedValueDigits}
         coreMetricsSource={data.coreMetricsSource}
       />
       <ChartSection charts={data.charts} />
