@@ -21,6 +21,8 @@ import type {
   ProblemKind,
 } from "../../types/finalReport.types";
 import { computeMargin, computeVerdict, isJudged, isNearTarget } from "./computeVerdict";
+// 차이는 판정·마진과 같은 함수 하나로 잰다(끝자리 잡음을 걷음 — 0.85 − 0.75 가 "꼭 0.10 차이"로 남게).
+import { difference } from "./judgedNumber";
 import { choiceLabel, type ReportComposerInput } from "./reportMaterials";
 
 /** 종류별 우선순위·기본 이름·원천 절 → 권고 절. 이 순서가 번호 순서다(우선순위 순). */
@@ -52,15 +54,6 @@ export const WEAKEST_SHARE_MIN = 0.05;
 export const WEAKEST_F1_GAP = 0.1;
 /** 학습↔평가 분포 차이 — 어느 클래스든 비율 차가 이 값(10%p) 이상이면 문제다(자체 설정). */
 export const DISTRIBUTION_SHIFT_MIN = 0.1;
-
-/**
- * 두 값의 차를 비교하기 전에 부동소수 끝자리 잡음을 걷어 낸다. 0.85 − 0.75 는 0.0999999… 가 되어
- * "꼭 0.10 차이"가 기준(이상)에서 빠진다. 표의 값은 많아야 소수 4~6자리라 10자리 반올림은 판정을
- * 바꾸지 않는다.
- */
-function difference(a: number, b: number): number {
-  return Math.round((a - b) * 1e10) / 1e10;
-}
 
 function round4(v: number): number {
   return Math.round(v * 1e4) / 1e4;

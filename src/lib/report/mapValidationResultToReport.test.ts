@@ -53,6 +53,18 @@ describe("새 검증 항목의 한국어 이름", () => {
     expect(mapped.dataValidation[1].detail).toBe("3 건");
   });
 
+  it("라벨 표기 맞춤(S2)도 한국어 문구라 클래스 이름을 바꾸지 않는다", () => {
+    const result = "정답 ' rows' → 'rows'; 예측 'classes' · ' classes' → 'classes'";
+    const mapped = mapValidationResultToReport(
+      response([
+        { name: "Label notation", result, handling: "", status: "warning", group: "common" },
+      ] as ValidateDataResponseData["validation_details"]),
+      4,
+    );
+    expect(mapped.dataValidation[0].checkName).toBe("라벨 표기 맞춤");
+    expect(mapped.dataValidation[0].detail).toBe(result);
+  });
+
   // 백엔드 저장소가 옆에 없으면(프론트만 받은 CI) 대조를 건너뛴다. 파일을 읽기 전에 확인한다.
   const backendChecks = resolve(__dirname, "../../../../Capstone_Back/app/analysis/validation_checks.py");
   it.skipIf(!existsSync(backendChecks))("백엔드가 내는 검증 항목 이름은 모두 한국어 이름이 있다", () => {

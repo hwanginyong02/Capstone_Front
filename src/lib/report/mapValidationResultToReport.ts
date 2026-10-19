@@ -23,6 +23,8 @@ export const CHECK_NAME_KO: Readonly<Record<string, string>> = {
   "Missing value": "누락값(NaN)",
   "Duplicate ID": "중복 ID",
   "Class mismatch": "클래스 불일치",
+  // S2 — 앞뒤 공백·숫자 표기만 다른 정답·예측 라벨을 평가가 같은 클래스로 합친다(결과 칸은 한국어 문구).
+  "Label notation": "라벨 표기 맞춤",
   "Excluded samples": "제외된 샘플 수",
   "Score range error": "score 범위 오류",
   "Binary class system error": "이진 클래스 체계 오류",
@@ -42,10 +44,11 @@ export const CHECK_NAME_KO: Readonly<Record<string, string>> = {
 
 /**
  * 결과 칸이 이미 한국어 문구로 오는 항목 — 영문 낱말 바꾸기(`normalizeResult`)를 하지 않고 그대로 싣는다.
+ * "Label notation" 은 "정답 ' cat' → 'cat'" 처럼 클래스 이름이 들어 있다(이름에 rows·classes 가 올 수 있다).
  * "Probability column names" 의 결과는 평가 단계 400 과 같은 한국어 문구이고, 컬럼·클래스 이름이 들어
  * 있어("rows" 같은 이름도 올 수 있다) 바꾸면 이름이 망가진다.
  */
-const KOREAN_RESULT_CHECKS: ReadonlySet<string> = new Set(["Probability column names"]);
+const KOREAN_RESULT_CHECKS: ReadonlySet<string> = new Set(["Probability column names", "Label notation"]);
 
 /** 검증 항목명의 한글 이름. 표에 없는 이름은 그대로 돌려준다. 검증 화면도 이 표를 쓴다. */
 export function checkNameKo(name: string): string {
