@@ -36,6 +36,13 @@ export interface IssuanceResult {
   history: IssuanceHistoryEntry[];
 }
 
+/**
+ * 발급 비고·정정 사유(·발급자)의 길이 상한. 발급 이력으로 성적서 서명란에 그대로 인쇄된다. 백엔드
+ * `app/issuance/schemas.py` 의 `MAX_ISSUANCE_TEXT_CHARS` 와 같은 값이어야 한다(넘으면 422) — 발급·정정
+ * 발급 대화상자의 입력 칸이 이 값을 상한으로 쓴다(B16).
+ */
+export const ISSUANCE_TEXT_MAX_CHARS = 200;
+
 export interface IssuePayload {
   runId: string;
   modelName?: string;
@@ -123,6 +130,14 @@ async function errorDetail(resp: Response, fallback: string): Promise<string> {
   try {
     const body = await resp.json();
     if (body && typeof body.detail === "string") return body.detail;
+    // 입력 검사 오류(422)는 detail 이 배열이다 — 각 항목의 msg 가 사용자 문구다(B16, "정정 사유는 200자
+    // 이하로 적어 주세요(지금 N자)." 등).
+    if (body && Array.isArray(body.detail)) {
+      const messages = body.detail
+        .map((item: unknown) => (item && typeof (item as { msg?: unknown }).msg === "string" ? (item as { msg: string }).msg : null))
+        .filter((msg: string | null): msg is string => Boolean(msg));
+      if (messages.length > 0) return messages.join(" ");
+    }
   } catch {
     /* JSON 아님 — fallback 사용 */
   }

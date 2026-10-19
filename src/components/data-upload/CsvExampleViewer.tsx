@@ -9,17 +9,19 @@
  *
  * 예시 문자열은 `data/templateExamples.ts` 가 들고 있다.
  */
-import { getComposerColumnNote, getComposerCsvExample } from "../../data/templateExamples";
+import { getComposerColumnNote, getComposerCsvExample, type ExampleColumnOptions } from "../../data/templateExamples";
 import type { TaskType } from "../../data/evaluationData";
 
 interface CsvExampleViewerProps {
   taskType: TaskType;
   /** 표 아래 필수 컬럼 안내. 호출하는 쪽이 이미 같은 안내를 쓰고 있으면 끈다. */
   showNote?: boolean;
+  /** 예시에 넣을 선택 컬럼(지연시간). 없으면 모두 보인다. */
+  columns?: ExampleColumnOptions;
 }
 
-export function CsvExampleViewer({ taskType, showNote = true }: CsvExampleViewerProps) {
-  const rows = getComposerCsvExample(taskType)
+export function CsvExampleViewer({ taskType, showNote = true, columns }: CsvExampleViewerProps) {
+  const rows = getComposerCsvExample(taskType, columns)
     .split("\n")
     .map((line) => line.split(","));
   const [header, ...body] = rows;
@@ -61,7 +63,7 @@ export function CsvExampleViewer({ taskType, showNote = true }: CsvExampleViewer
 
       {showNote && (
         <p className="mt-3 text-body-small text-muted-foreground">
-          {getComposerColumnNote(taskType)}
+          {getComposerColumnNote(taskType, columns)}
         </p>
       )}
     </div>

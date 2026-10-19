@@ -65,6 +65,50 @@ describe("⑤ 평가 관점 — 유형별 질문", () => {
   });
 });
 
+describe("⑧ 정답 라벨 신뢰성 — 성적서와 같은 말 (W1)", () => {
+  it("선택지 이름이 성적서 표기와 같고, 무엇을 뜻하는지 한 줄 설명이 붙는다", () => {
+    renderForm("groundTruth");
+
+    expect(screen.getByText("정답 라벨 신뢰성")).toBeInTheDocument();
+    for (const name of ["복수 라벨러 합의", "단일 라벨러", "검토 없음"]) {
+      expect(screen.getByRole("radio", { name: new RegExp("^" + name) }), name).toBeInTheDocument();
+    }
+    expect(screen.getByText("한 사람이 붙였어요")).toBeInTheDocument();
+    expect(screen.queryByText("1인 검수")).not.toBeInTheDocument();
+  });
+});
+
+describe("글자 수 상한 (B7)", () => {
+  it("긴 설명 칸은 상한을 넘겨 받지 않고 남은 글자를 늘 보인다", () => {
+    renderForm("trainingData", { values: { trainingDescription: { text: "가".repeat(1_990) } } });
+
+    expect(screen.getByLabelText("학습 데이터 설명")).toHaveAttribute("maxLength", "2000");
+    expect(screen.getByText("10자 남음")).toBeInTheDocument();
+  });
+
+  it("한 줄 칸은 상한의 80% 를 넘었을 때만 남은 글자를 보인다", () => {
+    // 여러 줄 칸(설명·비고·덧붙이는 글)은 늘 보이므로, 이 칸의 남은 수(50자)만 본다.
+    renderForm("trainingData", { values: { trainingDatasetName: { text: "가".repeat(150) } } });
+    expect(screen.queryByText("50자 남음")).not.toBeInTheDocument();
+  });
+
+  it("한 줄 칸이 상한에 닿으면 그렇다고 알린다", () => {
+    renderForm("trainingData", { values: { trainingDatasetName: { text: "가".repeat(200) } } });
+    expect(screen.getByRole("textbox", { name: /^데이터 이름/ })).toHaveAttribute("maxLength", "200");
+    expect(screen.getByText("최대 200자까지 적을 수 있어요")).toBeInTheDocument();
+  });
+});
+
+describe("전용 화면이 받는 필드는 그리지 않는다", () => {
+  it("⑥ 예시 파일 두 칸은 학습 데이터 화면의 예시 파일 칸이 받는다", () => {
+    renderForm("trainingData");
+
+    expect(screen.getByText("데이터 이름")).toBeInTheDocument();
+    expect(screen.queryByText("적합 예시 파일")).not.toBeInTheDocument();
+    expect(screen.queryByText("부적합 예시 파일")).not.toBeInTheDocument();
+  });
+});
+
 describe("카드 제목에는 번호가 없다", () => {
   it("이름만 적는다 — ⑥ 같은 기호는 사용자에게 뜻이 없다", () => {
     renderForm("trainingData");
@@ -120,7 +164,7 @@ describe("⑥ 배타 선택지", () => {
       values: { channelEffects: { choices: ["None known"] } },
     });
 
-    await userEvent.click(screen.getByRole("checkbox", { name: "장비 차이" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "수집 장치 차이" }));
 
     expect(onChange).toHaveBeenCalledWith("channelEffects", {
       choices: ["Different equipment"],
@@ -254,6 +298,25 @@ describe("필수 표시", () => {
     expect(screen.getByText("일치도 종류").querySelector("span")).toHaveTextContent("*");
     expect(screen.queryByText("일치도 값")).not.toBeInTheDocument();
   });
+
+  it("[B2] 검수 방식을 받지 않으면 남은 '여러 명 검수' 값이 있어도 라벨러 수·일치도 칸이 없다", () => {
+    const several = {
+      labelReview: { text: "Several reviewers" },
+      labelAgreementKind: { text: "Cohen's kappa" },
+    };
+    renderForm("groundTruth", { values: several, picks: ["labelAuthor"] });
+    expect(screen.queryByText("라벨러 수")).not.toBeInTheDocument();
+    expect(screen.queryByText("일치도 종류")).not.toBeInTheDocument();
+    expect(screen.queryByText("일치도 값")).not.toBeInTheDocument();
+  });
+
+  it("[B2] 검수 방식을 받으면 라벨러 수 칸이 다시 나온다", () => {
+    renderForm("groundTruth", {
+      values: { labelReview: { text: "Several reviewers" } },
+      picks: ["labelAuthor", "labelReview"],
+    });
+    expect(screen.getByText("라벨러 수")).toBeInTheDocument();
+  });
 });
 
 describe("차단 표시", () => {
@@ -322,7 +385,7 @@ describe("선택지 타일", () => {
   it("여럿 고르는 질문도 글자를 눌러 켜고 끈다 — 두 번 뒤집히지 않는다", async () => {
     const { onChange } = renderForm("trainingData");
 
-    await userEvent.click(screen.getByText("장비 차이"));
+    await userEvent.click(screen.getByText("수집 장치 차이"));
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith("channelEffects", {
@@ -335,7 +398,7 @@ describe("선택지 타일", () => {
     renderForm("groundTruth", { values: { labelAuthor: { text: "Domain experts" } } });
 
     const chosen = screen.getByRole("radio", { name: "전문가" }).closest("label");
-    const other = screen.getByRole("radio", { name: "외부 작업자" }).closest("label");
+    const other = screen.getByRole("radio", { name: "크라우드소싱(외부 작업자)" }).closest("label");
 
     expect(chosen?.className).toContain("border-primary");
     expect(other?.className).not.toContain("border-primary");
@@ -370,13 +433,13 @@ describe("Other 직접 입력", () => {
     });
   });
 
-  it("여럿 고르기에서도 Other 를 고르면 칸이 나타난다 — ⑥ 수집 환경 차이", () => {
+  it("여럿 고르기에서도 Other 를 고르면 칸이 나타난다 — ⑥ 수집 방식 차이", () => {
     renderForm("trainingData", {
       values: { channelEffects: { choices: ["Different equipment", "Other (free text)"] } },
     });
 
     expect(
-      screen.getByRole("textbox", { name: "수집 환경 차이 기타 내용" }),
+      screen.getByRole("textbox", { name: "수집 방식 차이(채널 효과) 기타 내용" }),
     ).toBeInTheDocument();
   });
 });
@@ -406,7 +469,7 @@ describe("숫자 칸", () => {
       },
     });
 
-    expect(screen.getByText("1 이상의 정수를 넣으세요.")).toBeInTheDocument();
+    expect(screen.getByText("2 이상의 정수를 넣으세요.")).toBeInTheDocument();
     expect(screen.getByText("-1~1 사이의 숫자를 넣으세요.")).toBeInTheDocument();
   });
 
@@ -464,5 +527,118 @@ describe("덧붙이는 글", () => {
   it("글을 받지 않는 칸에는 글칸이 없다", () => {
     renderForm("testData");
     expect(screen.queryByRole("textbox", { name: "학습 데이터와 출처 관계 덧붙이는 글" })).not.toBeInTheDocument();
+  });
+});
+
+describe("[B6②] 하이퍼파라미터 줄 — 이름과 값 둘 다", () => {
+  const values: ComposerValueMap = {
+    algorithm: { text: "XGBoost" },
+    hyperparameters: { entries: [{ key: "", value: "6" }] },
+  };
+
+  it("다음을 누르기 전에는 칸 아래 안내가 없고, 하단 한 줄이 이유를 말한다", () => {
+    renderForm("modelEnv", { values, picks: ["algorithm", "hyperparameters"] });
+    expect(screen.queryByText("이름과 값을 모두 적어 주세요.")).not.toBeInTheDocument();
+
+    const issues = getCardIssues(getCard("modelEnv"), "binary", values, true, ["algorithm", "hyperparameters"]);
+    render(<RemainingNotice issues={issues} />);
+    expect(screen.getByText("하이퍼파라미터: 이름과 값을 모두 적어 주세요.")).toBeInTheDocument();
+  });
+
+  it("다음을 누른 뒤에는 칸 아래 안내와 빈 쪽 칸의 오류 표시", () => {
+    const card = getCard("modelEnv");
+    const picks = ["algorithm", "hyperparameters"];
+    render(
+      <ComposerCardForm
+        card={card}
+        taskType="binary"
+        values={values}
+        onChange={vi.fn()}
+        issues={getCardIssues(card, "binary", values, true, picks)}
+        picks={picks}
+        showErrors
+      />,
+    );
+    expect(screen.getByText("이름과 값을 모두 적어 주세요.")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "하이퍼파라미터 이름 1" })).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("textbox", { name: "하이퍼파라미터 값 1" })).not.toHaveAttribute("aria-invalid");
+  });
+});
+
+/** 이름이 같은 하이퍼파라미터 줄 — 지금 당장 틀린 값이라 다음을 누르기 전에도 보인다. */
+describe("[S9] 하이퍼파라미터 이름이 같은 줄", () => {
+  const values: ComposerValueMap = {
+    algorithm: { text: "XGBoost" },
+    hyperparameters: {
+      entries: [
+        { key: "lr", value: "0.1" },
+        { key: "lr", value: "0.2" },
+      ],
+    },
+  };
+  const picks = ["algorithm", "hyperparameters"];
+
+  it("칸 아래 안내와 겹친 이름 칸의 오류 표시 — 다음을 누르기 전에도", () => {
+    renderForm("modelEnv", { values, picks });
+    expect(screen.getByText("같은 이름이 두 번 있어요: lr")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "하이퍼파라미터 이름 1" })).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("textbox", { name: "하이퍼파라미터 이름 2" })).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("textbox", { name: "하이퍼파라미터 값 1" })).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("하단 한 줄이 이유를 말한다", () => {
+    render(<RemainingNotice issues={getCardIssues(getCard("modelEnv"), "binary", values, true, picks)} />);
+    expect(screen.getByText("하이퍼파라미터: 같은 이름이 두 번 있어요: lr")).toBeInTheDocument();
+  });
+});
+
+/** W3 — 칸이 정해진 묶음은 칸마다 모름. GPU 사용 여부는 칸마다 고르는 "모름"만 있다. */
+describe("[W3] 칸별 모름", () => {
+  const picks = ["runtimeEnv", "gpuUsage"];
+
+  it("실행 환경은 필드 모름 체크 대신 다섯 칸마다 모름 체크가 있다", () => {
+    renderForm("modelEnv", { picks });
+    expect(screen.queryByRole("checkbox", { name: "실행 환경 모름" })).not.toBeInTheDocument();
+    for (const label of ["운영체제", "CPU", "GPU", "메모리", "소프트웨어"]) {
+      expect(screen.getByRole("checkbox", { name: `실행 환경 ${label} 모름` })).toBeInTheDocument();
+    }
+  });
+
+  it("칸 모름을 고르면 그 칸만 unknownKeys 로 보고한다", async () => {
+    const { onChange } = renderForm("modelEnv", {
+      picks,
+      values: { runtimeEnv: { entries: [{ key: "Operating system", value: "Ubuntu" }] } },
+    });
+    await userEvent.click(screen.getByRole("checkbox", { name: "실행 환경 CPU 모름" }));
+    expect(onChange).toHaveBeenCalledWith("runtimeEnv", {
+      entries: [{ key: "Operating system", value: "Ubuntu" }],
+      unknownKeys: ["CPU"],
+      unknown: false,
+    });
+  });
+
+  it("모름인 칸만 잠기고 다른 칸은 그대로 쓸 수 있다", async () => {
+    const { onChange } = renderForm("modelEnv", { picks, values: { runtimeEnv: { unknownKeys: ["CPU"] } } });
+    const inputs = document.querySelectorAll<HTMLInputElement>("#field-runtimeEnv-CPU, #field-runtimeEnv-GPU");
+    expect(inputs).toHaveLength(2);
+    expect(document.getElementById("field-runtimeEnv-CPU")).toBeDisabled();
+    expect(document.getElementById("field-runtimeEnv-GPU")).not.toBeDisabled();
+
+    // 다시 풀면 목록에서 빠진다.
+    await userEvent.click(screen.getByRole("checkbox", { name: "실행 환경 CPU 모름" }));
+    expect(onChange).toHaveBeenCalledWith("runtimeEnv", { unknownKeys: [], unknown: false });
+  });
+
+  it("데이터 양도 학습·검증 칸마다 모름이 있다", () => {
+    renderForm("trainingData", { picks: ["trainingVolume"] });
+    expect(screen.queryByRole("checkbox", { name: "데이터 양 모름" })).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "데이터 양 학습 모름" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "데이터 양 검증 모름" })).toBeInTheDocument();
+  });
+
+  it("GPU 사용 여부에는 필드 모름 체크가 없고 칸마다 '모름' 선택지가 있다", () => {
+    renderForm("modelEnv", { picks });
+    expect(screen.queryByRole("checkbox", { name: "GPU 사용 여부 모름" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("radio", { name: "모름" })).toHaveLength(2);
   });
 });

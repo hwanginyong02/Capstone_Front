@@ -40,8 +40,8 @@ describe("applyRoleChange — 컬럼명으로 적용한다", () => {
     expect(next[2].confirmedRole).toBeNull();
   });
 
-  it("'unassigned' 는 null 로 되돌린다", () => {
-    expect(applyRoleChange(rows, "clean_a", "unassigned")[0].confirmedRole).toBeNull();
+  it("'지정 안 함'은 없다 — 'ignore' 는 그대로 ignore 다(M7)", () => {
+    expect(applyRoleChange(rows, "clean_a", "ignore")[0].confirmedRole).toBe("ignore");
   });
 
   it("추론값과 달라지면 modified 로 표시한다", () => {

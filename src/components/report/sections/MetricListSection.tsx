@@ -6,6 +6,7 @@ import type {
 import { SectionTitle } from "../shared/SectionTitle";
 import { TwoColTable } from "../shared/TwoColTable";
 import { materialText, toTableRows } from "../shared/materialRows";
+import { taskTypeLabelsFor } from "../../../data/evaluationData";
 
 interface MetricListSectionProps {
   metricList: MetricItem[];
@@ -22,6 +23,8 @@ export function MetricListSection({
   materials,
 }: MetricListSectionProps) {
   const formulaMap = new Map(metricFormulas.map((f) => [f.metricId, f]));
+  // 5.1 안내의 유형 이름은 그릴 때 정한다 — 옛 발급본(영문 저장값)은 그때 글자 그대로(W9 발급본 결정).
+  const typeNames = taskTypeLabelsFor(taskTypeLabel);
 
   const commonItems = metricList.filter((metric) => formulaMap.get(metric.metricId)?.isCommon);
   const specialItems = metricList.filter((metric) => !formulaMap.get(metric.metricId)?.isCommon);
@@ -54,7 +57,9 @@ export function MetricListSection({
       <div className="space-y-3">
         <h3 className="text-sm font-semibold text-slate-700">
           공통 지표{" "}
-          <span className="font-normal text-slate-400 text-xs">(Binary / Multi-class / Multi-label 모두 적용)</span>
+          <span className="font-normal text-slate-400 text-xs">
+            ({typeNames.binary} / {typeNames.multiclass} / {typeNames.multilabel} 모두 적용)
+          </span>
         </h3>
         <MetricTable items={commonItems} formulaMap={formulaMap} />
       </div>

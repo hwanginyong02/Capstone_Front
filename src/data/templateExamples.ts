@@ -11,11 +11,36 @@
  */
 import type { TaskType } from "./evaluationData";
 
+/**
+ * 예시에 넣을 선택 컬럼. 업로드 화면은 "매핑할 수 있는 컬럼"과 같은 판정(`uploadColumnCodes`)으로
+ * 정한다 — 평가 흐름에 지연시간을 놓지 않았으면 매핑에 latency 역할이 없으니 예시에도 없다(S10 마무리).
+ * 넘기지 않으면 모두 보인다(평가 흐름 만들기의 예시 — 무엇을 넣을지 고르는 자리다).
+ */
+export interface ExampleColumnOptions {
+  latency?: boolean;
+}
+
+/** 지연시간 예시 컬럼 이름 — CSV·JSON·안내 문장이 같은 이름을 쓴다. */
+const LATENCY_COLUMN = "latency_ms";
+
+/** CSV 에서 머리글이 `name` 인 열을 뺀다. */
+function dropCsvColumn(csv: string, name: string): string {
+  const rows = csv.split("\n").map((line) => line.split(","));
+  const index = rows[0].indexOf(name);
+  if (index === -1) return csv;
+  return rows.map((cells) => cells.filter((_, cellIndex) => cellIndex !== index).join(",")).join("\n");
+}
+
 /** 유형별 예시 CSV. 첫 줄이 머리글이다. */
-export function getComposerCsvExample(taskType: TaskType): string {
+export function getComposerCsvExample(taskType: TaskType, { latency = true }: ExampleColumnOptions = {}): string {
+  const csv = composerCsv(taskType);
+  return latency ? csv : dropCsvColumn(csv, LATENCY_COLUMN);
+}
+
+function composerCsv(taskType: TaskType): string {
   if (taskType === "binary") {
     return [
-      "id,y_true,y_pred,score,latency_ms",
+      `id,y_true,y_pred,score,${LATENCY_COLUMN}`,
       "S001,1,1,0.91,12",
       "S002,0,1,0.62,9",
       "S003,0,0,0.08,11",
@@ -41,10 +66,10 @@ export function getComposerCsvExample(taskType: TaskType): string {
 }
 
 /** 같은 내용의 JSON 형태. 컬럼명은 CSV 와 반드시 같아야 한다. */
-export function getComposerJsonExample(taskType: TaskType): string {
+export function getComposerJsonExample(taskType: TaskType, { latency = true }: ExampleColumnOptions = {}): string {
   const sample =
     taskType === "binary"
-      ? '{ "id": "S001", "y_true": 1, "y_pred": 1, "score": 0.91, "latency_ms": 12 }'
+      ? `{ "id": "S001", "y_true": 1, "y_pred": 1, "score": 0.91${latency ? `, "${LATENCY_COLUMN}": 12` : ""} }`
       : taskType === "multilabel"
         ? '{ "id": "S001", "true_labels": "sports|news", "pred_labels": "sports", "score_sports": 0.92, "score_news": 0.41 }'
         : '{ "id": "S001", "y_true": "cat", "y_pred": "cat", "prob_cat": 0.81, "prob_dog": 0.12, "prob_bird": 0.07 }';
@@ -53,9 +78,11 @@ export function getComposerJsonExample(taskType: TaskType): string {
 }
 
 /** 예시 아래 한 줄 안내. 유형마다 필수 컬럼 규칙이 다르다. */
-export function getComposerColumnNote(taskType: TaskType): string {
+export function getComposerColumnNote(taskType: TaskType, { latency = true }: ExampleColumnOptions = {}): string {
   if (taskType === "binary") {
-    return "정답(y_true)은 필수이고, 예측(y_pred)과 양성 확률(score) 중 하나가 있어야 합니다. AUROC 같은 곡선 지표는 확률이 있어야 합니다. 응답시간(latency_ms)은 선택입니다.";
+    const base =
+      "정답(y_true)은 필수이고, 예측(y_pred)과 양성 확률(score) 중 하나가 있어야 합니다. AUROC 같은 곡선 지표는 확률이 있어야 합니다.";
+    return latency ? `${base} 지연시간(${LATENCY_COLUMN}, 밀리초)은 선택입니다.` : base;
   }
 
   if (taskType === "multilabel") {

@@ -161,6 +161,36 @@ describe("생성 전 안내와 '다음' (재료 선택 점검 6절)", () => {
     expect(useWorkflowStore.getState().materialCheckAck).toBeNull();
   });
 
+  it("매핑을 고친 뒤 계산할 수 없게 된 지표가 남아 있으면 막고 지표 화면으로 이유와 함께 안내한다 (B8)", async () => {
+    const { materialCheckFixture } = await import("../test/materialCheckFixture");
+    const { next } = await setup(materialCheckFixture({}));
+    const row = (role: string) => ({
+      originalName: role,
+      sampleValues: [],
+      inferredRole: role,
+      confirmedRole: role,
+      modified: false,
+      warnings: [],
+    });
+    useWorkflowStore.setState({
+      taskType: "binary",
+      selectedMetricIds: ["M1", "M9"],
+      metricDetails: {
+        M1: { targetValue: "0.8" },
+        M9: { targetValue: "0.7" },
+      } as never,
+      columnMapping: [row("y_true"), row("y_pred")] as never,
+      availableMetricIds: null,
+    });
+
+    next.click();
+
+    const list = await screen.findByRole("list", { name: "비어 있는 필수 입력" });
+    expect(list).toHaveTextContent("지표와 합격 기준에서 채우기");
+    expect(screen.getByRole("list", { name: "지표와 합격 기준 문제" })).toHaveTextContent(/^AUROC: /);
+    expect(addEvaluationRun).not.toHaveBeenCalled();
+  });
+
   it("2·3층 경고는 화면에 보이고, '다음'을 누르면 기록을 남긴 뒤 진행한다", async () => {
     const { materialCheckFixture } = await import("../test/materialCheckFixture");
     const check = materialCheckFixture({ missingLatencyAndLabel: true, realTime: true });
@@ -197,5 +227,114 @@ describe("생성 전 안내와 '다음' (재료 선택 점검 6절)", () => {
     const saved = (addEvaluationRun.mock.calls[0] as unknown as [{ reportData: { materialCheck: { acknowledgement: unknown; printed: { summary: Array<{ value: string }> } } } }])[0];
     expect(saved.reportData.materialCheck.acknowledgement).not.toBeNull();
     expect(saved.reportData.materialCheck.printed.summary[2].value).toMatch(/^확인 후 진행 \(/);
+  });
+});
+
+describe("생성 전 안내 → 평가 흐름 만들기", () => {
+  it("넣으러 가면 그 블록과 돌아올 입력 화면을 넘긴다(FlowEntryState)", async () => {
+    const { MemoryRouter: Router, Routes, Route, useLocation } = await import("react-router");
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const { materialCheckFixture } = await import("../test/materialCheckFixture");
+    const { FILLED_LAYER_ONE } = await import("../test/layerOneFixture");
+    const { getCard } = await import("../data/reportComposer");
+    useWorkflowStore.setState({ ...FILLED_LAYER_ONE, materialCheckAck: null });
+    mockUseDataValidation.mockReturnValue({
+      validationData: { error_count: 0 },
+      isLoading: false,
+      error: null,
+      buildEvaluationResult: vi.fn(() => ({
+        workflowSnapshot: {},
+        reportData: {
+          evalScope: { version: "v1" },
+          meta: { reportId: "R" },
+          materialCheck: materialCheckFixture({ missingLatencyAndLabel: true }),
+        },
+      })),
+    });
+    function Composer() {
+      return <pre data-testid="composer-state">{JSON.stringify(useLocation().state)}</pre>;
+    }
+    render(
+      <Router initialEntries={["/app/data-validation"]}>
+        <Routes>
+          <Route path="/app/data-validation" element={<DataValidation />} />
+          <Route path="/app/composer" element={<Composer />} />
+        </Routes>
+      </Router>,
+    );
+
+    const list = screen.getByRole("list", { name: "빠진 보고 항목" });
+    const fix = list.querySelectorAll("button");
+    expect(fix.length).toBeGreaterThan(0);
+    // 정답 라벨 구축 방법 → 정답 라벨 블록.
+    const button = [...fix].find((item) => item.closest("li")?.textContent?.includes("정답 라벨 구축 방법"));
+    await userEvent.click(button!);
+
+    // 그 보고 항목을 받는 항목(라벨 작성 주체)을 강조하게 넘긴다(S10 마무리).
+    expect(JSON.parse(screen.getByTestId("composer-state").textContent!)).toEqual({
+      cardId: "groundTruth",
+      leafIds: ["labelAuthor"],
+      returnStep: getCard("groundTruth").steps[0],
+    });
+  });
+
+  it("지연시간은 평가 데이터 › 지연시간 컬럼을 펼치고 컬럼 매핑으로 돌아오게 한다 — 놓았으면 '컬럼 매핑에서 고치기'도", async () => {
+    const { MemoryRouter: Router, Routes, Route, useLocation } = await import("react-router");
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const { materialCheckFixture } = await import("../test/materialCheckFixture");
+    const { FILLED_LAYER_ONE } = await import("../test/layerOneFixture");
+    useWorkflowStore.setState({ ...FILLED_LAYER_ONE, materialCheckAck: null });
+    useWorkflowStore.setState({
+      materialPicks: { ...useWorkflowStore.getState().materialPicks, evalData: ["yTrueColumn", "predictionColumns"] },
+    });
+    mockUseDataValidation.mockReturnValue({
+      validationData: { error_count: 0 },
+      isLoading: false,
+      error: null,
+      buildEvaluationResult: vi.fn(() => ({
+        workflowSnapshot: {},
+        reportData: {
+          evalScope: { version: "v1" },
+          meta: { reportId: "R" },
+          materialCheck: materialCheckFixture({ missingLatencyAndLabel: true }),
+        },
+      })),
+    });
+    function Composer() {
+      return <pre data-testid="composer-state">{JSON.stringify(useLocation().state)}</pre>;
+    }
+    const view = render(
+      <Router initialEntries={["/app/data-validation"]}>
+        <Routes>
+          <Route path="/app/data-validation" element={<DataValidation />} />
+          <Route path="/app/composer" element={<Composer />} />
+        </Routes>
+      </Router>,
+    );
+
+    // 놓지 않았다 — 컬럼 매핑으로 보내는 갈래가 없다.
+    expect(screen.queryByRole("button", { name: "컬럼 매핑에서 고치기" })).not.toBeInTheDocument();
+    const list = screen.getByRole("list", { name: "빠진 보고 항목" });
+    const button = [...list.querySelectorAll("button")].find((item) =>
+      item.closest("li")?.textContent?.includes("평가 데이터 › 지연시간 컬럼"),
+    );
+    await userEvent.click(button!);
+    expect(JSON.parse(screen.getByTestId("composer-state").textContent!)).toEqual({
+      cardId: "evalData",
+      leafIds: ["latencyColumn"],
+      returnStep: "mapping",
+    });
+    view.unmount();
+
+    // 놓았으면 "컬럼 매핑에서 고치기"도 보인다.
+    useWorkflowStore.setState({
+      materialPicks: { ...useWorkflowStore.getState().materialPicks, evalData: ["latencyColumn"] },
+    });
+    render(
+      <Router initialEntries={["/app/data-validation"]}>
+        <DataValidation />
+      </Router>,
+    );
+    expect(screen.getByRole("button", { name: "컬럼 매핑에서 고치기" })).toBeInTheDocument();
   });
 });

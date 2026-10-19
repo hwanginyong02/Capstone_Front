@@ -53,7 +53,7 @@ export function Perspective() {
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-2">평가 관점</h1>
           <p className="text-sm text-muted-foreground">
-            이 모델에서 무엇을 중요하게 볼지 답하세요. 다음 단계에서 이 답에 맞는 지표가 있는지 확인합니다.
+            이 모델에서 무엇을 중요하게 볼지 답하세요. ‘지표와 합격 기준’ 화면에서 이 답에 맞는 지표가 있는지 확인합니다.
           </p>
         </div>
         <ComposerCardForm

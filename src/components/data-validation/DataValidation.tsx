@@ -47,10 +47,11 @@ type ValidationGroup = "common" | "multiclass" | "binary" | "multilabel" | "late
 
 const GROUP_META: Record<ValidationGroup, { label: string; description: string }> = {
   common:     { label: "공통 검사",          description: "모든 분류 유형에 적용" },
-  multiclass: { label: "다중 클래스 검사",   description: "분류 유형이 다중 클래스일 때 적용" },
-  binary:     { label: "이진 분류 검사",     description: "분류 유형이 이진 분류일 때 적용" },
-  multilabel: { label: "다중 레이블 검사",   description: "분류 유형이 다중 레이블일 때 적용" },
-  latency:    { label: "응답시간 검사",      description: "응답시간 컬럼이 있을 때 적용" },
+  // 유형 이름은 성적서 6.0(DataValidationSection)과 같은 한국어 표(W9) — 종전에는 '다중 클래스'로 짧았다.
+  multiclass: { label: `${TASK_TYPE_LABELS_KO.multiclass} 검사`, description: `분류 유형이 ${TASK_TYPE_LABELS_KO.multiclass}일 때 적용` },
+  binary:     { label: `${TASK_TYPE_LABELS_KO.binary} 검사`,     description: `분류 유형이 ${TASK_TYPE_LABELS_KO.binary}일 때 적용` },
+  multilabel: { label: `${TASK_TYPE_LABELS_KO.multilabel} 검사`, description: `분류 유형이 ${TASK_TYPE_LABELS_KO.multilabel}일 때 적용` },
+  latency:    { label: "지연시간 검사",      description: "지연시간 컬럼이 있을 때 적용" },
 };
 
 const GROUP_ORDER: ValidationGroup[] = ["common", "multiclass", "binary", "multilabel", "latency"];

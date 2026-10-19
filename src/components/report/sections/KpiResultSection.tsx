@@ -1,6 +1,7 @@
 import type {
   ClassReportRow,
   ClassReportTable,
+  CoreMetricsSource,
   FinalReportMeta,
   KpiResult,
 } from "../../../types/finalReport.types";
@@ -36,6 +37,10 @@ interface KpiResultSectionProps {
    * 더한다. 이 키가 생기기 전 성적서와 구간이 없는 평가는 종전 표 그대로다.
    */
   confidenceIntervalNote?: string;
+  /** 목표값 자릿수(`FinalReportData.targetDigits`, B10). 없으면 종전 둘째 자리. */
+  targetDigits?: number;
+  /** 핵심 지표의 출처(W8). 판정 규칙 문장이 두 갈래로 읽는다. 없으면 종전 문장. */
+  coreMetricsSource?: CoreMetricsSource;
 }
 
 /**
@@ -57,6 +62,8 @@ export function KpiResultSection({
   meta,
   showVerdictRule = false,
   confidenceIntervalNote,
+  targetDigits,
+  coreMetricsSource,
 }: KpiResultSectionProps) {
   const showCi = confidenceIntervalNote !== undefined;
   // 6.1 은 고객이 정한 핵심 지표다(판정 규칙 D19 의 핵심 지표와 같다). 핵심 지표 표시가 없는 옛
@@ -117,6 +124,7 @@ export function KpiResultSection({
                 isCore={r.isCore}
                 showCi={showCi}
                 ci={r.ci}
+                targetDigits={targetDigits}
               />
             ))}
             {kpiCore.length === 0 && (
@@ -134,6 +142,7 @@ export function KpiResultSection({
             {verdictRuleText(
               kpiResults.filter((r) => r.isCore).map((r) => `${r.name}(${r.metricId})`),
               hasNearTargetMarks(kpiResults),
+              coreMetricsSource,
             )}
           </p>
         )}
@@ -166,6 +175,7 @@ export function KpiResultSection({
                 isCore={r.isCore}
                 showCi={showCi}
                 ci={r.ci}
+                targetDigits={targetDigits}
               />
             ))}
           </tbody>

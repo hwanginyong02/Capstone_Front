@@ -57,3 +57,51 @@ describe("1층 빈칸", () => {
     ).toEqual([]);
   });
 });
+
+describe("계산할 수 없게 된 지표 (B8 — 단계 표시줄로 지표 화면을 건너뛴 경우)", () => {
+  const mapped = (...roles: string[]) =>
+    roles.map((role) => ({
+      originalName: role,
+      sampleValues: [],
+      inferredRole: role,
+      confirmedRole: role,
+      modified: false,
+      warnings: [],
+    })) as unknown as NonNullable<LayerOneSource["columnMapping"]>;
+  const withAuroc: LayerOneSource = {
+    ...FILLED_LAYER_ONE,
+    selectedMetricIds: ["M1", "M9"],
+    metricDetails: {
+      M1: { targetValue: "0.8" },
+      M9: { targetValue: "0.7" },
+    } as unknown as LayerOneSource["metricDetails"],
+  };
+
+  it("AUROC 를 골랐는데 확률(score) 매핑이 없으면 지표 단계 하나와 이유를 돌려준다", () => {
+    const gaps = layerOneGaps({ ...withAuroc, columnMapping: mapped("y_true", "y_pred") });
+    expect(gaps).toHaveLength(1);
+    expect(gaps[0].stepId).toBe("metrics");
+    expect(gaps[0].details).toHaveLength(1);
+    expect(gaps[0].details![0]).toMatch(/^AUROC: .*\(score\).*계산할 수 없습니다\.$/);
+  });
+
+  it("매핑을 되돌리면(score 있음) 빈칸이 없다", () => {
+    expect(layerOneGaps({ ...withAuroc, columnMapping: mapped("y_true", "y_pred", "score") })).toEqual([]);
+  });
+
+  it("매핑 확정 응답(가용 지표)이 있으면 그것이 정본이다", () => {
+    const columnMapping = mapped("y_true", "y_pred", "score");
+    expect(layerOneGaps({ ...withAuroc, columnMapping, availableMetricIds: ["M1"] })[0]?.details).toHaveLength(1);
+    expect(layerOneGaps({ ...withAuroc, columnMapping, availableMetricIds: ["M1", "M9"] })).toEqual([]);
+  });
+
+  it("빈 매핑(시연)이나 매핑이 없으면 막지 않는다", () => {
+    expect(layerOneGaps({ ...withAuroc, columnMapping: [] })).toEqual([]);
+    expect(layerOneGaps(withAuroc)).toEqual([]);
+  });
+
+  it("다른 이유로 막혔으면 이유 줄은 없다", () => {
+    const gaps = layerOneGaps({ ...withAuroc, selectedMetricIds: [], columnMapping: mapped("y_true", "y_pred") });
+    expect(gaps).toEqual([{ stepId: "metrics", label: "지표와 합격 기준" }]);
+  });
+});

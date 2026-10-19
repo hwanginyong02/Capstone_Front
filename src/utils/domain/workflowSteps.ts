@@ -90,6 +90,21 @@ export function resumeStepId(completed: StepId[], steps: StepId[]): StepId {
 }
 
 /**
+ * 평가 흐름 만들기의 "다음"이 갈 곳.
+ *
+ * 1. 들어올 때 넘겨받은 돌아갈 화면(`returnStep`)이 지금 목록에 있으면 거기 — 검증 화면에서 ⑦ 을
+ *    넣으러 왔으면 테스트 데이터 화면으로 간다.
+ * 2. 아니면 처음 미완료 **입력** 화면 — 새 사용자는 첫 화면으로 간다.
+ * 3. 입력 화면을 모두 마쳤으면 검증. `resumeStepId` 를 그대로 쓰면 성적서(run 경로)로 가 버려서
+ *    입력 화면으로 범위를 좁혔다.
+ */
+export function composerNextStep(steps: StepId[], completed: StepId[], returnStep?: StepId): StepId {
+  if (returnStep && steps.includes(returnStep)) return returnStep;
+  const inputs = steps.filter((id) => !TRAILING_STEP_IDS.includes(id));
+  return inputs.find((id) => !completed.includes(id)) ?? "validation";
+}
+
+/**
  * 단계 → 경로.
  *
  * run 에 매인 단계는 run id 가 있어야 목적지를 만들 수 있다. 없으면 **워크스페이스 목록**으로

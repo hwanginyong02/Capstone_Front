@@ -1,7 +1,7 @@
 /**
  * 고객이 제공한 재료 → 성적서에 찍을 줄, 그리고 AI 에 넘길 값.
  *
- * 무엇을 어디에 찍는지는 재료 목록이 정한다(capstone_md_file/1_입력_재료목록.md 의 "인쇄 위치").
+ * 무엇을 어디에 찍는지는 입력 재료 목록의 "인쇄 위치"가 정한다(필드별 위치는 레지스트리의 `reportSection`).
  * 종전에는 성적서 구성 카드(⑤~⑨)와 ② 의 지표 선택 이유가 **저장만 되고** 성적서에도 AI 에도
  * 가지 않았다.
  *
@@ -13,7 +13,8 @@
  * 선택지는 영어 저장값으로 남고 화면·성적서는 한국어다. 성적서에 찍을 이름은 레지스트리의
  * `reportLabels` 가 정한다 — 매핑표를 여기 또 적으면 두 벌이 된다.
  */
-import { getCard } from "../../data/reportComposer";
+import { getCard, isEntryUnknown } from "../../data/reportComposer";
+import { completeEntryRows } from "../../utils/domain/composerFieldGate";
 import { josaEuroRo } from "./koreanJosa";
 import type { TaskType } from "../../data/evaluationData";
 import {
@@ -62,7 +63,9 @@ export function choiceLabel(
   return field.otherChoice === choice && other ? `${label}(${other})` : label;
 }
 
+/** 칸 하나의 값. 비었거나 그 칸을 "모름"으로 골랐으면(필드·칸별 — W3) "". */
 function entryOf(value: ComposerFieldValue | undefined, key: string): string {
+  if (isEntryUnknown(value, key)) return "";
   return value?.entries?.find((entry) => entry.key === key)?.value.trim() ?? "";
 }
 
@@ -102,7 +105,9 @@ export function describeValue(
     const to = entryOf(value, MONTH_RANGE_KEYS.to);
     main = from && to ? `${from} ~ ${to}` : null;
   } else if (field.input === "entries") {
-    const rows = (value.entries ?? []).filter((entry) => entry.value.trim() !== "");
+    const rows = (value.entries ?? []).filter(
+      (entry) => entry.value.trim() !== "" && !isEntryUnknown(value, entry.key),
+    );
     main = rows.length ? rows.map((entry) => `${entry.key} ${entry.value.trim()}`).join(" / ") : null;
   } else {
     main = value.text?.trim() || null;
@@ -130,9 +135,9 @@ function trainingRows(c: ReportComposerInput): MaterialRow[] {
   const on = c.cards.trainingData;
   const v = c.trainingData;
   const describe = (fieldId: string) => describeValue("trainingData", fieldId, v[fieldId]);
-  const volume = v.trainingVolume?.unknown ? undefined : v.trainingVolume;
+  // 학습 수만 알고 검증을 모름으로 골랐으면 검증 줄만 "제공되지 않음"이다(W3, `entryOf`).
   const count = (key: string) => {
-    const parsed = countOf(entryOf(volume, key));
+    const parsed = countOf(entryOf(v.trainingVolume, key));
     return parsed === null ? null : `${parsed.toLocaleString()}개`;
   };
   // 클래스마다 칸이 따로 있다. 한 줄로 적는다("정상 8,400 / 이탈 3,600").
@@ -219,11 +224,13 @@ function percentToRatio(text: string): string {
 function environmentRows(c: ReportComposerInput): MaterialRow[] {
   const on = c.cards.modelEnv;
   const gpu = c.modelEnv.gpuUsage;
-  // "모름"은 제공되지 않음으로 센다(재료 선택 점검 5절).
+  // "모름" 선택지(`unknownChoice`)는 제공되지 않음으로 센다(재료 선택 점검 5절, N8). 옛 필드 모름은 v15 가
+  // 두 칸 "모름"으로 옮겼고, 옮기기 전 스냅샷의 필드 모름도 `entryOf` 가 빈 값으로 본다.
+  const unknownAnswer = fieldOf("modelEnv", "gpuUsage").unknownChoice;
   const accel = (key: string) => {
-    if (!on || gpu?.unknown) return null;
+    if (!on) return null;
     const answer = entryOf(gpu, key);
-    if (!answer || answer === "Unknown") return null;
+    if (!answer || answer === unknownAnswer) return null;
     return choiceLabel("modelEnv", "gpuUsage", answer);
   };
   return [
@@ -238,9 +245,7 @@ function hyperparameters(c: ReportComposerInput): ReportMaterials["hyperparamete
   const table = c.modelEnv.hyperparameters;
   const rows =
     on && table && !table.unknown
-      ? (table.entries ?? [])
-          .filter((entry) => entry.key.trim() !== "" && entry.value.trim() !== "")
-          .map((entry) => ({ name: entry.key.trim(), value: entry.value.trim() }))
+      ? completeEntryRows(table.entries).map((entry) => ({ name: entry.key.trim(), value: entry.value.trim() }))
       : [];
   return { algorithm, rows: rows.length > 0 ? rows : null };
 }
@@ -330,6 +335,10 @@ export interface ClientInputsSource {
  * 학습 데이터는 3절에 찍는 줄을 그대로 넘긴다 — 학습·평가 전처리 일치도 그 줄에 있다.
  */
 export function buildClientInputs(source: ClientInputsSource): ClientInputs {
+  return fitClientInputs(rawClientInputs(source));
+}
+
+function rawClientInputs(source: ClientInputsSource): ClientInputs {
   const { materials } = source;
   const descriptions = Object.fromEntries(
     Object.entries(source.classLabelDescriptions).filter(([, text]) => text.trim() !== ""),
@@ -365,4 +374,75 @@ export function buildClientInputs(source: ClientInputsSource): ClientInputs {
     },
     ...(Object.keys(descriptions).length > 0 ? { class_label_descriptions: descriptions } : {}),
   };
+}
+
+/**
+ * 백엔드가 받는 고객 입력의 직렬화 길이 상한 — `Capstone_Back/app/narrative/schemas.py` 의
+ * `MAX_CLIENT_INPUTS_CHARS`(테스트가 대조한다). 넘으면 서술 요청이 422 로 통째로 거절되어 성적서에
+ * AI 서술이 하나도 실리지 않는다(B7).
+ */
+export const CLIENT_INPUTS_MAX_CHARS = 20_000;
+
+/**
+ * 프론트가 맞추는 길이 — 상한의 90%. 백엔드는 이제 공백 없는 JSON 으로 잰다(`client_inputs_length`, B7)라
+ * 보통은 `JSON.stringify` 길이와 같다. 남은 10% 는 두 가지 차이를 덮는 여유다: 배포 순서(공백을 넣어 재던 옛
+ * 백엔드가 아직 떠 있을 때)와 지수 표기 실수(파이썬 `1e-07` 이 JS `1e-7` 보다 한 자 길다).
+ */
+export const CLIENT_INPUTS_TARGET_CHARS = Math.floor(CLIENT_INPUTS_MAX_CHARS * 0.9);
+
+/** 잘린 글 끝에 붙이는 표시. */
+export const TRUNCATED_MARK = "…(이하 생략)";
+
+/** 잘라도 남기는 앞부분 — 무슨 내용인지 알아볼 만큼. */
+const MIN_KEPT_CHARS = 40;
+
+/**
+ * 고객 입력이 `target` 자를 넘으면 **가장 긴 글부터** 잘라 맞춘다. 같은 입력에는 늘 같은 결과다
+ * (길이가 같으면 먼저 나온 글부터 자른다). 넘지 않으면 그대로 돌려준다.
+ *
+ * 입력 칸마다 글자 수 상한이 있어(`maxLength`) 보통은 자를 일이 없다. 상한이 생기기 전에 적어 둔 글,
+ * 클래스가 아주 많은 파일의 클래스 설명처럼 칸 상한으로 막을 수 없는 경우의 마지막 안전장치다. 모든
+ * 글을 줄여도 넘으면 클래스 설명을 통째로 빼고, 그래도 넘으면 그대로 보낸다(백엔드가 거절한다).
+ */
+export function fitClientInputs(
+  inputs: ClientInputs,
+  target: number = CLIENT_INPUTS_TARGET_CHARS,
+): ClientInputs {
+  if (JSON.stringify(inputs).length <= target) return inputs;
+  const fitted = structuredClone(inputs) as Record<string, unknown>;
+
+  for (;;) {
+    const excess = JSON.stringify(fitted).length - target;
+    if (excess <= 0) return fitted;
+    const longest = longestCuttable(fitted);
+    if (!longest) break;
+    const { holder, key, text } = longest;
+    const keep = Math.max(MIN_KEPT_CHARS, text.length - excess - TRUNCATED_MARK.length);
+    holder[key] = text.slice(0, keep) + TRUNCATED_MARK;
+  }
+
+  if ("class_label_descriptions" in fitted) {
+    delete fitted.class_label_descriptions;
+    if (JSON.stringify(fitted).length <= target) return fitted;
+  }
+  return fitted;
+}
+
+/** 아직 줄일 수 있는 글 중 가장 긴 것. 배열 안의 글(지표 이름 등)은 건드리지 않는다. */
+function longestCuttable(
+  node: Record<string, unknown>,
+): { holder: Record<string, unknown>; key: string; text: string } | null {
+  let best: { holder: Record<string, unknown>; key: string; text: string } | null = null;
+  const visit = (holder: Record<string, unknown>) => {
+    for (const [key, value] of Object.entries(holder)) {
+      if (typeof value === "string") {
+        if (value.length <= MIN_KEPT_CHARS + TRUNCATED_MARK.length) continue;
+        if (!best || value.length > best.text.length) best = { holder, key, text: value };
+      } else if (value && typeof value === "object" && !Array.isArray(value)) {
+        visit(value as Record<string, unknown>);
+      }
+    }
+  };
+  visit(node);
+  return best;
 }

@@ -74,6 +74,19 @@ describe("칸마다 다른 필드 (byKey)", () => {
   });
 });
 
+describe("[W3] 칸별 모름", () => {
+  it("모름인 칸만 비우고 아는 칸은 그대로 보낸다 — 잠근 칸에 남은 값도 보내지 않는다", () => {
+    const patch = buildLegacyPatch(fieldOf("modelEnv", "runtimeEnv"), {
+      entries: [
+        { key: "Operating system", value: "Ubuntu" },
+        { key: "CPU", value: "옛 값" },
+      ],
+      unknownKeys: ["CPU", "Memory"],
+    });
+    expect(patch.basicInfo).toEqual({ envOS: "Ubuntu", envCPU: "", envGPU: "", envMemory: "", envSoftware: "" });
+  });
+});
+
 describe("레지스트리와 기존 저장소가 어긋나지 않는다", () => {
   it("연결된 필드 이름이 실제 저장소 키와 같다", () => {
     const BASIC_INFO_KEYS = ["envOS", "envCPU", "envGPU", "envMemory", "envSoftware"];

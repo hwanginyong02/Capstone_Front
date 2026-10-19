@@ -13,7 +13,7 @@ import { Card, CardContent } from "../ui/card";
 import { Label } from "../ui/label";
 import type { UploadedFileInfo } from "../../types/workflow.types";
 import { formatFileSize } from "../../utils/format/format";
-import { makeExamplePreview } from "../../utils/image/examplePreview";
+import { isExampleImage, makeExamplePreview } from "../../utils/image/examplePreview";
 
 /** 디자인 시스템에 Textarea 컴포넌트가 없어 Input 스타일을 모사한 textarea 클래스 */
 export const TEXTAREA_CLASS =
@@ -32,7 +32,7 @@ export function toUploadedFileInfo(file: File): UploadedFileInfo {
  * 있다(`utils/image/examplePreview.ts`). 브라우저가 그릴 수 없는 이미지면 미리보기 없이 돌려준다.
  */
 export async function toUploadedFileInfoAsync(file: File): Promise<UploadedFileInfo> {
-  const previewUrl = file.type.startsWith("image/") ? (await makeExamplePreview(file)) ?? undefined : undefined;
+  const previewUrl = isExampleImage(file) ? (await makeExamplePreview(file)) ?? undefined : undefined;
   return { ...toUploadedFileInfo(file), previewUrl };
 }
 
@@ -159,13 +159,17 @@ export function SelectedFileCard({
   );
 }
 
+/**
+ * 예시 파일 한 칸(⑥ 적합·부적합 예시 — 둘 다 선택 항목). 칸 전체가 끌어 놓기를 받는다 — 파일이 이미 있어도
+ * 더 놓을 수 있고, 여러 개를 한 번에 놓을 수 있다(B15). 형식 확인은 받는 쪽(`onFilesDrop`)이 한다.
+ */
 export function ExampleUploadSlot({
   title,
   description,
   files,
   onChoose,
   onRemove,
-  onFileDrop,
+  onFilesDrop,
   optional = false,
 }: {
   title: string;
@@ -173,7 +177,7 @@ export function ExampleUploadSlot({
   files: UploadedFileInfo[];
   onChoose: () => void;
   onRemove: (index: number) => void;
-  onFileDrop?: (file: File) => void;
+  onFilesDrop?: (files: File[]) => void;
   optional?: boolean;
 }) {
   const [isDragActive, setIsDragActive] = useState(false);
@@ -193,13 +197,21 @@ export function ExampleUploadSlot({
     e.stopPropagation();
     setIsDragActive(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      onFileDrop?.(e.dataTransfer.files[0]);
-    }
+    const dropped = Array.from(e.dataTransfer.files ?? []);
+    if (dropped.length > 0) onFilesDrop?.(dropped);
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div
+      data-testid={"example-slot-" + title}
+      onDragEnter={handleDrag}
+      onDragOver={handleDrag}
+      onDragLeave={handleDrag}
+      onDrop={handleDrop}
+      className={`rounded-lg border bg-card p-4 transition-colors ${
+        isDragActive ? "border-primary bg-primary-subtle" : "border-border"
+      }`}
+    >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
@@ -214,17 +226,11 @@ export function ExampleUploadSlot({
         <button
           type="button"
           onClick={onChoose}
-          onDragEnter={handleDrag}
-          onDragOver={handleDrag}
-          onDragLeave={handleDrag}
-          onDrop={handleDrop}
-          className={`flex min-h-[160px] w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-border bg-muted/20 px-4 py-8 text-center transition-colors hover:border-primary hover:bg-primary-subtle ${
-            isDragActive ? "border-primary bg-primary-subtle" : ""
-          }`}
+          className="flex min-h-[160px] w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-border bg-muted/20 px-4 py-8 text-center transition-colors hover:border-primary hover:bg-primary-subtle"
         >
           <FileImage className="mb-3 h-9 w-9 text-muted-foreground" />
           <span className="text-sm font-medium text-foreground">예시 파일 고르기</span>
-          <span className="mt-1 text-xs text-muted-foreground">이미지, CSV, JSON 샘플</span>
+          <span className="mt-1 text-xs text-muted-foreground">이미지, CSV, JSON 샘플 · 여러 개를 한 번에 고를 수 있어요</span>
         </button>
       ) : (
         <div className="space-y-3">

@@ -18,6 +18,7 @@ import {
   useWorkflowStore,
 } from "./useWorkflowStore";
 import { DEFAULT_BASIC_INFO } from "../../types/workflow.types";
+import type { MappingRow } from "../../types/mapping.types";
 
 /** persist 가 실제로 기록한 내용을 읽는다. */
 function persistedState(): Record<string, unknown> | null {
@@ -245,9 +246,9 @@ describe("재료 선택 점검의 진행 기록(materialCheckAck) — persist �
   });
 
   it("이 키가 없던 옛 저장분을 읽어도 null 로 남는다(이 키 때문에 판을 올리지 않음)", async () => {
-    // 판 14 는 재료 고르기의 입력 순서(cardOrder) 때문에 올렸다 — 이 키와 무관하다.
+    // 판 15 는 평가 흐름 만들기의 놓인 항목(필수 포함) 때문에 올렸다 — 이 키와 무관하다.
     const { WORKFLOW_PERSIST_VERSION } = await import("./useWorkflowStore");
-    expect(WORKFLOW_PERSIST_VERSION).toBe(14);
+    expect(WORKFLOW_PERSIST_VERSION).toBe(15);
     useWorkflowStore.getState().setMaterialCheckAck(ack);
     const raw = JSON.parse(localStorage.getItem(WORKFLOW_STORAGE_KEY)!);
     delete raw.state.materialCheckAck;
@@ -255,5 +256,93 @@ describe("재료 선택 점검의 진행 기록(materialCheckAck) — persist �
     localStorage.setItem(WORKFLOW_STORAGE_KEY, JSON.stringify(raw));
     await useWorkflowStore.persist.rehydrate();
     expect(useWorkflowStore.getState().materialCheckAck).toBeNull();
+  });
+});
+
+describe("persist v15 — 판 14 저장분을 다시 읽으면 놓인 항목이 채워진다", () => {
+  it("rehydrate 가 이행을 돌려 필수 항목과 지연시간을 넣는다", async () => {
+    localStorage.setItem(
+      WORKFLOW_STORAGE_KEY,
+      JSON.stringify({
+        version: 14,
+        state: {
+          taskType: "binary",
+          materialPicks: { clientInfo: ["contactExtra:website"], evalData: [] },
+        },
+      }),
+    );
+    await useWorkflowStore.persist.rehydrate();
+
+    const { materialPicks } = useWorkflowStore.getState();
+    expect(materialPicks.clientInfo).toEqual(["companyInfo", "reportPurpose", "contactExtra:website", "requestDate"]);
+    expect(materialPicks.evalData).toContain("latencyColumn");
+    // 키가 없던 잠긴 카드는 그대로 없다.
+    expect(materialPicks.model).toBeUndefined();
+  });
+});
+
+describe("매핑 불변식 — 평가 흐름에 놓지 않은 항목의 역할은 받지 않는다(docs/MATERIAL_PICKER.md §12.4)", () => {
+  const analysed = (): MappingRow[] => [
+    { originalName: "label", sampleValues: ["0", "1"], inferredRole: "y_true", confirmedRole: "y_true", modified: false, warnings: [] },
+    { originalName: "pred", sampleValues: ["0", "1"], inferredRole: "y_pred", confirmedRole: "y_pred", modified: false, warnings: [] },
+    { originalName: "latency_ms", sampleValues: ["12"], inferredRole: "latency", confirmedRole: "latency", modified: false, warnings: [] },
+  ];
+  const latencyRow = () => useWorkflowStore.getState().columnMapping.find((row) => row.originalName === "latency_ms")!;
+
+  beforeEach(() => {
+    useWorkflowStore.getState().setTaskType("binary");
+  });
+
+  it("분석 결과의 latency 는 지연시간을 놓지 않았으면 ignore 로 들어가고 맡아 둔다", () => {
+    useWorkflowStore.getState().setMaterialPick("evalData", ["yTrueColumn", "predictionColumns"]);
+    useWorkflowStore.getState().setColumnMapping(analysed());
+    expect(latencyRow()).toMatchObject({ confirmedRole: "ignore", heldRole: "latency", inferredRole: "latency" });
+    expect(useWorkflowStore.getState().columnMapping[0].confirmedRole).toBe("y_true");
+  });
+
+  it("함수 꼴 쓰기도 거른다", () => {
+    useWorkflowStore.getState().setMaterialPick("evalData", []);
+    useWorkflowStore.getState().setColumnMapping(() => analysed());
+    expect(latencyRow().confirmedRole).toBe("ignore");
+  });
+
+  it("빼면 ignore, 다시 넣으면 돌아온다 — 바뀔 때마다 가용 지표를 비운다", () => {
+    useWorkflowStore.getState().setMaterialPick("evalData", ["latencyColumn"]);
+    useWorkflowStore.getState().setColumnMapping(analysed());
+    expect(latencyRow().confirmedRole).toBe("latency");
+
+    useWorkflowStore.setState({ availableMetricIds: ["M1"] });
+    useWorkflowStore.getState().setMaterialPick("evalData", []);
+    expect(latencyRow()).toMatchObject({ confirmedRole: "ignore", heldRole: "latency" });
+    expect(useWorkflowStore.getState().availableMetricIds).toBeNull();
+
+    useWorkflowStore.setState({ availableMetricIds: ["M1"] });
+    useWorkflowStore.getState().setMaterialPick("evalData", ["latencyColumn"]);
+    expect(latencyRow().confirmedRole).toBe("latency");
+    expect(latencyRow().heldRole).toBeUndefined();
+    expect(useWorkflowStore.getState().availableMetricIds).toBeNull();
+  });
+
+  it("매핑이 그대로면 가용 지표도 그대로 — 다른 블록·같은 결과의 evalData 쓰기", () => {
+    useWorkflowStore.getState().setMaterialPick("evalData", ["latencyColumn"]);
+    useWorkflowStore.getState().setColumnMapping(analysed());
+    const before = useWorkflowStore.getState().columnMapping;
+    useWorkflowStore.setState({ availableMetricIds: ["M1"] });
+
+    useWorkflowStore.getState().setMaterialPick("trainingData", ["trainingDescription"]);
+    useWorkflowStore.getState().setMaterialPick("evalData", ["latencyColumn", "sampleIdColumn"]);
+    expect(useWorkflowStore.getState().columnMapping).toBe(before);
+    expect(useWorkflowStore.getState().availableMetricIds).toEqual(["M1"]);
+
+    // 같은 배열을 다시 써도 바뀐 것이 없다.
+    useWorkflowStore.getState().setColumnMapping(before);
+    expect(useWorkflowStore.getState().availableMetricIds).toEqual(["M1"]);
+  });
+
+  it("picks 가 {} 면(평가 흐름 이전·시연) 그대로 받는다", () => {
+    expect(useWorkflowStore.getState().materialPicks).toEqual({});
+    useWorkflowStore.getState().setColumnMapping(analysed());
+    expect(latencyRow().confirmedRole).toBe("latency");
+    expect(latencyRow().heldRole).toBeUndefined();
   });
 });

@@ -23,12 +23,13 @@ export function TaskTypeSelect() {
 
     if (store.taskType !== type) {
       store.setTaskType(type);
-      // basicInfo.taskType 도 함께 맞춘다 — 성적서 렌더와 입력 단계 유효성 판정이 이 값을 본다.
+      // basicInfo.taskType 도 맞춰 둔다. 지금 이 칸을 읽는 곳은 없다 — 성적서와 입력 점검은 스토어의
+      // taskType 을 본다. 기본정보 모양(BasicInfoFormData)에 남은 칸이 엉뚱한 유형을 들지 않게만 한다.
       store.setBasicInfo((prev) => ({ ...prev, taskType: type }));
     }
 
-    // 유형을 고르면 재료 고르기로 간다 — 무엇을 넣을지 먼저 정하고 나서야 걸을 단계가
-    // 정해진다(docs/MATERIAL_PICKER.md §1).
+    // 유형을 고르면 평가 흐름 만들기로 간다 — 무엇을 넣을지 먼저 정하고 나서야 걸을 단계가
+    // 정해진다(docs/MATERIAL_PICKER.md §1·§12).
     navigate("/app/composer");
   };
 

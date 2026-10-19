@@ -34,26 +34,63 @@ export interface RequiredColumnDisplay {
   description: string;
 }
 
-export const TASK_TYPE_LABELS: Record<TaskType, string> = {
+/**
+ * 한국어 유형 이름 — 화면과 성적서·AI 서술이 모두 이 한 벌을 쓴다(W9, 2026-10-18 사용자 결정 "성적서·AI 의
+ * 작업 유형 이름도 한국어로"). 종전에는 화면은 '다중 클래스'·'다중 레이블', 성적서는 영문(Binary 등)이었다.
+ *
+ * 표기는 `docs/UI_DESIGN.md` §3·§4 를 따른다. 백엔드 서술 지시문의 `TASK_TYPE_LABELS`
+ * (app/narrative/prompt.py)와 같은 글자다 — 대조 테스트가 지킨다. 이미 발급된 성적서는 저장된
+ * 이름(`meta.taskTypeLabel`·`datasetInfo.taskTypeLabel`) 그대로 그린다.
+ */
+export const TASK_TYPE_LABELS_KO: Record<TaskType, string> = {
+  binary: "이진 분류",
+  multiclass: "다중 클래스 분류",
+  multilabel: "다중 레이블 분류",
+};
+
+/** 성적서에 싣는 유형 이름. 화면과 같은 표다(W9) — 이름만 남겨 둔다. */
+export const TASK_TYPE_LABELS: Record<TaskType, string> = TASK_TYPE_LABELS_KO;
+
+/**
+ * W9 이전에 성적서에 싣던 영문 유형 이름 — 옛 발급본을 알아보는 데만 쓴다(2026-10-18 사용자 결정
+ * "성적서 유형 이름 한국어, 발급본은 그대로"). 새 성적서에 쓰지 않는다.
+ */
+export const LEGACY_TASK_TYPE_LABELS: Record<TaskType, string> = {
   binary: "Binary",
   multiclass: "Multi-class",
   multilabel: "Multi-label",
 };
 
 /**
- * 한국어 유형 이름.
- *
- * 표기는 `docs/UI_DESIGN.md` §3·§4 를 따른다 — 그 문서가 유형을 **사용자에게 보여주는 방식**을
- * 정하는 쪽이고, `docs/COMPOSER_DESIGN.md` 의 유형 배지도 거기를 가리킨다.
- *
- * 앱 화면은 모두 이 표를 쓴다(docs/MATERIAL_PICKER.md §8). 위 `TASK_TYPE_LABELS`(영문)는
- * 성적서와 AI 서술에 넘기는 유형 이름이라 그대로 둔다 — 화면 문구를 바꾸면서 출력까지
- * 바꾸지 않는다.
+ * 저장된 유형 이름(`meta.taskTypeLabel`)이 W9 이전의 영문 이름인가 — 옛 발급본이면 그릴 때 정하는
+ * 문구(5.1 공통 지표 안내·6.0 검증 묶음 이름)도 그때 글자로 그린다. 판정은 이 함수 하나다.
  */
-export const TASK_TYPE_LABELS_KO: Record<TaskType, string> = {
-  binary: "이진 분류",
-  multiclass: "다중 클래스",
-  multilabel: "다중 레이블",
+export function isLegacyTaskTypeLabel(label: string | undefined): boolean {
+  return label !== undefined && Object.values(LEGACY_TASK_TYPE_LABELS).includes(label);
+}
+
+/** 저장된 유형 이름에 맞는 유형 이름 표 — 옛 발급본이면 영문 표, 아니면 한국어 표. */
+export function taskTypeLabelsFor(savedLabel: string | undefined): Record<TaskType, string> {
+  return isLegacyTaskTypeLabel(savedLabel) ? LEGACY_TASK_TYPE_LABELS : TASK_TYPE_LABELS_KO;
+}
+
+/**
+ * 유형을 아직 고르지 않았을 때(빈 값) 쓸 유형 — 대체값은 여기 한 곳이다(W9). 종전에는 15곳이 따로
+ * 정해 같은 파일 안에서도 "multiclass"·"binary" 로 갈렸다. 정상 흐름에서는 유형 선택이 첫 화면이라
+ * 빈 값이 오지 않는다.
+ */
+export function resolveTaskType(taskType: TaskType | "" | null | undefined): TaskType {
+  return taskType || "binary";
+}
+
+/**
+ * 유형 한 줄 설명 — 진입 화면의 유형 카드와 머리의 분류 유형 툴팁이 같이 쓴다(같은 문장을 두 벌 두지
+ * 않는다). 세 문장은 같은 골격이다 — 나란히 읽을 때 바뀌는 부분만 눈에 들어와야 차이가 드러난다.
+ */
+export const TASK_TYPE_DESCRIPTIONS_KO: Record<TaskType, string> = {
+  binary: "샘플 하나를 두 범주 중 하나로 나눕니다.",
+  multiclass: "샘플 하나를 여러 범주 중 하나로 나눕니다.",
+  multilabel: "샘플 하나에 맞는 범주를 여러 개 붙입니다.",
 };
 
 export const METRICS: MetricDefinition[] = [
@@ -184,6 +221,37 @@ export const PREDICTION_ROLE_ALTERNATIVES: Record<
 };
 
 /**
+ * 여러 컬럼에 배정돼도 겹침이 아닌 역할 — 확률 컬럼은 클래스·레이블마다 하나씩이다. 백엔드
+ * `MULTI_COLUMN_ROLES`(Capstone_Back/app/core/schemas.py, ignore 포함)의 사본이다(ignore 는 화면이 따로
+ * 센다). 이진의 score 는 양성 클래스 점수 **한 컬럼**이라 여기 없다 — 두 컬럼에 주면 겹침으로 막는다(B13).
+ * 매핑 화면의 겹침 판정·표·배지가 이 표 하나를 쓴다.
+ */
+export const MULTI_COLUMN_ROLES: readonly RequiredColumnCode[] = ["prob_class_*", "prob_label_*"];
+
+/**
+ * 확률 컬럼 이름의 접두어 — 백엔드 `PROB_COLUMN_PREFIXES`(Capstone_Back/app/evaluation/preprocessor.py)의
+ * 사본이다(테스트가 대조한다). 다중 클래스·다중 레이블에서 예측 컬럼 없이 확률로 예측을 만들 때, 백엔드는
+ * 컬럼 이름에서 접두어를 떼어 낸 나머지를 클래스·레이블 이름으로 본다. 이름이 데이터의 클래스·레이블과
+ * 맞지 않으면 검증 화면에서 "확률 컬럼 이름" 오류로 막힌다(M3).
+ */
+export const PROBABILITY_COLUMN_PREFIXES = ["prob_", "probability_", "score_", "p_"] as const;
+
+/**
+ * 확률 컬럼 이름 규칙 안내 한 문장(M3). 업로드 화면의 컬럼 안내와 매핑 화면이 같이 쓴다. 이진은 확률
+ * 컬럼이 하나라 이름을 보지 않으므로 null 이다.
+ */
+export function probabilityColumnNameRule(taskType: TaskType): string | null {
+  if (taskType === "binary") return null;
+  const kind = taskType === "multiclass" ? "클래스" : "레이블";
+  const example = taskType === "multiclass" ? "prob_cat, prob_dog" : "score_sports, score_news";
+  const prefixes = PROBABILITY_COLUMN_PREFIXES.join(" · ");
+  return (
+    `확률 컬럼 이름은 접두어(${prefixes}) 뒤에 데이터의 ${kind} 이름을 그대로 붙입니다. 예: ${example}. ` +
+    `예측 컬럼 없이 확률만 매핑하면 이 이름으로 ${kind}를 찾으므로, 이름이 맞지 않으면 검증 화면에서 막힙니다.`
+  );
+}
+
+/**
  * 요구 역할 중 실제로 배정되지 않은 것.
  *
  * 예측 역할은 확률 역할이 배정돼 있으면 충족된 것으로 본다 — 백엔드가 확률에서
@@ -215,6 +283,7 @@ const COLUMN_ORDER: RequiredColumnCode[] = [
   "latency",
 ];
 
+// 설명 문장의 유형 이름은 유형 이름표(TASK_TYPE_LABELS_KO)를 쓴다(W9 — S10 마무리, 종전 '멀티레이블').
 const COLUMN_DISPLAY: Record<RequiredColumnCode, RequiredColumnDisplay> = {
   id: {
     code: "id",
@@ -224,12 +293,12 @@ const COLUMN_DISPLAY: Record<RequiredColumnCode, RequiredColumnDisplay> = {
   y_true: {
     code: "y_true",
     label: "정답 레이블",
-    description: "실제 정답 값입니다. 멀티레이블이면 정답 레이블 묶음을 한 가지 형식으로 적습니다.",
+    description: `실제 정답 값입니다. ${TASK_TYPE_LABELS_KO.multilabel}이면 정답 레이블 묶음을 한 가지 형식으로 적습니다.`,
   },
   y_pred: {
     code: "y_pred",
     label: "예측 레이블",
-    description: "모델이 예측한 값입니다. 멀티레이블이면 y_true 와 같은 형식으로 예측 레이블 묶음을 적습니다.",
+    description: `모델이 예측한 값입니다. ${TASK_TYPE_LABELS_KO.multilabel}이면 y_true 와 같은 형식으로 예측 레이블 묶음을 적습니다.`,
   },
   score: {
     code: "score",
@@ -244,14 +313,20 @@ const COLUMN_DISPLAY: Record<RequiredColumnCode, RequiredColumnDisplay> = {
   "prob_label_*": {
     code: "prob_label_*",
     label: "레이블별 확률",
-    description: "레이블마다 확률 컬럼이 하나씩 있습니다.",
+    description: "레이블마다 확률 컬럼이 하나씩 있습니다. 예: score_sports, score_news",
   },
   latency: {
     code: "latency",
-    label: "추론 응답시간(ms)",
-    description: "선택. 샘플마다 걸린 추론 시간(밀리초)이며, 응답시간 통계(평균·p50·p95·p99)에 씁니다.",
+    // 평가 흐름 만들기의 항목 이름("지연시간 컬럼")과 맞춘다 — 재료 선택 점검 2층 8번도 '지연시간'이다.
+    label: "지연시간(ms)",
+    description: "선택. 샘플마다 걸린 추론 시간(밀리초)이며, 지연시간 통계(평균·p50·p95·p99)에 씁니다. 이름은 latency_ms 를 권합니다.",
   },
 };
+
+/** 매핑 역할 하나의 화면 이름과 설명. 레지스트리 ① 컬럼 항목의 이름이 이 이름과 맞는지 테스트가 본다. */
+export function getColumnDisplay(code: RequiredColumnCode): RequiredColumnDisplay {
+  return COLUMN_DISPLAY[code];
+}
 
 export function getAvailableMetrics(taskType?: string): MetricDefinition[] {
   if (!taskType || !isTaskType(taskType)) {

@@ -100,6 +100,50 @@ describe("합격 목표값 — 평가 전에 받는다", () => {
 
     expect(useWorkflowStore.getState().metricDetails.M4?.targetValue).toBe("0.8");
   });
+
+  it("넷째 자리부터는 입력 오류이고 '다음'이 잠긴다 (B10)", async () => {
+    useWorkflowStore.setState({ metricDetails: withTargets(["M2", "M17"]) });
+    renderPage();
+
+    await userEvent.type(screen.getByRole("textbox", { name: "M4 목표값" }), "0.855");
+    expect(screen.getByRole("button", { name: "다음" })).toBeEnabled();
+
+    await userEvent.type(screen.getByRole("textbox", { name: "M4 목표값" }), "5");
+    expect(screen.getByText("목표값은 소수 셋째 자리까지 넣으세요.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다음" })).toBeDisabled();
+  });
+});
+
+describe("β 기본값 1.0 (B3)", () => {
+  it("M5 를 고르고 목표값을 먼저 적어도 β 는 1.0 이고 오류가 없으며 '다음'이 열린다", async () => {
+    useWorkflowStore.setState({ selectedMetricIds: ["M4", "M5", "M17"], metricDetails: {} });
+    renderPage();
+
+    await userEvent.type(screen.getByRole("textbox", { name: "M4 목표값" }), "0.8");
+    await userEvent.type(screen.getByRole("textbox", { name: "M5 목표값" }), "0.7");
+    await userEvent.type(screen.getByRole("textbox", { name: "M17 목표값" }), "0.6");
+
+    expect(useWorkflowStore.getState().metricDetails.M5?.beta).toBe("1.0");
+    expect(screen.getByRole("textbox", { name: "β" })).toHaveValue("1.0");
+    expect(screen.queryByText("β는 0보다 큰 숫자여야 합니다.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다음" })).toBeEnabled();
+  });
+
+  it("β 를 직접 지우면 여전히 오류이고 '다음'이 잠긴다", async () => {
+    useWorkflowStore.setState({
+      selectedMetricIds: ["M4", "M5", "M17"],
+      metricDetails: withTargets(["M4", "M17"]),
+    });
+    renderPage();
+    await userEvent.type(screen.getByRole("textbox", { name: "M5 목표값" }), "0.7");
+    expect(screen.getByRole("button", { name: "다음" })).toBeEnabled();
+
+    await userEvent.clear(screen.getByRole("textbox", { name: "β" }));
+
+    expect(useWorkflowStore.getState().metricDetails.M5?.beta).toBe("");
+    expect(screen.getByText("β는 0보다 큰 숫자여야 합니다.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다음" })).toBeDisabled();
+  });
 });
 
 describe("매핑으로 계산할 수 없는 지표 (docs/MATERIAL_PICKER.md §3)", () => {

@@ -18,11 +18,27 @@ import {
   type ComposerCard,
   type ComposerCardId,
   type ComposerField,
+  type ComposerFieldValue,
   type FieldPart,
   type MaterialCategory,
   type OptionalCardId,
   type PickKind,
 } from "../types/reportComposer.types";
+import type { StepId } from "../types/workflow.types";
+
+/**
+ * 글 칸의 글자 수 상한(B7). AI 에 넘기는 고객 입력 전체가 백엔드 상한(2만 자)을 넘으면 서술 요청이
+ * 통째로 거절되므로, 칸 하나가 그 몫을 다 쓰지 못하게 한다. 긴 설명 칸(⑥ 학습 데이터 설명·비고)은
+ * 필드에 따로 적는다.
+ */
+/** 한 줄 글(이름·출처·형식·과제 번호·클래스 설명·기타 직접 입력). */
+export const SHORT_TEXT_MAX_LENGTH = 200;
+/** 1절 대상 문장 안에 끼워 찍히는 한 줄(모델 용도·모델 분류). */
+export const LINE_TEXT_MAX_LENGTH = 100;
+/** 선택지에 덧붙이는 글(allowsNote). */
+export const NOTE_MAX_LENGTH = 500;
+/** "기타"를 고르고 직접 적는 칸(otherChoice). */
+export const OTHER_TEXT_MAX_LENGTH = SHORT_TEXT_MAX_LENGTH;
 
 /**
  * 카드 9개. 배열 순서는 카드 번호 순(①~⑨)이다. 화면과 입력 순서는 `MATERIAL_CATEGORIES` 가 정한다.
@@ -43,6 +59,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     fields: [
       {
         id: "resultFile",
+        dedicatedScreen: true,
         label: "결과 파일",
         inputExample: "predictions.csv (CSV 또는 JSON, 20 MiB 이하)",
         kind: "required",
@@ -51,7 +68,112 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         format: "CSV 또는 JSON 파일 1개, 20 MiB 이하",
         mono: true,
         step: "upload",
-        reportSection: "4절",
+        reportSection: "3절",
+      },
+      // ─── 컬럼 매핑 화면이 받는 항목. 매핑 역할(`columnRoles`)마다 정확히 한 항목이 맡는다 ───
+      {
+        id: "yTrueColumn",
+        dedicatedScreen: true,
+        label: "정답 컬럼",
+        inputExample: "y_true",
+        kind: "required",
+        input: "column",
+        columnRoles: ["y_true"],
+        description: "샘플마다 실제 정답이 적힌 컬럼입니다. 예: label, y_true",
+        mono: true,
+        step: "mapping",
+        reportSection: "3절",
+      },
+      {
+        // 예측 레이블과 확률은 서로 대신할 수 있어(PREDICTION_ROLE_ALTERNATIVES) 한 항목이다.
+        id: "predictionColumns",
+        dedicatedScreen: true,
+        label: "예측 컬럼",
+        inputExample: "y_pred 또는 score · prob_cat, prob_dog …",
+        kind: "required",
+        input: "column",
+        columnRoles: ["y_pred", "score", "prob_class_*", "prob_label_*"],
+        description:
+          "모델이 낸 예측이 적힌 컬럼입니다. 예측 레이블이나 확률 중 하나 이상이 있어야 합니다. 예: y_pred, prob_cat",
+        format: "예측 레이블 컬럼 또는 확률 컬럼(하나 이상)",
+        mono: true,
+        step: "mapping",
+        reportSection: "3절",
+      },
+      {
+        // 선택지는 올린 파일의 정답 값이라 레지스트리에 적지 않는다.
+        id: "positiveClass",
+        dedicatedScreen: true,
+        label: "양성 클래스",
+        inputExample: "정답 값 중 하나 (1, churn …)",
+        kind: "required",
+        taskTypes: ["binary"],
+        input: "single",
+        description: "이진 분류에서 찾아야 하는 쪽으로 볼 정답 값입니다. 예: 이탈 예측이면 churn",
+        format: "정답 값 중 하나 선택. 기본값은 자동 판단",
+        mono: true,
+        step: "mapping",
+        reportSection: "3절",
+      },
+      {
+        id: "decisionThreshold",
+        dedicatedScreen: true,
+        label: "결정 임계값",
+        inputExample: "0.5",
+        kind: "conditional",
+        conditionLabel: "컬럼 매핑에서 예측 레이블 없이 확률 컬럼 선택 시",
+        // 조건은 매핑 결과라 값으로 읽을 수 없다. 예측 컬럼을 넣으면 함께 들어간다.
+        conditionField: "predictionColumns",
+        taskTypes: ["binary", "multilabel"],
+        input: "number",
+        numberRange: { min: 0, max: 1 },
+        description: "확률을 예측으로 바꿀 때 기준이 되는 값입니다. 이 값 이상이면 양성으로 봅니다. 예: 0.5",
+        format: "0~1 사이 숫자. 기본값 0.5, 멀티레이블은 레이블마다",
+        mono: true,
+        step: "mapping",
+        reportSection: "3절",
+      },
+      {
+        id: "latencyColumn",
+        dedicatedScreen: true,
+        label: "지연시간 컬럼",
+        inputExample: "latency_ms",
+        kind: "optional",
+        input: "column",
+        columnRoles: ["latency"],
+        description: "샘플마다 추론에 걸린 시간(밀리초)이 적힌 컬럼입니다. 예: latency_ms",
+        format: "컬럼 하나. 밀리초",
+        mono: true,
+        step: "mapping",
+        reportSection: "6절",
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 8 },
+      },
+      {
+        id: "sampleIdColumn",
+        dedicatedScreen: true,
+        label: "샘플 ID 컬럼",
+        inputExample: "sample_id",
+        kind: "optional",
+        input: "column",
+        columnRoles: ["id"],
+        description: "샘플마다 붙은 고유 식별자 컬럼입니다. 예: sample_id",
+        mono: true,
+        step: "mapping",
+      },
+      {
+        // 값은 스토어의 `classLabelDescriptions` 에 담긴다(매핑 화면의 설명 카드).
+        id: "classLabelDescriptions",
+        dedicatedScreen: true,
+        label: "클래스 레이블 설명",
+        inputExample: "cat = 집고양이 사진 (클래스마다 한 줄)",
+        kind: "optional",
+        input: "entries",
+        maxLength: SHORT_TEXT_MAX_LENGTH,
+        entryKeysFrom: "classes",
+        description: "클래스 값이 무엇을 뜻하는지입니다. 예: cat = 집고양이 사진",
+        step: "mapping",
+        reportSection: "3절",
+        sentToAi: true,
       },
     ],
   },
@@ -66,23 +188,25 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     fields: [
       {
         id: "selectedMetrics",
+        dedicatedScreen: true,
         label: "지표",
         inputExample: "아래 지표 목록에서 고름 (최소 1개)",
         kind: "required",
         input: "metricSelect",
         description: "모델 성능을 잴 지표입니다. 분류 유형에서 쓸 수 있는 지표 중에 고릅니다. 예: Accuracy, F1, AUROC",
         format: "체크, 최소 1개",
-        reportSection: "3절",
+        reportSection: "5절",
         sentToAi: true,
       },
       {
         id: "passCriteria",
+        dedicatedScreen: true,
         label: "합격 기준",
         inputExample: "Accuracy ≥ 0.85",
         kind: "required",
         input: "entries",
         description: "지표마다 넘어야 할 목표값입니다. 계산한 값과 비교해 합격 여부를 판정합니다. 예: Accuracy 0.85 이상",
-        format: "지표마다 목표값. 혼동행렬은 면제",
+        format: "지표마다 목표값. 혼동행렬·클래스별 표는 면제",
         entryKeysFrom: "metrics",
         mono: true,
         reportSection: "6절",
@@ -90,6 +214,8 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       },
       {
         id: "beta",
+        dedicatedScreen: true,
+        conditionField: "selectedMetrics",
         label: "β",
         inputExample: "1.0",
         kind: "conditional",
@@ -97,7 +223,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         input: "number",
         description: "Fβ에서 재현율과 정밀도 중 어느 쪽을 더 무겁게 볼지 정하는 값입니다. 1보다 크면 재현율, 작으면 정밀도를 더 봅니다. 예: 2",
         mono: true,
-        reportSection: "6절",
+        reportSection: "5절",
       },
       {
         // 멀티레이블에서만 묻는다. 세 지표군의 뜻이 서로 달라 고른 이유를 성적서에 적는다.
@@ -137,8 +263,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         // 지표 격자 바로 아래에서 레지스트리로 그린다. 카드의 나머지 필드(지표·β·합격 기준·핵심
         // 지표)는 지표 화면이 직접 그리고 검사한다.
         step: "metrics",
-        reportSection: "3절",
+        reportSection: "5절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "6.5.1", reportingItem: 12 },
       },
       {
         /**
@@ -150,6 +277,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
          * (`components/test-items/PassCriteriaCard.tsx`).
          */
         id: "coreMetrics",
+        dedicatedScreen: true,
         label: "핵심 지표",
         inputExample: "유형별 기본값: Accuracy · F1 (이진). 최소 1개",
         kind: "required",
@@ -171,6 +299,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     fields: [
       {
         id: "companyInfo",
+        dedicatedScreen: true,
         label: "회사 정보",
         inputExample:
           "회사명: (주)테스트기업 · 대표자: 홍길동 · " +
@@ -186,29 +315,42 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           { key: "address", label: "주소", format: "텍스트", description: "회사 소재지입니다. 예: 서울시 강남구 테헤란로 123" },
         ],
         reportSection: "1절",
+        standardBasis: { standard: "ISO/IEC 17025", clause: "7.8.2.1 e)" },
       },
       {
         id: "reportPurpose",
+        dedicatedScreen: true,
         label: "성적서 용도",
-        inputExample: "내부 검증 / 외부 제출 / 과제 산출물 (덧붙이는 글 가능)",
+        inputExample: "내부 검증 / 외부 제출 / 과제 산출물",
         kind: "required",
         input: "single",
         description: "성적서를 어디에 쓰는지입니다. 과제 산출물을 고르면 과제 정보를 받습니다. 예: 고객사나 기관에 내면 외부 제출",
+        // 저장값은 `basicInfo.reportPurpose` 가 실제로 담는 값이다(성적서의 ReportPurposeKey 와 같다).
+        // 종전 레지스트리는 영어 문장을 적어 두어 어디에도 저장되지 않는 값이었고, 과제 정보의 조건이
+        // 성립할 수 없었다.
         choiceLabels: {
-          "Internal review": "내부 검증",
-          "External submission": "외부 제출",
-          "Project submission": "과제 산출물",
+          internal: "내부 검증",
+          external: "외부 제출",
+          project: "과제 산출물",
         },
-        choices: ["Internal review", "External submission", "Project submission"],
+        choiceDescriptions: {
+          internal: "사내 품질 확인이나 모델 모니터링에 씁니다",
+          external: "고객사나 심사 기관에 냅니다",
+          project: "지원 과제의 증빙으로 냅니다",
+        },
+        choices: ["internal", "external", "project"],
+        // 글은 `basicInfo.reportPurposeNote` 에 담긴다(전용 화면이 받는다).
+        allowsNote: true,
         reportSection: "1절",
       },
       {
         id: "projectInfo",
+        dedicatedScreen: true,
         label: "과제 정보",
         inputExample: "과제명 · 과제 기관",
         kind: "conditional",
         conditionLabel: "성적서 용도에서 과제 산출물 선택 시",
-        requiredWhen: { field: "reportPurpose", equals: "Project submission" },
+        requiredWhen: { field: "reportPurpose", equals: "project" },
         input: "text",
         description: "성적서를 제출할 과제의 정보입니다.",
         parts: [
@@ -219,6 +361,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       },
       {
         id: "contactExtra",
+        dedicatedScreen: true,
         label: "홈페이지·팩스",
         inputExample: "https://example.com · 02-1234-5679",
         kind: "optional",
@@ -232,21 +375,26 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       },
       {
         id: "projectNumber",
+        dedicatedScreen: true,
         label: "과제 번호",
         inputExample: "2026-PRJ-001",
         kind: "optional",
         input: "text",
+        maxLength: SHORT_TEXT_MAX_LENGTH,
         description: "과제의 관리 번호입니다. 예: 2026-PRJ-001",
         mono: true,
         reportSection: "1절",
       },
       {
         id: "requestDate",
+        dedicatedScreen: true,
         label: "평가 의뢰일",
         inputExample: "기본값 오늘",
-        kind: "optional",
+        // 성적서 1.2 와 표지 시험 기간의 시작일이다. 1층 검사(basicInfoValidity)가 늘 요구하므로 필수다 —
+        // 종전에는 선택이라 고르지 않으면 칸이 숨었는데, 빈 값이면 고칠 칸 없이 "다음"이 막혔다.
+        kind: "required",
         input: "date",
-        description: "시험을 의뢰한 날짜입니다. 고르지 않으면 오늘 날짜로 들어갑니다. 예: 2026-10-15",
+        description: "시험을 의뢰한 날짜입니다. 처음에는 평가를 시작한 날로 채워집니다. 예: 2026-10-15",
         reportSection: "1절",
       },
     ],
@@ -263,6 +411,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     fields: [
       {
         id: "modelNameVersion",
+        dedicatedScreen: true,
         label: "모델 이름·버전",
         inputExample: "이름: ChurnPredictor · 버전: v1.0.0 (버전 기본값 v1.0.0)",
         kind: "required",
@@ -275,16 +424,34 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         mono: true,
         reportSection: "2절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC 17025", clause: "7.8.2.1 g)" },
       },
       {
         id: "modelPurpose",
+        dedicatedScreen: true,
         label: "모델 용도",
         inputExample: "통신사 고객 이탈 예측",
         kind: "required",
         input: "text",
+        maxLength: LINE_TEXT_MAX_LENGTH,
         description: "모델이 하는 일입니다. 예: 통신사 고객의 이탈 여부 예측",
-        reportSection: "2절",
+        reportSection: "1절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC 17025", clause: "7.8.2.1 g)" },
+      },
+      {
+        // 1절 대상 문장("본 모델은 {분류} 형식으로 구현되었으며…")에 끼워 찍혀 한 줄로 받는다.
+        id: "modelCategory",
+        dedicatedScreen: true,
+        label: "모델 분류",
+        inputExample: "분류 모델 (신경망)",
+        kind: "required",
+        input: "text",
+        maxLength: LINE_TEXT_MAX_LENGTH,
+        description: "모델이 어떤 종류인지 한 줄로 적습니다. 예: 분류 모델(신경망), 텍스트 분류",
+        reportSection: "1절",
+        sentToAi: true,
+        standardBasis: { standard: "ISO/IEC 17025", clause: "7.8.2.1 g)" },
       },
     ],
   },
@@ -323,9 +490,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         help:
           "놓침을 고르면 Recall 또는 β가 1보다 큰 Fβ가, 잘못 잡음을 고르면 Precision 또는 " +
           "β가 1보다 작은 Fβ가 지표에 있어야 합니다. 없으면 지표 화면에서 알려 줍니다.",
-        standardClause: "6.2.6",
         reportSection: "5절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "6.2.6" },
       },
       {
         id: "classPriority",
@@ -349,9 +516,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         help:
           "차례대로 매크로·가중·마이크로 평균 지표가 있어야 합니다. 클래스별 표를 고르면 세 평균이 " +
           "모두 있는 것으로 봅니다. 멀티레이블에서 큰 클래스 우선·개별 샘플 우선은 클래스별 표가 필요합니다.",
-        standardClause: "6.4.3",
         reportSection: "5절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "6.4.3" },
       },
       {
         id: "usageMode",
@@ -367,11 +534,11 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         choices: ["Real-time", "Batch"],
         reportLabels: { "Real-time": "대화형(실시간)", Batch: "배치" },
         help:
-          "실시간 응답을 고르면 응답시간(latency) 컬럼을 매핑했는지 확인합니다. 없으면 생성 전에 알리고, " +
+          "실시간 응답을 고르면 지연시간(latency) 컬럼을 매핑했는지 확인합니다. 없으면 생성 전에 알리고, " +
           "성적서에 응답 속도를 판단할 수 없다고 적습니다.",
-        standardClause: "6.6.2",
         reportSection: "5절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "6.6.2" },
       },
     ],
   },
@@ -386,7 +553,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     locked: false,
     steps: ["trainingData"],
     help:
-      "수집 환경 차이는 같은 클래스의 데이터가 서로 다른 장비, 처리 방식, 사람, 환경에서 " +
+      "수집 방식 차이는 같은 클래스의 데이터가 서로 다른 장비, 처리 방식, 사람, 환경에서 " +
       "모였는지(TS 4213 5.3.8 채널 효과)를 묻습니다. 불균형 보정은 한쪽 클래스에 몰린 " +
       "데이터를 어떻게 다뤘는지(TS 4213 8절)를 묻습니다.",
     fields: [
@@ -396,10 +563,12 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "고객 로그 2024",
         kind: "required",
         input: "text",
+        maxLength: SHORT_TEXT_MAX_LENGTH,
         description: "모델을 학습시킨 데이터셋의 이름입니다. 예: 고객 로그 2024",
         allowsUnknown: true,
-        reportSection: "7절",
+        reportSection: "3절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 1 },
       },
       {
         /**
@@ -412,10 +581,12 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "사내 CRM 로그 (직접 입력)",
         kind: "required",
         input: "text",
+        maxLength: SHORT_TEXT_MAX_LENGTH,
         description: "학습 데이터를 어디서 얻었는지입니다. 예: 사내 CRM 로그, AI Hub 공개 데이터",
         allowsUnknown: true,
-        reportSection: "7절",
+        reportSection: "3절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 1 },
       },
       {
         id: "trainingVolume",
@@ -432,8 +603,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         mono: true,
         numeric: true,
         allowsUnknown: true,
-        reportSection: "7절",
+        reportSection: "3절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 1 },
       },
       {
         id: "trainingClassVolume",
@@ -446,20 +618,22 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         mono: true,
         numeric: true,
         allowsUnknown: true,
-        reportSection: "7절",
+        reportSection: "3절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 1 },
       },
       {
         id: "channelEffects",
-        label: "수집 환경 차이",
+        // 다섯째 선택지 '수집 환경 차이'와 이름이 겹쳐 칸 이름을 바꿨다(W2). 성적서는 '채널 효과'로 찍는다.
+        label: "수집 방식 차이(채널 효과)",
         inputExample:
-          "알려진 것 없음 / 장비 차이 / 전처리 차이 / 수집자 차이 / 수집 환경 차이 / 기타 (복수 선택)",
+          "알려진 것 없음 / 수집 장치 차이 / 전처리 차이 / 수집자 차이 / 수집 환경 차이 / 기타 (복수 선택)",
         kind: "required",
         input: "multi",
-        description: "같은 클래스의 데이터가 서로 다른 장비, 처리 방식, 사람, 환경에서 모였는지입니다. 예: 정상 사진은 병원 A, 이상 사진은 병원 B 장비로 찍었으면 장비 차이",
+        description: "같은 클래스의 데이터가 서로 다른 장비, 처리 방식, 사람, 환경에서 모였는지입니다. 예: 정상 사진은 병원 A, 이상 사진은 병원 B 장비로 찍었으면 수집 장치 차이",
         choiceLabels: {
           "None known": "알려진 것 없음",
-          "Different equipment": "장비 차이",
+          "Different equipment": "수집 장치 차이",
           "Different processing": "전처리 차이",
           "Different collectors": "수집자 차이",
           "Different surroundings": "수집 환경 차이",
@@ -487,9 +661,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         help:
           "같은 클래스의 데이터가 서로 다른 장비, 처리 방식, 사람, 환경에서 모였는지입니다. " +
           "여러 개일 수 있습니다.",
-        standardClause: "5.3.8",
-        reportSection: "7절",
+        reportSection: "3절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "5.3.8", reportingItem: 9 },
       },
       {
         /**
@@ -519,9 +693,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         otherChoice: "Other (free text)",
         allowsUnknown: true,
         help: "한쪽 클래스에 몰린 데이터를 어떻게 다뤘는지입니다. 여러 개일 수 있습니다.",
-        standardClause: "8절",
-        reportSection: "7절",
+        reportSection: "3절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 3 },
       },
       {
         id: "trainingPeriod",
@@ -531,7 +705,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         input: "monthRange",
         description: "학습 데이터를 모은 기간입니다. 예: 2023-01 ~ 2024-12",
         mono: true,
-        reportSection: "7절",
+        reportSection: "3절",
         sentToAi: true,
       },
       {
@@ -546,8 +720,10 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "데이터에 무엇이 들었고 어떻게 모았는지 (직접 입력)",
         kind: "optional",
         input: "textarea",
+        maxLength: 2_000,
         description: "학습 데이터에 무엇이 들었고 어떻게 모았는지입니다. 예: 2024년 가입 고객의 월별 사용 로그",
-        reportSection: "7절",
+        reportSection: "3절",
+        sentToAi: true,
       },
       {
         // Details 의 학습 데이터 폼에만 있던 칸이다. 폼을 이 카드로 합치면서 옮겼다.
@@ -556,8 +732,10 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "정형 CSV, 이미지(JPG/PNG), 텍스트",
         kind: "optional",
         input: "text",
+        maxLength: SHORT_TEXT_MAX_LENGTH,
         description: "학습 데이터의 파일 형식이나 구조입니다. 예: 정형 CSV, 이미지(JPG/PNG), 텍스트",
-        reportSection: "7절",
+        reportSection: "3절",
+        sentToAi: true,
       },
       {
         id: "trainingNotes",
@@ -565,8 +743,10 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "학습 데이터에 대해 그 밖에 알릴 것 (직접 입력)",
         kind: "optional",
         input: "textarea",
+        maxLength: 1_000,
         description: "학습 데이터에 대해 그 밖에 알릴 내용입니다. 예: 개인정보는 가명 처리함",
-        reportSection: "7절",
+        reportSection: "3절",
+        sentToAi: true,
       },
       {
         /**
@@ -578,7 +758,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
          * 쓸 수 있게 선택지로 받는다. 전처리가 채널 효과의 원인이면 ⑥ "Different processing"이 받는다.
          *
          * ⑥ 학습 데이터 카드에 둔다. 종전에는 ⑦ 테스트 데이터 카드에 있어, ⑦ 을 넣지 않으면 학습
-         * 데이터를 넣어도 이 값을 받을 수 없었다(재료 목록 4절 "AI 예", persist v13 이 옮긴다).
+         * 데이터를 넣어도 이 값을 받을 수 없었다(persist v13 이 옮긴다).
          */
         id: "preprocessingMatch",
         label: "학습과 같은 전처리",
@@ -597,6 +777,31 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         reportSection: "3절",
         sentToAi: true,
         reportLabels: { Same: "같음", Different: "다름", Unknown: "모름" },
+      },
+      // ─── 예시 파일 두 칸. 학습 데이터 화면의 예시 파일 칸(TrainingExamplesSection)이 받는다 ───
+      {
+        id: "trainingExamples",
+        dedicatedScreen: true,
+        label: "적합 예시 파일",
+        inputExample: "normal_01.png, sample.csv",
+        kind: "optional",
+        input: "file",
+        description: "학습 데이터가 어떤 모습인지 보여 주는 대표 예시입니다. 예: 정상으로 분류할 제품 사진",
+        format: "이미지·CSV·JSON 파일",
+        mono: true,
+        reportSection: "3절",
+      },
+      {
+        id: "trainingUnsuitableExamples",
+        dedicatedScreen: true,
+        label: "부적합 예시 파일",
+        inputExample: "blurry_03.png",
+        kind: "optional",
+        input: "file",
+        description: "학습에서 빼거나 다시 봐야 할 경계·부적합 예시입니다. 예: 초점이 흐려 판단할 수 없는 사진",
+        format: "이미지·CSV·JSON 파일",
+        mono: true,
+        reportSection: "3절",
       },
     ],
   },
@@ -618,28 +823,32 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "2025년 1분기 고객 로그 (직접 입력)",
         kind: "required",
         input: "text",
+        maxLength: SHORT_TEXT_MAX_LENGTH,
         description: "성능을 잰 테스트 데이터를 어디서 얻었는지입니다. 예: 2025년 1분기 고객 로그",
         allowsUnknown: true,
-        reportSection: "4절",
+        reportSection: "3절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 2 },
       },
       {
         id: "testSourceRelation",
         label: "학습 데이터와 출처 관계",
-        inputExample: "같음 / 다름",
+        inputExample: "같은 출처 / 다른 출처",
         kind: "required",
         input: "single",
-        description: "테스트 데이터가 학습 데이터와 같은 곳에서 왔는지입니다. 같은 곳이면 점수가 실제보다 좋게 나올 수 있습니다. 예: 같은 CRM 로그에서 나눴으면 같음",
+        description: "테스트 데이터가 학습 데이터와 같은 곳에서 왔는지입니다. 같은 곳이면 점수가 실제보다 좋게 나올 수 있습니다. 예: 같은 CRM 로그에서 나눴으면 같은 출처",
+        // 성적서 이름과 같다(W7). '같음/다름'은 무엇이 같은지 읽히지 않았다.
         choiceLabels: {
-          "Same source": "같음",
-          "Different source": "다름",
+          "Same source": "같은 출처",
+          "Different source": "다른 출처",
         },
         choices: ["Same source", "Different source"],
         reportLabels: { "Same source": "같은 출처", "Different source": "다른 출처" },
         allowsUnknown: true,
         help: "둘이 같은 곳에서 왔으면 점수가 실제보다 좋게 나올 수 있습니다.",
-        reportSection: "4절",
+        reportSection: "3절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 2 },
       },
       {
         id: "testPeriod",
@@ -649,7 +858,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         input: "monthRange",
         description: "테스트 데이터를 모은 기간입니다. 예: 2025-01 ~ 2025-03",
         mono: true,
-        reportSection: "4절",
+        reportSection: "3절",
         sentToAi: true,
       },
     ],
@@ -668,13 +877,13 @@ export const COMPOSER_CARDS: ComposerCard[] = [
       {
         id: "labelAuthor",
         label: "라벨 작성 주체",
-        inputExample: "전문가 / 외부 작업자 / 프로그램·규칙 / 실제 결과 기록 / 기타",
+        inputExample: "전문가 / 크라우드소싱(외부 작업자) / 프로그램·규칙 / 실제 결과 기록 / 기타",
         kind: "required",
         input: "single",
         description: "정답을 붙인 주체입니다. 실제 결과 기록은 사후에 확인된 결과를 정답으로 쓴 경우입니다. 예: 의사가 진단명을 붙였으면 전문가",
         choiceLabels: {
           "Domain experts": "전문가",
-          "Outside workers": "외부 작업자",
+          "Outside workers": "크라우드소싱(외부 작업자)",
           "A program or rule": "프로그램·규칙",
           "Recorded outcomes": "실제 결과 기록",
           "Other (free text)": "기타(직접 입력)",
@@ -695,20 +904,28 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         },
         otherChoice: "Other (free text)",
         allowsUnknown: true,
-        reportSection: "4절",
+        reportSection: "3절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 4 },
       },
       {
         id: "labelReview",
-        label: "라벨 검수 방식",
-        inputExample: "복수 교차 검수 / 1인 검수 / 검수 없음",
+        // 화면 이름은 성적서에 찍히는 사실과 같은 말로 쓴다(W1). 종전 화면은 '1인 검수'였는데 성적서는
+        // '단일 라벨러'로 찍어, 한 사람이 붙이고 다른 한 사람이 검수한 경우가 다른 사실로 인쇄됐다.
+        label: "정답 라벨 신뢰성",
+        inputExample: "복수 라벨러 합의 / 단일 라벨러 / 검토 없음",
         kind: "required",
         input: "single",
-        description: "붙인 정답을 어떻게 다시 확인했는지입니다. 예: 두 사람이 따로 붙이고 맞춰 봤으면 복수 교차 검수",
+        description: "정답을 몇 사람이 붙였고 서로 맞춰 봤는지입니다. 예: 두 사람이 따로 붙이고 맞춰 봤으면 복수 라벨러 합의",
         choiceLabels: {
-          "Several reviewers": "복수 교차 검수",
-          "One reviewer": "1인 검수",
-          "No review": "검수 없음",
+          "Several reviewers": "복수 라벨러 합의",
+          "One reviewer": "단일 라벨러",
+          "No review": "검토 없음",
+        },
+        choiceDescriptions: {
+          "Several reviewers": "두 사람 이상이 따로 붙이고 맞춰 봤어요",
+          "One reviewer": "한 사람이 붙였어요",
+          "No review": "붙인 정답을 다시 확인하지 않았어요",
         },
         choices: ["Several reviewers", "One reviewer", "No review"],
         reportLabels: {
@@ -717,8 +934,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           "No review": "검토 없음",
         },
         allowsUnknown: true,
-        reportSection: "4절",
+        reportSection: "3절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 5 },
       },
       {
         /**
@@ -729,14 +947,16 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         label: "라벨러 수",
         inputExample: "3",
         kind: "conditional",
-        conditionLabel: "라벨 검수 방식에서 복수 교차 검수 선택 시",
+        conditionLabel: "정답 라벨 신뢰성에서 복수 라벨러 합의 선택 시",
         requiredWhen: { field: "labelReview", equals: "Several reviewers" },
         input: "number",
         description: "정답을 붙인 사람 수입니다. 예: 3",
-        numberRange: { min: 1, integer: true },
+        // 복수 라벨러 합의일 때만 받으므로 2명부터다(W10). 2명이면 Cohen, 3명 이상이면 Fleiss 의 카파와 맞물린다.
+        numberRange: { min: 2, integer: true },
         mono: true,
-        reportSection: "4절",
+        reportSection: "3절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절" },
       },
       {
         /**
@@ -752,7 +972,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample:
           "단순 일치율 / Cohen의 카파 / Fleiss의 카파 / Krippendorff의 알파 / 기타 / 측정 안 함",
         kind: "conditional",
-        conditionLabel: "라벨 검수 방식에서 복수 교차 검수 선택 시",
+        conditionLabel: "정답 라벨 신뢰성에서 복수 라벨러 합의 선택 시",
         requiredWhen: { field: "labelReview", equals: "Several reviewers" },
         input: "single",
         description: "라벨러끼리 일치도를 무엇으로 쟀는지입니다. 라벨러가 2명이면 Fleiss의 카파, 3명 이상이면 Cohen의 카파를 고를 수 없습니다. 예: 두 사람이면 Cohen의 카파",
@@ -795,6 +1015,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           Other: "기타",
           "Not measured": "측정 안 함",
         },
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절" },
       },
       {
         // 단순 일치율은 화면에서 % 로 받는다(0~100). 카파·알파는 −1~1, 기타는 검사하지 않는다.
@@ -827,6 +1048,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         mono: true,
         reportSection: "3절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절" },
       },
     ],
   },
@@ -844,11 +1066,13 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "XGBoost",
         kind: "required",
         input: "text",
+        maxLength: SHORT_TEXT_MAX_LENGTH,
         description: "모델 학습에 쓴 알고리즘입니다. 예: 랜덤포레스트, XGBoost",
         mono: true,
         allowsUnknown: true,
-        reportSection: "2절",
+        reportSection: "4절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "5.3.10", reportingItem: 10 },
       },
       {
         id: "hyperparameters",
@@ -859,8 +1083,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         description: "학습할 때 정한 설정값입니다. 예: max_depth = 6, n_estimators = 300",
         mono: true,
         allowsUnknown: true,
-        reportSection: "2절",
+        reportSection: "4절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "5.3.10", reportingItem: 10 },
       },
       {
         /**
@@ -888,7 +1113,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         entryKeys: ["Operating system", "CPU", "GPU", "Memory", "Software"],
         mono: true,
         allowsUnknown: true,
-        reportSection: "8절",
+        reportSection: "4절",
         sentToAi: true,
         legacy: {
           target: "basicInfo",
@@ -900,6 +1125,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
             Software: "envSoftware",
           },
         },
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "8절", reportingItem: 7 },
       },
       {
         id: "gpuUsage",
@@ -920,9 +1146,11 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         entryKeys: ["Training", "Inference"],
         choices: ["Yes", "No", "Unknown"],
         reportLabels: { Yes: "예", No: "아니오", Unknown: "모름" },
-        allowsUnknown: true,
-        reportSection: "8절",
+        // 칸마다 "모름" 선택지가 있어 필드 모름 체크를 두지 않는다(W3). 성적서에는 "제공되지 않음"(N8).
+        unknownChoice: "Unknown",
+        reportSection: "4절",
         sentToAi: true,
+        standardBasis: { standard: "ISO/IEC TS 4213", clause: "5.3.12", reportingItem: 11 },
       },
     ],
   },
@@ -965,6 +1193,24 @@ export function getCardFields(id: ComposerCardId, taskType: TaskType | ""): Comp
  */
 export function choiceLabel(field: ComposerField, value: string): string {
   return field.choiceLabels?.[value] ?? value;
+}
+
+/**
+ * 칸마다 "모름"을 고르는 필드인가(W3) — 칸이 정해진 글·숫자 묶음(⑥ 데이터 양, ⑨ 실행 환경). 선택지로
+ * 고르는 묶음(⑨ GPU 사용 여부)은 선택지에 모름이 있어(`unknownChoice`) 여기 들지 않는다.
+ */
+export function unknownPerEntry(field: ComposerField): boolean {
+  return field.input === "entries" && Boolean(field.entryKeys) && !field.choices && Boolean(field.allowsUnknown);
+}
+
+/** 이 칸을 "모름"으로 골랐는가 — 필드 모름이든 칸별 모름이든. */
+export function isEntryUnknown(value: ComposerFieldValue | undefined, key: string): boolean {
+  return Boolean(value?.unknown || value?.unknownKeys?.includes(key));
+}
+
+/** 모름으로 답할 길이 있는가 — 필드 모름 체크 또는 "모름" 선택지. 안내 문구가 "모르면 모름을 고르세요"를 붙일지 정한다. */
+export function canAnswerUnknown(field: ComposerField): boolean {
+  return Boolean(field.allowsUnknown || field.unknownChoice);
 }
 
 /** `entryKeys` 행의 화면 이름. 이름표가 없으면 키를 그대로 보인다(클래스 이름 등). */
@@ -1069,12 +1315,14 @@ export function fieldFormat(field: ComposerField): string {
     case "multi":
       return withNote("여러 개 선택: " + choiceList(field));
     case "entries":
-      if (field.entryKeysFrom === "classes") return "클래스마다 숫자";
+      if (field.entryKeysFrom === "classes") return field.numeric ? "클래스마다 숫자" : "클래스마다 한 줄 글";
       if (field.entryKeysFrom === "metrics") return "지표마다 값";
       if (field.entryKeys) return fieldParts(field).map((part) => part.label).join(" · ");
       return "\"이름 = 값\" 줄 추가";
     case "metricSelect":
       return "지표 선택";
+    case "column":
+      return field.columnRoles && field.columnRoles.length > 1 ? "컬럼 하나 이상" : "컬럼 하나";
   }
 }
 
@@ -1121,6 +1369,102 @@ export function pickableIds(cardId: ComposerCardId, taskType: TaskType | ""): st
     }
     return [];
   });
+}
+
+// ─── 평가 흐름 만들기의 항목(leaf) ──────────────────────────────────────────────
+//
+// 항목 id 는 materialPicks 에 들어가는 값이다. 필수·권장은 필드 하나가 항목 하나이고, 고를 수 있는
+// 칸이 나뉜 선택 필드만 칸마다 항목이다(`필드id:key`). 조건부 필드는 저장하지 않는다 — 조건을 정하는
+// 필드를 넣으면 함께 들어간다(conditionTriggerIds).
+
+/**
+ * 평가 흐름 만들기의 항목 구분. `pickKind` 와 같되, 잠긴 카드의 선택 필드 중 2층 보고 항목
+ * (`standardBasis.reportingItem`)은 **권장**이다 — ① 지연시간 컬럼.
+ *
+ * `pickKind` 는 바꾸지 않는다. persist v12 이행이 그 뜻("권장이면 모두 넣음")으로 옛 저장분을 옮겨,
+ * 바꾸면 v12 의 결과가 달라진다.
+ */
+export function leafKind(card: ComposerCard, field: ComposerField): PickKind {
+  if (card.locked && field.kind === "optional" && field.standardBasis?.reportingItem !== undefined) {
+    return "recommended";
+  }
+  return pickKind(card, field);
+}
+
+/**
+ * 평가 흐름 만들기에서 넣을 수 있는 항목 id 를 화면 순서로. 조건부는 빠진다. `taskType` 이 `""` 면
+ * 모든 유형의 항목이다.
+ *
+ * persist v15 이행이 부를 함수다 — 뜻을 바꾸려면 새 함수를 더한다(`pickableIds` 와 같은 이유).
+ */
+export function placeableIds(cardId: ComposerCardId, taskType: TaskType | ""): string[] {
+  const card = getCard(cardId);
+  return getCardFields(cardId, taskType).flatMap((field) => {
+    const kind = pickKind(card, field);
+    if (kind === "conditional") return [];
+    if (kind === "optional" && field.parts) return field.parts.map((part) => partPickId(field, part.key));
+    return [field.id];
+  });
+}
+
+/**
+ * 조건부 필드의 **조건을 정하는 필드** id(같은 카드). 조건부가 아니면 빈 배열이다.
+ *
+ * `requiredWhen` 이 있으면 거기서, 없으면 `conditionField` 에서 읽는다 — 둘을 함께 적지 않는다
+ * (테스트가 막는다). 평가 흐름의 "함께 들어감"과 입력 쪽 `isFieldReceived` 가 이 함수 하나를 쓴다.
+ */
+export function conditionTriggerIds(field: ComposerField): string[] {
+  if (field.kind !== "conditional") return [];
+  if (field.requiredWhen) {
+    const conditions = Array.isArray(field.requiredWhen) ? field.requiredWhen : [field.requiredWhen];
+    return [...new Set(conditions.map((condition) => condition.field))];
+  }
+  return field.conditionField ? [field.conditionField] : [];
+}
+
+/** 항목 id 가 가리키는 필드. 칸 항목(`필드id:key`)이면 그 필드다. 모르는 id 면 `undefined`. */
+export function fieldOfLeaf(cardId: ComposerCardId, leafId: string): ComposerField | undefined {
+  const fieldId = leafId.split(":")[0];
+  return getCard(cardId).fields.find((field) => field.id === fieldId);
+}
+
+/** 항목을 받는 입력 단계 — 필드의 단계, 없으면 카드의 첫 단계. */
+export function stepOfLeaf(cardId: ComposerCardId, leafId: string): StepId {
+  return fieldOfLeaf(cardId, leafId)?.step ?? getCard(cardId).steps[0];
+}
+
+/**
+ * 입력 화면이 이 필드를 받는가 — `isFieldPicked` 에 더해, 조건부면 **조건을 정하는 필드도 받을 때만**
+ * 받는다(B2). 조건을 정하는 필드가 조건부면 그 조건도 따진다(⑧ 일치도 값 ← 일치도 종류 ← 검수 방식).
+ *
+ * `isFieldPicked` 의 뜻은 바꾸지 않는다. 조건부까지 따져야 하는 곳 — 입력 화면(`ComposerCardForm`)·
+ * 필수 점검(`getFieldIssue`)·성적서 매퍼(`pickedValues`) — 이 이 함수를 쓴다.
+ */
+export function isFieldReceived(
+  card: ComposerCard,
+  field: ComposerField,
+  picks: readonly string[] | undefined,
+): boolean {
+  if (!isFieldPicked(card, field, picks)) return false;
+  return conditionTriggerIds(field).every((triggerId) => {
+    const trigger = card.fields.find((item) => item.id === triggerId);
+    return trigger !== undefined && isFieldReceived(card, trigger, picks);
+  });
+}
+
+/**
+ * 입력 쪽에서 이 항목을 받는가 — 항목 id(칸 항목이면 그 필드)로 `isFieldReceived` 를 부른다.
+ * `cardPicks` 는 그 카드의 picks 다. 없으면(평가 흐름 만들기 이전의 상태) 받는다. 모르는 id 면 false.
+ *
+ * 전용 화면이 받는 항목(① 클래스 레이블 설명·⑥ 예시 파일)과 검증 화면의 "컬럼 매핑에서 고치기"가 쓴다.
+ */
+export function isLeafReceived(
+  cardId: ComposerCardId,
+  leafId: string,
+  cardPicks: readonly string[] | undefined,
+): boolean {
+  const field = fieldOfLeaf(cardId, leafId);
+  return field !== undefined && isFieldReceived(getCard(cardId), field, cardPicks);
 }
 
 /**

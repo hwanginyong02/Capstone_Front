@@ -1,3 +1,5 @@
+import type { MetricDetailState } from "../../types/workflow.types";
+
 /**
  * 평가 데이터 유효성 검사 규칙
  *
@@ -35,13 +37,17 @@ export function getTargetValueRule(metricId: string): { summary: string; validat
     "M11",
     "M12",
     "M13",
+    // M14(클래스 분포 차이)는 총변동거리 0.5·Σ|P−Q|, M18(레이블 분포 차이)은 코사인 거리 1−cos 이라
+    // 둘 다 0~1 이다(백엔드 multiclass.py·multilabel.py). 종전에는 0 이상만 봐 1 을 넘는 목표를 받았다(B9).
+    "M14",
     "M15",
     "M16",
     "M17",
+    "M18",
     "M22",
   ]);
 
-  const nonNegativeIds = new Set(["M6", "M14", "M18", "M19"]);
+  const nonNegativeIds = new Set(["M6", "M19"]);
 
   if (zeroToOneIds.has(metricId)) {
     return {
@@ -75,6 +81,19 @@ export function getTargetValueRule(metricId: string): { summary: string; validat
     summary: "목표값을 숫자로 넣으세요.",
     validate: () => null,
   };
+}
+
+/**
+ * 합격 목표값의 소수 자릿수 상한. 목표값은 셋째 자리까지만 받고(넷째 자리부터 입력 오류), 성적서는
+ * 같은 자릿수로 찍는다(B10). 그래야 인쇄된 목표값과 판정에 쓴 목표값이 같다 — 종전에는 0.855 를
+ * 받아 "≥ 0.86" 으로 찍고 0.855 로 판정했다.
+ */
+export const TARGET_DIGITS = 3;
+
+/** 소수 `TARGET_DIGITS` 자리 안에 드는 값인가(지수 표기 입력도 값으로 본다). */
+export function fitsTargetDigits(value: number): boolean {
+  const scaled = value * 10 ** TARGET_DIGITS;
+  return Math.abs(scaled - Math.round(scaled)) < 1e-6;
 }
 
 /**
@@ -113,11 +132,33 @@ export function resolveTargetValue(metricId: string, raw: string | undefined): n
  * (지표 화면이 그 값을 막는다).
  */
 export function resolveBeta(metricDetails: Record<string, { beta?: string } | undefined> | null | undefined): number {
-  return parseFloat(metricDetails?.["M5"]?.beta || "1.0");
+  return parseFloat(metricDetails?.["M5"]?.beta || DEFAULT_BETA);
 }
+
+/**
+ * Fβ(M5)의 β 기본값. β 칸의 처음 값, 저장값이 없을 때의 화면 표시, 평가 요청이 모두 이 하나를 쓴다.
+ * 종전에는 목표값을 β 보다 먼저 적으면 M5 줄이 `beta: ""` 로 만들어져 β 칸이 비고 "다음"이 잠겼다(B3).
+ */
+export const DEFAULT_BETA = "1.0";
 
 /** β 입력이 쓸 수 있는 값인가(0 보다 큰 숫자). 지표 화면과 검증 화면의 1층 재확인이 같은 규칙을 쓴다. */
 export function isBetaValid(raw: string | undefined): boolean {
-  const beta = raw ?? "1.0";
+  const beta = raw ?? DEFAULT_BETA;
   return beta.trim() !== "" && Number.isFinite(Number(beta)) && Number(beta) > 0;
+}
+
+/**
+ * 지표 하나의 처음 상세 값. β 칸과 목표값 칸 중 어느 쪽을 먼저 적어도 이 함수로 줄을 만든다 —
+ * Fβ(M5)는 β 가 `DEFAULT_BETA` 로 시작한다. 다른 지표의 β 는 쓰이지 않아 비워 둔다.
+ */
+export function newMetricDetail(id: string, name: string): MetricDetailState {
+  return {
+    id,
+    name,
+    description: "",
+    targetValue: "",
+    beta: id === "M5" ? DEFAULT_BETA : "",
+    positiveClass: "",
+    completed: false,
+  };
 }

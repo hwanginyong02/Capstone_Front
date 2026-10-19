@@ -43,8 +43,8 @@ function renderRail() {
   );
 }
 
-/** 단계 버튼만 — 목록 위의 "재료 고르기" 버튼은 단계가 아니다. */
-const stepButtons = () => within(screen.getByRole("list", { name: "입력 단계" })).getAllByRole("button");
+/** 단계 버튼만 — 목록 위의 "평가 흐름 만들기" 버튼은 단계가 아니다. */
+const stepButtons = () => within(screen.getByRole("list", { name: "입력 화면" })).getAllByRole("button");
 
 /** 걸을 전 단계를 완료로 표시한다(이름을 직접 쓰지 않는다). */
 function completeAllSteps() {
@@ -136,7 +136,7 @@ describe("단계 수는 고른 카드에서 나온다", () => {
     expect(screen.getByRole("button", { name: /지표와 합격 기준/ })).toBeDisabled();
   });
 
-  it("재료 고르기에서 정한 순서를 따른다 — 모델 레인을 앞으로 옮기면 평가 대상 모델이 첫 단계다", () => {
+  it("평가 흐름 만들기에서 정한 순서를 따른다 — 모델 레인을 앞으로 옮기면 평가 대상 모델이 첫 단계다", () => {
     useWorkflowStore.setState({ cardOrder: moveLane(DEFAULT_CARD_ORDER, "model", "info", "before") });
 
     renderRail();
@@ -146,12 +146,12 @@ describe("단계 수는 고른 카드에서 나온다", () => {
   });
 });
 
-describe("재료 고르기로 돌아가기", () => {
-  it("목록 위의 버튼은 언제든 재료 고르기로 간다 — 순서와 넣을 항목을 다시 본다", async () => {
+describe("평가 흐름 만들기로 돌아가기", () => {
+  it("목록 위의 버튼은 언제든 평가 흐름 만들기로 간다 — 순서와 넣을 항목을 다시 본다", async () => {
     useWorkflowStore.getState().setCurrentStepId("upload");
 
     renderRail();
-    await userEvent.click(screen.getByRole("button", { name: "재료 고르기" }));
+    await userEvent.click(screen.getByRole("button", { name: "평가 흐름 만들기" }));
 
     expect(screen.getByTestId("material-picker")).toBeInTheDocument();
   });
@@ -202,10 +202,10 @@ describe("현재·완료·미래 구분", () => {
 });
 
 describe("세로 목록 (docs/MATERIAL_PICKER.md §9)", () => {
-  it("진행 단계 목록으로 읽힌다 — 단계마다 목록 항목이다", () => {
+  it("입력 진행 목록으로 읽힌다 — 단계마다 목록 항목이다", () => {
     renderRail();
 
-    const nav = screen.getByRole("navigation", { name: "진행 단계" });
+    const nav = screen.getByRole("navigation", { name: "입력 진행" });
     expect(within(nav).getAllByRole("listitem")).toHaveLength(8);
   });
 

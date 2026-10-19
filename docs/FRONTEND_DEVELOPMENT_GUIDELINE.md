@@ -21,7 +21,7 @@
 *   **규칙 1**: `src/components/` 하위의 화면 컴포넌트(`BasicInfo`, `TestItems`, `DataUpload` 등)는 오로지 **메인 컨텐츠 영역만 순수하게 렌더링(Pure Content Component)** 해야 합니다. 하단 다음/이전 버튼(`ActionBar`)을 컴포넌트 내부에 포함시키지 마세요.
 *   **규칙 2**: 모든 공통 레이아웃과 화면의 뼈대는 `src/layout/WorkflowShell.tsx`가 전담합니다.
 *   **규칙 3**: 하단 바의 다음 버튼 활성화 여부(`nextDisabled`)나 진행 이벤트(`onNext`)는 화면 컴포넌트 내부에 숨겨두지 말고, 상위 페이지(`pages/*.tsx`)로 상태를 끌어올린(Lifting State) 뒤 `WorkflowShell`의 Props로 전달해야 합니다.
-    *   *예시: 도메인 컴포넌트는 `onValidationChange={(isValid) => setIsValid(isValid)}` 형태의 콜백을 통해 페이지에 상태를 보고하고, 페이지는 `<WorkflowShell nextDisabled={!isValid}>`로 레이아웃을 제어합니다.* *(MATERIAL_PICKER.md로 대체됨, §7 — 재료 고르기의 다음은 막지 않고, 누르면 저장하지 않은 필수 카드를 알린다. 버튼은 페이지가 만들어 `WorkflowShell` 의 `aside` 로 넘긴다)*
+    *   *예시: 도메인 컴포넌트는 `onValidationChange={(isValid) => setIsValid(isValid)}` 형태의 콜백을 통해 페이지에 상태를 보고하고, 페이지는 `<WorkflowShell nextDisabled={!isValid}>`로 레이아웃을 제어합니다.* *(MATERIAL_PICKER.md로 대체됨, §7 — 재료 고르기의 다음은 막지 않고, 누르면 저장하지 않은 필수 카드를 알린다. 버튼은 페이지가 만들어 `WorkflowShell` 의 `aside` 로 넘긴다)* *(MATERIAL_PICKER.md §12.3 으로 대체됨 — 평가 흐름 만들기의 "다음"도 `nextDisabled` 를 쓰지 않는다. 눌리지만 필수 항목이 빠졌으면 넘어가지 않고, 다음 버튼 옆 `role=alert` 로 빠진 필수 항목 이름을 알린다. 판정은 `flowStatus` 한 번)*
 
 ---
 

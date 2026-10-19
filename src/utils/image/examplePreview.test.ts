@@ -9,6 +9,12 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  EXAMPLE_FILE_ACCEPT,
+  isAcceptedExampleFile,
+  isExampleImage,
+  kilobytes,
+  previewBudgetMessage,
+  splitExampleFiles,
   EXAMPLE_PREVIEW_BUDGET_BYTES,
   ISSUE_CONTENT_MAX_BYTES,
   PREVIEW_LONG_SIDES,
@@ -72,5 +78,70 @@ describe("예산과 발급 용량", () => {
     const match = readFileSync(backendSchemas, "utf-8").match(/MAX_CONTENT_BYTES\s*=\s*([\d_]+)/);
     expect(match).not.toBeNull();
     expect(Number(match![1].replaceAll("_", ""))).toBe(ISSUE_CONTENT_MAX_BYTES);
+  });
+});
+
+/** B15 — 예시 파일은 여러 개를 한 번에 받고, 이미지·CSV·JSON 이 아니면 뺀다. 용량 안내는 숫자로. */
+describe("[B15] 예시 파일 형식과 용량 안내", () => {
+  it("이미지·CSV·JSON 은 받고 그 밖은 뺀다 — 형식이 비어도 확장자로 본다", () => {
+    expect(isAcceptedExampleFile({ name: "a.png", type: "image/png" })).toBe(true);
+    expect(isAcceptedExampleFile({ name: "a.heic", type: "image/heic" })).toBe(true);
+    expect(isAcceptedExampleFile({ name: "rows.CSV", type: "" })).toBe(true);
+    expect(isAcceptedExampleFile({ name: "rows.txt", type: "text/csv" })).toBe(true);
+    expect(isAcceptedExampleFile({ name: "a.json", type: "" })).toBe(true);
+    expect(isAcceptedExampleFile({ name: "run.exe", type: "application/x-msdownload" })).toBe(false);
+    expect(isAcceptedExampleFile({ name: "notes.txt", type: "text/plain" })).toBe(false);
+    expect(isAcceptedExampleFile({ name: "csv", type: "" })).toBe(false);
+  });
+
+  it("[S9] 형식이 빈 이미지(일부 브라우저의 HEIC 등)는 확장자로 이미지로 보고 받는다", () => {
+    expect(isAcceptedExampleFile({ name: "IMG_0001.HEIC", type: "" })).toBe(true);
+    expect(isAcceptedExampleFile({ name: "scan.heif", type: "" })).toBe(true);
+    expect(isAcceptedExampleFile({ name: "photo.jpg", type: "" })).toBe(true);
+    expect(isAcceptedExampleFile({ name: "notes.txt", type: "" })).toBe(false);
+    // 끌어 놓기·고르기가 쓰는 나누기도 같다(jsdom 은 이미지를 읽지 못해 화면 대신 함수로 본다).
+    const heic = new File(["x"], "IMG_0001.HEIC", { type: "" });
+    expect(splitExampleFiles([heic]).accepted).toEqual([heic]);
+  });
+
+  it("[S9] isExampleImage — image/* 이거나, 형식이 비었거나 'unknown'(저장된 정보)일 때만 확장자로 본다", () => {
+    expect(isExampleImage({ name: "a.png", type: "image/png" })).toBe(true);
+    expect(isExampleImage({ name: "noext", type: "image/heic" })).toBe(true);
+    expect(isExampleImage({ name: "a.heic", type: "" })).toBe(true);
+    expect(isExampleImage({ name: "a.HEIC", type: "unknown" })).toBe(true);
+    // 브라우저가 형식을 알려 준 파일은 그 형식을 믿는다.
+    expect(isExampleImage({ name: "a.heic", type: "application/octet-stream" })).toBe(false);
+    expect(isExampleImage({ name: "rows.csv", type: "" })).toBe(false);
+    expect(isExampleImage({ name: "png", type: "" })).toBe(false);
+  });
+
+  it("나누어도 고른 순서를 지킨다", () => {
+    const files = [
+      { name: "b.csv", type: "text/csv" },
+      { name: "x.exe", type: "" },
+      { name: "a.png", type: "image/png" },
+      { name: "y.zip", type: "application/zip" },
+    ];
+    expect(splitExampleFiles(files)).toEqual({
+      accepted: [files[0], files[2]],
+      rejected: [files[1], files[3]],
+    });
+  });
+
+  it("파일 고르기 창의 accept 는 같은 세 형식이다", () => {
+    expect(EXAMPLE_FILE_ACCEPT).toBe("image/*,.csv,.json,application/json,text/csv");
+  });
+
+  it("권장값은 600 KB(1 KB = 1,024 바이트) — 발급 상한 1,024 KB 와 같은 단위", () => {
+    expect(EXAMPLE_PREVIEW_BUDGET_BYTES).toBe(614_400);
+    expect(kilobytes(EXAMPLE_PREVIEW_BUDGET_BYTES)).toBe(600);
+    expect(kilobytes(ISSUE_CONTENT_MAX_BYTES)).toBe(1024);
+  });
+
+  it("넘었을 때 안내에 지금 합계·권장값·발급 상한을 숫자로 적는다", () => {
+    expect(previewBudgetMessage(700 * 1024)).toBe(
+      "예시 이미지 미리보기가 합계 700 KB로 권장 600 KB를 넘었습니다. " +
+        "성적서가 발급 용량 한도(1,024 KB)에 가까워졌으니, 발급이 막히면 예시를 몇 장 줄여 주세요.",
+    );
   });
 });

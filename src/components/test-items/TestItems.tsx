@@ -8,6 +8,7 @@ import { Input } from "../ui/input";
 import { ComposerFieldInput } from "../composer-input/ComposerFieldInput";
 import { getCardFields } from "../../data/reportComposer";
 import { cn } from "../../utils/styling/styles";
+import { DEFAULT_BETA, isBetaValid } from "../../utils/domain/validation";
 import type { ComposerFieldValue, ComposerValueMap } from "../../types/reportComposer.types";
 import type { FieldIssue } from "../../utils/domain/composerFieldGate";
 import type { MaterialCheckLine } from "../../types/finalReport.types";
@@ -72,7 +73,7 @@ export function TestItems({
   taskType,
   selectedMetricIds,
   onSelectedMetricsChange,
-  beta = "1.0",
+  beta = DEFAULT_BETA,
   onBetaChange,
   showErrors = false,
   metricCardValues,
@@ -238,7 +239,7 @@ export function TestItems({
                       </span>
                       {!line.met &&
                         (line.recommended.length === 0 ? (
-                          <span className="text-muted-foreground">컬럼 매핑에서 응답시간(latency) 컬럼을 지정해야 채워집니다.</span>
+                          <span className="text-muted-foreground">평가 흐름에 지연시간 컬럼을 넣고 컬럼 매핑에서 latency 역할로 지정해야 채워집니다.</span>
                         ) : addable.length > 0 ? (
                           <Button variant="outline" size="sm" onClick={() => handleAddMetrics(addable)}>
                             추가: {addable.map(metricLabel).join(", ")}
@@ -279,13 +280,9 @@ export function TestItems({
               <p className="text-xs text-muted-foreground">
                 β &gt; 1 이면 재현율을, β &lt; 1 이면 정밀도를 더 무겁게 봅니다. β = 1 은 F1 과 같습니다.
               </p>
-              {(() => {
-                const parsed = Number(beta);
-                const invalid = beta.trim() === "" || !Number.isFinite(parsed) || parsed <= 0;
-                return invalid ? (
-                  <p className="text-xs text-destructive">β는 0보다 큰 숫자여야 합니다.</p>
-                ) : null;
-              })()}
+              {!isBetaValid(beta) && (
+                <p className="text-xs text-destructive">β는 0보다 큰 숫자여야 합니다.</p>
+              )}
             </CardContent>
           </Card>
         )}

@@ -11,7 +11,7 @@
 import { Info } from "lucide-react";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { ComposerFieldInput } from "./ComposerFieldInput";
-import { choiceLabel, getCardFields, isFieldPicked } from "../../data/reportComposer";
+import { choiceLabel, getCardFields, isFieldReceived } from "../../data/reportComposer";
 import type { TaskType } from "../../data/evaluationData";
 import type {
   ComposerCard,
@@ -57,9 +57,10 @@ export function ComposerCardForm({
   showErrors = false,
   picks,
 }: ComposerCardFormProps) {
-  // 받지 않기로 한 필드와 조건이 성립하지 않은 조건부 필드는 그리지 않는다.
-  const fields = getCardFields(card.id, taskType).filter((field) =>
-    isFieldVisible(field, values, isFieldPicked(card, field, picks)),
+  // 받지 않기로 한 필드, 조건을 정하는 필드를 받지 않거나 조건이 성립하지 않은 조건부 필드, 전용
+  // 화면이 받는 필드(⑥ 예시 파일)는 그리지 않는다.
+  const fields = getCardFields(card.id, taskType).filter(
+    (field) => !field.dedicatedScreen && isFieldVisible(field, values, isFieldReceived(card, field, picks)),
   );
   const issueOf = (fieldId: string) => issues.find((issue) => issue.fieldId === fieldId);
 
@@ -88,7 +89,10 @@ export function ComposerCardForm({
                  * (배타 선택)는 지금 당장 틀린 것이라 바로 표시하고, 비어 있는 것은
                  * 사용자가 넘어가려 한 뒤에야 표시한다.
                  */
-                invalid={(issue && issue.reason !== "missing") || (showErrors && Boolean(issue))}
+                invalid={
+                  (issue && issue.reason !== "missing" && issue.reason !== "incompleteRow") ||
+                  (showErrors && Boolean(issue))
+                }
               />
               {issue?.reason === "exclusive" && (
                 <p className="mt-1 text-body-small text-destructive">
@@ -107,6 +111,12 @@ export function ComposerCardForm({
                 <p className="mt-1 text-body-small text-destructive">
                   시작 월과 끝 월을 모두 넣고, 시작 월이 끝 월보다 늦지 않게 하세요.
                 </p>
+              )}
+              {issue?.reason === "duplicateName" && (
+                <p className="mt-1 text-body-small text-destructive">{issue.message}</p>
+              )}
+              {showErrors && issue?.reason === "incompleteRow" && (
+                <p className="mt-1 text-body-small text-destructive">{issue.message}</p>
               )}
               {showErrors && issue?.reason === "missing" && (
                 <p className="mt-1 text-body-small text-destructive">

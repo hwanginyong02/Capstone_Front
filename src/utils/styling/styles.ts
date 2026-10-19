@@ -37,6 +37,11 @@ const twMerge = extendTailwindMerge({
   },
 });
 
+/**
+ * 직접 만든 버튼의 키보드 포커스 표시. `ui/button.tsx` 의 포커스 링과 같은 값이다.
+ */
+export const FOCUS_RING = "outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50";
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

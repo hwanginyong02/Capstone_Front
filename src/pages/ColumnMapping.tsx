@@ -1,10 +1,14 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { useStepFlow } from "../hooks/useStepFlow";
 import { WorkflowShell } from "../layout/WorkflowShell";
 import { ColumnMapping as ColumnMappingContent } from "../components/column-mapping/ColumnMapping";
 import { confirmMapping } from "../lib/report/confirmMappingApi";
 import { FileReuploadNotice } from "../components/workflow/FileReuploadNotice";
+import type { FlowEntryState } from "../types/reportComposer.types";
+import type { MappingRow } from "../types/mapping.types";
+import { evaluationClassNames, keepPositiveClass } from "../utils/domain/evaluationClasses";
 
 /**
  * 컬럼 매핑 — ① 평가 데이터의 두 번째 화면. 업로드 다음이다(docs/MATERIAL_PICKER.md §3).
@@ -24,6 +28,13 @@ export function ColumnMapping() {
   const [isValid, setIsValid] = useState(false);
 
   const [isConfirming, setIsConfirming] = useState(false);
+  const navigate = useNavigate();
+
+  /** 맡아 둔 행의 항목을 평가 흐름에서 넣고 "다음"으로 이 화면에 돌아온다. */
+  const handlePlaceLeaf = (leafId: string) => {
+    const entry: FlowEntryState = { cardId: "evalData", leafIds: [leafId], returnStep: "mapping" };
+    navigate("/app/composer", { state: entry });
+  };
 
   const handleNext = async () => {
     setIsConfirming(true);
@@ -59,6 +70,19 @@ export function ColumnMapping() {
 
   const handlePrevious = () => flow.goPrevious();
 
+  /**
+   * 매핑을 바꾼다. 이진에서 정답 컬럼이 바뀌어 고른 양성 클래스가 새 클래스 목록에 없으면 비운다(B5④) —
+   * 옛 값이 남으면 다른 컬럼의 값을 양성으로 평가한다. 비우면 양성 클래스를 다시 골라야 확정된다.
+   */
+  const handleRowsChange = (value: MappingRow[] | ((prev: MappingRow[]) => MappingRow[])) => {
+    store.setColumnMapping(value);
+    const next = useWorkflowStore.getState();
+    if (next.taskType !== "binary") return;
+    const current = next.metadata?.positive_class ?? "";
+    const kept = keepPositiveClass(current, evaluationClassNames(next.taskType, next.columnMapping, next.metadata), "");
+    if (kept !== current) next.setMetadata({ ...(next.metadata || {}), positive_class: kept });
+  };
+
   const handlePositiveClassChange = (val: string) => {
     store.setMetadata({
       ...(store.metadata || {}),
@@ -80,7 +104,7 @@ export function ColumnMapping() {
       <ColumnMappingContent
         taskType={store.taskType}
         rows={store.columnMapping}
-        onRowsChange={store.setColumnMapping}
+        onRowsChange={handleRowsChange}
         onValidationChange={setIsValid}
         onGoBackToUpload={handlePrevious}
         classLabelDescriptions={store.classLabelDescriptions}
@@ -96,6 +120,8 @@ export function ColumnMapping() {
             : store.metadata?.detected_labels
         }
         columnUniqueValues={store.metadata?.column_unique_values}
+        evalDataPicks={store.materialPicks.evalData}
+        onPlaceLeaf={handlePlaceLeaf}
       />
     </WorkflowShell>
   );

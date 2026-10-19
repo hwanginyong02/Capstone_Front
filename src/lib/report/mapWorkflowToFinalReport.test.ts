@@ -283,6 +283,41 @@ describe("1절 팩스·홈페이지 — 비면 빈 값(줄을 만들지 않음)"
   });
 });
 
+describe("[B11] 1.2 신청인 칸은 다듬어 싣고, 공백뿐이면 '—'", () => {
+  it("각 칸 — 앞뒤 공백을 걷어 내고, 공백만 있으면 '—'", () => {
+    const report = mapWorkflowToFinalReport(
+      baseInput({
+        basicInfo: {
+          ...DEFAULT_BASIC_INFO,
+          companyName: "  테스트 주식회사 ",
+          representative: "   ",
+          businessNumber: " 123-45-67890 ",
+          phone: "\t",
+          address: " 서울 ",
+        },
+      }),
+    );
+    expect(report.applicant).toMatchObject({
+      companyName: "테스트 주식회사",
+      representative: "—",
+      businessNumber: "123-45-67890",
+      contact: "—",
+      address: "서울",
+    });
+  });
+
+  it("과제 이름이 공백뿐이면 과제 정보를 싣지 않고, 기관이 공백뿐이면 '—'", () => {
+    const blank = mapWorkflowToFinalReport(
+      baseInput({ basicInfo: { ...DEFAULT_BASIC_INFO, reportPurpose: "project", projectName: "  ", projectAgency: "기관" } }),
+    );
+    expect(blank.evalScope.projectInfo).toBeUndefined();
+    const agency = mapWorkflowToFinalReport(
+      baseInput({ basicInfo: { ...DEFAULT_BASIC_INFO, reportPurpose: "project", projectName: " AI 과제 ", projectAgency: " " } }),
+    );
+    expect(agency.evalScope.projectInfo).toEqual({ name: "AI 과제", agency: "—" });
+  });
+});
+
 describe("2절 버전 — 기본값은 한 곳에서 정한다(DESIGN_GAPS R5)", () => {
   it.each([
     ["", "v1.0.0"],
@@ -400,5 +435,47 @@ describe("지연시간(8번)은 6.4 에 실제로 찍힐지로 센다 (검토 �
     ).materialCheck!;
     expect(check.warningIds).not.toContain("reporting:8");
     expect(check.warningIds).not.toContain("purpose:latency");
+  });
+});
+
+describe("클래스 레이블 설명 — 적은 클래스만 3절에 (B14)", () => {
+  const withClasses = (descriptions: Record<string, string>) =>
+    baseInput({
+      taskType: "multiclass",
+      columnMapping: [
+        { originalName: "label", sampleValues: ["cat", "dog", "bird"], inferredRole: "y_true", confirmedRole: "y_true", modified: false, warnings: [] },
+      ],
+      classLabelDescriptions: descriptions,
+    });
+
+  it("3개 중 1개만 적으면 1줄", () => {
+    const report = mapWorkflowToFinalReport(withClasses({ cat: "집고양이", dog: "", bird: "   " }));
+    expect(report.datasetInfo.classLabelDescriptions).toEqual([{ label: "cat", description: "집고양이" }]);
+  });
+
+  it("하나도 적지 않으면 표가 없다 — '설명 미입력' 줄을 만들지 않는다", () => {
+    expect(mapWorkflowToFinalReport(withClasses({})).datasetInfo.classLabelDescriptions).toBeUndefined();
+    expect(mapWorkflowToFinalReport(withClasses({ cat: "", dog: " " })).datasetInfo.classLabelDescriptions).toBeUndefined();
+  });
+
+  it("모두 적으면 클래스 순서대로 모두", () => {
+    const report = mapWorkflowToFinalReport(withClasses({ dog: "개", cat: "고양이", bird: "새" }));
+    expect(report.datasetInfo.classLabelDescriptions?.map((item) => item.label)).toEqual(["cat", "dog", "bird"]);
+  });
+});
+
+describe("목표값 자릿수 — 5절은 셋째 자리(B10)", () => {
+  it("새 성적서는 targetDigits 3 을 싣고 5절 합격 기준을 셋째 자리로 찍는다", () => {
+    const report = mapWorkflowToFinalReport(
+      baseInput({
+        selectedMetricIds: ["M1", "M8"],
+        metricDetails: {
+          M1: { targetValue: "0.855" },
+          M8: { targetValue: "0.1" },
+        } as unknown as MapWorkflowToReportInput["metricDetails"],
+      }),
+    );
+    expect(report.targetDigits).toBe(3);
+    expect(report.metricList.map((item) => item.passCriteria)).toEqual(["≥ 0.855", "≤ 0.100"]);
   });
 });

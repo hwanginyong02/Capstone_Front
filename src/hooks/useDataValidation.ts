@@ -20,6 +20,7 @@ import type { ValidateDataResponseData } from "../types/validation.types";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { DATA_VALIDATION_SHOWCASE } from "../data/dataValidationShowcase";
 import { resolveBeta } from "../utils/domain/validation";
+import { resolveTaskType } from "../data/evaluationData";
 
 interface EvaluationResult {
   workflowSnapshot: MapWorkflowToReportInput;
@@ -50,7 +51,7 @@ export function useDataValidation(): UseDataValidationResult {
     }
 
     if (!store.rawFile) {
-      setError("업로드된 파일이 없습니다. 데이터 업로드 단계로 돌아가 주세요.");
+      setError("업로드된 파일이 없습니다. 평가 데이터 화면으로 돌아가 주세요.");
       return;
     }
 
@@ -62,7 +63,7 @@ export function useDataValidation(): UseDataValidationResult {
       try {
         const backendMappings = store.columnMapping.map((row) => ({
           column: row.originalName,
-          role: translateRoleToBackend(row.confirmedRole, store.taskType || "multiclass"),
+          role: translateRoleToBackend(row.confirmedRole, resolveTaskType(store.taskType)),
           sample_values: row.sampleValues,
         }));
 
@@ -78,7 +79,7 @@ export function useDataValidation(): UseDataValidationResult {
         const beta = resolveBeta(store.metricDetails);
 
         const payload = {
-          task_type: store.taskType || "multiclass",
+          task_type: resolveTaskType(store.taskType),
           column_mappings: backendMappings,
           selected_metric_ids: store.selectedMetricIds,
           metadata: metadata,

@@ -1,8 +1,11 @@
 /**
  * ① 평가 데이터 — 결과 파일 업로드. 다음 단계가 컬럼 매핑이다.
  *
- * **지표 선택보다 앞선다.** 그래서 "선택한 지표가 요구하는 컬럼"을 보여줄 수 없고,
- * `getRequiredColumnsForTaskType` 로 **분류 유형이 쓸 수 있는 컬럼 전체**를 안내한다.
+ * **지표 선택보다 앞선다.** 그래서 "선택한 지표가 요구하는 컬럼"을 보여줄 수 없고, 매핑 화면의
+ * 선택지와 같은 함수(`allowedMappingRoles`)로 **매핑할 수 있는 컬럼 전체**를 안내한다(M2) — 종전에는
+ * 지표 요구표에서 모아 다중 클래스의 확률·샘플 ID 가 빠졌고, 지연시간은 따로 둔 카드가 다른 이름
+ * (추론 시간 컬럼 이름)을 안내했다. 평가 흐름에 놓지 않은 샘플 ID·지연시간은 매핑에서도 받지 않으므로
+ * 여기서도 안내하지 않는다.
  * 확률 컬럼을 포함한 예시를 기본으로 보여주는 것도 같은 이유다 — 나중에 "확률이 없어서
  * AUROC 를 못 쓴다"를 알게 되는 것보다, 처음에 넣을 수 있게 알려주는 편이 낫다.
  *
@@ -16,10 +19,14 @@ import { Badge } from "../ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import {
-  getRequiredColumnsForTaskType,
+  getColumnDisplay,
+  probabilityColumnNameRule,
   TASK_TYPE_LABELS_KO,
+  type RequiredColumnCode,
   type TaskType,
+  resolveTaskType,
 } from "../../data/evaluationData";
+import { allowedMappingRoles } from "../../utils/domain/mappingPicks";
 import type { UploadedFileInfo } from "../../types/workflow.types";
 import {
   getComposerColumnNote,
@@ -43,6 +50,18 @@ interface DataUploadProps {
    * 과거 평가를 편집하거나 새로고침한 뒤에 생긴다(ISSUES.md E-01·E-09).
    */
   needsReupload?: boolean;
+  /** 평가 흐름에서 ① 평가 데이터에 넣은 항목. 없으면(평가 흐름 이전) 모든 컬럼을 안내한다. */
+  evalDataPicks?: readonly string[];
+}
+
+/** 업로드 화면이 안내하는 컬럼 — 매핑 화면의 선택지(ignore 제외)와 같다. */
+export function uploadColumnCodes(
+  taskType: TaskType,
+  evalDataPicks: readonly string[] | undefined,
+): RequiredColumnCode[] {
+  return allowedMappingRoles(taskType, evalDataPicks).filter(
+    (role): role is RequiredColumnCode => role !== "ignore",
+  );
 }
 
 /**
@@ -64,19 +83,23 @@ export function DataUpload({
   uploadedFile,
   onUploadedFileChange,
   needsReupload = false,
+  evalDataPicks,
 }: DataUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   // 백엔드 상한(20 MiB)을 넘는 파일은 올리기 전에 막는다 — 종전에는 안내문이 100MB 라
   // 사용자가 전부 올린 뒤에야 413 을 봤다(G-04a·D-15).
   const [sizeError, setSizeError] = useState<string | null>(null);
 
-  const resolvedTaskType: TaskType = taskType || "multiclass";
-  const requiredColumns = useMemo(
-    () => getRequiredColumnsForTaskType(resolvedTaskType),
-    [resolvedTaskType],
+  const resolvedTaskType: TaskType = resolveTaskType(taskType);
+  const columnCodes = useMemo(
+    () => uploadColumnCodes(resolvedTaskType, evalDataPicks),
+    [resolvedTaskType, evalDataPicks],
   );
+  const requiredColumns = useMemo(() => columnCodes.map(getColumnDisplay), [columnCodes]);
+  // 파일 예시도 같은 판정으로 — 매핑할 수 없는 지연시간 열·안내를 예시에 두지 않는다(S10 마무리).
+  const exampleColumns = { latency: columnCodes.includes("latency") };
   // JSON 예시만 문자열로 쓴다. CSV 는 CsvExampleViewer 가 표로 그린다.
-  const jsonExample = getComposerJsonExample(resolvedTaskType);
+  const jsonExample = getComposerJsonExample(resolvedTaskType, exampleColumns);
 
   const openFilePicker = () => inputRef.current?.click();
 
@@ -113,7 +136,7 @@ export function DataUpload({
       <div>
         <h1 className="text-2xl font-bold text-foreground mb-2">평가 데이터</h1>
         <p className="text-sm text-muted-foreground">
-          모델이 낸 예측 결과 파일을 올리세요. 다음 단계에서 컬럼을 매핑합니다.
+          모델이 낸 예측 결과 파일을 올리세요. 다음 화면에서 컬럼을 매핑합니다.
         </p>
       </div>
 
@@ -177,7 +200,7 @@ export function DataUpload({
             <TabsContent value="csv">
               {/* 표로 그린다 — 줄글 덩어리로 두면 쉼표를 세어야 어느 칸이 비었는지 알 수 있다.
                   안내는 아래에 한 번만 쓰므로 여기서는 끈다. */}
-              <CsvExampleViewer taskType={resolvedTaskType} showNote={false} />
+              <CsvExampleViewer taskType={resolvedTaskType} showNote={false} columns={exampleColumns} />
             </TabsContent>
             <TabsContent value="json">
               <div className="bg-muted rounded-md p-4">
@@ -185,7 +208,7 @@ export function DataUpload({
               </div>
             </TabsContent>
           </Tabs>
-          <p className="text-sm text-muted-foreground">{getComposerColumnNote(resolvedTaskType)}</p>
+          <p className="text-sm text-muted-foreground">{getComposerColumnNote(resolvedTaskType, exampleColumns)}</p>
         </CardContent>
       </Card>
 
@@ -195,7 +218,7 @@ export function DataUpload({
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            {TASK_TYPE_LABELS_KO[resolvedTaskType]}에서 쓸 수 있는 컬럼 전부입니다. 모두 있어야 하는 것은
+            {TASK_TYPE_LABELS_KO[resolvedTaskType]}에서 컬럼 매핑으로 받는 컬럼입니다. 모두 있어야 하는 것은
             아닙니다. 계산할 수 있는 지표는 파일에 어떤 컬럼이 있는지에 따라 달라집니다.
           </p>
 
@@ -213,16 +236,6 @@ export function DataUpload({
             ))}
           </div>
 
-          <div className="rounded-lg border border-primary/30 bg-primary-subtle p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline">inference_time_ms</Badge>
-              <span className="text-sm font-semibold text-foreground">추론 응답시간</span>
-            </div>
-            <p className="text-sm text-foreground-secondary">
-              선택. 샘플마다 응답시간을 밀리초로 하나씩 넣으면 성적서에 평균·P95·P99·최대·최소
-              응답시간이 들어갑니다.
-            </p>
-          </div>
         </CardContent>
       </Card>
     </main>
@@ -234,19 +247,24 @@ function getColumnHelpText(code: string, fallback: string) {
     return "평가 샘플마다 고유하게 가리키는 컬럼입니다. 모든 행에 겹치지 않는 식별자가 있어야 합니다.";
   }
   if (code === "y_true") {
-    return "샘플마다 정답이 들어 있는 컬럼입니다. 멀티레이블이면 정답 레이블 묶음을 sports|news 처럼 한 가지 형식으로 적습니다.";
+    return `샘플마다 정답이 들어 있는 컬럼입니다. ${TASK_TYPE_LABELS_KO.multilabel}이면 정답 레이블 묶음을 sports|news 처럼 한 가지 형식으로 적습니다.`;
   }
   if (code === "y_pred") {
-    return "샘플마다 모델의 예측이 들어 있는 컬럼입니다. 멀티레이블이면 예측 레이블 묶음을 y_true 와 같은 형식으로 적습니다.";
+    return `샘플마다 모델의 예측이 들어 있는 컬럼입니다. ${TASK_TYPE_LABELS_KO.multilabel}이면 예측 레이블 묶음을 y_true 와 같은 형식으로 적습니다.`;
   }
   if (code === "score") {
     return "확신 점수를 담는 컬럼입니다. 이진 분류에서는 보통 양성 클래스의 점수입니다.";
   }
   if (code === "prob_class_*") {
-    return "클래스마다 확률 컬럼을 하나씩 둡니다. 예: prob_cat, prob_dog, prob_bird";
+    // 이름 규칙(M3)은 매핑 화면과 같은 문장이다 — 접두어는 백엔드 PROB_COLUMN_PREFIXES 의 사본.
+    return `클래스마다 확률 컬럼을 하나씩 둡니다. ${probabilityColumnNameRule("multiclass")}`;
   }
   if (code === "prob_label_*") {
-    return "멀티레이블에서는 레이블마다 확률 컬럼을 하나씩 둡니다.";
+    return `${TASK_TYPE_LABELS_KO.multilabel}에서는 레이블마다 확률 컬럼을 하나씩 둡니다. ${probabilityColumnNameRule("multilabel")}`;
+  }
+  if (code === "latency") {
+    // 이름은 latency_ms 하나로 안내한다(M4) — 자동 매핑과 규칙 폴백이 이 이름을 알아본다.
+    return "선택. 샘플마다 추론에 걸린 시간을 밀리초(ms)로 담는 컬럼입니다. 이름을 latency_ms 로 두면 자동으로 찾습니다. 성적서에 평균·P95·P99·최대·최소 지연시간이 들어갑니다.";
   }
   return fallback;
 }

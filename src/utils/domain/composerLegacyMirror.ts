@@ -20,6 +20,7 @@ import type {
   ComposerFieldValue,
   LegacyTarget,
 } from "../../types/reportComposer.types";
+import { isEntryUnknown } from "../../data/reportComposer";
 
 export interface LegacyPatch {
   basicInfo?: Record<string, string>;
@@ -41,8 +42,8 @@ function entryValue(value: ComposerFieldValue, key: string): string {
 /**
  * 이 필드 하나를 기존 저장소에 반영하는 patch. 연결이 없으면 빈 객체다.
  *
- * **"모름"은 빈 값으로 보낸다.** 기존 저장소에는 모름을 담을 자리가 없고, 성적서는 빈 칸을
- * "제공되지 않음"으로 그린다 — 뜻이 맞아떨어진다.
+ * **"모름"은 빈 값으로 보낸다**(필드 모름이면 모든 칸, 칸별 모름이면 그 칸). 기존 저장소에는 모름을 담을
+ * 자리가 없고, 성적서는 빈 칸을 "제공되지 않음"으로 그린다 — 뜻이 맞아떨어진다.
  */
 export function buildLegacyPatch(
   field: ComposerField,
@@ -56,8 +57,9 @@ export function buildLegacyPatch(
 
   if ("byKey" in link) {
     const patch: Record<string, string> = {};
+    // 칸별 "모름"(W3)은 그 칸만 비운다 — 4절은 그 칸만 "제공되지 않음", 2층 7번은 그 칸 이름만 빠졌다고 센다.
     for (const [key, legacyField] of Object.entries(link.byKey)) {
-      patch[legacyField] = cleared ? "" : entryValue(value, key);
+      patch[legacyField] = cleared || isEntryUnknown(value, key) ? "" : entryValue(value, key);
     }
     return { [target]: patch };
   }

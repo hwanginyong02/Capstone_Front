@@ -1,6 +1,19 @@
+import { useId, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { ArrowLeft, BadgeCheck, Download, Home, LayoutDashboard, RefreshCw, Stamp } from "lucide-react";
 import { Button } from "../../ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../ui/dialog";
+import { Label } from "../../ui/label";
+import { ISSUANCE_TEXT_MAX_CHARS } from "../../../lib/report/issuanceApi";
+import { cn } from "../../../utils/styling/styles";
 
 interface ReportLayoutProps {
   children: React.ReactNode;
@@ -13,8 +26,52 @@ interface ReportLayoutProps {
   reportId?: string;
   /** 발급/재발급 호출 진행 중 */
   busy?: boolean;
-  onIssue?: () => void;
+  /** 발급. `note` 는 발급 비고(선택, 앞뒤 공백을 뗀 값 — 비면 ""). */
+  onIssue?: (note: string) => void;
+  /** 정정 발급. `note` 는 정정 사유(필수, 앞뒤 공백을 뗀 값). */
   onReissue?: (note: string) => void;
+}
+
+/** 대화상자 안의 여러 줄 입력 칸. 상한은 백엔드와 같은 `ISSUANCE_TEXT_MAX_CHARS` 다. */
+function IssuanceTextField({
+  label,
+  value,
+  onChange,
+  hint,
+  error,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  hint: string;
+  error?: string;
+}) {
+  const id = useId();
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={id}>{label}</Label>
+      <textarea
+        id={id}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        maxLength={ISSUANCE_TEXT_MAX_CHARS}
+        rows={3}
+        aria-invalid={Boolean(error)}
+        aria-describedby={`${id}-hint`}
+        className={cn(
+          "border-input bg-input-background placeholder:text-muted-foreground min-h-20 w-full rounded-md border px-3 py-2 text-sm outline-none",
+          "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+          "aria-invalid:border-destructive",
+        )}
+      />
+      <div id={`${id}-hint`} className="flex items-start justify-between gap-3 text-xs">
+        <span className={error ? "text-destructive" : "text-muted-foreground"}>{error ?? hint}</span>
+        <span className="shrink-0 tabular-nums text-muted-foreground">
+          {value.length}/{ISSUANCE_TEXT_MAX_CHARS}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export function ReportLayout({
@@ -28,18 +85,40 @@ export function ReportLayout({
   onReissue,
 }: ReportLayoutProps) {
   const navigate = useNavigate();
+  // 발급·정정 발급은 화면 안 대화상자로 받는다(B16). 종전 window.prompt 는 빈 사유를 말없이 버리고
+  // 글자 수 상한도 알리지 못했다.
+  const [dialog, setDialog] = useState<"issue" | "reissue" | null>(null);
+  const [note, setNote] = useState("");
+  const trimmedNote = note.trim();
+  // 대화상자를 연 버튼. 버튼이 Radix 의 DialogTrigger 가 아니라 닫힐 때 Radix 가 포커스를 돌려줄 곳을
+  // 모른다 — 그대로 두면 Esc·취소 뒤 포커스가 문서 맨 앞(body)으로 가서 키보드 사용자가 자리를 잃는다.
+  const openerRef = useRef<HTMLElement | null>(null);
 
-  const handleIssue = () => {
+  const openDialog = (kind: "issue" | "reissue") => {
     if (busy) return;
-    if (window.confirm("성적서를 발급하시겠습니까? 발급 시 성적서 번호가 확정됩니다.")) {
-      onIssue?.();
-    }
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setNote("");
+    setDialog(kind);
   };
 
-  const handleReissue = () => {
-    if (busy) return;
-    const note = window.prompt("정정 발급 사유를 입력하세요:");
-    if (note && note.trim()) onReissue?.(note.trim());
+  // 닫히면 연 버튼으로 포커스를 돌린다. 발급이 끝나 버튼이 바뀌었으면(화면에 없으면) Radix 기본 동작에 맡긴다.
+  const restoreFocus = (event: Event) => {
+    const opener = openerRef.current;
+    openerRef.current = null;
+    if (!opener?.isConnected) return;
+    event.preventDefault();
+    opener.focus();
+  };
+
+  const confirmIssue = () => {
+    setDialog(null);
+    onIssue?.(trimmedNote);
+  };
+
+  // 정정 사유는 필수다 — 비면 확인 버튼이 잠긴다(아래 disabled 한 곳에서 판정).
+  const confirmReissue = () => {
+    setDialog(null);
+    onReissue?.(trimmedNote);
   };
 
   return (
@@ -92,7 +171,7 @@ export function ReportLayout({
                   variant="outline"
                   size="sm"
                   disabled={busy}
-                  onClick={handleReissue}
+                  onClick={() => openDialog("reissue")}
                   className="gap-1.5"
                 >
                   <RefreshCw className="size-4" />
@@ -109,7 +188,7 @@ export function ReportLayout({
                 <Button
                   size="sm"
                   disabled={busy}
-                  onClick={handleIssue}
+                  onClick={() => openDialog("issue")}
                   className="gap-1.5"
                 >
                   <Stamp className="size-4" />
@@ -130,6 +209,54 @@ export function ReportLayout({
           </Button>
         </div>
       </header>
+
+      <Dialog open={dialog !== null} onOpenChange={(open) => !open && setDialog(null)}>
+        <DialogContent onCloseAutoFocus={restoreFocus}>
+          {dialog === "issue" && (
+            <>
+              <DialogHeader>
+                <DialogTitle>성적서 발급</DialogTitle>
+                <DialogDescription>발급하면 성적서 번호가 확정됩니다.</DialogDescription>
+              </DialogHeader>
+              <IssuanceTextField
+                label="발급 비고 (선택)"
+                value={note}
+                onChange={setNote}
+                hint="발급 이력에 인쇄됩니다. 비우면 '최초 발급'으로 적힙니다."
+              />
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">취소</Button>
+                </DialogClose>
+                <Button onClick={confirmIssue}>발급</Button>
+              </DialogFooter>
+            </>
+          )}
+          {dialog === "reissue" && (
+            <>
+              <DialogHeader>
+                <DialogTitle>정정 발급</DialogTitle>
+                <DialogDescription>같은 번호로 차수를 올려 다시 발급합니다.</DialogDescription>
+              </DialogHeader>
+              <IssuanceTextField
+                label="정정 사유"
+                value={note}
+                onChange={setNote}
+                hint="발급 이력에 인쇄됩니다."
+                error={trimmedNote === "" ? "정정 사유를 적어 주세요." : undefined}
+              />
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">취소</Button>
+                </DialogClose>
+                <Button onClick={confirmReissue} disabled={trimmedNote === ""}>
+                  정정 발급
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Report body */}
       <main className="mx-auto max-w-4xl px-6 py-10">

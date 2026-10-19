@@ -314,6 +314,22 @@ describe("학습↔평가 분포 차이 — 어느 클래스든 |학습 비율 �
     const off = { ...training("900", "100"), cards: { ...training("900", "100").cards, trainingData: false } };
     expect(kinds(input({ composer: off, evaluationDistribution: dist }))).toEqual([]);
   });
+
+  it("[B5②] 평가 데이터의 클래스가 학습 분포에 하나라도 없으면 견주지 않는다 — 일부만 적은 분포는 거짓 차이를 낸다", () => {
+    // 세 클래스 중 둘만 적으면 a·b 몫이 부풀어(0.5 → 0.5, 0.33 → 0.5) 차이가 생긴 것처럼 보인다.
+    const partial = input({ composer: training("500", "500"), evaluationDistribution: { a: 34, b: 33, c: 33 } });
+    expect(kinds(partial)).toEqual([]);
+    // 옛 클래스 키만 남은 학습 분포(다른 파일의 x·y)도 견주지 않는다.
+    const stale = composer({
+      trainingData: { trainingClassVolume: { entries: [{ key: "x", value: "900" }, { key: "y", value: "100" }] } },
+    });
+    expect(kinds(input({ composer: stale, evaluationDistribution: { a: 50, b: 50 } }))).toEqual([]);
+  });
+
+  it("[B5②] 평가에 0건인 클래스는 학습 분포에 없어도 된다 — 나머지로 견준다", () => {
+    const shifted = input({ composer: training("900", "100"), evaluationDistribution: { a: 50, b: 50, c: 0 } });
+    expect(kinds(shifted)).toEqual(["distribution_shift"]);
+  });
 });
 
 describe("정답 라벨 주의 — 신뢰성 '검토 없음' 또는 구축 방법 '규칙·자동'·'운영 로그'", () => {

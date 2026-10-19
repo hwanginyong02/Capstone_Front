@@ -21,6 +21,7 @@ import type { ValidateDataResponseData } from "../../types/validation.types";
 import type { MaterialCheckAck } from "../../types/finalReport.types";
 import {
   DEFAULT_BASIC_INFO,
+  createDefaultBasicInfo,
   type BasicInfoFormData,
   type MetricDetailStateMap,
   type StepId,
@@ -38,11 +39,16 @@ import {
 import {
   COMPOSER_CARDS,
   OPTIONAL_CARD_IDS,
-  REQUIRED_CARD_IDS,
+  fieldOfLeaf,
+  leafKind,
   pickKind,
   pickableIds,
+  placeableIds,
+  unknownPerEntry,
 } from "../../data/reportComposer";
-import { DEFAULT_CARD_ORDER, normalizeCardOrder, placeAtLaneEnd } from "../domain/cardOrder";
+import { orderPlaced } from "../domain/materialPicks";
+import { restrictMappingRoles } from "../domain/mappingPicks";
+import { DEFAULT_CARD_ORDER, moveCard, normalizeCardOrder, orderAfterPlacing } from "../domain/cardOrder";
 
 /**
  * 단계 번호·경로 상수는 이 파일을 떠났다.
@@ -56,7 +62,7 @@ import { DEFAULT_CARD_ORDER, normalizeCardOrder, placeAtLaneEnd } from "../domai
  */
 
 /** persist 스키마 버전. 저장된 상태의 의미가 바뀔 때만 올린다. */
-export const WORKFLOW_PERSIST_VERSION = 14;
+export const WORKFLOW_PERSIST_VERSION = 15;
 
 /**
  * 구 번호 체계(v4 까지)의 1~6 이 가리켰던 단계.
@@ -415,6 +421,115 @@ function migrateCardOrderV14(next: any): any {
 }
 
 /**
+ * v14 → v15 — 재료 고르기가 빈 흐름에서 항목을 넣는 "평가 흐름 만들기"가 됐다(docs/MATERIAL_PICKER.md
+ * §12.2). 잠긴 카드의 `materialPicks` 키 뜻이 "필수는 들어가 있음"에서 "넣은 항목만"으로 바뀌었다.
+ *
+ * 진행 중인 사용자가 돌아와 "다음"에서 갇히지 않게 **종전에 받던 것을 넣은 것으로 옮긴다.**
+ * - 키가 있는 잠긴 카드: 모든 유형의 필수 항목을 더한다. 유형을 바꿔도 다시 넣지 않게 합집합이다
+ *   (셈은 지금 유형의 항목만 돈다).
+ * - ① 평가 데이터: 지연시간 컬럼(종전에는 늘 받던 권장)을 더한다. 샘플 ID 컬럼은 매핑에 id 역할이
+ *   있을 때, 클래스 레이블 설명은 빈칸이 아닌 설명이 있을 때만 더한다 — 이미 쓴 선택 항목만 옮기는
+ *   v12 의 원칙과 같다.
+ * - ⑥ 학습 데이터(켜짐): 예시 파일을 올려 두었으면 그 항목을 더한다.
+ * - 키가 없는 카드·다른 선택 카드는 그대로다. 키가 없으면 입력 쪽은 "모두 받음"이고 흐름은 빈 블록이다.
+ *
+ * 합집합이라 여러 번 돌려도 같다. 결과는 레지스트리 순서다(`orderPlaced`).
+ * `placeableIds`·`leafKind` 의 뜻을 바꾸면 이 이행의 결과가 달라진다 — 바꾸려면 새 함수를 더한다.
+ *
+ * 같은 판에서 순서도 바로잡는다: 평가 관점 → 지표가 권고에서 규칙이 됐다(D4). 지표가 관점보다 앞인
+ * 저장분은 그대로 두면 어떤 순서 이동도 `orderViolation` 에 걸려 막히므로, 관점을 지표 바로 앞으로
+ * 옮긴다(`fixPerspectiveOrderV15`).
+ */
+function migratePlacedLeavesV15(next: any): any {
+  const saved: MaterialPicks = next.materialPicks ?? {};
+  const picks: MaterialPicks = { ...saved };
+  const rows: unknown[] = Array.isArray(next.columnMapping) ? next.columnMapping : [];
+  const mappedId = rows.some((row) => (row as MappingRow | null)?.confirmedRole === "id");
+  const described = Object.values(next.classLabelDescriptions ?? {}).some(
+    (text) => typeof text === "string" && text.trim() !== "",
+  );
+  const cards: ComposerSelection = { ...DEFAULT_COMPOSER_SELECTION, ...(next.composerCards ?? {}) };
+
+  let changed = false;
+  for (const card of COMPOSER_CARDS) {
+    const current = saved[card.id];
+    if (!Array.isArray(current)) continue;
+    const add: string[] = [];
+    if (card.locked) {
+      add.push(
+        ...placeableIds(card.id, "").filter((id) => leafKind(card, fieldOfLeaf(card.id, id)!) === "required"),
+      );
+      if (card.id === "evalData") {
+        add.push("latencyColumn");
+        if (mappedId) add.push("sampleIdColumn");
+        if (described) add.push("classLabelDescriptions");
+      }
+    } else if (card.id === "trainingData" && cards.trainingData) {
+      if (next.trainingExampleFiles?.length) add.push("trainingExamples");
+      if (next.trainingUnsuitableExampleFiles?.length) add.push("trainingUnsuitableExamples");
+    }
+    if (add.length === 0) continue;
+    picks[card.id] = orderPlaced(card.id, [...current, ...add]);
+    changed = true;
+  }
+  return changed ? { ...next, materialPicks: picks } : next;
+}
+
+/** v15 의 순서 바로잡기 — 지표가 평가 관점보다 앞이면 관점을 지표 바로 앞으로. 이미 맞으면 그대로. */
+function fixPerspectiveOrderV15(next: any): any {
+  if (!Array.isArray(next.cardOrder)) return next;
+  const order = normalizeCardOrder(next.cardOrder);
+  if (order.indexOf("metrics") > order.indexOf("perspective")) return next;
+  return { ...next, cardOrder: moveCard(order, "perspective", "metrics", "before") };
+}
+
+/** 성적서 구성 카드의 값이 담긴 저장 키. ① ② ③ ④ 는 카드 값 모음이 아니거나 모름 칸이 없다. */
+const COMPOSER_VALUE_KEYS = {
+  perspective: "composerPerspective",
+  metrics: "composerMetrics",
+  trainingData: "composerTrainingData",
+  testData: "composerTestData",
+  groundTruth: "composerGroundTruth",
+  modelEnv: "composerModelEnv",
+} as const;
+
+/**
+ * v15 의 칸별 "모름" 옮기기(W3) — 모름을 칸마다 고르게 됐다.
+ *
+ * - 칸이 정해진 글·숫자 묶음(⑥ 데이터 양, ⑨ 실행 환경 — `unknownPerEntry`)의 옛 필드 모름은 **모든 칸의
+ *   모름**(`unknownKeys`)으로 옮긴다. 뜻이 같다(성적서에는 칸마다 "제공되지 않음").
+ * - ⑨ GPU 사용 여부는 필드 모름 체크를 없앴다(칸마다 "모름" 선택지가 있다). 옛 필드 모름은 두 칸 모두
+ *   "Unknown" 으로 옮긴다. 옮기지 않으면 값에 남은 `unknown` 이 체크박스 없이 입력을 잠가 갇힌다(R2).
+ *
+ * 옮긴 값에는 `unknown` 이 남지 않아 여러 번 돌려도 같다. 바뀐 것이 없으면 같은 객체를 돌려준다.
+ */
+function migrateUnknownPerEntryV15(next: any): any {
+  let result = next;
+  for (const card of COMPOSER_CARDS) {
+    const storeKey = COMPOSER_VALUE_KEYS[card.id as keyof typeof COMPOSER_VALUE_KEYS];
+    const group: ComposerValueMap | undefined = storeKey ? next[storeKey] : undefined;
+    if (!group || typeof group !== "object") continue;
+    let moved: ComposerValueMap | null = null;
+    for (const field of card.fields) {
+      const value = group[field.id];
+      if (!value?.unknown || !field.entryKeys) continue;
+      const { unknown: _unknown, ...rest } = value;
+      if (unknownPerEntry(field)) {
+        moved = { ...(moved ?? group), [field.id]: { ...rest, unknownKeys: [...field.entryKeys] } };
+      } else if (field.unknownChoice) {
+        const answer = field.unknownChoice;
+        moved = {
+          ...(moved ?? group),
+          [field.id]: { ...rest, entries: field.entryKeys.map((key) => ({ key, value: answer })) },
+        };
+      }
+    }
+    if (moved) result = { ...result, [storeKey]: moved };
+  }
+  return result;
+}
+
+/**
  * 저장된 워크플로우 상태를 현재 규칙으로 옮긴다(순수 함수 — 테스트가 직접 호출한다).
  *
  * **v1 → v2**: multilabel 에서 M1·M11·M12·M13 이 제거됐다(ISSUES.md A-04, 결정 2).
@@ -479,6 +594,10 @@ function migrateCardOrderV14(next: any): any {
  *
  * **v13 → v14**: 입력 순서(`cardOrder`)가 생기고 데이터 정보 단계가 카드마다 나뉘었다
  * (`migrateCardOrderV14`).
+ *
+ * **v14 → v15**: 재료 고르기가 빈 흐름에서 항목을 넣는 평가 흐름 만들기가 됐다. 종전에 받던 필수·
+ * 지연시간·이미 쓴 항목을 넣은 것으로 옮긴다(`migratePlacedLeavesV15`). 하위 단계 둘: 평가 관점 → 지표
+ * 순서 바로잡기(`fixPerspectiveOrderV15`, D4), 칸별 "모름" 옮기기(`migrateUnknownPerEntryV15`, W3).
  */
 export function migrateWorkflowState(persisted: any, version: number): any {
   if (!persisted || version >= WORKFLOW_PERSIST_VERSION) return persisted;
@@ -600,6 +719,11 @@ export function migrateWorkflowState(persisted: any, version: number): any {
     next = migrateCardOrderV14(next);
   }
 
+  // v14 → v15 — 평가 흐름 만들기. 종전에 받던 항목을 넣은 것으로 옮긴다.
+  if (version < 15) {
+    next = migrateUnknownPerEntryV15(fixPerspectiveOrderV15(migratePlacedLeavesV15(next)));
+  }
+
   return next;
 }
 
@@ -678,7 +802,7 @@ interface WorkflowState {
    * 재료 선택 점검의 생성 전 안내를 보고도 진행한 기록(재료 선택 점검 6절). 검증 화면의 "다음"이
    * 남기고, 성적서 6.0 이 "확인 후 진행"으로 찍는다(`checkMaterialSelection` 이 인정 여부를 정함).
    *
-   * 최상위 새 키라 persist 판(13)을 올리지 않는다 — 옛 저장분에는 없고, 얕은 병합으로 초기값
+   * 최상위 새 키라 persist 판을 올리지 않았다 — 옛 저장분에는 없고, 얕은 병합으로 초기값
    * null 이 남는다. 작업 유형을 바꾸면 비운다.
    */
   materialCheckAck: MaterialCheckAck | null;
@@ -687,15 +811,21 @@ interface WorkflowState {
    * 선택 카드(⑥~⑨)가 성적서에 들어가는지.
    *
    * 필수 카드(①~⑤)는 늘 들어가 상태로 들지 않는다. 이 값이 **걸을 단계 목록을 정한다**
-   * (`utils/domain/workflowSteps.ts` 의 `buildStepList`). 재료 고르기에서 선택 카드의 항목을
+   * (`utils/domain/workflowSteps.ts` 의 `buildStepList`). 평가 흐름 만들기에서 선택 카드의 항목을
    * 바꿀 때 함께 맞춘다(`setMaterialPick`) — 항목이 하나라도 들어가면 켜진다.
    */
   composerCards: ComposerSelection;
 
   /**
-   * 재료 고르기에서 카드마다 받기로 한 권장·선택 항목(docs/MATERIAL_PICKER.md §11). 넣고 빼는
-   * 즉시 바뀐다. 키가 없으면 재료 고르기를 지나기 전의 상태다 — 입력 화면은 그 카드의 필드를 모두
-   * 받는다(`isFieldPicked`). 재료 고르기에 들어오면 필수 카드의 키를 채운다(`initRequiredPicks`).
+   * 평가 흐름 만들기에서 카드마다 넣은 항목(docs/MATERIAL_PICKER.md §12.2). 필수 항목도 넣어야
+   * 들어 있다. 넣고 빼는 즉시 바뀐다.
+   *
+   * 두 쪽이 다르게 읽는다.
+   * - 입력 쪽(`isFieldPicked`): 키가 없으면 그 카드의 필드를 모두 받는다. 필수는 늘 받는다.
+   * - 흐름 쪽(`isLeafPlaced`): 키가 없으면 아무것도 놓이지 않았다.
+   *
+   * 키는 사용자가 항목을 넣거나 블록을 비울 때만 생긴다 — 화면에 들어오기만 해서는 만들지 않는다.
+   * 잠긴 카드의 `[]` 는 사용자가 비운 것 하나의 뜻이다(persist v15).
    */
   materialPicks: MaterialPicks;
 
@@ -708,13 +838,9 @@ interface WorkflowState {
   /**
    * 카드별 입력값. 키는 재료 레지스트리의 `field.id` 다(`data/reportComposer.ts`).
    *
-   * **대부분 저장까지만 한다** — 백엔드로 보내거나 성적서에 인쇄하지 않는다.
-   * ⑨ 실행 환경은 기존 `basicInfo.env*` 와 내용이 겹치는데, 그쪽은 지금도 성적서를 그리는 데
-   * 쓰이므로 건드리지 않았다. 중복 정리는 별도 작업이다.
-   *
-   * 예외 둘: ② 핵심 지표는 판정에 쓰이고(`resolveCoreMetricIds`), ⑥ 학습 데이터는 성적서
-   * 학습 데이터 절이 직접 읽는다(`buildTrainingDatasetInfo`). ⑥ 은 Details 의 학습 데이터 폼을
-   * 흡수해 유일한 입력처다(persist v10).
+   * 성적서 매퍼가 받는 필드의 값만 골라 인쇄하고(`pickedValues`), 레지스트리의 `sentToAi` 필드는
+   * AI 서술 요청에도 실린다. ② 핵심 지표는 판정에도 쓰인다(`resolveCoreMetricIds`). ⑥ 은 Details 의
+   * 학습 데이터 폼을 흡수해 유일한 입력처다(persist v10).
    */
   composerMetrics: ComposerValueMap;
   composerPerspective: ComposerValueMap;
@@ -773,13 +899,9 @@ interface WorkflowState {
   // Actions — 재료 고르기
   /**
    * 카드 하나의 항목을 바꾼다. 선택 카드면 항목이 하나 이상일 때 켜고, 비어 있으면 끈다. 새로 켜진
-   * 선택 카드는 그 레인 맨 아래로 간다(`placeAtLaneEnd`).
+   * 선택 카드는 그 레인 맨 아래로 간다(`orderAfterPlacing`).
    */
   setMaterialPick: (cardId: ComposerCardId, ids: string[]) => void;
-  /** 여러 카드의 항목을 한 번에 바꾼다(추천 세트, 되돌리기). 준 카드만 바뀐다. */
-  setMaterialPicks: (picks: MaterialPicks) => void;
-  /** 필수 카드 중 키가 없는 것을 빈 배열로 채운다 — 고르지 않은 선택 항목을 받지 않게 한다. */
-  initRequiredPicks: () => void;
   setCardOrder: (order: ComposerCardId[]) => void;
   setComposerMetrics: (
     value: ComposerValueMap | ((prev: ComposerValueMap) => ComposerValueMap),
@@ -833,21 +955,34 @@ const INITIAL_STATE = {
  * 카드 항목을 바꾸고 선택 카드의 켜짐(`composerCards`)과 순서를 맞춘다.
  *
  * 선택 카드는 항목이 하나라도 있으면 켜진다. 꺼져 있다가 켜진 카드는 그 레인 맨 아래로 보낸다 —
- * 넣지 않은 동안 남아 있던 옛 자리가 순서 규칙(`ORDER_RULES`)을 깨지 않게 한다.
+ * 넣지 않은 동안 남아 있던 옛 자리가 순서 규칙(`ORDER_RULES`)을 깨지 않게 한다. 잠긴 카드는
+ * 제자리다(`orderAfterPlacing`).
  */
 function applyMaterialPicks(
-  state: Pick<WorkflowState, "materialPicks" | "composerCards" | "cardOrder">,
+  state: Pick<WorkflowState, "materialPicks" | "composerCards" | "cardOrder" | "taskType" | "columnMapping">,
   changes: MaterialPicks,
-): Pick<WorkflowState, "materialPicks" | "composerCards" | "cardOrder"> {
+): Partial<WorkflowState> {
   const composerCards = { ...state.composerCards };
   let cardOrder = state.cardOrder;
   for (const [cardId, ids] of Object.entries(changes) as Array<[ComposerCardId, string[]]>) {
     if (!(OPTIONAL_CARD_IDS as string[]).includes(cardId)) continue;
     const on = ids.length > 0;
-    if (on && !composerCards[cardId as OptionalCardId]) cardOrder = placeAtLaneEnd(cardOrder, cardId);
+    if (on) cardOrder = orderAfterPlacing(cardOrder, composerCards, cardId);
     composerCards[cardId as OptionalCardId] = on;
   }
-  return { materialPicks: { ...state.materialPicks, ...changes }, composerCards, cardOrder };
+  const materialPicks = { ...state.materialPicks, ...changes };
+  // ① 의 항목이 바뀌면 매핑이 받는 역할도 바뀐다 — 뺀 항목의 역할은 맡아 두고, 다시 넣은 항목의 역할은
+  // 돌려준다(docs/MATERIAL_PICKER.md §12.4). 매핑이 바뀌면 가용 지표는 이 매핑의 답이 아니다.
+  const columnMapping =
+    "evalData" in changes
+      ? restrictMappingRoles(state.columnMapping, state.taskType, materialPicks.evalData)
+      : state.columnMapping;
+  return {
+    materialPicks,
+    composerCards,
+    cardOrder,
+    ...(columnMapping !== state.columnMapping ? { columnMapping, availableMetricIds: null } : {}),
+  };
 }
 
 /** persist 저장소 키. 테스트와 운영이 같은 값을 보도록 export 한다. */
@@ -965,7 +1100,13 @@ export const useWorkflowStore = create<WorkflowState>()(
       // Step 5
       setColumnMapping: (value) =>
         set((state) => {
-          const next = typeof value === "function" ? value(state.columnMapping) : value;
+          // 모든 매핑 쓰기(업로드의 분석 결과·역할 변경·시연 시드)가 여기를 지난다. 평가 흐름에 놓지
+          // 않은 항목의 역할은 받지 않는다 — 맡아 둔다(docs/MATERIAL_PICKER.md §12.4).
+          const next = restrictMappingRoles(
+            typeof value === "function" ? value(state.columnMapping) : value,
+            state.taskType,
+            state.materialPicks.evalData,
+          );
           // 매핑이 바뀌면 확정 응답의 가용 지표는 이 매핑의 답이 아니다. 지표 화면이 낡은 답으로
           // 지표를 막거나 열지 않도록 비운다 — 그때는 지금 매핑으로 다시 계산한다.
           return next === state.columnMapping ? {} : { columnMapping: next, availableMetricIds: null };
@@ -985,22 +1126,8 @@ export const useWorkflowStore = create<WorkflowState>()(
       setLastRunId: (runId) => set({ lastRunId: runId }),
       setMaterialCheckAck: (ack) => set({ materialCheckAck: ack }),
 
-      // 재료 고르기
+      // 평가 흐름 만들기
       setMaterialPick: (cardId, ids) => set((state) => applyMaterialPicks(state, { [cardId]: ids })),
-
-      setMaterialPicks: (picks) => set((state) => applyMaterialPicks(state, picks)),
-
-      initRequiredPicks: () =>
-        set((state) => {
-          const missing = REQUIRED_CARD_IDS.filter((id) => state.materialPicks[id] === undefined);
-          if (missing.length === 0) return {};
-          return {
-            materialPicks: {
-              ...state.materialPicks,
-              ...Object.fromEntries(missing.map((id) => [id, [] as string[]])),
-            },
-          };
-        }),
 
       setCardOrder: (order) => set({ cardOrder: normalizeCardOrder(order) }),
 
@@ -1041,7 +1168,8 @@ export const useWorkflowStore = create<WorkflowState>()(
         })),
 
       // Reset
-      resetWorkflow: () => set(INITIAL_STATE),
+      // 새 평가를 시작하는 초기화다 — 평가 의뢰일을 지금의 오늘로 채운다(B1②).
+      resetWorkflow: () => set({ ...INITIAL_STATE, basicInfo: createDefaultBasicInfo() }),
     }),
     {
       name: WORKFLOW_STORAGE_KEY,

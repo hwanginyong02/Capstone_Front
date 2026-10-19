@@ -5,15 +5,23 @@
  * 않았다. 여기서 고정하는 것은 재료 목록의 인쇄 규칙이다 — 2층 항목이 빠지면 "제공되지 않음",
  * 선택 항목이 비면 줄이 없음, 선택지는 재료 목록의 한국어 이름으로.
  */
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  CLIENT_INPUTS_MAX_CHARS,
+  CLIENT_INPUTS_TARGET_CHARS,
   NOT_PROVIDED,
+  TRUNCATED_MARK,
   buildClientInputs,
   buildReportMaterials,
+  fitClientInputs,
   type ReportComposerInput,
 } from "./reportMaterials";
 import type { MaterialRow } from "../../types/finalReport.types";
+import { getCard } from "../../data/reportComposer";
+import type { ComposerValueMap } from "../../types/reportComposer.types";
 
 function composer(overrides: Partial<ReportComposerInput> = {}): ReportComposerInput {
   return {
@@ -173,6 +181,54 @@ describe("⑨ 실행 환경", () => {
   });
 });
 
+/**
+ * B6② — 이름과 값 중 하나만 적은 줄은 4절에도 AI 에도 싣지 않는다. 두 곳의 줄 수가 같다(`completeEntryRows` 한 곳).
+ */
+describe("[B6②] 하이퍼파라미터는 이름과 값을 다 적은 줄만", () => {
+  const input = composer({
+    cards: ALL_ON,
+    modelEnv: {
+      algorithm: { text: "XGBoost" },
+      hyperparameters: {
+        entries: [
+          { key: "max_depth", value: "6" },
+          { key: "", value: "300" },
+          { key: "eta", value: " " },
+          { key: " n_estimators ", value: " 300 " },
+        ],
+      },
+    },
+  });
+  const materials = buildReportMaterials(input, "binary");
+
+  it("4절 표에는 이름·값 둘 다 있는 두 줄만, 앞뒤 공백을 걷어 낸다", () => {
+    expect(materials.hyperparameters.rows).toEqual([
+      { name: "max_depth", value: "6" },
+      { name: "n_estimators", value: "300" },
+    ]);
+  });
+
+  it("AI 에 넘기는 줄 수도 같다", () => {
+    const inputs = buildClientInputs({
+      composer: input,
+      materials,
+      model: { name: "m", version: "v1", purpose: "", category: "" },
+      reportPurposeNote: "",
+      coreMetrics: [],
+      classLabelDescriptions: {},
+      runtime: {},
+    });
+    const env = inputs.environment as Record<string, unknown>;
+    expect(env["하이퍼파라미터"]).toEqual({ max_depth: "6", n_estimators: "300" });
+    expect(Object.keys(env["하이퍼파라미터"] as object)).toHaveLength(materials.hyperparameters.rows!.length);
+  });
+
+  it("다 적은 줄이 없으면 '제공되지 않음'(null)", () => {
+    const only = composer({ cards: ALL_ON, modelEnv: { hyperparameters: { entries: [{ key: "", value: "6" }] } } });
+    expect(buildReportMaterials(only, "binary").hyperparameters.rows).toBeNull();
+  });
+});
+
 describe("선언과 지표 선택 이유", () => {
   const perspective = {
     criticalErrorType: { text: "Missed (FN)" },
@@ -244,6 +300,120 @@ describe("AI 에 넘기는 고객 입력 (서술 설계 D25, D34)", () => {
     expect(inputs.core_metrics).toEqual(["Accuracy(M1)"]);
     expect(inputs.class_label_descriptions).toEqual({ "0": "stays" });
     expect(inputs.declarations).toEqual({ "위험 방향": "비슷함", "사용 방식": "배치" });
+  });
+});
+
+/**
+ * 레지스트리의 sentToAi 표시가 실제와 같은지(W4). 글 칸마다 다른 표식을 넣고, AI 에 넘기는 고객 입력에
+ * 그 표식이 실리는지 본다. 종전에는 학습 데이터 형식·설명·비고가 실리는데도 표시가 없었다.
+ */
+describe("AI 전달 표시(sentToAi)는 실제로 실리는 것과 같다 (W4)", () => {
+  const cards = ["trainingData", "testData", "modelEnv"] as const;
+  const marked = cards.flatMap((cardId) =>
+    getCard(cardId)
+      .fields.filter((field) => field.input === "text" || field.input === "textarea")
+      .map((field) => ({ cardId, field, mark: `표식-${field.id}` })),
+  );
+
+  it("⑥⑦⑨ 의 글 칸마다 표식이 실리는 것 ⇔ sentToAi", () => {
+    expect(marked.length).toBeGreaterThan(5);
+    const values: Record<string, ComposerValueMap> = { trainingData: {}, testData: {}, modelEnv: {} };
+    for (const { cardId, field, mark } of marked) values[cardId][field.id] = { text: mark };
+    const input = composer({ cards: ALL_ON, ...values });
+    const text = JSON.stringify(
+      buildClientInputs({
+        composer: input,
+        materials: buildReportMaterials(input, "binary"),
+        model: { name: "A", version: "v1", purpose: "", category: "" },
+        reportPurposeNote: "",
+        coreMetrics: [],
+        classLabelDescriptions: {},
+        runtime: {},
+      }),
+    );
+    for (const { field, mark } of marked) {
+      expect(text.includes(mark), field.id).toBe(field.sentToAi === true);
+    }
+  });
+});
+
+/**
+ * 고객 입력 길이 맞추기(B7). 백엔드는 직렬화 길이가 2만 자를 넘는 서술 요청을 422 로 거절하고, 그러면
+ * 성적서에 AI 서술이 하나도 실리지 않는다. 프론트가 상한의 90% 안으로 맞춰 보낸다.
+ */
+describe("고객 입력 길이 맞추기 (fitClientInputs)", () => {
+  const size = (value: unknown) => JSON.stringify(value).length;
+
+  it("상한 안이면 그대로 돌려준다", () => {
+    const inputs = { model: { 모델명: "A" }, core_metrics: ["F1"] };
+    expect(fitClientInputs(inputs)).toBe(inputs);
+  });
+
+  it("가장 긴 글부터 자르고, 짧은 글은 건드리지 않는다", () => {
+    const inputs = {
+      training_data: { "학습 데이터 설명": "가".repeat(30_000), "학습 데이터셋명": "고객 로그" },
+      core_metrics: ["Accuracy(M1)"],
+    };
+    const fitted = fitClientInputs(inputs) as typeof inputs;
+
+    expect(size(fitted)).toBeLessThanOrEqual(CLIENT_INPUTS_TARGET_CHARS);
+    expect(fitted.training_data["학습 데이터 설명"].endsWith(TRUNCATED_MARK)).toBe(true);
+    expect(fitted.training_data["학습 데이터셋명"]).toBe("고객 로그");
+    expect(fitted.core_metrics).toEqual(["Accuracy(M1)"]);
+    // 원본은 그대로다.
+    expect(inputs.training_data["학습 데이터 설명"]).toHaveLength(30_000);
+  });
+
+  it("클래스 256개에 긴 설명이 붙어도 상한 안으로 들어가고, 같은 입력에는 같은 결과다", () => {
+    const descriptions = Object.fromEntries(
+      Array.from({ length: 256 }, (_, i) => [`class_${i}`, "설명".repeat(100)]),
+    );
+    const inputs = { class_label_descriptions: descriptions, model: { 모델명: "A" } };
+    expect(size(inputs)).toBeGreaterThan(CLIENT_INPUTS_MAX_CHARS);
+
+    const fitted = fitClientInputs(inputs);
+    expect(size(fitted)).toBeLessThanOrEqual(CLIENT_INPUTS_TARGET_CHARS);
+    expect(fitted).toEqual(fitClientInputs(inputs));
+    expect(fitted.model).toEqual({ 모델명: "A" });
+  });
+
+  it("글을 다 줄여도 넘으면 클래스 설명을 뺀다", () => {
+    // 클래스 이름(키)은 자를 수 없다.
+    const descriptions = Object.fromEntries(
+      Array.from({ length: 400 }, (_, i) => [`${"k".repeat(60)}_${i}`, "짧은 설명"]),
+    );
+    const fitted = fitClientInputs({ class_label_descriptions: descriptions, model: { 모델명: "A" } });
+    expect(fitted).toEqual({ model: { 모델명: "A" } });
+  });
+
+  it("buildClientInputs 가 끝에서 맞춘다", () => {
+    const input = composer({
+      cards: ALL_ON,
+      trainingData: { trainingDescription: { text: "긴 설명 ".repeat(5_000) } },
+    });
+    const inputs = buildClientInputs({
+      composer: input,
+      materials: buildReportMaterials(input, "binary"),
+      model: { name: "A", version: "v1", purpose: "", category: "" },
+      reportPurposeNote: "",
+      coreMetrics: [],
+      classLabelDescriptions: {},
+      runtime: {},
+    });
+    expect(size(inputs)).toBeLessThanOrEqual(CLIENT_INPUTS_TARGET_CHARS);
+    expect((inputs.training_data as Record<string, string>)["학습 데이터 설명"].endsWith(TRUNCATED_MARK)).toBe(true);
+  });
+
+  it("맞추는 길이는 상한의 90% 다", () => {
+    expect(CLIENT_INPUTS_TARGET_CHARS).toBe(18_000);
+  });
+
+  // CI 는 프론트 저장소만 받는다 — 파일이 있을 때만 대조한다.
+  const backendSchemas = resolve(__dirname, "../../../../Capstone_Back/app/narrative/schemas.py");
+  it.skipIf(!existsSync(backendSchemas))("상한은 백엔드 MAX_CLIENT_INPUTS_CHARS 와 같다", () => {
+    const match = readFileSync(backendSchemas, "utf-8").match(/MAX_CLIENT_INPUTS_CHARS\s*=\s*([\d_]+)/);
+    expect(match).not.toBeNull();
+    expect(Number(match![1].replaceAll("_", ""))).toBe(CLIENT_INPUTS_MAX_CHARS);
   });
 });
 

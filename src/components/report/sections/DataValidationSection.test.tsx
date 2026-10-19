@@ -35,7 +35,7 @@ describe("검증 요약 수치", () => {
       <DataValidationSection
         dataValidation={VALIDATION}
         kpiResults={KPIS}
-        totalSamples={5000}
+        totalSamples={5000} taskTypeLabel="이진 분류"
         validationSummary={{ totalRows: 200, validRows: 198, excludedRows: 2 }}
       />
     );
@@ -50,7 +50,7 @@ describe("검증 요약 수치", () => {
       <DataValidationSection
         dataValidation={VALIDATION}
         kpiResults={KPIS}
-        totalSamples={5000}
+        totalSamples={5000} taskTypeLabel="이진 분류"
       />
     );
 
@@ -85,6 +85,8 @@ describe("화면 ↔ 인쇄본 배선", () => {
     const onPrint = propsPassedTo("DataValidationSection", PRINT);
 
     expect(onScreen).toContain("validationSummary"); // 화면 쪽 전제 확인
+    // 옛 발급본의 6.0 묶음 이름은 저장된 유형 이름으로 고른다 — 넘기지 않으면 늘 한국어가 된다(S10 마무리).
+    expect(onScreen).toContain("taskTypeLabel");
     expect(onPrint).toEqual(onScreen);
   });
 
@@ -122,7 +124,7 @@ describe("6.0 재료 선택 점검 세 줄 (고정 문구 14 · 2.1 한눈에 �
       <DataValidationSection
         dataValidation={VALIDATION}
         kpiResults={KPIS}
-        totalSamples={10}
+        totalSamples={10} taskTypeLabel="이진 분류"
         materialCheck={materialCheckFixture({ missingLatencyAndLabel: true, realTime: true })}
       />,
     );
@@ -133,8 +135,48 @@ describe("6.0 재료 선택 점검 세 줄 (고정 문구 14 · 2.1 한눈에 �
   });
 
   it("점검 결과가 없는 옛 성적서에는 세 줄이 없다", () => {
-    render(<DataValidationSection dataValidation={VALIDATION} kpiResults={KPIS} totalSamples={10} />);
+    render(<DataValidationSection dataValidation={VALIDATION} kpiResults={KPIS} totalSamples={10} taskTypeLabel="이진 분류" />);
     expect(screen.queryByText("보고 항목 제공")).not.toBeInTheDocument();
     expect(screen.queryByText("생성 전 안내 확인")).not.toBeInTheDocument();
+  });
+});
+
+describe("6.0 묶음 이름 — 옛 발급본은 그때 글자 그대로 (W9 발급본, S10 마무리)", () => {
+  const ALL_GROUPS: ValidationResult[] = (["common", "multiclass", "binary", "multilabel"] as const).map((group) => ({
+    checkName: `${group} check`,
+    detail: "-",
+    status: "pass" as const,
+    group,
+  }));
+
+  it("영문 저장값(Binary 등)이면 W9 이전 이름·설명", () => {
+    for (const label of ["Binary", "Multi-class", "Multi-label"]) {
+      const { unmount } = render(
+        <DataValidationSection dataValidation={ALL_GROUPS} kpiResults={KPIS} totalSamples={10} taskTypeLabel={label} />,
+      );
+      expect(screen.getByText("모든 태스크 유형에 공통 적용")).toBeInTheDocument();
+      expect(screen.getByText("다중 분류 검증 항목")).toBeInTheDocument();
+      expect(screen.getByText("태스크 유형이 Multiclass인 경우 적용")).toBeInTheDocument();
+      expect(screen.getByText("이진 분류 검증 항목")).toBeInTheDocument();
+      expect(screen.getByText("태스크 유형이 Binary인 경우 적용")).toBeInTheDocument();
+      expect(screen.getByText("다중 레이블 검증 항목")).toBeInTheDocument();
+      expect(screen.getByText("태스크 유형이 Multilabel인 경우 적용")).toBeInTheDocument();
+      expect(screen.queryByText(/분류 유형이/)).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("한국어 저장값이면 한국어 이름·설명", () => {
+    render(
+      <DataValidationSection dataValidation={ALL_GROUPS} kpiResults={KPIS} totalSamples={10} taskTypeLabel="다중 클래스 분류" />,
+    );
+    expect(screen.getByText("모든 분류 유형에 공통 적용")).toBeInTheDocument();
+    expect(screen.getByText("다중 클래스 분류 검증 항목")).toBeInTheDocument();
+    expect(screen.getByText("분류 유형이 다중 클래스 분류인 경우 적용")).toBeInTheDocument();
+    expect(screen.getByText("이진 분류 검증 항목")).toBeInTheDocument();
+    expect(screen.getByText("분류 유형이 이진 분류인 경우 적용")).toBeInTheDocument();
+    expect(screen.getByText("다중 레이블 분류 검증 항목")).toBeInTheDocument();
+    expect(screen.getByText("분류 유형이 다중 레이블 분류인 경우 적용")).toBeInTheDocument();
+    expect(screen.queryByText(/태스크 유형|Binary|Multiclass|Multilabel/)).not.toBeInTheDocument();
   });
 });

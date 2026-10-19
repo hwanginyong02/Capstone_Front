@@ -4,14 +4,17 @@ import { Alert, AlertDescription } from "../ui/alert";
 import { Badge } from "../ui/badge";
 import {
   TASK_TYPE_LABELS_KO,
-  MAPPABLE_ROLES_BY_TASK,
-  PREDICTION_ROLE_ALTERNATIVES,
   resolveMissingRoleCodes,
   type TaskType,
   getBaseRequiredColumns,
+  resolveTaskType,
 } from "../../data/evaluationData";
 import type { MappingRole, MappingRow } from "../../types/mapping.types";
 import { applyRoleChange } from "../../utils/domain/applyRoleChange";
+import { buildRoleOptions } from "../../utils/domain/mappingPicks";
+import { evaluationClassNames } from "../../utils/domain/evaluationClasses";
+import { countDuplicateRoles } from "../../utils/domain/mappingHelpers";
+import { isLeafReceived } from "../../data/reportComposer";
 import {
   describeMappingValidity,
   getMappingValidityReason,
@@ -19,7 +22,7 @@ import {
 
 import { RequiredColumnsCard } from "./RequiredColumnsCard";
 import { BinaryClassificationCard } from "./BinaryClassificationCard";
-import { DecisionThresholdCard } from "./DecisionThresholdCard";
+import { DecisionThresholdCard, thresholdApplies, withinUnitInterval } from "./DecisionThresholdCard";
 import { ClassLabelDescriptionCard } from "./ClassLabelDescriptionCard";
 import { DetectedMappingTable } from "./DetectedMappingTable";
 import { MappingStatusPanel } from "./MappingStatusPanel";
@@ -46,26 +49,13 @@ interface ColumnMappingProps {
   /** 결정 임계값(확률→예측 파생 기준). 성적서 합격 목표값과 다른 개념이다(A-01). */
   decisionThreshold?: number | Record<string, number> | null;
   onDecisionThresholdChange?: (value: number | Record<string, number> | null) => void;
-}
-
-/**
- * 드롭다운 선택지를 task_type 에 맞는 역할로 좁힌다.
- *
- * 이미 배정된 역할(assignedRoles)은 목록에서 빠지지 않도록 합집합으로 둔다.
- * task_type 을 나중에 바꾸면 기존 매핑이 초기화되지 않아, 필터링만 하면 Select 가
- * 값에 해당하는 항목을 못 찾아 빈 칸으로 렌더되기 때문이다.
- */
-function buildRoleOptions(
-  taskType: TaskType,
-  assignedRoles: Iterable<MappingRole>,
-): Array<{ value: MappingRole; label: string }> {
-  const codes: MappingRole[] = [...MAPPABLE_ROLES_BY_TASK[taskType]];
-  for (const role of assignedRoles) {
-    if (role !== "ignore" && !codes.includes(role)) {
-      codes.push(role);
-    }
-  }
-  return [...codes, "ignore" as const].map((value) => ({ value, label: value }));
+  /**
+   * 평가 흐름에서 ① 평가 데이터에 넣은 항목. 넣지 않은 샘플 ID·지연시간 역할은 선택지에 없고,
+   * 클래스 레이블 설명 카드는 넣었을 때만 보인다. 없으면(평가 흐름 이전·시연) 모두 받는다.
+   */
+  evalDataPicks?: readonly string[];
+  /** 맡아 둔 행의 "평가 흐름 만들기에서 넣기" — 그 역할을 받는 ① 항목 id 를 넘긴다. */
+  onPlaceLeaf?: (leafId: string) => void;
 }
 
 export function ColumnMapping({
@@ -83,8 +73,10 @@ export function ColumnMapping({
   onGoBackToUpload = () => {},
   decisionThreshold = null,
   onDecisionThresholdChange = () => {},
+  evalDataPicks,
+  onPlaceLeaf,
 }: ColumnMappingProps) {
-  const resolvedTaskType: TaskType = taskType || "multiclass";
+  const resolvedTaskType: TaskType = resolveTaskType(taskType);
   /**
    * 매핑해야 할 역할 — 정답과 예측(또는 확률). 매핑은 지표 선택보다 앞이고 고른 지표에 기대지
    * 않는다(docs/MATERIAL_PICKER.md §3). 지표마다 더 필요한 컬럼(예: AUROC 의 확률)은 지표 화면이
@@ -96,31 +88,22 @@ export function ColumnMapping({
     () =>
       buildRoleOptions(
         resolvedTaskType,
+        evalDataPicks,
         rows.map((row) => row.confirmedRole).filter((role): role is MappingRole => role !== null),
       ),
-    [resolvedTaskType, rows],
+    [resolvedTaskType, evalDataPicks, rows],
   );
 
   const yTrueRow = useMemo(() => rows.find((r) => r.confirmedRole === "y_true"), [rows]);
-  const yTrueValues = useMemo(() => {
-    const colName = yTrueRow?.originalName;
-    if (colName && columnUniqueValues?.[colName]) {
-      return columnUniqueValues[colName];
-    }
-    if (detectedClasses && detectedClasses.length > 0) {
-      return detectedClasses;
-    }
-    if (!yTrueRow) return [];
-    // 멀티레이블은 "sports|news" 처럼 결합된 값 → 원자 라벨로 분리해야 성적서 매퍼(동일하게 /[|,]/ 분리)와
-    // 클래스 설명 키가 일치한다(분리 안 하면 설명이 매칭 안 돼 "설명 미입력"으로 유실됨).
-    if (resolvedTaskType === "multilabel") {
-      const atoms = yTrueRow.sampleValues.flatMap((v) =>
-        v.split(/[|,]/).map((s) => s.trim()).filter(Boolean),
-      );
-      return Array.from(new Set(atoms));
-    }
-    return Array.from(new Set(yTrueRow.sampleValues));
-  }, [yTrueRow, resolvedTaskType, detectedClasses, columnUniqueValues]);
+  /** 클래스 목록 — 화면·학습 데이터·성적서가 같은 한 함수를 쓴다(`evaluationClassNames`, B5①). */
+  const yTrueValues = useMemo(
+    () =>
+      evaluationClassNames(resolvedTaskType, rows, {
+        column_unique_values: columnUniqueValues,
+        detected_classes: detectedClasses,
+      }),
+    [rows, resolvedTaskType, detectedClasses, columnUniqueValues],
+  );
 
   const roleCounts = useMemo(() => {
     const counts: Partial<Record<MappingRole, number>> = {};
@@ -133,20 +116,10 @@ export function ColumnMapping({
     return counts;
   }, [rows]);
 
-  /** 여러 컬럼에 배정돼도 중복이 아닌 역할 — 확률 역할은 클래스·레이블마다 하나씩이다. */
-  const multiColumnRoles = useMemo(
-    () => new Set<string>(PREDICTION_ROLE_ALTERNATIVES[resolvedTaskType].alternatives),
-    [resolvedTaskType],
-  );
-
   const mappingSummary = useMemo(() => {
     const editedCount = rows.filter((row) => row.modified).length;
-    const duplicateCount = Object.entries(roleCounts).filter(([role, count]) => {
-      if (!count || count < 2) {
-        return false;
-      }
-      return !multiColumnRoles.has(role);
-    }).length;
+    // 겹침 판정은 표·배지와 같은 한 규칙(`MULTI_COLUMN_ROLES`) — 이진 score 두 컬럼은 겹침이다(B13).
+    const duplicateCount = countDuplicateRoles(roleCounts);
 
     // 예측 역할은 확률 역할이 배정돼 있으면 충족된 것으로 본다 — 백엔드가 확률에서
     // 예측을 파생하기 때문이다(ISSUES.md A-01·A-02). 규칙은 evaluationData 의
@@ -168,6 +141,8 @@ export function ColumnMapping({
       missingRoleCodes,
       duplicateRoleCount: duplicateCount,
       positiveClass,
+      // 임계값이 쓰일 때만 범위를 본다 — 카드가 보이는 조건과 같은 판정(`thresholdApplies`).
+      thresholdInRange: !thresholdApplies(resolvedTaskType, rows) || withinUnitInterval(decisionThreshold),
     });
 
     return {
@@ -178,7 +153,7 @@ export function ColumnMapping({
       validityMessage: describeMappingValidity(validityReason, missingRoleCodes),
       isValid: validityReason === "ok",
     };
-  }, [requiredRoles, roleCounts, rows, taskType, resolvedTaskType, multiColumnRoles, positiveClass]);
+  }, [requiredRoles, roleCounts, rows, taskType, resolvedTaskType, positiveClass, decisionThreshold]);
 
   useEffect(() => {
     onValidationChange?.(mappingSummary.isValid);
@@ -220,7 +195,7 @@ export function ColumnMapping({
           </Alert>
         )}
 
-        <RequiredColumnsCard requiredRoles={requiredRoles} roleCounts={roleCounts} />
+        <RequiredColumnsCard taskType={resolvedTaskType} requiredRoles={requiredRoles} roleCounts={roleCounts} />
 
         <BinaryClassificationCard
           resolvedTaskType={resolvedTaskType}
@@ -238,7 +213,8 @@ export function ColumnMapping({
           onDecisionThresholdChange={onDecisionThresholdChange}
         />
 
-        {onClassLabelDescriptionsChange && (
+        {/* 클래스 레이블 설명은 선택 항목이다 — 평가 흐름에 넣었을 때만 받는다. */}
+        {isLeafReceived("evalData", "classLabelDescriptions", evalDataPicks) && (
           <ClassLabelDescriptionCard
             yTrueRow={yTrueRow}
             yTrueValues={yTrueValues}
@@ -252,6 +228,7 @@ export function ColumnMapping({
           roleCounts={roleCounts}
           handleRoleChange={handleRoleChange}
           roleOptions={roleOptions}
+          onPlaceLeaf={onPlaceLeaf}
         />
 
         <MappingStatusPanel

@@ -1,6 +1,7 @@
 import { PassBadge } from "./PassBadge";
 import type { KpiConfidenceInterval } from "../../../types/finalReport.types";
 import { cn } from "../../../utils/styling/styles";
+import { formatTargetCriteria } from "../../../lib/report/metricValueFormat";
 
 interface MetricRowProps {
   metricId: string;
@@ -20,10 +21,12 @@ interface MetricRowProps {
    */
   showCi?: boolean;
   ci?: KpiConfidenceInterval;
+  /** 목표값 자릿수(`FinalReportData.targetDigits`). 없으면 종전 둘째 자리. */
+  targetDigits?: number;
   className?: string;
 }
 
-export function MetricRow({ metricId, name, formula, value, threshold, status, higherIsBetter, isCore, showCi = false, ci, className }: MetricRowProps) {
+export function MetricRow({ metricId, name, formula, value, threshold, status, higherIsBetter, isCore, showCi = false, ci, targetDigits, className }: MetricRowProps) {
   // 표시 모드
   // 1) 목표값 있음(threshold !== null) → 일반 KPI (값 + 기준 + 판정). 0·음수 목표도 여기다.
   // 2) 목표값 없음                      → 정보 제공 (값은 표시, 기준 "—", "ℹ 정보 제공")
@@ -33,7 +36,6 @@ export function MetricRow({ metricId, name, formula, value, threshold, status, h
   const isVisualOnly    = metricId === "M21" || metricId === "M22";
   const isInfoWithValue = !isVisualOnly && !isUnavailable && threshold === null;
   const isThresholded   = !isVisualOnly && !isUnavailable && threshold !== null;
-  const criteriaOp      = higherIsBetter === false ? "≤" : "≥";
 
   return (
     <tr className={cn("border-b border-slate-100 last:border-b-0", className)}>
@@ -58,7 +60,7 @@ export function MetricRow({ metricId, name, formula, value, threshold, status, h
         </td>
       )}
       <td className="py-2.5 pr-4 text-slate-500">
-        {isThresholded && threshold !== null ? `${criteriaOp} ${threshold.toFixed(2)}` : isInfoWithValue ? "—" : isUnavailable ? "—" : "정보 제공"}
+        {isThresholded && threshold !== null ? formatTargetCriteria(threshold, higherIsBetter, targetDigits) : isInfoWithValue ? "—" : isUnavailable ? "—" : "정보 제공"}
       </td>
       <td className="py-2.5">
         {isThresholded ? (

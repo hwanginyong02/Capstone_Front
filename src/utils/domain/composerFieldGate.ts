@@ -15,7 +15,12 @@
  * 순수 함수다 — 스토어를 읽지 않고 값을 인자로 받는다. 화면은 결과로 `nextDisabled` 를
  * 만들어 `WorkflowShell` 에 넘긴다(가이드라인 §2 규칙 3).
  */
-import { getCardFields, isFieldPicked } from "../../data/reportComposer";
+import {
+  canAnswerUnknown,
+  getCardFields,
+  isEntryUnknown,
+  isFieldReceived,
+} from "../../data/reportComposer";
 import type { TaskType } from "../../data/evaluationData";
 import {
   MONTH_RANGE_KEYS,
@@ -37,22 +42,84 @@ export interface FieldIssue {
    * `outOfRange` — 숫자가 아니거나 허용 범위 밖이다.
    * `invalidPeriod` — 기간의 한쪽만 적었거나 시작이 끝보다 늦다.
    * `incompatible` — 고른 선택지가 다른 칸의 값과 맞지 않는다(⑧ 라벨러 2명인데 Fleiss의 카파).
+   * `incompleteRow` — 줄을 추가하는 칸(⑨ 하이퍼파라미터)에 이름과 값 중 하나만 적은 줄이 있다(B6②).
+   * `duplicateName` — 같은 칸에 이름이 같은 줄이 둘 이상 있다. 4절 표는 줄마다, AI 는 이름을 키로 받아
+   *   (뒤 값만 남아) 둘의 줄 수가 갈린다.
    *
-   * `missing` 말고는 **지금 당장 틀린 값**이라 다음을 누르기 전부터 표시한다. `missing` 만 아직
-   * 입력하지 않은 것이라 넘어가려 한 뒤에야 표시한다.
+   * `missing`·`incompleteRow` 말고는 **지금 당장 틀린 값**이라 다음을 누르기 전부터 표시한다. 이 둘은
+   * 아직 덜 적은 것이라(이름을 적고 값으로 넘어가는 중일 수 있다) 넘어가려 한 뒤에야 표시한다.
    */
-  reason: "missing" | "exclusive" | "outOfRange" | "invalidPeriod" | "incompatible";
+  reason:
+    | "missing"
+    | "exclusive"
+    | "outOfRange"
+    | "invalidPeriod"
+    | "incompatible"
+    | "incompleteRow"
+    | "duplicateName";
   /** 화면에 그대로 적을 설명. `incompatible` 처럼 이유가 선택지마다 다른 경우에 쓴다. */
   message?: string;
   /**
-   * 이 필드에 "모름" 이 있는가. 안내 문구가 "모르면 모름을 고르세요" 를 붙일지 정한다 —
+   * 이 필드에 "모름" 이 있는가(필드 모름 체크·칸별 모름·"모름" 선택지 — `canAnswerUnknown`). 안내 문구가
+   * "모르면 모름을 고르세요" 를 붙일지 정한다 —
    * ⑤ 평가 관점처럼 모름이 없는 필드에 그 말을 하면 있지도 않은 길을 알려주는 셈이다.
    */
   allowsUnknown: boolean;
 }
 
-/** 값이 채워져 있는가. "모름"은 채운 것으로 센다. */
-export function hasValue(field: ComposerField, value: ComposerFieldValue | undefined): boolean {
+/** 줄을 사용자가 추가하는 칸인가(⑨ 하이퍼파라미터) — 줄마다 이름과 값을 둘 다 적는다. */
+export function isFreeEntriesField(field: ComposerField): boolean {
+  return field.input === "entries" && !field.entryKeys && !field.entryKeysFrom;
+}
+
+/** 이름과 값을 둘 다 적은 줄만(B6②). 필수 점검과 성적서·AI(`reportMaterials` 의 하이퍼파라미터)가 같이 쓴다. */
+export function completeEntryRows(
+  entries: ReadonlyArray<{ key: string; value: string }> | undefined,
+): Array<{ key: string; value: string }> {
+  return (entries ?? []).filter((entry) => entry.key.trim() !== "" && entry.value.trim() !== "");
+}
+
+/** 이름과 값 중 하나만 적은 줄이 있는가. 둘 다 빈 줄은 아직 쓰지 않은 줄이라 세지 않는다. */
+export function hasIncompleteRow(entries: ReadonlyArray<{ key: string; value: string }> | undefined): boolean {
+  return (entries ?? []).some((entry) => (entry.key.trim() === "") !== (entry.value.trim() === ""));
+}
+
+/** `incompleteRow` 의 안내 — 칸 아래와 하단 한 줄이 같은 글을 쓴다. */
+export const INCOMPLETE_ROW_MESSAGE = "이름과 값을 모두 적어 주세요.";
+
+/**
+ * 다 적은 줄(`completeEntryRows`) 중 이름이 두 번 이상 나온 이름 — 앞뒤 공백을 떼고 비교하며, 처음 나온
+ * 순서다. 성적서 4절 표(줄마다)와 AI(이름을 키로 — 뒤 값만 남는다)가 같은 줄 수를 갖도록 입력에서 막는다.
+ */
+export function duplicateEntryNames(entries: ReadonlyArray<{ key: string; value: string }> | undefined): string[] {
+  const seen = new Set<string>();
+  const duplicated: string[] = [];
+  for (const entry of completeEntryRows(entries)) {
+    const name = entry.key.trim();
+    if (seen.has(name) && !duplicated.includes(name)) duplicated.push(name);
+    seen.add(name);
+  }
+  return duplicated;
+}
+
+/** `duplicateName` 의 안내 — 칸 아래와 하단 한 줄이 같은 글을 쓴다. */
+export function duplicateNameMessage(names: readonly string[]): string {
+  return `같은 이름이 두 번 있어요: ${names.join(", ")}`;
+}
+
+/**
+ * 값이 채워져 있는가. "모름"은 채운 것으로 센다.
+ *
+ * `classNames` 는 클래스마다 칸을 만드는 필드(`entryKeysFrom: "classes"` — ⑥ 클래스별 데이터 양)가
+ * 쓸 지금 클래스 목록이다(`evaluationClassNames`). 그 필드는 **지금 클래스를 모두** 채워야 한다(B5②) —
+ * 옛 파일·옛 정답 컬럼의 키는 세지 않는다. 목록이 비면(클래스를 아직 모름) "모름"만 통과한다(N6:
+ * 빈 목록의 `every` 는 참이라 빈칸이 통과하던 함정).
+ */
+export function hasValue(
+  field: ComposerField,
+  value: ComposerFieldValue | undefined,
+  classNames: readonly string[] = [],
+): boolean {
   if (!value) return false;
   // "모름" 은 성적서에 "제공되지 않음" 으로 찍히지만, 진행은 막지 않는다.
   if (value.unknown) return true;
@@ -73,14 +140,22 @@ export function hasValue(field: ComposerField, value: ComposerFieldValue | undef
   if (field.input === "entries") {
     const entries = value.entries ?? [];
     const filled = entries.filter((entry) => entry.value.trim() !== "");
-    // 칸이 정해진 필드(⑥ 데이터 양, ⑨ GPU 사용 여부)는 **전부** 채워야 한다.
+    // 칸이 정해진 필드(⑥ 데이터 양, ⑨ GPU 사용 여부)는 **전부** 채워야 한다. 칸별 "모름"은 채운 것이다(W3).
     if (field.entryKeys) {
-      return field.entryKeys.every((key) =>
-        filled.some((entry) => entry.key === key),
+      return field.entryKeys.every(
+        (key) => isEntryUnknown(value, key) || filled.some((entry) => entry.key === key),
       );
     }
-    // 줄을 사용자가 추가하거나(⑨ 하이퍼파라미터) 업로드한 클래스에서 만드는 필드는
-    // 적어도 한 줄이 채워져 있으면 된다 — 클래스 수를 여기서 알 수 없다.
+    // 클래스마다 칸이 있는 필드는 지금 클래스를 모두 채워야 한다(B5②). 목록이 비면 모름만 통과(N6).
+    if (field.entryKeysFrom === "classes") {
+      return (
+        classNames.length > 0 &&
+        classNames.every((name) => filled.some((entry) => entry.key === name))
+      );
+    }
+    // 줄을 사용자가 추가하는 필드(⑨ 하이퍼파라미터)는 이름과 값을 다 적은 줄이 하나는 있어야 한다(B6②).
+    // 종전에는 값만 적은 줄도 채운 것으로 세고, 성적서는 그 줄을 버려 '제공되지 않음'이 찍혔다.
+    if (isFreeEntriesField(field)) return completeEntryRows(entries).length > 0;
     return filled.length > 0;
   }
 
@@ -121,6 +196,7 @@ function invalidReason(
   field: ComposerField,
   value: ComposerFieldValue | undefined,
   values: ComposerValueMap,
+  classNames: readonly string[],
 ): { reason: "outOfRange" | "invalidPeriod" | "incompatible"; message?: string } | null {
   if (!value || value.unknown) return null;
 
@@ -139,7 +215,14 @@ function invalidReason(
   // 숫자 칸 묶음(⑥ 학습·검증 표본 수, 클래스별 데이터 양)은 건수라 0 이상의 정수만 받는다.
   // 종전에는 숫자 키패드만 띄우고 검사하지 않아 글자를 넣어도 통과했다(재료 목록 6절).
   if (field.input === "entries" && field.numeric) {
-    const wrong = (value.entries ?? []).some((entry) => {
+    // 클래스마다 칸이 있는 필드는 지금 클래스의 칸만 본다 — 옛 클래스 칸은 화면에 없어 고칠 수 없다.
+    // 칸별 "모름"으로 잠근 칸의 남은 값도 따지지 않는다(W3).
+    const shown = (value.entries ?? []).filter(
+      (entry) =>
+        !isEntryUnknown(value, entry.key) &&
+        (field.entryKeysFrom !== "classes" || classNames.includes(entry.key)),
+    );
+    const wrong = shown.some((entry) => {
       const raw = entry.value.trim();
       if (raw === "") return false;
       const count = Number(raw.replace(/,/g, ""));
@@ -236,10 +319,14 @@ export function getFieldIssue(
   field: ComposerField,
   values: ComposerValueMap,
   picks?: readonly string[],
+  classNames: readonly string[] = [],
 ): FieldIssue | null {
-  // 그려지지 않은 필드(받지 않기로 했거나 조건이 성립하지 않음)에 남은 값은 따지지 않는다 —
-  // 사용자가 고칠 수 없다.
-  if (!isFieldVisible(field, values, isFieldPicked(card, field, picks))) return null;
+  // 전용 화면이 받는 필드는 그 화면이 검사한다 — 값이 카드 값 모음 밖에 있어 여기서는 늘 빈칸으로 보인다.
+  if (field.dedicatedScreen) return null;
+  // 그려지지 않은 필드(받지 않기로 했거나, 조건을 정하는 필드를 받지 않거나, 조건이 성립하지 않음)에
+  // 남은 값은 따지지 않는다 — 사용자가 고칠 수 없다(B2: ⑧ 검수 방식을 뺐는데 남은 'Several
+  // reviewers' 때문에 라벨러 수가 필수로 남던 문제).
+  if (!isFieldVisible(field, values, isFieldReceived(card, field, picks))) return null;
 
   const value = values[field.id];
   const issue = (reason: FieldIssue["reason"]): FieldIssue => ({
@@ -247,10 +334,10 @@ export function getFieldIssue(
     fieldId: field.id,
     label: field.label,
     reason,
-    allowsUnknown: Boolean(field.allowsUnknown),
+    allowsUnknown: canAnswerUnknown(field),
   });
 
-  const invalid = invalidReason(field, value, values);
+  const invalid = invalidReason(field, value, values, classNames);
   if (invalid) {
     const base = issue(invalid.reason);
     return invalid.message ? { ...base, message: invalid.message } : base;
@@ -261,7 +348,18 @@ export function getFieldIssue(
     if (chosen.includes(field.exclusiveChoice) && chosen.length > 1) return issue("exclusive");
   }
 
-  if (isFieldRequired(field, values) && !hasValue(field, value)) return issue("missing");
+  // 이름만, 또는 값만 적은 줄 — 성적서는 이 줄을 버리므로 받지 않는다(B6②). 모름이면 따지지 않는다.
+  if (isFreeEntriesField(field) && !value?.unknown && hasIncompleteRow(value?.entries)) {
+    return { ...issue("incompleteRow"), message: INCOMPLETE_ROW_MESSAGE };
+  }
+
+  // 이름이 같은 줄 — 4절 표와 AI 의 줄 수가 갈린다. 지금 당장 틀린 값이라 바로 표시한다.
+  if (isFreeEntriesField(field) && !value?.unknown) {
+    const duplicated = duplicateEntryNames(value?.entries);
+    if (duplicated.length > 0) return { ...issue("duplicateName"), message: duplicateNameMessage(duplicated) };
+  }
+
+  if (isFieldRequired(field, values) && !hasValue(field, value, classNames)) return issue("missing");
 
   return null;
 }
@@ -271,7 +369,7 @@ export function getFieldIssue(
  *
  * `picks` 는 재료 고르기에서 이 카드에 고른 항목이다. 없으면 모든 필드를 받는 것으로 본다.
  * 받기로 한 선택 필드는 비어 있어도 걸리지 않지만, 값을 **틀리게** 적은 것(범위 밖 숫자,
- * 뒤집힌 기간)은 걸린다.
+ * 뒤집힌 기간)은 걸린다. `classNames` 는 클래스마다 칸이 있는 필드가 쓸 지금 클래스 목록이다(`hasValue`).
  */
 export function getCardIssues(
   card: ComposerCard,
@@ -279,11 +377,12 @@ export function getCardIssues(
   values: ComposerValueMap,
   included: boolean,
   picks?: readonly string[],
+  classNames: readonly string[] = [],
 ): FieldIssue[] {
   if (!included) return [];
 
   return getCardFields(card.id, taskType)
-    .map((field) => getFieldIssue(card, field, values, picks))
+    .map((field) => getFieldIssue(card, field, values, picks, classNames))
     .filter((issue): issue is FieldIssue => issue !== null);
 }
 
@@ -294,6 +393,7 @@ export function isCardComplete(
   values: ComposerValueMap,
   included: boolean,
   picks?: readonly string[],
+  classNames: readonly string[] = [],
 ): boolean {
-  return getCardIssues(card, taskType, values, included, picks).length === 0;
+  return getCardIssues(card, taskType, values, included, picks, classNames).length === 0;
 }

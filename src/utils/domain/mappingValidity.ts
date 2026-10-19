@@ -27,6 +27,7 @@ export type MappingValidityReason =
   | "no_mapped_rows"
   | "duplicate_roles"
   | "missing_roles"
+  | "invalid_threshold"
   | "no_positive_class";
 
 export interface MappingValidityInput {
@@ -40,6 +41,11 @@ export interface MappingValidityInput {
   duplicateRoleCount: number;
   /** binary 에서 사용자가 고른 양성 클래스. */
   positiveClass: string;
+  /**
+   * 결정 임계값이 0~1 안인가(B4). 임계값이 쓰이지 않는 매핑이면 참으로 넘긴다 — 고칠 칸이 없는 값으로
+   * 막지 않는다. 생략하면 참.
+   */
+  thresholdInRange?: boolean;
 }
 
 /**
@@ -52,6 +58,7 @@ export function getMappingValidityReason(input: MappingValidityInput): MappingVa
   if (input.assignedRoleCount === 0) return "no_mapped_rows";
   if (input.duplicateRoleCount > 0) return "duplicate_roles";
   if (input.missingRoleCodes.length > 0) return "missing_roles";
+  if (input.thresholdInRange === false) return "invalid_threshold";
   if (input.taskType === "binary" && input.positiveClass === "") return "no_positive_class";
   return "ok";
 }
@@ -71,11 +78,13 @@ export function describeMappingValidity(
     case "no_task_type":
       return "분류 유형이 정해지지 않았습니다. 작업 유형 화면에서 다시 시작하세요.";
     case "no_mapped_rows":
-      return "역할이 지정된 컬럼이 없습니다. 평가 데이터 단계에서 파일을 다시 올리세요.";
+      return "역할이 지정된 컬럼이 없습니다. 평가 데이터 화면에서 파일을 다시 올리세요.";
     case "duplicate_roles":
       return "같은 역할이 여러 컬럼에 지정됐습니다. 겹친 것을 정리하세요.";
     case "missing_roles":
       return `지정되지 않은 필수 역할: ${missingRoleCodes.join(", ")}`;
+    case "invalid_threshold":
+      return "결정 임계값은 0과 1 사이여야 합니다.";
     case "no_positive_class":
       return "이진 분류에는 양성 클래스가 필요합니다.";
     case "ok":

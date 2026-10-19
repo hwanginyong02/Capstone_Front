@@ -23,7 +23,8 @@ export interface UseIssuanceResult {
   canIssue: boolean;
   /** 발급/재발급 호출 진행 중 */
   busy: boolean;
-  issue: () => Promise<void>;
+  /** 발급. `note` 는 발급 비고 — 비우면 서버가 '최초 발급'으로 적는다. */
+  issue: (note?: string) => Promise<void>;
   reissue: (note: string) => Promise<void>;
 }
 
@@ -61,12 +62,12 @@ export function useIssuance(
     alert(
       `성적서 데이터가 발급 용량 한도를 넘습니다(${Math.round(bytes / 1024).toLocaleString()} KB / ` +
         `${ISSUE_CONTENT_MAX_BYTES / 1024} KB). 대개 학습 데이터 예시 이미지 때문입니다. ` +
-        "데이터 정보 단계에서 예시 이미지를 지우고 다시 올리면 인쇄용 크기로 줄어듭니다.",
+        "학습 데이터 화면에서 예시 이미지를 지우고 다시 올리면 인쇄용 크기로 줄어듭니다.",
     );
     return true;
   }
 
-  async function issue() {
+  async function issue(note?: string) {
     if (!data || busy || !id) return;
     if (tooLargeToIssue(data)) return;
     const run = useWorkspaceStore
@@ -78,6 +79,8 @@ export function useIssuance(
         runId: id,
         modelName: run?.modelName,
         modelVersion: run?.versionName,
+        // 비고는 선택이다. 비거나 공백뿐이면 보내지 않아 서버 기본값('최초 발급')을 쓴다.
+        note: note?.trim() || undefined,
         // 발급 시점의 성적서 원본을 서버에 보관한다 — 이것이 없으면 번호로 문서를
         // 복원할 수도, 인쇄물의 진위를 대조할 수도 없다(ISSUES.md F-01).
         content: data,

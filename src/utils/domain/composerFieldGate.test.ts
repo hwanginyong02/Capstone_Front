@@ -9,6 +9,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  INCOMPLETE_ROW_MESSAGE,
+  completeEntryRows,
+  duplicateEntryNames,
   getCardIssues,
   getFieldIssue,
   hasValue,
@@ -30,6 +33,8 @@ function fill(cardId: Parameters<typeof getCard>[0], taskType: "binary" = "binar
   for (const field of getCardFields(cardId, taskType)) {
     if (field.kind !== "required") continue;
     if (field.input === "multi") values[field.id] = { choices: [field.choices![1]] };
+    // 클래스마다 칸이 있는 필드는 지금 클래스 목록이 있어야 채울 수 있다 — 다른 필드를 보는 테스트라 모름으로 둔다.
+    else if (field.entryKeysFrom === "classes") values[field.id] = { unknown: true };
     else if (field.input === "entries") {
       values[field.id] = field.entryKeys
         ? { entries: field.entryKeys.map((key) => ({ key, value: "1" })) }
@@ -115,7 +120,7 @@ describe('"알려진 것 없음"은 "모름"과 다르다', () => {
       {
         cardId: "trainingData",
         fieldId: "channelEffects",
-        label: "수집 환경 차이",
+        label: "수집 방식 차이(채널 효과)",
         reason: "exclusive",
         // 이 필드의 탈출구는 "모름" 이 아니라 "알려진 것 없음" 이다.
         allowsUnknown: false,
@@ -133,6 +138,15 @@ describe('"알려진 것 없음"은 "모름"과 다르다', () => {
     expect(getCardIssues(학습데이터, "binary", values, true).map((i) => i.reason)).toEqual([
       "missing",
     ]);
+  });
+});
+
+describe("전용 화면이 받는 필드", () => {
+  it("필수여도 여기서 따지지 않는다 — 값이 카드 값 모음 밖에 있다", () => {
+    const card = { ...학습데이터, fields: [{ ...학습데이터.fields[0], dedicatedScreen: true as const }] };
+    expect(getFieldIssue(card, card.fields[0], {})).toBeNull();
+    // 표시가 없으면 같은 빈 값이 빈칸이다.
+    expect(getFieldIssue(학습데이터, 학습데이터.fields[0], {})?.reason).toBe("missing");
   });
 });
 
@@ -341,13 +355,14 @@ describe("숫자 범위", () => {
 
   it("범위 안이면 통과한다", () => {
     expect(reasonsOf(several("3", "82"))).toEqual([]);
-    expect(reasonsOf(several("1", "0"))).toEqual([]);
+    expect(reasonsOf(several("2", "0"))).toEqual([]);
     expect(reasonsOf(several("12", "100"))).toEqual([]);
     expect(reasonsOf(several("2", "82.5"))).toEqual([]);
   });
 
   it.each([
     ["0", "라벨러가 0명"],
+    ["1", "라벨러가 1명 — 복수 라벨러 합의는 2명부터다(W10)"],
     ["1.5", "라벨러 수가 정수가 아님"],
     ["three", "숫자가 아님"],
   ])("라벨러 수 %s 는 범위 밖이다 (%s)", (count) => {
@@ -522,7 +537,7 @@ describe("숫자 칸 묶음은 0 이상의 정수만 받는다", () => {
   const volume = 학습데이터.fields.find((f) => f.id === "trainingVolume")!;
   const classVolume = 학습데이터.fields.find((f) => f.id === "trainingClassVolume")!;
   const issueOf = (field: typeof volume, entries: Array<{ key: string; value: string }>) =>
-    getFieldIssue(학습데이터, field, { [field.id]: { entries } });
+    getFieldIssue(학습데이터, field, { [field.id]: { entries } }, undefined, ["cat"]);
 
   it("글자를 넣으면 걸린다", () => {
     const issue = issueOf(volume, [
@@ -549,5 +564,219 @@ describe("숫자 칸 묶음은 0 이상의 정수만 받는다", () => {
 
   it("빈 칸은 숫자 검사가 아니라 필수 검사의 몫이다", () => {
     expect(issueOf(classVolume, [{ key: "cat", value: "" }])?.reason).not.toBe("outOfRange");
+  });
+});
+
+describe("[B2] 조건부 칸은 조건을 정하는 칸을 받을 때만 따진다", () => {
+  const field = (id: string) => 정답라벨.fields.find((item) => item.id === id)!;
+  const several: ComposerValueMap = {
+    labelReview: { text: "Several reviewers" },
+    labelAgreementKind: { text: "Cohen's kappa" },
+  };
+
+  it("검수 방식을 받지 않으면 남은 값이 있어도 라벨러 수·일치도가 빈칸 문제가 되지 않는다", () => {
+    for (const id of ["labelReviewerCount", "labelAgreementKind", "labelAgreementValue"]) {
+      expect(getFieldIssue(정답라벨, field(id), several, ["labelAuthor"]), id).toBeNull();
+    }
+    expect(getCardIssues(정답라벨, "binary", { ...several, labelAuthor: { text: "Client" } }, true, ["labelAuthor"])).toEqual(
+      [],
+    );
+  });
+
+  it("검수 방식을 받으면 비어 있는 라벨러 수가 막는다 — 일치도 값은 종류를 따라 함께 나온다", () => {
+    const picks = ["labelAuthor", "labelReview"];
+    expect(getFieldIssue(정답라벨, field("labelReviewerCount"), several, picks)?.reason).toBe("missing");
+    expect(getFieldIssue(정답라벨, field("labelAgreementValue"), several, picks)?.reason).toBe("missing");
+  });
+
+  it("picks 가 없으면(흐름을 지나기 전) 종전처럼 모두 받는다", () => {
+    expect(getFieldIssue(정답라벨, field("labelReviewerCount"), several)?.reason).toBe("missing");
+  });
+});
+
+/**
+ * B5② · N6 — ⑥ 클래스별 데이터 양은 지금 클래스를 모두 채우거나 "모름"이어야 한다(사용자 결정 "학습 클래스
+ * 분포 모두 입력(또는 모름)"). 옛 클래스 칸은 세지 않는다. 클래스 목록이 비면 "모름"만 통과한다 — 빈 목록의
+ * `every` 는 참이라 빈칸이 통과하던 함정(N6).
+ */
+describe("[B5②·N6] 클래스별 데이터 양은 지금 클래스를 모두", () => {
+  const field = 학습데이터.fields.find((f) => f.id === "trainingClassVolume")!;
+  const CLASSES = ["cat", "dog", "bird"];
+  const entries = (...keys: string[]) => ({ entries: keys.map((key) => ({ key, value: "10" })) });
+  const issue = (value: ComposerValueMap[string], classNames: string[]) =>
+    getFieldIssue(학습데이터, field, { trainingClassVolume: value }, undefined, classNames);
+
+  it("세 클래스 중 둘만 채우면 빈칸 문제다", () => {
+    expect(hasValue(field, entries("cat", "dog"), CLASSES)).toBe(false);
+    expect(issue(entries("cat", "dog"), CLASSES)?.reason).toBe("missing");
+  });
+
+  it("셋 다 채우거나 '모름'이면 통과한다", () => {
+    expect(issue(entries("cat", "dog", "bird"), CLASSES)).toBeNull();
+    expect(issue({ ...entries("cat"), unknown: true }, CLASSES)).toBeNull();
+  });
+
+  it("옛 클래스 칸만 있으면 빈칸 문제다 — 옛 칸의 틀린 값은 고칠 수 없어 따지지 않는다", () => {
+    expect(issue(entries("x", "y", "z"), CLASSES)?.reason).toBe("missing");
+    const stale = { entries: [...entries("cat", "dog", "bird").entries, { key: "x", value: "많음" }] };
+    expect(issue(stale, CLASSES)).toBeNull();
+  });
+
+  it("지금 클래스 칸의 틀린 값은 걸린다", () => {
+    const wrong = { entries: [{ key: "cat", value: "-1" }, { key: "dog", value: "1" }, { key: "bird", value: "1" }] };
+    expect(issue(wrong, CLASSES)?.reason).toBe("outOfRange");
+  });
+
+  it("[N6] 클래스 목록이 비면 채운 칸이 있어도 빈칸 문제이고 '모름'만 통과한다", () => {
+    expect(hasValue(field, entries("cat"), [])).toBe(false);
+    expect(issue(entries("cat"), [])?.reason).toBe("missing");
+    expect(issue({ unknown: true }, [])).toBeNull();
+    // 목록을 넘기지 않아도 같다(기본값 빈 목록).
+    expect(hasValue(field, entries("cat"))).toBe(false);
+  });
+
+  it("카드 전체 점검도 같은 목록을 쓴다", () => {
+    const values: ComposerValueMap = { ...fill("trainingData"), trainingClassVolume: entries("cat", "dog") };
+    expect(getCardIssues(학습데이터, "binary", values, true, undefined, CLASSES).map((i) => i.fieldId)).toEqual([
+      "trainingClassVolume",
+    ]);
+    values.trainingClassVolume = entries("cat", "dog", "bird");
+    expect(isCardComplete(학습데이터, "binary", values, true, undefined, CLASSES)).toBe(true);
+  });
+});
+
+/**
+ * B6② — 줄을 추가하는 칸(⑨ 하이퍼파라미터)은 이름과 값을 둘 다 적어야 받는다. 종전에는 값만 적은 줄도
+ * 채운 것으로 세 진행을 통과하고, 성적서는 그 줄을 버려 '제공되지 않음'이 찍혔다.
+ */
+describe("[B6②] 하이퍼파라미터 줄은 이름과 값 둘 다", () => {
+  const hyper = 모델환경.fields.find((f) => f.id === "hyperparameters")!;
+  const issue = (entries: Array<{ key: string; value: string }>, unknown = false) =>
+    getFieldIssue(모델환경, hyper, { hyperparameters: { entries, unknown } });
+
+  it("값만, 또는 이름만 적은 줄이 있으면 incompleteRow 와 안내 문구", () => {
+    for (const row of [{ key: "", value: "6" }, { key: "max_depth", value: "" }, { key: " ", value: "6" }]) {
+      expect(issue([{ key: "eta", value: "0.1" }, row])).toEqual({
+        cardId: "modelEnv",
+        fieldId: "hyperparameters",
+        label: "하이퍼파라미터",
+        reason: "incompleteRow",
+        message: "이름과 값을 모두 적어 주세요.",
+        allowsUnknown: true,
+      });
+    }
+    expect(INCOMPLETE_ROW_MESSAGE).toBe("이름과 값을 모두 적어 주세요.");
+  });
+
+  it("값만 적은 줄 하나뿐이면 채운 것이 아니다", () => {
+    expect(hasValue(hyper, { entries: [{ key: "", value: "6" }] })).toBe(false);
+  });
+
+  it("둘 다 빈 줄은 아직 쓰지 않은 줄 — 다 적은 줄이 있으면 통과", () => {
+    expect(issue([{ key: "max_depth", value: "6" }, { key: "", value: "" }])).toBeNull();
+  });
+
+  it("줄이 없으면 빈칸 문제, '모름'이면 남은 줄을 따지지 않는다", () => {
+    expect(issue([])?.reason).toBe("missing");
+    expect(issue([{ key: "", value: "6" }], true)).toBeNull();
+  });
+
+  it("completeEntryRows 는 이름·값이 다 있는 줄만 돌려준다", () => {
+    expect(
+      completeEntryRows([
+        { key: "a", value: "1" },
+        { key: "", value: "2" },
+        { key: "c", value: " " },
+      ]),
+    ).toEqual([{ key: "a", value: "1" }]);
+    expect(completeEntryRows(undefined)).toEqual([]);
+  });
+
+  it("[S9] 이름이 같은 줄이 둘이면 duplicateName — 4절 표와 AI 의 줄 수가 갈리지 않게 막는다", () => {
+    expect(
+      issue([
+        { key: "lr", value: "0.1" },
+        { key: "max_depth", value: "6" },
+        { key: " lr ", value: "0.2" },
+      ]),
+    ).toEqual({
+      cardId: "modelEnv",
+      fieldId: "hyperparameters",
+      label: "하이퍼파라미터",
+      reason: "duplicateName",
+      message: "같은 이름이 두 번 있어요: lr",
+      allowsUnknown: true,
+    });
+    // 겹친 이름이 여럿이면 처음 나온 순서로 모두 적는다.
+    expect(
+      issue([
+        { key: "b", value: "1" },
+        { key: "a", value: "1" },
+        { key: "a", value: "2" },
+        { key: "b", value: "2" },
+        { key: "a", value: "3" },
+      ])?.message,
+    ).toBe("같은 이름이 두 번 있어요: a, b");
+  });
+
+  it("[S9] 대소문자가 다르면 다른 이름, 다 적지 않은 줄은 겹침으로 세지 않는다(그 줄은 incompleteRow)", () => {
+    expect(issue([{ key: "lr", value: "0.1" }, { key: "LR", value: "0.2" }])).toBeNull();
+    expect(duplicateEntryNames([{ key: "lr", value: "0.1" }, { key: "lr", value: "" }])).toEqual([]);
+    expect(issue([{ key: "lr", value: "0.1" }, { key: "lr", value: "" }])?.reason).toBe("incompleteRow");
+    expect(duplicateEntryNames(undefined)).toEqual([]);
+  });
+
+  it("[S9] '모름'이면 겹친 이름도 따지지 않는다", () => {
+    expect(issue([{ key: "lr", value: "0.1" }, { key: "lr", value: "0.2" }], true)).toBeNull();
+  });
+
+  it("칸이 정해진 묶음(⑥ 데이터 양)에는 이 규칙을 적용하지 않는다", () => {
+    const volume = 학습데이터.fields.find((f) => f.id === "trainingVolume")!;
+    expect(
+      getFieldIssue(학습데이터, volume, {
+        trainingVolume: { entries: [{ key: "Training", value: "1" }, { key: "Validation", value: "2" }] },
+      }),
+    ).toBeNull();
+  });
+});
+
+/**
+ * W3 — 칸별 "모름". 일부 칸만 알 때 아는 칸은 적고 모르는 칸만 모름으로 넘어간다. 종전에는 다섯 칸을 다
+ * 채우거나 필드 전체를 모름으로 해야 했다.
+ */
+describe("[W3] 칸별 모름", () => {
+  const runtime = 모델환경.fields.find((f) => f.id === "runtimeEnv")!;
+  const volume = 학습데이터.fields.find((f) => f.id === "trainingVolume")!;
+  const gpu = 모델환경.fields.find((f) => f.id === "gpuUsage")!;
+  const known = (keys: string[]) => keys.map((key) => ({ key, value: "x" }));
+
+  it("실행 환경: CPU 만 모름이고 나머지 넷을 채우면 통과", () => {
+    const value = { entries: known(["Operating system", "GPU", "Memory", "Software"]), unknownKeys: ["CPU"] };
+    expect(hasValue(runtime, value)).toBe(true);
+    expect(getFieldIssue(모델환경, runtime, { runtimeEnv: value })).toBeNull();
+  });
+
+  it("모름이 아닌 칸이 비면 여전히 빈칸 문제", () => {
+    const value = { entries: known(["Operating system", "GPU", "Memory"]), unknownKeys: ["CPU"] };
+    expect(getFieldIssue(모델환경, runtime, { runtimeEnv: value })?.reason).toBe("missing");
+  });
+
+  it("데이터 양: 학습 수만 알면 검증을 모름으로 — 모름 칸에 남은 틀린 값은 따지지 않는다", () => {
+    const value = {
+      entries: [
+        { key: "Training", value: "12,000" },
+        { key: "Validation", value: "모름" },
+      ],
+      unknownKeys: ["Validation"],
+    };
+    expect(getFieldIssue(학습데이터, volume, { trainingVolume: value })).toBeNull();
+    // 모름을 풀면 그 값이 다시 따져진다.
+    expect(getFieldIssue(학습데이터, volume, { trainingVolume: { entries: value.entries } })?.reason).toBe("outOfRange");
+  });
+
+  it("GPU 사용 여부의 빈칸 안내도 '모름'을 알려 준다 — 선택지에 모름이 있다", () => {
+    const issue = getFieldIssue(모델환경, gpu, { gpuUsage: { entries: [] } });
+    expect(issue?.reason).toBe("missing");
+    expect(issue?.allowsUnknown).toBe(true);
   });
 });

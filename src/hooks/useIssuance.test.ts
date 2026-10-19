@@ -48,3 +48,20 @@ describe("발급 전 용량 확인", () => {
     expect(issueReport).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("발급 비고 (B16)", () => {
+  it("적은 비고는 앞뒤 공백을 떼어 보내고, 비거나 공백뿐이면 보내지 않는다", async () => {
+    vi.spyOn(window, "alert").mockImplementation(() => {});
+    vi.mocked(issueReport).mockClear();
+    vi.mocked(issueReport).mockRejectedValue(new Error("network")); // 요청 본문만 본다
+    const { result } = renderHook(() => useIssuance("run-1", report(1_000)));
+
+    await act(() => result.current.issue(" 고객 제출용 "));
+    await act(() => result.current.issue("   "));
+    await act(() => result.current.issue());
+
+    const notes = vi.mocked(issueReport).mock.calls.map(([payload]) => payload.note);
+    expect(notes).toEqual(["고객 제출용", undefined, undefined]);
+  });
+});
+

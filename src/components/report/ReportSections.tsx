@@ -55,6 +55,7 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         totalSamples={data.datasetInfo.sampleCount}
         validationSummary={data.validationSummary}
         materialCheck={data.materialCheck}
+        taskTypeLabel={data.meta.taskTypeLabel}
       />
       <KpiResultSection
         kpiResults={data.kpiResults}
@@ -65,6 +66,8 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         // 판정 규칙 문구는 그 규칙(D19)으로 판정한 성적서에만 — judgedCount 가 그 표시다.
         showVerdictRule={data.conclusion.judgedCount !== undefined}
         confidenceIntervalNote={data.confidenceIntervalNote}
+        targetDigits={data.targetDigits}
+        coreMetricsSource={data.coreMetricsSource}
       />
       <ChartSection charts={data.charts} />
       <LatencySection latency={data.latency} materialCheck={data.materialCheck} />

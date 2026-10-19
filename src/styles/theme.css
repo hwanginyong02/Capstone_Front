@@ -1,4 +1,6 @@
 @custom-variant dark (&:is(.dark *));
+/* 마우스처럼 올려 볼 수 있는 기기에서만 — 터치에서는 숨겼다 보이는 버튼을 늘 보인다. */
+@custom-variant can-hover (@media (hover: hover));
 
 /**
  * 색 토큰 — docs/MATERIAL_PICKER.md §10 "인증 네이비". 이름과 쓰임은
@@ -274,5 +276,31 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
+  }
+}
+
+/*
+ * 늘 보이는 얇은 스크롤바 — 넘친 영역의 스크롤 단서(docs/MATERIAL_PICKER.md §12.3, U1).
+ * macOS 의 "스크롤할 때만 보기"에서도 보이게 WebKit 스크롤바를 직접 그린다. Chrome 은 표준
+ * scrollbar-width·scrollbar-color 가 있으면 WebKit 스타일을 무시하므로, 표준 속성은 WebKit 스크롤바를
+ * 모르는 브라우저(Firefox)에만 준다. 그라데이션은 쓰지 않는다(디자인 지침).
+ */
+@utility scrollbar-visible {
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  &::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
   }
 }

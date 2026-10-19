@@ -7,8 +7,8 @@
  * 시험 환경은 ⑨ 모델 설정과 실행 환경 카드가 받는다(성적서는 그 값을 `basicInfo.env*` 로 옮겨
  * 읽는다 — `buildReportInput`).
  *
- * ③ 의 선택 항목(홈페이지·팩스·과제 번호·평가 의뢰일)은 재료 고르기에서 체크한 것만 보인다
- * (`picks`). 평가 의뢰일을 고르지 않으면 오늘 날짜가 그대로 들어간다.
+ * ③ 의 선택 항목(홈페이지·팩스·과제 번호)은 재료 고르기에서 체크한 것만 보인다(`picks`). 평가
+ * 의뢰일은 필수 항목이라 늘 보인다. 성적서 용도의 선택지는 레지스트리(`reportPurpose`)에서 읽는다.
  */
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -22,8 +22,9 @@ import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "../../utils/styling/styles";
 import type { BasicInfoFormData } from "../../types/workflow.types";
-import { fromIsoDate, toIsoDate } from "../../utils/domain/isoDate";
-import { getCard, isFieldPicked, isPartPicked } from "../../data/reportComposer";
+import { fromIsoDate, toIsoDate, todayIsoDate } from "../../utils/domain/isoDate";
+import { NOTE_MAX_LENGTH, choiceLabel, getCard, isFieldPicked, isPartPicked } from "../../data/reportComposer";
+import { CharCount } from "../composer-input/CharCount";
 import { TEXTAREA_CLASS } from "../data-upload/shared";
 
 type FormDataSetter = (
@@ -41,9 +42,15 @@ function clientPicks(picks: readonly string[] | undefined) {
     website: isPartPicked(field("contactExtra"), "website", picks),
     fax: isPartPicked(field("contactExtra"), "fax", picks),
     projectNumber: isFieldPicked(card, field("projectNumber"), picks),
-    requestDate: isFieldPicked(card, field("requestDate"), picks),
   };
 }
+
+/** 성적서 용도의 선택지 — 저장값·이름·설명 모두 레지스트리 한 벌이다. */
+const PURPOSE_FIELD = getCard("clientInfo").fields.find((item) => item.id === "reportPurpose")!;
+
+/** 레지스트리에 적힌 글자 수 상한(B7). */
+const maxLengthOf = (cardId: "clientInfo" | "model", fieldId: string) =>
+  getCard(cardId).fields.find((item) => item.id === fieldId)?.maxLength;
 
 interface ClientInfoFormProps {
   formData: BasicInfoFormData;
@@ -57,6 +64,14 @@ export function ClientInfoForm({ formData, onFormDataChange, picks }: ClientInfo
     onFormDataChange((prev) => ({ ...prev, [field]: value }));
   };
   const show = clientPicks(picks);
+
+  // 평가 의뢰일이 비어 있으면 오늘을 저장한다 — 날짜 칸은 빈 값에도 오늘을 보이므로, 저장하지 않으면
+  // 보이는 날짜와 저장값이 갈려 "다음"이 막힌다(B1②). 이미 고른 날짜는 덮지 않는다.
+  const missingDate = !formData.contractDate;
+  React.useEffect(() => {
+    if (!missingDate) return;
+    onFormDataChange((prev) => (prev.contractDate ? prev : { ...prev, contractDate: todayIsoDate() }));
+  }, [missingDate, onFormDataChange]);
 
   return (
     <div className="space-y-10">
@@ -94,18 +109,16 @@ export function ClientInfoForm({ formData, onFormDataChange, picks }: ClientInfo
             <Input value={formData.address} onChange={(e) => update("address", e.target.value)} />
           </Field>
 
-          {show.requestDate && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* 스토어는 ISO 날짜 문자열을 들고, Date 변환은 이 UI 경계에서만 한다
-                  (ISSUES.md E-09 — 상태가 localStorage 를 왕복해도 타입이 붕괴하지 않게). */}
-              <DateField
-                label="평가 의뢰일"
-                required
-                value={fromIsoDate(formData.contractDate) ?? new Date()}
-                onChange={(value) => update("contractDate", toIsoDate(value ?? new Date()))}
-              />
-            </div>
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* 스토어는 ISO 날짜 문자열을 들고, Date 변환은 이 UI 경계에서만 한다
+                (ISSUES.md E-09 — 상태가 localStorage 를 왕복해도 타입이 붕괴하지 않게). */}
+            <DateField
+              label="평가 의뢰일"
+              required
+              value={fromIsoDate(formData.contractDate) ?? new Date()}
+              onChange={(value) => update("contractDate", toIsoDate(value ?? new Date()))}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -118,9 +131,15 @@ export function ClientInfoForm({ formData, onFormDataChange, picks }: ClientInfo
         <CardContent className="space-y-5">
           <RadioGroup value={formData.reportPurpose} onValueChange={(value) => update("reportPurpose", value)}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <ChoiceCard id="internal" title="내부 검증" description="사내 품질 확인이나 모델 모니터링에 씁니다" selected={formData.reportPurpose === "internal"} />
-              <ChoiceCard id="external" title="외부 제출" description="고객사나 심사 기관에 냅니다" selected={formData.reportPurpose === "external"} />
-              <ChoiceCard id="project" title="과제 산출물" description="지원 과제의 증빙으로 냅니다" selected={formData.reportPurpose === "project"} />
+              {(PURPOSE_FIELD.choices ?? []).map((choice) => (
+                <ChoiceCard
+                  key={choice}
+                  id={choice}
+                  title={choiceLabel(PURPOSE_FIELD, choice)}
+                  description={PURPOSE_FIELD.choiceDescriptions?.[choice] ?? ""}
+                  selected={formData.reportPurpose === choice}
+                />
+              ))}
             </div>
           </RadioGroup>
 
@@ -129,10 +148,12 @@ export function ClientInfoForm({ formData, onFormDataChange, picks }: ClientInfo
             <textarea
               className={TEXTAREA_CLASS}
               rows={2}
+              maxLength={NOTE_MAX_LENGTH}
               value={formData.reportPurposeNote ?? ""}
               onChange={(e) => update("reportPurposeNote", e.target.value)}
               placeholder="이 성적서를 왜 발급하는지 읽는 사람이 알아야 할 것 (선택)"
             />
+            <CharCount length={(formData.reportPurposeNote ?? "").length} max={NOTE_MAX_LENGTH} multiline />
           </Field>
 
           {formData.reportPurpose === "project" && (
@@ -152,7 +173,11 @@ export function ClientInfoForm({ formData, onFormDataChange, picks }: ClientInfo
               골랐을 때만 받는다. */}
           {show.projectNumber && (
             <Field label="과제 번호">
-              <Input value={formData.projectNumber} onChange={(e) => update("projectNumber", e.target.value)} />
+              <Input
+                value={formData.projectNumber}
+                maxLength={maxLengthOf("clientInfo", "projectNumber")}
+                onChange={(e) => update("projectNumber", e.target.value)}
+              />
             </Field>
           )}
         </CardContent>
@@ -203,6 +228,7 @@ export function ModelInfoForm({ formData, onFormDataChange }: ModelInfoFormProps
           <Field label="모델 용도" required>
             <Input
               value={formData.modelPurpose}
+              maxLength={maxLengthOf("model", "modelPurpose")}
               onChange={(e) => update("modelPurpose", e.target.value)}
               placeholder="예: 영상 기반 표면 결함 예측"
             />
@@ -210,6 +236,7 @@ export function ModelInfoForm({ formData, onFormDataChange }: ModelInfoFormProps
           <Field label="모델 분류" required>
             <Input
               value={formData.modelCategory}
+              maxLength={maxLengthOf("model", "modelCategory")}
               onChange={(e) => update("modelCategory", e.target.value)}
               placeholder="예: 분류 모델 (신경망)"
             />

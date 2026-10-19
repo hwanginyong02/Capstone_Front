@@ -2,19 +2,22 @@ import { Info } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Alert, AlertDescription } from "../ui/alert";
-import type { RequiredColumnDisplay } from "../../data/evaluationData";
+import { probabilityColumnNameRule, type RequiredColumnDisplay, type TaskType } from "../../data/evaluationData";
 import type { MappingRole } from "../../types/mapping.types";
 import { getRoleStatusLabel } from "../../utils/domain/mappingHelpers";
 
 interface RequiredColumnsCardProps {
+  taskType: TaskType;
   requiredRoles: RequiredColumnDisplay[];
   roleCounts: Partial<Record<MappingRole, number>>;
 }
 
 export function RequiredColumnsCard({
+  taskType,
   requiredRoles,
   roleCounts,
 }: RequiredColumnsCardProps) {
+  const nameRule = probabilityColumnNameRule(taskType);
   return (
     <Card>
       <CardHeader>
@@ -27,17 +30,24 @@ export function RequiredColumnsCard({
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
-            지표는 뒤의 "지표와 합격 기준" 단계에서 고릅니다. 지금은 평가에 꼭 필요한 정답과
+            지표는 뒤의 "지표와 합격 기준" 화면에서 고릅니다. 지금은 평가에 꼭 필요한 정답과
             예측(또는 확률) 컬럼만 확인합니다. 확률 컬럼을 매핑하지 않으면 AUROC 같은 곡선 지표는
             지표 화면에서 고를 수 없습니다.
           </AlertDescription>
         </Alert>
 
+        {/* 확률 컬럼 이름 규칙(M3) — 업로드 화면 안내와 같은 문장. 이진은 확률 컬럼이 하나라 없다. */}
+        {nameRule && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>{nameRule}</AlertDescription>
+          </Alert>
+        )}
+
         {requiredRoles.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {requiredRoles.map((role) => {
-              const count = roleCounts[role.code] ?? 0;
-              const status = getRoleStatusLabel(role, count);
+              const status = getRoleStatusLabel(taskType, role, roleCounts);
 
               return (
                 <div key={role.code} className="rounded-xl border border-border bg-card p-5 flex flex-col h-full">

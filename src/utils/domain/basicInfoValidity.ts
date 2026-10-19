@@ -6,19 +6,26 @@
  */
 import type { BasicInfoFormData } from "../../types/workflow.types";
 
-/** ③ 의뢰자 정보 — 회사·성적서 용도·과제. */
+/** 칸이 채워져 있는가 — 공백만 있는 칸은 빈 칸이다(B11). 옛 저장분에 문자열이 아닌 값이 남아도 빈 칸으로 본다. */
+function filled(value: unknown): boolean {
+  return typeof value === "string" && value.trim() !== "";
+}
+
+/**
+ * ③ 의뢰자 정보 — 회사·성적서 용도·과제. 칸마다 trim 해서 본다(B11): 종전에는 공백 한 칸만 넣어도 통과해
+ * 성적서 1.2 에 빈 이름이 찍혔다. 화면의 다음 버튼과 검증 화면의 1층 재확인(`layerOneGaps`)이 이 함수 하나를 쓴다.
+ */
 export function isClientInfoValid(formData: BasicInfoFormData): boolean {
-  const baseValid = Boolean(
-    formData.companyName &&
-      formData.representative &&
-      formData.businessNumber &&
-      formData.phone &&
-      formData.address &&
-      formData.contractDate &&
-      formData.reportPurpose,
-  );
+  const baseValid =
+    filled(formData.companyName) &&
+    filled(formData.representative) &&
+    filled(formData.businessNumber) &&
+    filled(formData.phone) &&
+    filled(formData.address) &&
+    filled(formData.contractDate) &&
+    filled(formData.reportPurpose);
   if (formData.reportPurpose === "project") {
-    return baseValid && Boolean(formData.projectName && formData.projectAgency);
+    return baseValid && filled(formData.projectName) && filled(formData.projectAgency);
   }
   return baseValid;
 }

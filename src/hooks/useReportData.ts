@@ -22,6 +22,7 @@ import { normalizeReportContent } from "../lib/report/normalizeReportContent";
 import { fetchNarrative } from "../lib/report/fetchNarrative";
 import { translateRoleToBackend } from "../lib/mapping/translateRoleToBackend";
 import { resolveBeta } from "../utils/domain/validation";
+import { resolveTaskType } from "../data/evaluationData";
 
 interface UseReportDataResult {
   data: FinalReportData | null;
@@ -83,7 +84,7 @@ export function useReportData(id: string): UseReportDataResult {
       try {
         const backendMappings = workflowState.columnMapping.map((row) => ({
           column: row.originalName,
-          role: translateRoleToBackend(row.confirmedRole, workflowState.taskType || "multiclass"),
+          role: translateRoleToBackend(row.confirmedRole, resolveTaskType(workflowState.taskType)),
           sample_values: row.sampleValues,
         }));
 
@@ -99,7 +100,7 @@ export function useReportData(id: string): UseReportDataResult {
         const beta = resolveBeta(workflowState.metricDetails);
 
         const payload = {
-          task_type: workflowState.taskType || "multiclass",
+          task_type: resolveTaskType(workflowState.taskType),
           column_mappings: backendMappings,
           selected_metric_ids: workflowState.selectedMetricIds,
           metadata: metadata,
@@ -145,7 +146,7 @@ export function useReportData(id: string): UseReportDataResult {
         });
         const ruleConclusion = stage1Report.conclusion;
         const updatedKpiResults = stage1Report.kpiResults;
-        const taskTypeResolved = workflowState.taskType || "binary";
+        const taskTypeResolved = resolveTaskType(workflowState.taskType);
         // stage1(서술 없음)은 스토어에 저장하지 않는다(캐시 오염 방지) — 로컬 렌더만.
         setData(stage1Report);
         setIsLoading(false);
@@ -171,7 +172,8 @@ export function useReportData(id: string): UseReportDataResult {
                 coreMetrics: updatedKpiResults
                   .filter((r) => r.isCore)
                   .map((r) => `${r.name}(${r.metricId})`),
-                classLabelDescriptions: workflowState.classLabelDescriptions,
+                // 성적서 3절과 같은 출처 — 놓지 않은 설명은 `buildReportInput` 이 이미 비웠다.
+                classLabelDescriptions: reportInput.classLabelDescriptions,
                 // 성적서 4절과 같은 출처 — ⑨ 실행 환경을 넣었으면 그 값이다(`buildReportInput`).
                 runtime: {
                   운영체제: reportInput.basicInfo.envOS ?? "",

@@ -13,7 +13,7 @@ import {
   moveCard,
   moveLane,
   normalizeCardOrder,
-  orderHints,
+  orderAfterPlacing,
   orderViolation,
   placeAtLaneEnd,
 } from "./cardOrder";
@@ -106,17 +106,42 @@ describe("카드 옮기기", () => {
   });
 });
 
+describe("블록을 처음 놓은 뒤의 자리", () => {
+  const off = DEFAULT_COMPOSER_SELECTION;
+
+  it("꺼져 있던 선택 블록은 레인 끝으로 간다", () => {
+    const order = moveCard(DEFAULT_CARD_ORDER, "testData", "evalData", "before");
+    expect(laneCards(orderAfterPlacing(order, off, "testData"), "data")).toEqual([
+      "evalData",
+      "trainingData",
+      "groundTruth",
+      "testData",
+    ]);
+  });
+
+  it("이미 켜진 선택 블록은 제자리다", () => {
+    const order = moveCard(DEFAULT_CARD_ORDER, "testData", "evalData", "before");
+    expect(orderAfterPlacing(order, { ...off, testData: true }, "testData")).toEqual(order);
+  });
+
+  it("잠긴 블록은 제자리다 — 평가 데이터가 학습 데이터 뒤로 가 순서 규칙을 깨지 않는다", () => {
+    const placed = orderAfterPlacing(DEFAULT_CARD_ORDER, { ...off, trainingData: true }, "evalData");
+    expect(placed).toEqual(DEFAULT_CARD_ORDER);
+    expect(orderViolation(ids(includedCardsInOrder(placed, { ...off, trainingData: true })))).toBeNull();
+  });
+});
+
 describe("순서 규칙 — 깨면 놓지 못한다", () => {
   it("지표와 합격 기준은 평가 데이터 뒤다 — 평가 기준 레인을 데이터 레인 앞으로 옮길 수 없다", () => {
     const order = moveLane(DEFAULT_CARD_ORDER, "criteria", "data", "before");
     const included = ids(includedCardsInOrder(order, DEFAULT_COMPOSER_SELECTION));
-    expect(orderViolation(included)).toMatch(/지표와 합격 기준은 평가 데이터 뒤/);
+    expect(orderViolation(included)).toMatch(/평가 기준 단계는 데이터 단계보다 앞에 둘 수 없어요/);
   });
 
   it("학습 데이터는 평가 데이터 뒤다 — 클래스별 데이터 양에 클래스 목록이 필요하다", () => {
     const order = moveCard(DEFAULT_CARD_ORDER, "trainingData", "evalData", "before");
     const included = ids(includedCardsInOrder(order, { ...DEFAULT_COMPOSER_SELECTION, trainingData: true }));
-    expect(orderViolation(included)).toMatch(/학습 데이터는 평가 데이터 뒤/);
+    expect(orderViolation(included)).toMatch(/학습 데이터 블록은 평가 데이터 블록 뒤/);
   });
 
   it("빠진 카드에는 규칙을 묻지 않는다", () => {
@@ -136,15 +161,14 @@ describe("순서 규칙 — 깨면 놓지 못한다", () => {
   });
 });
 
-describe("순서 권고 — 막지 않는다", () => {
-  it("평가 관점이 지표보다 뒤면 지표 추천을 받을 수 없다고 알린다", () => {
+describe("[D4] 평가 관점은 지표보다 앞이다 — 권고가 아니라 규칙", () => {
+  it("평가 관점을 지표 뒤로 옮기면 막는다 — 지표 추천이 관점의 답을 읽는다", () => {
     const order = moveCard(DEFAULT_CARD_ORDER, "perspective", "metrics", "after");
     const included = ids(includedCardsInOrder(order, DEFAULT_COMPOSER_SELECTION));
-    expect(orderViolation(included)).toBeNull();
-    expect(orderHints(included)).toEqual([expect.stringMatching(/지표를 추천받을 수 있어요/)]);
+    expect(orderViolation(included)).toMatch(/지표와 합격 기준 블록은 평가 관점 블록 뒤/);
   });
 
-  it("기본 순서에는 권고가 없다", () => {
-    expect(orderHints(ids(includedCardsInOrder(DEFAULT_CARD_ORDER, DEFAULT_COMPOSER_SELECTION)))).toEqual([]);
+  it("기본 순서는 규칙을 지킨다", () => {
+    expect(orderViolation(ids(includedCardsInOrder(DEFAULT_CARD_ORDER, DEFAULT_COMPOSER_SELECTION)))).toBeNull();
   });
 });

@@ -138,6 +138,24 @@ describe("6.1 판정 규칙 문구", () => {
     );
   });
 
+  it("핵심 지표가 기본값 그대로면 그렇게 적는다 (W8)", () => {
+    render(
+      <KpiResultSection kpiResults={withCore} taskType="binary" meta={meta()} showVerdictRule coreMetricsSource="default" />,
+    );
+    const rule = screen.getByText(/^판정 규칙:/);
+    expect(rule.textContent).toContain(
+      "핵심 지표는 분류 유형의 기본값을 의뢰자가 바꾸지 않고 사용하였다(Accuracy(M1)).",
+    );
+    expect(rule.textContent).not.toContain("의뢰자가 지정하였다");
+  });
+
+  it("의뢰자가 골랐으면(client) 종전 문장", () => {
+    render(
+      <KpiResultSection kpiResults={withCore} taskType="binary" meta={meta()} showVerdictRule coreMetricsSource="client" />,
+    );
+    expect(screen.getByText(/^판정 규칙:/).textContent).toContain("핵심 지표는 의뢰자가 지정하였다(Accuracy(M1)).");
+  });
+
   it("옛 규칙으로 판정한 성적서에는 찍지 않는다", () => {
     render(<KpiResultSection kpiResults={withCore} taskType="binary" meta={meta()} />);
     expect(screen.queryByText(/^판정 규칙:/)).not.toBeInTheDocument();
@@ -303,5 +321,26 @@ describe("95% 신뢰구간 (설계 D29) — 6.0 방식 한 줄, 6.1·6.2 열", (
       />,
     );
     expect(screen.getByText(/핵심 지표가 없습니다/).getAttribute("colspan")).toBe("6");
+  });
+});
+
+describe("합격 기준 자릿수 (B10) — 6.1·6.2 를 자리마다", () => {
+  const rows: KpiResult[] = [
+    { metricId: "M1", name: "Accuracy", value: 0.9, threshold: 0.856, status: "pass", higherIsBetter: true, isCore: true },
+    { metricId: "M8", name: "FPR", value: 0.05, threshold: 0.105, status: "pass", higherIsBetter: false, isCore: false },
+  ];
+  const criteriaCell = (name: string) => screen.getByText(name).closest("tr")!.querySelectorAll("td")[3];
+
+  it("targetDigits 3 이면 6.1(핵심)과 6.2(세부)에 셋째 자리", () => {
+    render(<KpiResultSection kpiResults={rows} taskType="binary" meta={meta()} targetDigits={3} />);
+    expect(criteriaCell("Accuracy")).toHaveTextContent(/^≥ 0\.856$/);
+    expect(criteriaCell("FPR")).toHaveTextContent(/^≤ 0\.105$/);
+  });
+
+  // 옛 표기는 반올림조차 판정값과 어긋났다 — 0.856 은 "0.86", 0.855 는 이진 표현 때문에 "0.85".
+  it("키가 없는 옛 성적서는 종전 둘째 자리", () => {
+    render(<KpiResultSection kpiResults={rows} taskType="binary" meta={meta()} />);
+    expect(criteriaCell("Accuracy")).toHaveTextContent(/^≥ 0\.86$/);
+    expect(criteriaCell("FPR")).toHaveTextContent(/^≤ 0\.10$/);
   });
 });

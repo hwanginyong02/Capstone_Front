@@ -6,7 +6,8 @@
  * 어긋나지 않는다.
  *
  * "모름"을 고르면 컨트롤을 잠근다 — 값과 모름이 동시에 남아 어느 쪽이 참인지 모르게 되는
- * 상태를 만들지 않는다. 성적서에는 "제공되지 않음"으로 찍힌다(이번 범위에서는 저장까지만).
+ * 상태를 만들지 않는다. 성적서에는 "제공되지 않음"으로 찍힌다. 칸이 정해진 글·숫자 묶음은 칸마다
+ * 모름을 고른다(W3, `unknownPerEntry`).
  */
 import { Plus, X } from "lucide-react";
 import { Button } from "../ui/button";
@@ -16,8 +17,20 @@ import { Label } from "../ui/label";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { TEXTAREA_CLASS } from "../data-upload/shared";
 import { cn } from "../../utils/styling/styles";
-import { isFieldRequired, isOtherChosen } from "../../utils/domain/composerFieldGate";
-import { choiceLabel, entryLabel } from "../../data/reportComposer";
+import {
+  duplicateEntryNames,
+  isFieldRequired,
+  isFreeEntriesField,
+  isOtherChosen,
+} from "../../utils/domain/composerFieldGate";
+import {
+  NOTE_MAX_LENGTH,
+  OTHER_TEXT_MAX_LENGTH,
+  choiceLabel,
+  entryLabel,
+  unknownPerEntry,
+} from "../../data/reportComposer";
+import { CharCount } from "./CharCount";
 import {
   MONTH_RANGE_KEYS,
   type ComposerField,
@@ -70,6 +83,16 @@ export function ComposerFieldInput({
     onChange({ ...value, entries: [...rest, { key, value: next }], unknown: false });
   };
   const entryValue = (key: string) => entries.find((entry) => entry.key === key)?.value ?? "";
+  /**
+   * 칸별 "모름"(W3) — ⑥ 데이터 양·⑨ 실행 환경은 칸마다 고른다. 필드 모름 체크는 두지 않는다. 고른 칸은
+   * 잠그고(값은 남겨 두어 다시 풀면 돌아온다) 성적서에는 그 칸만 "제공되지 않음"이 된다.
+   */
+  const perEntryUnknown = unknownPerEntry(field);
+  const unknownKeys = value?.unknownKeys ?? [];
+  const toggleEntryUnknown = (key: string, on: boolean) => {
+    const rest = unknownKeys.filter((item) => item !== key);
+    onChange({ ...value, unknownKeys: on ? [...rest, key] : rest, unknown: false });
+  };
 
   const toggleChoice = (choice: string) => {
     const has = chosen.includes(choice);
@@ -85,7 +108,8 @@ export function ComposerFieldInput({
   };
 
   const controlId = "field-" + field.id;
-  const isFreeEntries = field.input === "entries" && !field.entryKeys && !field.entryKeysFrom;
+  const isFreeEntries = isFreeEntriesField(field);
+  const duplicatedNames = isFreeEntries ? duplicateEntryNames(value?.entries) : [];
   const required = isFieldRequired(field, siblingValues);
   const otherChosen = isOtherChosen(field, value);
   const otherText = value?.otherText ?? "";
@@ -99,7 +123,7 @@ export function ComposerFieldInput({
           {required && <span className="ml-1 text-destructive">*</span>}
         </Label>
 
-        {field.allowsUnknown && (
+        {field.allowsUnknown && !perEntryUnknown && (
           /* 켜면 다른 선택지와 같은 강조색 테두리가 뜬다 — 이것도 하나의 답이다. */
           <label
             className={cn(
@@ -134,7 +158,14 @@ export function ComposerFieldInput({
                 className={cn(TILE_BASE, value?.text === choice ? TILE_ON : TILE_OFF)}
               >
                 <RadioGroupItem shape="square" value={choice} />
-                <span className="text-body-medium text-foreground">{choiceLabel(field, choice)}</span>
+                <span className="text-body-medium text-foreground">
+                  {choiceLabel(field, choice)}
+                  {field.choiceDescriptions?.[choice] && (
+                    <span className="block text-body-small text-muted-foreground">
+                      {field.choiceDescriptions[choice]}
+                    </span>
+                  )}
+                </span>
               </label>
             ))}
           </RadioGroup>
@@ -164,10 +195,12 @@ export function ComposerFieldInput({
             aria-label={field.label + " 기타 내용"}
             placeholder="무엇인지 적어 주세요"
             aria-invalid={(invalid && otherText.trim() === "") || undefined}
+            maxLength={OTHER_TEXT_MAX_LENGTH}
             value={otherText}
             onChange={(event) => onChange({ ...value, otherText: event.target.value, unknown: false })}
           />
         )}
+        {otherChosen && <CharCount length={otherText.length} max={OTHER_TEXT_MAX_LENGTH} />}
 
         {/* 덧붙이는 글(서술 설계 D26). 맞는 선택지가 없으면 글만 써도 답한 것으로 센다. */}
         {field.allowsNote && (
@@ -177,10 +210,12 @@ export function ComposerFieldInput({
             rows={2}
             aria-label={field.label + " 덧붙이는 글"}
             placeholder="덧붙이는 글 (선택)"
+            maxLength={NOTE_MAX_LENGTH}
             value={value?.note ?? ""}
             onChange={(event) => onChange({ ...value, note: event.target.value, unknown: false })}
           />
         )}
+        {field.allowsNote && <CharCount length={(value?.note ?? "").length} max={NOTE_MAX_LENGTH} multiline />}
 
         {field.input === "monthRange" && (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -209,12 +244,24 @@ export function ComposerFieldInput({
           <div className="grid gap-3 sm:grid-cols-2">
             {field.entryKeys.map((key) => (
               <div key={key} className="space-y-1">
-                <Label
-                  htmlFor={controlId + "-" + key}
-                  className="text-body-small font-normal text-muted-foreground"
-                >
-                  {entryLabel(field, key)}
-                </Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label
+                    htmlFor={controlId + "-" + key}
+                    className="text-body-small font-normal text-muted-foreground"
+                  >
+                    {entryLabel(field, key)}
+                  </Label>
+                  {perEntryUnknown && (
+                    <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-body-small text-muted-foreground">
+                      <Checkbox
+                        checked={unknownKeys.includes(key)}
+                        onCheckedChange={(next) => toggleEntryUnknown(key, next === true)}
+                        aria-label={field.label + " " + entryLabel(field, key) + " 모름"}
+                      />
+                      모름
+                    </label>
+                  )}
+                </div>
                 {/* 칸이 정해진 입력이라도 선택지가 있으면 고르게 한다(⑨ GPU 사용 여부). */}
                 {field.choices ? (
                   <RadioGroup
@@ -240,9 +287,16 @@ export function ComposerFieldInput({
                 ) : (
                   <Input
                     id={controlId + "-" + key}
-                    className={cn(field.mono && "font-mono", field.numeric && "tabular-nums")}
+                    className={cn(
+                      field.mono && "font-mono",
+                      field.numeric && "tabular-nums",
+                      unknownKeys.includes(key) && "opacity-60",
+                    )}
                     inputMode={field.numeric ? "numeric" : undefined}
-                    aria-invalid={(invalid && entryValue(key).trim() === "") || undefined}
+                    disabled={unknownKeys.includes(key)}
+                    aria-invalid={
+                      (invalid && !unknownKeys.includes(key) && entryValue(key).trim() === "") || undefined
+                    }
                     value={entryValue(key)}
                     onChange={(event) => setEntry(key, event.target.value)}
                   />
@@ -289,6 +343,13 @@ export function ComposerFieldInput({
                   className="font-mono"
                   placeholder="이름"
                   aria-label={field.label + " 이름 " + (index + 1)}
+                  aria-invalid={
+                    (invalid &&
+                      ((entry.key.trim() === "" && entry.value.trim() !== "") ||
+                        // 이름이 같은 줄(duplicateName) — 판정은 점검과 같은 함수다.
+                        (entry.value.trim() !== "" && duplicatedNames.includes(entry.key.trim())))) ||
+                    undefined
+                  }
                   value={entry.key}
                   onChange={(event) => {
                     const next = [...entries];
@@ -300,6 +361,7 @@ export function ComposerFieldInput({
                   className="font-mono tabular-nums"
                   placeholder="값"
                   aria-label={field.label + " 값 " + (index + 1)}
+                  aria-invalid={(invalid && entry.value.trim() === "" && entry.key.trim() !== "") || undefined}
                   value={entry.value}
                   onChange={(event) => {
                     const next = [...entries];
@@ -343,9 +405,13 @@ export function ComposerFieldInput({
             aria-invalid={invalid || undefined}
             rows={3}
             placeholder={field.inputExample}
+            maxLength={field.maxLength}
             value={value?.text ?? ""}
             onChange={(event) => setText(event.target.value)}
           />
+        )}
+        {field.input === "textarea" && field.maxLength && (
+          <CharCount length={(value?.text ?? "").length} max={field.maxLength} multiline />
         )}
 
         {(field.input === "text" || field.input === "number" || field.input === "date") && (
@@ -361,9 +427,13 @@ export function ComposerFieldInput({
             }
             aria-invalid={invalid || undefined}
             placeholder={field.inputExample}
+            maxLength={field.input === "text" ? field.maxLength : undefined}
             value={value?.text ?? ""}
             onChange={(event) => setText(event.target.value)}
           />
+        )}
+        {field.input === "text" && field.maxLength && (
+          <CharCount length={(value?.text ?? "").length} max={field.maxLength} />
         )}
       </fieldset>
 

@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { metricNeedsTargetValue, resolveBeta, resolveTargetValue } from "./validation";
+import {
+  DEFAULT_BETA,
+  getTargetValueRule,
+  isBetaValid,
+  metricNeedsTargetValue,
+  newMetricDetail,
+  resolveBeta,
+  resolveTargetValue,
+} from "./validation";
 import { computeVerdict } from "../../lib/report/computeVerdict";
 import { getRecommendedMetricIds } from "../../data/evaluationData";
 import type { KpiResult } from "../../types/finalReport.types";
@@ -101,5 +109,50 @@ describe("resolveBeta — 평가 요청과 재료 선택 점검이 같은 β", (
     expect(resolveBeta({ M5: { beta: "" } })).toBe(1);
     expect(resolveBeta({ M5: { beta: "2" } })).toBe(2);
     expect(resolveBeta({ M5: { beta: "0.5" } })).toBe(0.5);
+  });
+});
+
+describe("β 기본값 한 곳 (B3)", () => {
+  it("기본값은 1.0 이다", () => {
+    expect(DEFAULT_BETA).toBe("1.0");
+  });
+
+  it("M5 의 처음 상세 값은 β 1.0 으로 시작한다 — 목표값을 먼저 적어도 β 가 비지 않는다", () => {
+    expect(newMetricDetail("M5", "F-beta Score")).toEqual({
+      id: "M5",
+      name: "F-beta Score",
+      description: "",
+      targetValue: "",
+      beta: "1.0",
+      positiveClass: "",
+      completed: false,
+    });
+    expect(isBetaValid(newMetricDetail("M5", "F-beta Score").beta)).toBe(true);
+  });
+
+  it("다른 지표의 β 는 비운다(쓰이지 않음)", () => {
+    expect(newMetricDetail("M4", "F1 Score").beta).toBe("");
+  });
+
+  it("저장값이 없으면 유효, 비우면 무효", () => {
+    expect(isBetaValid(undefined)).toBe(true);
+    expect(isBetaValid("")).toBe(false);
+    expect(isBetaValid("0")).toBe(false);
+    expect(isBetaValid("2")).toBe(true);
+  });
+});
+
+describe("목표값 범위 — M14·M18 은 0~1 (B9)", () => {
+  it.each(["M14", "M18"])("%s 는 1.2 면 오류, 0.3 이면 통과", (id) => {
+    expect(getTargetValueRule(id).validate(1.2)).toBe("이 지표의 목표값은 0과 1 사이여야 합니다.");
+    expect(getTargetValueRule(id).validate(-0.1)).not.toBeNull();
+    expect(getTargetValueRule(id).validate(0.3)).toBeNull();
+    expect(getTargetValueRule(id).summary).toBe("0과 1 사이의 숫자를 넣으세요.");
+  });
+
+  it("KL Divergence·Log Loss 는 그대로 0 이상(상한 없음)", () => {
+    expect(getTargetValueRule("M6").validate(2)).toBeNull();
+    expect(getTargetValueRule("M19").validate(2)).toBeNull();
+    expect(getTargetValueRule("M6").validate(-0.1)).not.toBeNull();
   });
 });

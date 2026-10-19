@@ -9,7 +9,7 @@
  * 선택 키도 두지 않는다.
  */
 import type { TaskType } from "../../data/evaluationData";
-import { getMetricDisplayId, METRICS } from "../../data/evaluationData";
+import { getMetricDisplayId, METRICS, resolveTaskType } from "../../data/evaluationData";
 import type { FinalReportData, LatencyStats } from "../../types/finalReport.types";
 import type { MappingRow } from "../../types/mapping.types";
 import type { ComposerValueMap } from "../../types/reportComposer.types";
@@ -18,7 +18,7 @@ import { resolveTargetValue } from "../../utils/domain/validation";
 import { buildDatasetDiagnosis } from "./buildDatasetDiagnosis";
 import { buildFactSheet, type FactSheet } from "./buildFactSheet";
 import { buildClassReportTable } from "./classReportTable";
-import { buildConclusion, resolveCoreMetricIds } from "./computeVerdict";
+import { buildConclusion, coreMetricsSource, resolveCoreMetricIds } from "./computeVerdict";
 import {
   attachConfidenceIntervals,
   confidenceIntervalNote,
@@ -72,7 +72,7 @@ export function assembleEvaluatedReport(
   const failed_metrics = result.results.failed_metrics || {};
 
   // 1. KPI 지표 계산값 치환
-  const taskTypeForMetrics = inputs.taskType || "multiclass";
+  const taskTypeForMetrics = resolveTaskType(inputs.taskType);
   // 핵심 지표 — 지표와 합격 기준 화면의 합격 기준 표에서 고른 값, 고르지 않았으면 유형별 기본값이다.
   // 판정(아래 buildConclusion)과 성적서의 "핵심" 표시가 같은 목록을 본다.
   const coreDisplayIds = new Set(
@@ -230,7 +230,7 @@ export function assembleEvaluatedReport(
     ? result.class_distribution
     : inputs.metadata?.class_distribution || {};
 
-  const taskTypeResolved = inputs.taskType || "binary";
+  const taskTypeResolved = resolveTaskType(inputs.taskType);
   // 혼동행렬의 totalSamples가 가장 정확한 평가 데이터의 row 수 (멀티레이블의 경우 200)
   // 서버가 확정한 표본 수를 최우선으로 쓴다. 종전에는 마지막 폴백으로 학습 데이터 폼의
   // 검증 샘플 수를 썼다 — 모델 학습용 검증 세트 크기라 평가 행 수와 무관하다
@@ -340,6 +340,8 @@ export function assembleEvaluatedReport(
     // 같은 사실이 여기에만 실려 온다.
     evaluationWarnings: Array.isArray(result.warnings) ? result.warnings : [],
     kpiResults: updatedKpiResults,
+    // 핵심 지표를 누가 정했나(W8) — 위 핵심 지표 목록과 같은 값(스토어의 ② 카드 값)으로 판정한다.
+    coreMetricsSource: coreMetricsSource(inputs.composerMetrics),
     // 클래스별 표(M22) — 평균 줄까지. M22 만 골라도 보인다.
     classReport,
     confusionCounts,

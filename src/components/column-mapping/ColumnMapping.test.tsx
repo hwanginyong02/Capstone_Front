@@ -121,3 +121,92 @@ describe("지표 제외는 없다 (docs/MATERIAL_PICKER.md §3)", () => {
     expect(screen.queryByRole("button", { name: /지표/ })).not.toBeInTheDocument();
   });
 });
+
+describe("평가 흐름에 놓지 않은 항목 (docs/MATERIAL_PICKER.md §12.4)", () => {
+  const base = { taskType: "multiclass" as const, rows: [row("t", "y_true"), row("p", "y_pred")], onRowsChange: vi.fn() };
+
+  it("클래스 레이블 설명 카드는 넣었을 때만 — picks 가 없으면(평가 흐름 이전) 보인다", () => {
+    const { unmount } = render(<ColumnMapping {...base} evalDataPicks={[]} />);
+    expect(screen.queryByText("클래스 레이블 설명")).not.toBeInTheDocument();
+    unmount();
+
+    const second = render(<ColumnMapping {...base} evalDataPicks={["classLabelDescriptions"]} />);
+    expect(screen.getByText("클래스 레이블 설명")).toBeInTheDocument();
+    second.unmount();
+
+    render(<ColumnMapping {...base} />);
+    expect(screen.getByText("클래스 레이블 설명")).toBeInTheDocument();
+  });
+
+  it("맡아 둔 행은 '맡아 둠'과 돌아올 항목을 보이고, 넣기 버튼은 그 항목 id 를 넘긴다", () => {
+    const onPlaceLeaf = vi.fn();
+    const held: MappingRow = {
+      ...row("latency_ms", "ignore"),
+      inferredRole: "latency",
+      heldRole: "latency",
+    };
+    render(<ColumnMapping {...base} rows={[...base.rows, held]} evalDataPicks={[]} onPlaceLeaf={onPlaceLeaf} />);
+    expect(screen.getByText("맡아 둠")).toBeInTheDocument();
+    expect(screen.getByText(/평가 흐름에 '지연시간 컬럼'을 넣으면 이 역할로 돌아옵니다/)).toBeInTheDocument();
+    // 맡아 둔 역할은 선택지와 같은 한국어 이름표로(S10 마무리) — 코드("latency")만 쓰지 않는다.
+    expect(screen.getByText(/맡아 둠:/)).toHaveTextContent("맡아 둠: 지연시간(ms) (latency)");
+    // 맡아 둔 행은 "자동 매핑:" 줄 대신 맡아 둔 안내를 보인다.
+    expect(screen.queryByText(/자동 매핑:/)).not.toBeInTheDocument();
+    screen.getByRole("button", { name: "평가 흐름 만들기에서 넣기" }).click();
+    expect(onPlaceLeaf).toHaveBeenCalledWith("latencyColumn");
+  });
+
+  it("맡아 둔 행은 진행 판정에 영향이 없다 — 숨길 수 있는 역할은 매핑 필수가 아니다", () => {
+    const held: MappingRow = { ...row("sid", "ignore"), inferredRole: "id", heldRole: "id" };
+    expect(validityOf({ ...base, rows: [...base.rows, held], evalDataPicks: [] })).toBe(true);
+  });
+});
+
+describe("확률 역할 (B12·B13)", () => {
+  it("이진 score 두 컬럼은 화면도 막는다 — 백엔드가 거절하는 매핑을 통과시키지 않는다", () => {
+    const base = { taskType: "binary" as const, detectedClasses: ["0", "1"], positiveClass: "1" };
+    expect(validityOf({ ...base, rows: [row("t", "y_true"), row("s1", "score"), row("s2", "score")] })).toBe(false);
+  });
+
+  it("확률만 매핑해도 유효하고 y_pred 배지는 '확률로 대신'", () => {
+    const valid = validityOf({
+      taskType: "binary",
+      detectedClasses: ["0", "1"],
+      positiveClass: "1",
+      rows: [row("t", "y_true"), row("s", "score")],
+    });
+    expect(valid).toBe(true);
+    expect(screen.getByText("확률로 대신")).toBeInTheDocument();
+    expect(screen.queryByText("없음")).not.toBeInTheDocument();
+  });
+
+  it("다중 클래스 확률 세 컬럼은 겹침이 아니다", () => {
+    expect(
+      validityOf({ taskType: "multiclass", rows: [row("t", "y_true"), row("a", "prob_class_*"), row("b", "prob_class_*"), row("c", "prob_class_*")] }),
+    ).toBe(true);
+  });
+});
+
+describe("결정 임계값 범위 (B4)", () => {
+  const scoreOnly = {
+    taskType: "binary" as const,
+    detectedClasses: ["0", "1"],
+    positiveClass: "1",
+    rows: [row("t", "y_true"), row("s", "score")],
+  };
+
+  it("확률만 매핑했고 임계값이 1.5 면 매핑 확정이 막히고 이유가 보인다", () => {
+    expect(validityOf({ ...scoreOnly, decisionThreshold: 1.5 })).toBe(false);
+    expect(screen.getAllByText("결정 임계값은 0과 1 사이여야 합니다.").length).toBeGreaterThan(0);
+  });
+
+  it("0.7 이면 통과", () => {
+    expect(validityOf({ ...scoreOnly, decisionThreshold: 0.7 })).toBe(true);
+  });
+
+  it("예측 레이블이 있어 임계값이 쓰이지 않으면 남은 값으로 막지 않는다", () => {
+    expect(
+      validityOf({ ...scoreOnly, rows: [...scoreOnly.rows, row("p", "y_pred")], decisionThreshold: 1.5 }),
+    ).toBe(true);
+  });
+});

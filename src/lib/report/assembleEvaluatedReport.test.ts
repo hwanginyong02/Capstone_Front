@@ -273,3 +273,18 @@ describe("옛 모양 응답(새 키 없음) — 선택 키를 두지 않는다",
     expect(stage1Report.datasetDiagnosis).toContain("균형 상태이다.");
   });
 });
+
+describe("핵심 지표 출처 (W8)", () => {
+  it("핵심 지표를 손대지 않았으면 default, 골랐으면 client 를 저장한다", () => {
+    expect(assembleEvaluatedReport(baseReport(), GOLDEN_BINARY, inputs()).stage1Report.coreMetricsSource).toBe(
+      "default",
+    );
+    expect(
+      assembleEvaluatedReport(
+        baseReport(),
+        GOLDEN_BINARY,
+        inputs({ composerMetrics: { coreMetrics: { choices: ["M1", "M4"] } } }),
+      ).stage1Report.coreMetricsSource,
+    ).toBe("client");
+  });
+});

@@ -24,7 +24,7 @@ export function ReportErrorState({ error, onBack }: ReportErrorStateProps) {
           onClick={onBack}
           className="w-full py-2 px-4 bg-slate-800 text-white rounded hover:bg-slate-700 transition-colors text-sm font-medium"
         >
-          이전 단계로 돌아가기
+          이전 화면으로 돌아가기
         </button>
       </div>
     </div>

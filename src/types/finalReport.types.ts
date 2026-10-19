@@ -6,6 +6,9 @@ export type { UploadedFileInfo };
 
 export type ReportPurposeKey = "internal" | "external" | "project";
 
+/** 핵심 지표의 출처(W8). */
+export type CoreMetricsSource = "client" | "default";
+
 export interface FinalReportMeta {
   reportId: string;
   title: string;
@@ -402,6 +405,17 @@ export interface FinalReportData {
    *   4절 "결정 임계값 — 7.1 앞 고정 문구").
    */
   contentSchema?: number;
+  /**
+   * 합격 목표값을 찍는 소수 자릿수(B10). 새 성적서는 3 — 목표값 입력이 셋째 자리까지라 인쇄값이 판정값과
+   * 같다. 5절 문자열(`MetricItem.passCriteria`)은 생성 때 이 자릿수로 만들어 저장하고, 6.1·6.2 표는 그릴 때
+   * 이 값을 읽는다. 이 키가 생기기 전 성적서에는 없고, 없으면 종전 둘째 자리(`LEGACY_TARGET_DIGITS`)다.
+   */
+  targetDigits?: number;
+  /**
+   * 핵심 지표를 의뢰자가 정했나(client), 유형별 기본값을 그대로 썼나(default) — W8, `coreMetricsSource`.
+   * 6.1 판정 규칙 문장이 두 갈래로 읽는다. 이 키가 생기기 전 성적서에는 없고 종전 문장("의뢰자가 지정")이다.
+   */
+  coreMetricsSource?: CoreMetricsSource;
   meta: FinalReportMeta;
   applicant: ApplicantInfo;
   performer: PerformerInfo;

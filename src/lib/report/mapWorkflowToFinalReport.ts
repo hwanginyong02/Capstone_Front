@@ -15,6 +15,7 @@ import {
   TASK_TYPE_LABELS,
   getMetricDisplayId,
   type TaskType,
+  resolveTaskType,
 } from "../../data/evaluationData";
 
 import type {
@@ -38,7 +39,8 @@ import type { ValidateDataResponseData } from "../../types/validation.types";
 import { mapValidationResultToReport } from "./mapValidationResultToReport";
 import { buildConclusion } from "./computeVerdict";
 import { REPORT_CONTENT_SCHEMA } from "./normalizeReportContent";
-import { resolveBeta, resolveTargetValue } from "../../utils/domain/validation";
+import { resolveBeta, resolveTargetValue, TARGET_DIGITS } from "../../utils/domain/validation";
+import { formatTargetCriteria } from "./metricValueFormat";
 import { checkMaterialSelection } from "./materialCheck";
 import { imbalanceRatioOf } from "./buildDatasetDiagnosis";
 import type {
@@ -54,8 +56,21 @@ import type {
   ComposerValueMap,
   MaterialPicks,
 } from "../../types/reportComposer.types";
-import { getCard, isFieldPicked, isPartPicked } from "../../data/reportComposer";
+import {
+  getCard,
+  isEntryUnknown,
+  isFieldPicked,
+  isFieldReceived,
+  isLeafReceived,
+  isPartPicked,
+} from "../../data/reportComposer";
 import { buildLegacyPatch } from "../../utils/domain/composerLegacyMirror";
+import {
+  currentClassEntries,
+  currentClassVolume,
+  evaluationClassNames,
+  type ClassMetadata,
+} from "../../utils/domain/evaluationClasses";
 import {
   DEFAULT_EVAL_ENV_CONSTANTS,
   DEFAULT_EVAL_PURPOSE_TEXT,
@@ -121,7 +136,8 @@ export type ReportInputSource = Omit<MapWorkflowToReportInput, "composer"> & {
  * 재료 고르기에서 받지 않기로 한 권장·선택 필드의 값을 뺀다(docs/MATERIAL_PICKER.md §6).
  *
  * 체크를 끄기 전에 적어 둔 값이 저장소에 남아 있을 수 있다. 그 값을 성적서에 찍으면 "끈 항목은
- * 제공되지 않음"이 깨진다 — 권장 항목은 빠지면 성적서가 "제공되지 않음"으로 찍는다.
+ * 제공되지 않음"이 깨진다 — 권장 항목은 빠지면 성적서가 "제공되지 않음"으로 찍는다. 조건부 필드는
+ * 조건을 정하는 필드를 받을 때만 남긴다(`isFieldReceived` — ⑧ 검수 방식을 빼면 라벨러 수도 빠진다).
  */
 function pickedValues(
   cardId: ComposerCardId,
@@ -134,7 +150,7 @@ function pickedValues(
   return Object.fromEntries(
     Object.entries(values).filter(([fieldId]) => {
       const field = card.fields.find((item) => item.id === fieldId);
-      return !field || isFieldPicked(card, field, saved);
+      return !field || isFieldReceived(card, field, saved);
     }),
   );
 }
@@ -150,6 +166,33 @@ function pickedBasicInfo(basicInfo: BasicInfoFormData, picks: MaterialPicks | un
     website: isPartPicked(fieldOf("contactExtra"), "website", saved) ? basicInfo.website : "",
     fax: isPartPicked(fieldOf("contactExtra"), "fax", saved) ? basicInfo.fax : "",
     projectNumber: isFieldPicked(card, fieldOf("projectNumber"), saved) ? basicInfo.projectNumber : "",
+  };
+}
+
+/**
+ * 전용 화면이 받는 선택 항목 중 평가 흐름에 놓지 않은 것의 값을 뺀다(docs/MATERIAL_PICKER.md §12.4).
+ *
+ * ① 클래스 레이블 설명(매핑 화면의 설명 카드)과 ⑥ 예시 파일 두 칸은 카드 값 그룹이 아니라 스토어의
+ * 따로 된 키에 있어 `pickedValues` 가 거르지 못한다. 빼기 전에 적어 둔 값이 남아 있어도 성적서·AI 에
+ * 싣지 않는다. 그 카드의 picks 가 없으면(평가 흐름 이전) 그대로 싣는다.
+ */
+export function pickedDedicatedValues(
+  state: Pick<
+    ReportInputSource,
+    "classLabelDescriptions" | "trainingExampleFiles" | "trainingUnsuitableExampleFiles" | "materialPicks"
+  >,
+): Pick<MapWorkflowToReportInput, "classLabelDescriptions" | "trainingExampleFiles" | "trainingUnsuitableExampleFiles"> {
+  const picks = state.materialPicks;
+  return {
+    classLabelDescriptions: isLeafReceived("evalData", "classLabelDescriptions", picks?.evalData)
+      ? state.classLabelDescriptions
+      : {},
+    trainingExampleFiles: isLeafReceived("trainingData", "trainingExamples", picks?.trainingData)
+      ? state.trainingExampleFiles
+      : [],
+    trainingUnsuitableExampleFiles: isLeafReceived("trainingData", "trainingUnsuitableExamples", picks?.trainingData)
+      ? state.trainingUnsuitableExampleFiles
+      : [],
   };
 }
 
@@ -181,6 +224,9 @@ function withRuntimeFromCard(
 export function buildReportInput(state: ReportInputSource): MapWorkflowToReportInput {
   const picks = state.materialPicks;
   const modelEnv = pickedValues("modelEnv", state.composerModelEnv, picks);
+  const dedicated = pickedDedicatedValues(state);
+  // 지금 클래스 목록 — 3절 클래스 설명·학습 클래스 분포·AI·9절 분포 차이가 모두 이 목록으로 거른 값을 쓴다.
+  const classNames = evaluationClassNames(state.taskType, state.columnMapping, state.metadata as ClassMetadata | null);
   return {
     basicInfo: withRuntimeFromCard(
       pickedBasicInfo(state.basicInfo, picks),
@@ -191,17 +237,19 @@ export function buildReportInput(state: ReportInputSource): MapWorkflowToReportI
     selectedMetricIds: state.selectedMetricIds,
     metricDetails: state.metricDetails,
     uploadedFile: state.uploadedFile,
-    trainingExampleFiles: state.trainingExampleFiles,
-    trainingUnsuitableExampleFiles: state.trainingUnsuitableExampleFiles,
+    // 클래스 레이블 설명·예시 파일 — 놓지 않았으면 비운다. 매핑 역할은 스토어 불변식이 이미 걸렀다.
+    ...dedicated,
+    // 설명은 지금 클래스의 것만 — 옛 파일·옛 정답 컬럼의 키가 AI 에 가지 않게(N1). 3절과 같은 목록이다.
+    classLabelDescriptions: currentClassEntries(dedicated.classLabelDescriptions, classNames),
     columnMapping: state.columnMapping,
-    classLabelDescriptions: state.classLabelDescriptions,
     metadata: state.metadata,
     materialCheckAck: state.materialCheckAck ?? null,
     composer: {
       cards: state.composerCards,
       metrics: pickedValues("metrics", state.composerMetrics, picks),
       perspective: pickedValues("perspective", state.composerPerspective, picks),
-      trainingData: pickedValues("trainingData", state.composerTrainingData, picks),
+      // 학습 클래스 분포도 지금 클래스의 칸만(B5③) — 옛 클래스 칸이 거짓 '분포 차이'를 내지 않게.
+      trainingData: currentClassVolume(pickedValues("trainingData", state.composerTrainingData, picks), classNames),
       testData: pickedValues("testData", state.composerTestData, picks),
       groundTruth: pickedValues("groundTruth", state.composerGroundTruth, picks),
       modelEnv,
@@ -213,7 +261,7 @@ export function mapWorkflowToFinalReport(
   input: MapWorkflowToReportInput,
   validationResult?: ValidateDataResponseData | null,
 ): FinalReportData {
-  const resolvedTaskType: TaskType = input.taskType || "binary";
+  const resolvedTaskType: TaskType = resolveTaskType(input.taskType);
 
   // 데이터 검증 결과: 백엔드 /api/validate-data 응답이 있으면 실제 값으로 채우고,
   // 없으면 빈 배열(가짜 MOCK 8항목을 노출하지 않음 — 섹션이 "검증 미수행" 안내로 처리).
@@ -236,6 +284,8 @@ export function mapWorkflowToFinalReport(
 
   return {
     contentSchema: REPORT_CONTENT_SCHEMA,
+    // 목표값을 찍는 자릿수(B10). 이 키가 없는 성적서는 종전 둘째 자리로 그린다.
+    targetDigits: TARGET_DIGITS,
     meta: buildMeta(input, resolvedTaskType),
     applicant: buildApplicant(input.basicInfo),
     performer: DEFAULT_PERFORMER,
@@ -302,7 +352,7 @@ function runMaterialCheck(
   materials: ReturnType<typeof buildReportMaterials>,
   evalEnv: EvalEnvironment,
 ) {
-  const taskType: TaskType = input.taskType || "binary";
+  const taskType: TaskType = resolveTaskType(input.taskType);
   const fromValidation = validationResult?.class_distribution;
   const fromUpload = input.metadata?.class_distribution;
   const [distribution, distributionSource] =
@@ -353,24 +403,30 @@ function buildMeta(input: MapWorkflowToReportInput, taskType: TaskType): FinalRe
   };
 }
 
+/** 다듬은 값, 비면 "—"(B11 — 공백만 있는 칸을 그대로 찍지 않는다). */
+function trimmedOrDash(value: string | undefined): string {
+  return value?.trim() || "—";
+}
+
 function buildApplicant(basicInfo: BasicInfoFormData): ApplicantInfo {
   return {
-    companyName: basicInfo.companyName || "—",
-    representative: basicInfo.representative || "—",
-    businessNumber: basicInfo.businessNumber || "—",
-    contact: basicInfo.phone || "—",
+    companyName: trimmedOrDash(basicInfo.companyName),
+    representative: trimmedOrDash(basicInfo.representative),
+    businessNumber: trimmedOrDash(basicInfo.businessNumber),
+    contact: trimmedOrDash(basicInfo.phone),
     // 팩스·홈페이지는 점검 밖 선택 항목 — 비면 "—" 줄 대신 줄을 빼도록 빈 문자열로 둔다(재료 목록 1절).
     fax: basicInfo.fax?.trim() ?? "",
     homepage: basicInfo.website?.trim() ?? "",
-    address: basicInfo.address || "—",
+    address: trimmedOrDash(basicInfo.address),
   };
 }
 
 function buildEvalScope(basicInfo: BasicInfoFormData): EvalScope {
   const purposeKey = normalizeReportPurpose(basicInfo.reportPurpose);
+  const projectName = basicInfo.projectName?.trim();
   const projectInfo =
-    purposeKey === "project" && basicInfo.projectName
-      ? { name: basicInfo.projectName, agency: basicInfo.projectAgency || "—" }
+    purposeKey === "project" && projectName
+      ? { name: projectName, agency: trimmedOrDash(basicInfo.projectAgency) }
       : undefined;
 
   return {
@@ -401,35 +457,19 @@ function buildDatasetInfo(
 ): DatasetInfo {
   const sampleCount = validatedRows && validatedRows > 0 ? validatedRows : null;
 
-  // y_true 컬럼에서 실제 클래스 값을 도출 (있으면 mock/추론 대신 실제 값 사용)
-  const yTrueRow = input.columnMapping.find((r) => r.confirmedRole === "y_true");
-  let classValues: string[] = [];
-  
-  const colName = yTrueRow?.originalName;
-  const meta = input.metadata as any;
-  if (colName && meta?.column_unique_values?.[colName]) {
-    classValues = meta.column_unique_values[colName];
-  } else if (yTrueRow) {
-    if (taskType === "multilabel") {
-      const allLabels = yTrueRow.sampleValues.flatMap((val) => 
-        val.split(/[|,]/).map((s) => s.trim()).filter(Boolean)
-      );
-      classValues = [...new Set(allLabels)];
-    } else {
-      classValues = [...new Set(yTrueRow.sampleValues)];
-    }
-  }
+  // 클래스 목록은 매핑 화면·학습 데이터 화면과 같은 한 함수다(B5①).
+  const classValues = evaluationClassNames(taskType, input.columnMapping, input.metadata as ClassMetadata | null);
 
   const classLabels = classValues.length
     ? classValues
     : inferClassLabels(taskType, input.metricDetails);
 
-  const classLabelDescriptions: ClassLabelInfo[] | undefined = classValues.length
-    ? classValues.map((value) => ({
-        label: value,
-        description: input.classLabelDescriptions[value] ?? "",
-      }))
-    : undefined;
+  // 설명을 적은 클래스만 싣는다(B14). 하나도 없으면 표를 만들지 않는다 — 빈 설명을 "설명 미입력"
+  // 줄로 찍으면 클래스 레이블 설명을 받지 않은(평가 흐름에 놓지 않은) 성적서에도 표가 생긴다.
+  const described = classValues
+    .map((value) => ({ label: value, description: (input.classLabelDescriptions[value] ?? "").trim() }))
+    .filter((item) => item.description !== "");
+  const classLabelDescriptions: ClassLabelInfo[] | undefined = described.length ? described : undefined;
 
   return {
     format: inferFormat(input.uploadedFile),
@@ -458,8 +498,11 @@ function buildTrainingDatasetInfo(input: MapWorkflowToReportInput): TrainingData
   const values = input.composer.trainingData;
   const known = (fieldId: string) => (values[fieldId]?.unknown ? undefined : values[fieldId]);
   const text = (fieldId: string) => (known(fieldId)?.text ?? "").trim();
+  // 칸별 "모름"(W3)인 칸도 빈 칸으로 — 3절 표와 같은 규칙(`reportMaterials` 의 `entryOf`).
   const entry = (fieldId: string, key: string) =>
-    known(fieldId)?.entries?.find((item) => item.key === key)?.value ?? "";
+    isEntryUnknown(values[fieldId], key)
+      ? ""
+      : (known(fieldId)?.entries?.find((item) => item.key === key)?.value ?? "");
 
   const name = text("trainingDatasetName");
   const training = parseCount(entry("trainingVolume", "Training"));
@@ -530,8 +573,6 @@ function buildMetricList(
       const detail = metricDetails[metricId];
       const target = resolveTargetValue(metricId, detail?.targetValue);
 
-      // 방향성에 맞춰 합격 기준 표기(낮을수록 좋은 지표는 ≤). 6절 표(MetricRow)와 일관.
-      const criteriaOp = metric.higherIsBetter === false ? "≤" : "≥";
 
       // β 를 입력받는 지표(F-beta 등)는 사용자가 지정한 β 를 지표명에 함께 표기(입력값이 성적서에 드러나도록).
       const betaVal = detail?.beta?.trim();
@@ -542,7 +583,9 @@ function buildMetricList(
         metricId: getMetricDisplayId(metricId),
         name: displayName,
         threshold: target,
-        passCriteria: target !== null ? `${criteriaOp} ${target.toFixed(2)}` : "정보 제공",
+        // 방향성(낮을수록 좋은 지표는 ≤)과 자릿수를 6절 표(MetricRow)와 같은 함수로 — 저장 문자열이라
+        // 발급본은 그때 자릿수 그대로 남는다.
+        passCriteria: target !== null ? formatTargetCriteria(target, metric.higherIsBetter, TARGET_DIGITS) : "정보 제공",
       };
     })
     .filter((item): item is MetricItem => item !== null);

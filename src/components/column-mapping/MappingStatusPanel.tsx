@@ -54,7 +54,7 @@ export function MappingStatusPanel({
               <div className="font-bold text-lg text-destructive">필수 컬럼이 빠졌습니다</div>
               <p className="text-destructive">
                 필수 역할 {mappingSummary.missingRoles.length}개가 아직 지정되지 않았습니다.
-                다음 단계로 넘어갈 수 없습니다.
+                다음 화면으로 넘어갈 수 없습니다.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 shrink-0">

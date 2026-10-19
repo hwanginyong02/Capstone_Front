@@ -6,6 +6,15 @@ import { cn } from "../../utils/styling/styles";
 import type { TaskType } from "../../data/evaluationData";
 import type { MappingRow } from "../../types/mapping.types";
 
+/**
+ * 백엔드가 양성 클래스를 자동으로 정하지 못했을 때의 경고(M5). 그때 백엔드의 기본값 함수
+ * (`default_positive_class`, 분석·지표 계산이 같이 쓴다)는 문자열 정렬에서 뒤쪽 값을 고른다 — 그 값이
+ * 아래 선택 칸에 들어 있으니 "임시로 골랐다"고 알린다. 프론트는 양성을 따로 정하지 않고 그 값을 보인다.
+ */
+export const POSITIVE_CLASS_AMBIGUOUS_MESSAGE =
+  "양성 클래스를 자동으로 정하지 못해 정렬 순서상 뒤 값을 임시로 골랐습니다. 아래 값이 맞는지 확인하세요. " +
+  "잘못 고르면 Precision, Recall, FPR, AUROC 가 모두 틀어집니다.";
+
 interface BinaryClassificationCardProps {
   resolvedTaskType: TaskType;
   positiveClass: string;
@@ -46,8 +55,7 @@ export function BinaryClassificationCard({
             <Alert className="border-warning-border bg-warning-subtle">
               <AlertTriangle className="h-4 w-4 text-warning" />
               <AlertDescription className="text-warning-strong">
-                양성 클래스를 자동으로 정하지 못했습니다. 아래 값이 맞는지 확인하세요. 잘못 고르면
-                Precision, Recall, FPR, AUROC 가 모두 틀어집니다.
+                {POSITIVE_CLASS_AMBIGUOUS_MESSAGE}
               </AlertDescription>
             </Alert>
           )}
