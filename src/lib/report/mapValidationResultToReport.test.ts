@@ -65,6 +65,16 @@ describe("새 검증 항목의 한국어 이름", () => {
     expect(mapped.dataValidation[0].detail).toBe(result);
   });
 
+  it("한국어 문구 항목도 통과(None)는 '없음'으로 찍는다", () => {
+    const mapped = mapValidationResultToReport(
+      response([
+        { name: "Label notation", result: "None", handling: "", status: "pass", group: "common" },
+      ] as ValidateDataResponseData["validation_details"]),
+      4,
+    );
+    expect(mapped.dataValidation[0].detail).toBe("없음");
+  });
+
   // 백엔드 저장소가 옆에 없으면(프론트만 받은 CI) 대조를 건너뛴다. 파일을 읽기 전에 확인한다.
   const backendChecks = resolve(__dirname, "../../../../Capstone_Back/app/analysis/validation_checks.py");
   it.skipIf(!existsSync(backendChecks))("백엔드가 내는 검증 항목 이름은 모두 한국어 이름이 있다", () => {

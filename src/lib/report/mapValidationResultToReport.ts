@@ -97,7 +97,8 @@ export function mapValidationResultToReport(
   const dataValidation: ValidationResult[] = vr.validation_details.map((item) => ({
     checkName: CHECK_NAME_KO[item.name] ?? item.name,
     status: STATUS_MAP[item.status] ?? "warning",
-    detail: KOREAN_RESULT_CHECKS.has(item.name) ? item.result : normalizeResult(item.result),
+    // 한국어 문구 항목도 통과("None")는 "없음"으로 — 바꾸기를 건너뛰면 성적서에 "None" 이 찍혔다(S2 검토).
+    detail: KOREAN_RESULT_CHECKS.has(item.name) && item.result !== "None" ? item.result : normalizeResult(item.result),
     group: item.group,
   }));
 
