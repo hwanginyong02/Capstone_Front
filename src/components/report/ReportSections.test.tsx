@@ -143,6 +143,15 @@ describe("ReportSections — 소절 번호는 판 3 에서만", () => {
         validExamples: [],
         edgeExamples: [],
       },
+      // 4절 하이퍼파라미터·5절 의뢰자 선언 소제목이 그려지게(번호 없는 소제목의 단정이 빈 집합이 되지 않게)
+      materials: {
+        declarations: [{ label: "중요 오류 유형", value: "놓침(FN)" }],
+        training: [],
+        test: [],
+        groundTruth: [],
+        environment: [],
+        hyperparameters: { algorithm: "XGBoost", rows: [{ name: "max_depth", value: "6" }] },
+      },
     });
 
   const h3Texts = () => [...document.querySelectorAll("h3")].map((h) => (h.textContent ?? "").replace(/\s+/g, " ").trim());
@@ -154,8 +163,11 @@ describe("ReportSections — 소절 번호는 판 3 에서만", () => {
     for (const [number, title] of NUMBERED) {
       expect(texts.some((t) => t.startsWith(`${number} ${title}`))).toBe(true);
     }
-    // 번호 없는 소제목 — 4절 하이퍼파라미터(있을 때)·5절 의뢰자 선언(있을 때)은 번호를 붙이지 않는다.
-    expect(texts.filter((t) => /^(하이퍼파라미터|의뢰자 선언)/.test(t)).every((t) => !/^\d/.test(t))).toBe(true);
+    // 번호 없는 소제목 — 4절 하이퍼파라미터(있을 때)·5절 의뢰자 선언(있을 때)은 번호를 붙이지 않는다. 정규식은
+    // 번호 접두까지 잡는다(번호가 붙으면 걸러지지 않고 아래 단정에서 걸린다). 먼저 둘 다 그려졌는지 본다.
+    const unnumbered = texts.filter((t) => /^(?:[\d.]+\s+)?(하이퍼파라미터|의뢰자 선언)$/.test(t));
+    expect(unnumbered).toHaveLength(2);
+    expect([...unnumbered].sort()).toEqual(["의뢰자 선언", "하이퍼파라미터"]);
   });
 
   it("판 2 — 같은 데이터라도 번호 없이(발급 당시 모양)", () => {
