@@ -62,9 +62,9 @@ export interface WeakestClassFact {
 }
 
 export interface FixedSentenceFact {
-  /** 성적서 고정 문구 번호("9"·"17"·"11a" …). */
+  /** 성적서 고정 문구 번호("9"·"17"·"11a"·"16" …). */
   id: string;
-  /** 찍히는 소절("7.1"·"7.2"·"8.2"·"8.3"·"9"). */
+  /** 찍히는 소절("7.1"·"7.2"·"8.1"·"8.2"·"8.3"·"9"). */
   section: string;
   text: string;
 }

@@ -21,6 +21,7 @@ import { fitNarrativePayload } from "./factSheetFit";
 import { mapWorkflowToFinalReport } from "./mapWorkflowToFinalReport";
 import * as facts from "./narrativeFacts";
 import { NEAR_TARGET_RATIO } from "./computeVerdict";
+import { BENCHMARK_METRIC_NAMES } from "./benchmarkBaselines";
 import type { ReportComposerInput } from "./reportMaterials";
 
 const CONTRACT_DIR = resolve(__dirname, "../../test/contract");
@@ -212,6 +213,19 @@ describe("계약 예시의 뜻 — M21·M22 를 고르지 않아도 표·최약 
     });
   }
 
+  it("고정 문구 16: 이진(F-beta)·멀티(Exact Match Ratio)는 '일부', 다중(M1~M4 모두 기준표에 있음)은 없다", () => {
+    const sixteen = (name: keyof typeof CASES) =>
+      buildPayload(CASES[name]).payload.fact_sheet.facts?.fixed_sentences.filter((s) => s.id === "16") ?? [];
+    expect(sixteen("binary")).toEqual([
+      { id: "16", section: "8.1", text: "다음 지표는 내부 참조 기준치가 없어 벤치마크 비교를 하지 않았다: F-beta Score." },
+    ]);
+    expect(sixteen("multilabel")).toEqual([
+      { id: "16", section: "8.1", text: "다음 지표는 내부 참조 기준치가 없어 벤치마크 비교를 하지 않았다: Exact Match Ratio." },
+    ]);
+    expect(buildPayload(CASES.multiclass).payload.fact_sheet.facts?.fixed_sentences.length).toBeGreaterThan(0);
+    expect(sixteen("multiclass")).toEqual([]);
+  });
+
   it("다중: 혼동행렬이 사실 시트에 실리고 6.2 와 같은 마이크로 평균 줄(accuracy)이 있다", () => {
     const sheet = buildPayload(CASES.multiclass).payload.fact_sheet;
     expect(sheet.confusion?.labels).toEqual(["bird", "cat", "dog"]);
@@ -238,6 +252,11 @@ describe("계약 상수 = 코드 상수", () => {
     // 코드의 상한 상수는 (프론트 전용 줄이기 단계 크기 하나를 빼고) 모두 계약에 있다 — 한쪽에만 생기면 실패.
     const codeOnly = Object.keys(limits).filter((k) => !(k in contract.constants));
     expect(codeOnly).toEqual(["FACTS_LIST_TRIM"]);
+  });
+
+  it("기준표 지표 이름(고정 문구 16)은 benchmarkBaselines 사본과 같다", () => {
+    expect(Object.keys(contract.constants.benchmark_metric_names).length).toBeGreaterThan(0);
+    expect(contract.constants.benchmark_metric_names).toEqual(BENCHMARK_METRIC_NAMES);
   });
 
   it("판정 기준값은 narrativeFacts·computeVerdict 와 같다", () => {

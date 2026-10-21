@@ -35,6 +35,7 @@ import { errorRatioSentence, parseErrorRatios } from "./errorRatios";
 import { evaluateStatus } from "./evaluateStatus";
 import type { MapWorkflowToReportInput } from "./mapWorkflowToFinalReport";
 import { attachNearTarget, nearTargetNote } from "./nearTarget";
+import { noBenchmarkSentence } from "./benchmarkBaselines";
 import { buildProblemList, parseF1ThresholdGain, parseImbalanceEffect } from "./problemList";
 
 /** 조립에 쓰는 워크플로우 값. 훅은 스토어와 `buildReportInput` 결과에서 그대로 꺼내 넘긴다. */
@@ -333,12 +334,16 @@ export function assembleEvaluatedReport(
   const labelSentence = labelCautionSentence(inputs.composer);
   const sourceSentence = sourceRelationSentence(inputs.composer);
   const errorRatioText = errorRatios ? errorRatioSentence(errorRatios, taskTypeResolved) : null;
+  // 8.1 표 아래 고정 문구 16 — 고른 서술 지표 중 내부 참조 기준치가 없는 것(사용자 결정 5). 8.1 표는 작업 생성
+  // 응답으로 오므로 기준표 이름 사본으로 지금 계산해 저장하고 사실 시트에도 싣는다(백엔드는 되풀이하지 않는다).
+  const noBenchmarkText = noBenchmarkSentence(updatedKpiResults, taskTypeResolved);
 
   // 7~9절에 코드가 찍을 고정 문장 — AI·템플릿은 같은 숫자를 되풀이하지 않고 해석만 쓴다(생-12).
   const fixedSentences: FixedSentenceFact[] = [
     ...(derivedPrediction ? [{ id: "9", section: "7.1", text: derivationStatement(derivedPrediction) }] : []),
     ...(errorRatioText ? [{ id: "17", section: "7.1", text: errorRatioText }] : []),
     ...(labelSentence ? [{ id: "12", section: "7.2", text: labelSentence }] : []),
+    ...(noBenchmarkText ? [{ id: "16", section: "8.1", text: noBenchmarkText }] : []),
     ...(sourceSentence
       ? [{ id: sourceSentence === SAME_SOURCE_SENTENCE ? "11a" : "11b", section: "8.2", text: sourceSentence }]
       : []),
@@ -405,6 +410,7 @@ export function assembleEvaluatedReport(
     ...(errorRatios && errorRatioText ? { errorRatios, errorRatioSentence: errorRatioText } : {}),
     ...(ciNote ? { confidenceIntervalNote: ciNote } : {}),
     ...(nearNote ? { nearTargetNote: nearNote } : {}),
+    ...(noBenchmarkText ? { noBenchmarkSentence: noBenchmarkText } : {}),
     ...(labelSentence ? { labelCautionSentence: labelSentence } : {}),
     ...(sourceSentence ? { sourceRelationSentence: sourceSentence } : {}),
     problems,

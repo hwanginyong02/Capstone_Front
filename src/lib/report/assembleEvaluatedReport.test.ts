@@ -356,6 +356,35 @@ describe("S4a 배선 — 7~9절 고정 문장 목록(9·17·12·11b·18 / 6)", (
     expect(stage1Report.sourceRelationSentence).toBe(DIFFERENT_SOURCE_SENTENCE);
   });
 
+  it("고정 문구 16 — 기준표에 없는 서술 지표가 있으면 12 와 11a·11b 사이(8.1)에 싣고 성적서에도 같은 문장을 저장", () => {
+    const copy = structuredClone(GOLDEN_BINARY);
+    const selected = ["M1", "M4", "M5", "M7", "M9", "M21", "M22"];
+    const { stage1Report, factSheet } = assembleEvaluatedReport(baseReport(), copy, inputs({ selectedMetricIds: selected }));
+    const text = "다음 지표는 내부 참조 기준치가 없어 벤치마크 비교를 하지 않았다: F-beta Score, Specificity.";
+    expect(stage1Report.noBenchmarkSentence).toBe(text);
+    const ids = factSheet.facts!.fixed_sentences.map((s) => s.id);
+    expect(ids).toEqual(["17", "12", "16", "11a", "18"]);
+    expect(factSheet.facts!.fixed_sentences[2]).toEqual({ id: "16", section: "8.1", text });
+  });
+
+  it("고정 문구 16 — 서술 지표 모두에 기준치가 없으면 '전부' 문장", () => {
+    const { stage1Report, factSheet } = assembleEvaluatedReport(
+      baseReport(),
+      structuredClone(GOLDEN_BINARY),
+      inputs({ selectedMetricIds: ["M5", "M7", "M21"], metricDetails: details({ M5: "0.5" }) }),
+    );
+    const text = "선택한 지표에 내부 참조 기준치가 없어 벤치마크 비교를 하지 않았다.";
+    expect(stage1Report.noBenchmarkSentence).toBe(text);
+    expect(factSheet.facts!.fixed_sentences.find((s) => s.id === "16")).toEqual({ id: "16", section: "8.1", text });
+  });
+
+  it("고정 문구 16 — 고른 지표가 모두 기준표에 있으면 싣지도 저장하지도 않는다", () => {
+    const { stage1Report, factSheet } = assembleEvaluatedReport(baseReport(), GOLDEN_BINARY, inputs());
+    expect(SELECTED.filter((id) => !["M21", "M22"].includes(id)).length).toBeGreaterThan(0);
+    expect(stage1Report).not.toHaveProperty("noBenchmarkSentence");
+    expect(factSheet.facts!.fixed_sentences.map((s) => s.id)).not.toContain("16");
+  });
+
   it("문제가 0개면 9절 고정 문구 6, 있으면 없다", () => {
     const copy = structuredClone(GOLDEN_BINARY);
     delete (copy.results.success_metrics as Record<string, unknown>).f1_threshold_gain;
