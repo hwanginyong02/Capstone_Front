@@ -336,3 +336,19 @@ describe("fitNarrativePayload — 본문 예산(413 피하기)", () => {
     });
   });
 });
+
+describe("fitFactSheet — 표를 자른 수를 더한 뒤에도 facts 전체 상한 안", () => {
+  it("omitted 키가 늘어 3만 자를 넘게 되면 한 번 더 줄인다", () => {
+    // facts 를 상한보다 꼭 3자 짧게 채운다(마지막 이름 길이로 맞춤) — omitted 에 키 하나만 붙어도 넘는다.
+    const row = (label: string) => ({ label, support: 1, share: 0, share_text: "0" });
+    const rows = Array.from({ length: 200 }, (_, i) => row(`작은클래스_${i}`));
+    const pad = MAX_FACTS_CHARS - 3 - factsLength(facts({ low_support_classes: [...rows, row("")] }));
+    const base = facts({ low_support_classes: [...rows, row("가".repeat(pad))] });
+    expect(factsLength(base)).toBe(MAX_FACTS_CHARS - 3);
+    const perClass = names(MAX_CLASS_ENTRIES + 5).map((l) => ({ label: l, precision: 1, recall: 1, f1: 1, support: 1 }));
+    const s = fitFactSheet(sheet({ per_class: perClass, facts: base }));
+    expect(s.facts?.omitted.per_class).toBe(5);
+    expect(factsLength(s.facts!)).toBeLessThanOrEqual(MAX_FACTS_CHARS);
+    expect(s.facts!.low_support_classes.length).toBeLessThan(base.low_support_classes.length);
+  });
+});

@@ -225,7 +225,8 @@ export function fitFactSheet(sheet: FactSheet): FactSheet {
     distribution,
     ci_method_note: sheet.ci_method_note === null ? null : cut(sheet.ci_method_note, MAX_CI_METHOD_NOTE_CHARS),
     problems,
-    ...(facts ? { facts: { ...facts, omitted } } : {}),
+    // 표를 자른 수(omitted)를 더하면 facts 가 다시 길어질 수 있다 — 마지막 모양으로 한 번 더 잰다(S4b 검토 BE-06).
+    ...(facts ? { facts: fitFacts({ ...facts, omitted }) } : {}),
   };
 }
 
