@@ -15,6 +15,12 @@ export const POSITIVE_CLASS_AMBIGUOUS_MESSAGE =
   "양성 클래스를 자동으로 정하지 못해 정렬 순서상 뒤 값을 임시로 골랐습니다. 아래 값이 맞는지 확인하세요. " +
   "잘못 고르면 Precision, Recall, FPR, AUROC 가 모두 틀어집니다.";
 
+/**
+ * 양성 클래스가 무엇인지 한 줄로(점검 나-15). 한국어 라벨("불량/정상")에서는 정렬 순서상 "정상"이 기본 양성이
+ * 되기 쉬워 FN·FP 의 뜻이 뒤집힌다 — ⑤ 평가 관점의 위험 방향도 이 값을 기준으로 읽힌다.
+ */
+export const POSITIVE_CLASS_GUIDE = "모델이 찾아내야 하는 쪽(예: 불량, 이탈)을 고르세요.";
+
 interface BinaryClassificationCardProps {
   resolvedTaskType: TaskType;
   positiveClass: string;
@@ -48,7 +54,8 @@ export function BinaryClassificationCard({
       <CardContent>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            어느 값이 양성 클래스인가요? 평가 지표는 이 값을 양성(1)으로, 나머지를 모두 음성(0)으로 봅니다.
+            어느 값이 양성 클래스인가요? 평가 지표는 이 값을 양성(1)으로, 나머지를 모두 음성(0)으로 봅니다.{" "}
+            {POSITIVE_CLASS_GUIDE}
           </p>
 
           {yTrueRow && positiveClassAmbiguous && (

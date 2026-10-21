@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { isClientInfoValid, isModelInfoValid } from "./basicInfoValidity";
+import { clientInfoGaps, isClientInfoValid, isModelInfoValid, modelInfoGaps } from "./basicInfoValidity";
 import { layerOneGaps } from "./layerOne";
 import { DEFAULT_BASIC_INFO, type BasicInfoFormData } from "../../types/workflow.types";
 
@@ -71,5 +71,22 @@ describe("[B11] 검증 화면의 1층 재확인도 같은 판정", () => {
       composerPerspective: {},
     });
     expect(gaps.some((gap) => gap.stepId === "clientInfo")).toBe(true);
+  });
+});
+
+describe("빈 칸 이름 — '다음' 옆 안내(점검 다-8)와 판정이 같은 목록", () => {
+  it("의뢰자 정보: 비면 화면 순서대로 칸 이름, 다 차면 빈 목록", () => {
+    expect(clientInfoGaps(VALID)).toEqual([]);
+    expect(clientInfoGaps({ ...VALID, companyName: " ", phone: "" }).map((gap) => gap.label)).toEqual(["회사명", "전화번호"]);
+    expect(
+      clientInfoGaps({ ...VALID, reportPurpose: "project", projectName: "", projectAgency: "" }).map((gap) => gap.label),
+    ).toEqual(["과제명", "과제 기관"]);
+  });
+
+  it("평가 대상 모델: 이름·버전·용도·분류", () => {
+    expect(modelInfoGaps({ ...DEFAULT_BASIC_INFO, versionName: "" }).map((gap) => gap.label)).toEqual(["모델 이름", "버전", "모델 용도", "모델 분류"]);
+    expect(
+      modelInfoGaps({ ...DEFAULT_BASIC_INFO, modelName: "M", versionName: "v1", modelPurpose: "p", modelCategory: "c" }),
+    ).toEqual([]);
   });
 });

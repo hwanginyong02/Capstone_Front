@@ -161,6 +161,41 @@ describe("생성 전 안내와 '다음' (재료 선택 점검 6절)", () => {
     expect(useWorkflowStore.getState().materialCheckAck).toBeNull();
   });
 
+  it("⑨ 같은 이름 하이퍼파라미터처럼 화면 규칙에 걸린 값이 남아 있으면 막고 그 화면으로 보낸다(점검 나-16)", async () => {
+    const { materialCheckFixture } = await import("../test/materialCheckFixture");
+    const { next } = await setup(materialCheckFixture({}));
+    useWorkflowStore.setState({
+      composerCards: { trainingData: false, testData: false, groundTruth: false, modelEnv: true },
+      composerModelEnv: { hyperparameters: { entries: [{ key: "lr", value: "0.1" }, { key: "lr", value: "0.2" }] } },
+    });
+
+    next.click();
+
+    const list = await screen.findByRole("list", { name: "비어 있는 필수 입력" });
+    expect(list).toHaveTextContent("모델 설정과 실행 환경에서 고치기");
+    expect(screen.getByRole("list", { name: "모델 설정과 실행 환경 문제" })).toHaveTextContent(
+      "하이퍼파라미터: 같은 이름이 두 번 있어요: lr",
+    );
+    expect(addEvaluationRun).not.toHaveBeenCalled();
+  });
+
+  it("넣은 카드의 2층 빈칸은 막지 않는다", async () => {
+    const { materialCheckFixture } = await import("../test/materialCheckFixture");
+    const { next } = await setup(materialCheckFixture({}));
+    useWorkflowStore.setState({
+      composerCards: { trainingData: true, testData: true, groundTruth: true, modelEnv: true },
+      composerTrainingData: {},
+      composerTestData: {},
+      composerGroundTruth: {},
+      composerModelEnv: {},
+    });
+
+    next.click();
+
+    expect(screen.queryByRole("list", { name: "비어 있는 필수 입력" })).toBeNull();
+    expect(addEvaluationRun).toHaveBeenCalledTimes(1);
+  });
+
   it("매핑을 고친 뒤 계산할 수 없게 된 지표가 남아 있으면 막고 지표 화면으로 이유와 함께 안내한다 (B8)", async () => {
     const { materialCheckFixture } = await import("../test/materialCheckFixture");
     const { next } = await setup(materialCheckFixture({}));
@@ -203,7 +238,7 @@ describe("생성 전 안내와 '다음' (재료 선택 점검 6절)", () => {
     next.click();
 
     const ack = useWorkflowStore.getState().materialCheckAck;
-    expect(ack).toMatchObject({ version: "1.0", warningIds: check.warningIds });
+    expect(ack).toMatchObject({ version: "2.0", warningIds: check.warningIds });
     expect(Number.isNaN(Date.parse(ack!.at))).toBe(false);
     // 기록을 남긴 뒤 성적서를 다시 만든다 — 그래야 6.0 이 "확인 후 진행"을 찍는다.
     expect(buildEvaluationResult).toHaveBeenCalledTimes(2);
@@ -339,5 +374,31 @@ describe("생성 전 안내 → 평가 흐름 만들기", () => {
       </Router>,
     );
     expect(screen.getByRole("button", { name: "컬럼 매핑에서 고치기" })).toBeInTheDocument();
+  });
+});
+
+describe("점검 표 변경 안내 — 이 흐름의 마지막 run 이 옛 점검 표로 점검됐으면(점검 표 2.0)", () => {
+  async function seedLastRun(run: Record<string, unknown>) {
+    const { useWorkspaceStore } = await import("../utils/stores/useWorkspaceStore");
+    useWorkspaceStore.setState({ evaluationRuns: [{ id: "run-old", ...run }] } as never);
+    useWorkflowStore.setState({ lastRunId: "run-old" });
+  }
+
+  it("발급 전 run 의 점검 결과가 1.0 이면 안내한다", async () => {
+    await seedLastRun({ reportId: "", reportData: { meta: { reportId: "" }, materialCheck: { version: "1.0" } } });
+    renderPage({ validationData: { error_count: 0 } });
+    expect(screen.getByRole("region", { name: "점검 표 변경 안내" })).toHaveTextContent("1.0 → 2.0");
+  });
+
+  it("발급된 run 이면 안내하지 않는다(발급 당시 모양 그대로)", async () => {
+    await seedLastRun({ reportId: "R-1", reportData: { meta: { reportId: "R-1" }, materialCheck: { version: "1.0" } } });
+    renderPage({ validationData: { error_count: 0 } });
+    expect(screen.queryByRole("region", { name: "점검 표 변경 안내" })).toBeNull();
+  });
+
+  it("같은 버전이면 안내하지 않는다", async () => {
+    await seedLastRun({ reportId: "", reportData: { meta: { reportId: "" }, materialCheck: { version: "2.0" } } });
+    renderPage({ validationData: { error_count: 0 } });
+    expect(screen.queryByRole("region", { name: "점검 표 변경 안내" })).toBeNull();
   });
 });

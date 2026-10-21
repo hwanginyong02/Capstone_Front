@@ -1,6 +1,6 @@
 /**
  * 재료 선택 점검 — "성적서 목적에 필요한 재료를 골랐나"를 코드 규칙으로 판정한다
- * (입력 설계 › 재료 선택 점검, 점검 표 1.0).
+ * (입력 설계 › 재료 선택 점검, 점검 표 2.0).
  *
  * - 판정은 이 함수 한 곳에서만 한다. `mapWorkflowToFinalReport` 가 한 번 부르고, 생성 전 안내·
  *   지표 화면 미리보기·인쇄·진행 기록은 그 결과를 읽기만 한다.
@@ -11,6 +11,11 @@
  *
  * 버전 규칙: "주.부". 같은 입력의 판정이 바뀌면 주, 문구만 바뀌면 부를 올린다. 버전과 규칙 표는
  * `materialCheck.test.ts` 가 리터럴로 고정한다.
+ *
+ * 2.0(서술 라운드 B): 덧붙이는 글의 셈 규칙이 바뀌었다 — 2층 열 칸이 글만으로도 제공이 되고(종전에는 글을
+ * 받지 않아 제공되지 않음), "모름 + 글"은 제공되지 않음으로 남되 글을 싣고, 1층 선언은 선택지가 있어야 답이다.
+ * 같은 입력의 판정이 바뀌므로 주 번호를 올렸다. 1.0 으로 확인한 진행 기록은 인정하지 않는다(`acknowledged`) —
+ * 진행 중인 run 은 검증 화면이 다시 확인하라고 알린다(`isMaterialCheckOutdated`).
  */
 import type { TaskType } from "../../data/evaluationData";
 import type { ComposerValueMap } from "../../types/reportComposer.types";
@@ -26,8 +31,17 @@ import { printedImbalanceRatio } from "./buildDatasetDiagnosis";
 import { formatKstDateTime } from "./issuanceApi";
 import { AVERAGING_BY_PRIORITY, NOT_PROVIDED, choiceLabel } from "./reportMaterials";
 import { josaEunNeun, josaEuroRo } from "./koreanJosa";
+import { chosenText } from "../../utils/domain/composerFieldGate";
 
-export const MATERIAL_CHECK_VERSION = "1.0";
+export const MATERIAL_CHECK_VERSION = "2.0";
+
+/**
+ * 저장된 점검 결과가 지금 점검 표와 다른 버전으로 만든 것인가(진행 중인 run 의 "다시 확인" 안내). 결과가 없으면
+ * (점검이 생기기 전 run) 아니다 — 그때는 비교할 것이 없다.
+ */
+export function isMaterialCheckOutdated(check: { version: string } | null | undefined): boolean {
+  return !!check && check.version !== MATERIAL_CHECK_VERSION;
+}
 
 type SystemSpec = EvalEnvironment["systemSpec"];
 
@@ -145,9 +159,9 @@ function reportingItems(input: MaterialCheckInput): MaterialCheckItem[] {
   }));
 }
 
+/** 선언의 선택값. 글만 쓴 답은 선택값이 없어 3층 줄을 만들지 않는다(`chosenText` — 1층은 선택 필수). */
 function answerOf(perspective: ComposerValueMap, fieldId: string): string | null {
-  const value = perspective[fieldId];
-  return value && !value.unknown && value.text ? value.text : null;
+  return chosenText(perspective[fieldId]);
 }
 
 function purposeLines(input: MaterialCheckInput, latencyProvided: boolean): MaterialCheckLine[] {
@@ -222,7 +236,7 @@ function purposeLines(input: MaterialCheckInput, latencyProvided: boolean): Mate
   return lines;
 }
 
-/** 재료 선택 점검(점검 표 1.0). */
+/** 재료 선택 점검(점검 표 2.0). */
 export function checkMaterialSelection(input: MaterialCheckInput): MaterialCheckResult {
   const items = reportingItems(input);
   const latencyProvided = items.find((item) => item.item === 8)?.provided ?? false;

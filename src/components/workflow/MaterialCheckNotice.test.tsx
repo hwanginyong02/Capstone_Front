@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   MaterialCheckNotice,
+  MaterialCheckOutdatedNotice,
+  materialCheckOutdatedMessage,
   canFixInInputOf,
   groupByTarget,
   leavesOfReportingItem,
@@ -247,5 +249,26 @@ describe("놓지 않은 항목만 빠졌으면 '평가 흐름 만들기에서 �
     expect(label).toBeDefined();
     expect(within(label!).getByRole("button", { name: "평가 흐름 만들기에서 넣기" })).toBeInTheDocument();
     expect(within(label!).queryByRole("button", { name: "입력 화면에서 고치기" })).not.toBeInTheDocument();
+  });
+});
+
+describe("점검 표 변경 안내 — 진행 중 run 의 다시 확인(점검 표 2.0)", () => {
+  it("저장된 결과의 버전이 지금과 다르고 진행 중이면 안내한다", () => {
+    render(<MaterialCheckOutdatedNotice check={{ version: "1.0" }} active />);
+    const region = screen.getByRole("region", { name: "점검 표 변경 안내" });
+    expect(region).toHaveTextContent(materialCheckOutdatedMessage("1.0"));
+    expect(materialCheckOutdatedMessage("1.0")).toBe(
+      "점검 표가 바뀌어(1.0 → 2.0) 다시 확인이 필요합니다. 이 평가의 재료 선택 점검(표지·1.4·6.0)은 옛 점검 표로 " +
+        '만든 것입니다. 데이터 검증 화면에서 생성 전 안내를 다시 보고 "다음"을 누르면 새 점검 표로 성적서를 다시 만듭니다.',
+    );
+  });
+
+  it("같은 버전이거나, 결과가 없거나, 발급된 성적서(active 거짓)면 그리지 않는다", () => {
+    const { rerender } = render(<MaterialCheckOutdatedNotice check={materialCheckFixture()} active />);
+    expect(screen.queryByRole("region", { name: "점검 표 변경 안내" })).toBeNull();
+    rerender(<MaterialCheckOutdatedNotice check={undefined} active />);
+    expect(screen.queryByRole("region", { name: "점검 표 변경 안내" })).toBeNull();
+    rerender(<MaterialCheckOutdatedNotice check={{ version: "1.0" }} active={false} />);
+    expect(screen.queryByRole("region", { name: "점검 표 변경 안내" })).toBeNull();
   });
 });

@@ -55,6 +55,33 @@ export function checkNameKo(name: string): string {
   return CHECK_NAME_KO[name] ?? name;
 }
 
+/**
+ * 검증 항목 하나의 결과 칸 글 — 성적서 6절과 검증 화면이 같이 쓴다(판정 지점 하나). 한국어 문구 항목은 그대로 두되
+ * 통과("None")는 "없음"으로, 나머지는 영문 낱말을 바꾼다(`normalizeResult`). 종전 검증 화면은 "None" 을 날것으로 보였다.
+ */
+export function validationResultText(item: { name: string; result: string }): string {
+  // 한국어 문구 항목도 통과("None")는 "없음"으로 — 바꾸기를 건너뛰면 성적서에 "None" 이 찍혔다(S2 검토).
+  return KOREAN_RESULT_CHECKS.has(item.name) && item.result !== "None" ? item.result : normalizeResult(item.result);
+}
+
+/** 실행 요약 칸 이름(백엔드 `validation_service` 의 고정 다섯 개) → 검증 화면의 한글 이름. 모르는 이름은 그대로. */
+const SUMMARY_LABEL_KO: Record<string, string> = {
+  "Total validated rows": "검증한 전체 행",
+  "Valid prediction rows": "평가에 쓸 행",
+  "Excluded samples": "제외한 행",
+  "Selected metric count": "선택한 지표 수",
+  "Validation result": "검증 결과",
+};
+
+/** 실행 요약 한 줄의 한글 이름과 값("1,234 rows" → "1,234건", "Errors 0 / Warnings 2" → "오류 0 / 경고 2"). */
+export function summaryItemKo(item: { label: string; value: string }): { label: string; value: string } {
+  const value = String(item.value)
+    .replace(/^([\d,]+) rows?$/, "$1건")
+    .replace(/^([\d,]+) items?$/, "$1개")
+    .replace(/^Errors (\d+) \/ Warnings (\d+)$/, "오류 $1 / 경고 $2");
+  return { label: SUMMARY_LABEL_KO[item.label] ?? item.label, value };
+}
+
 /** 백엔드 결과 문자열(영문) → 한글 표기 정규화 */
 function normalizeResult(result: string): string {
   if (!result || result === "None") return "없음";
@@ -97,8 +124,7 @@ export function mapValidationResultToReport(
   const dataValidation: ValidationResult[] = vr.validation_details.map((item) => ({
     checkName: CHECK_NAME_KO[item.name] ?? item.name,
     status: STATUS_MAP[item.status] ?? "warning",
-    // 한국어 문구 항목도 통과("None")는 "없음"으로 — 바꾸기를 건너뛰면 성적서에 "None" 이 찍혔다(S2 검토).
-    detail: KOREAN_RESULT_CHECKS.has(item.name) && item.result !== "None" ? item.result : normalizeResult(item.result),
+    detail: validationResultText(item),
     group: item.group,
   }));
 

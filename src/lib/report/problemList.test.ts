@@ -236,6 +236,9 @@ describe("불균형 영향 있음 — level affected", () => {
     expect(buildProblemList(input({ imbalanceEffect: effect("affected"), composer: balanced }))[0].note).toBeNull();
     const unknown = composer({ trainingData: { imbalanceHandling: { choices: ["Did nothing"], unknown: true } } });
     expect(buildProblemList(input({ imbalanceEffect: effect("affected"), composer: unknown }))[0].note).toBeNull();
+    // 글만 쓴 답은 선택값이 없다 — "수행 안 함"으로 읽지 않는다(서술 라운드 B 셈 규칙).
+    const noteOnly = composer({ trainingData: { imbalanceHandling: { note: "아무것도 안 한 듯" } } });
+    expect(buildProblemList(input({ imbalanceEffect: effect("affected"), composer: noteOnly }))[0].note).toBeNull();
   });
 });
 

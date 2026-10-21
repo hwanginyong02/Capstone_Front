@@ -181,7 +181,7 @@ describe("6.0 재료 선택 점검 세 줄 (고정 문구 14 · 2.1 한눈에 �
     expect(summaryValue("보고 항목 제공")).toBe("11개 중 9개");
     expect(summaryValue("목적별 점검")).toBe("1줄 중 0줄 충족");
     expect(summaryValue("생성 전 안내 확인")).toBe("확인 기록 없음");
-    expect(screen.getByText("점검 표 1.0")).toBeInTheDocument();
+    expect(screen.getByText("점검 표 2.0")).toBeInTheDocument();
   });
 
   it("점검 결과가 없는 옛 성적서에는 세 줄이 없다", () => {

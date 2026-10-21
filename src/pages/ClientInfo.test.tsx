@@ -161,3 +161,29 @@ describe("[B1②] 평가 의뢰일 기본값은 평가를 시작한 날이다", 
     expect(useWorkflowStore.getState().basicInfo.contractDate).toBe("2026-01-02");
   });
 });
+
+describe("무엇이 비었는지 말하는 '다음' (점검 다-8)", () => {
+  it("비어 있으면 '다음'이 잠기고 옆에 첫 빈 칸 이름과 남은 수를 말한다", () => {
+    renderPage();
+    expect(screen.getByRole("button", { name: /^다음$/ })).toBeDisabled();
+    expect(screen.getByText(/^비어 있는 칸: 회사명/)).toHaveTextContent(/^비어 있는 칸: 회사명 외 \d+개\.$/);
+  });
+
+  it("다 채우면 안내가 없다", () => {
+    useWorkflowStore.setState({
+      basicInfo: {
+        ...DEFAULT_BASIC_INFO,
+        companyName: "회사",
+        representative: "대표",
+        businessNumber: "123-45-67890",
+        phone: "02-1",
+        address: "서울",
+        contractDate: "2026-10-01",
+        reportPurpose: "internal",
+      },
+    });
+    renderPage();
+    expect(screen.getByRole("button", { name: /^다음$/ })).toBeEnabled();
+    expect(screen.queryByText(/비어 있는 칸/)).toBeNull();
+  });
+});

@@ -15,8 +15,13 @@ import {
   getValidationGateReason,
 } from "../utils/domain/validationGate";
 import { FileReuploadNotice } from "../components/workflow/FileReuploadNotice";
-import { canFixInInputOf, MaterialCheckNotice, type MaterialCheckTarget } from "../components/workflow/MaterialCheckNotice";
-import { layerOneGaps, type LayerOneGap } from "../utils/domain/layerOne";
+import {
+  canFixInInputOf,
+  MaterialCheckNotice,
+  MaterialCheckOutdatedNotice,
+  type MaterialCheckTarget,
+} from "../components/workflow/MaterialCheckNotice";
+import { layerOneGaps, screenRuleGaps, type LayerOneGap } from "../utils/domain/layerOne";
 import { buildEvaluationRequestSnapshot } from "../lib/report/evaluationRequest";
 import { getCard, stepOfLeaf } from "../data/reportComposer";
 import type { MaterialCheckResult } from "../types/finalReport.types";
@@ -50,6 +55,8 @@ export function DataValidation() {
   const store = useWorkflowStore();
   const flow = useStepFlow("validation");
   const { activeWorkspaceId, addEvaluationRun } = useWorkspaceStore();
+  // 이 흐름으로 마지막에 만든 run — 발급 전인데 옛 점검 표로 점검했으면 다시 확인하라고 알린다(점검 표 2.0).
+  const lastRun = useWorkspaceStore((state) => state.evaluationRuns.find((run) => run.id === store.lastRunId));
   const { validationData, isLoading, error, buildEvaluationResult } = useDataValidation();
 
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -98,8 +105,10 @@ export function DataValidation() {
   const handleNext = () => {
     setSubmitError(null);
 
-    // 1층 — 없으면 성적서가 성립하지 않는다. 끝난 단계로 돌아가 필수 칸을 지운 경우를 막는다.
-    const missingRequired = layerOneGaps(useWorkflowStore.getState());
+    // 1층 — 없으면 성적서가 성립하지 않는다. 끝난 단계로 돌아가 필수 칸을 지운 경우를 막는다. ⑥~⑨ 화면 규칙 중
+    // 빈칸이 아닌 것(범위·기간·배타·같은 이름 줄 등)도 다시 본다 — 단계 표시줄로 건너뛴 경우(점검 나-16).
+    const state = useWorkflowStore.getState();
+    const missingRequired = [...layerOneGaps(state), ...screenRuleGaps(state)];
     setGaps(missingRequired);
     if (missingRequired.length > 0) return;
 
@@ -176,7 +185,7 @@ export function DataValidation() {
               <Alert variant="destructive" className="mb-6">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  <p>필수 입력이 비어 있어 성적서를 만들 수 없습니다. 아래 화면에서 채운 뒤 다시 오세요.</p>
+                  <p>필수 입력이 비었거나 고쳐야 할 값이 있어 성적서를 만들 수 없습니다. 아래 화면에서 고친 뒤 다시 오세요.</p>
                   <ul aria-label="비어 있는 필수 입력" className="mt-2 flex flex-col gap-1">
                     {gaps.map((gap) => (
                       <li key={gap.stepId}>
@@ -185,7 +194,7 @@ export function DataValidation() {
                           onClick={() => flow.goTo(gap.stepId)}
                           className="underline underline-offset-4"
                         >
-                          {gap.label}에서 채우기
+                          {gap.label}에서 {gap.invalid ? "고치기" : "채우기"}
                         </button>
                         {gap.details && (
                           <ul aria-label={`${gap.label} 문제`} className="mt-1 list-disc pl-5">
@@ -207,6 +216,10 @@ export function DataValidation() {
               </Alert>
             )}
             <FileReuploadNotice />
+            <MaterialCheckOutdatedNotice
+              check={lastRun?.reportData?.materialCheck}
+              active={!!lastRun && !lastRun.reportId && !lastRun.reportData?.meta?.reportId}
+            />
             {materialCheck && (
               <MaterialCheckNotice check={materialCheck} onFix={handleFix} canFixInInput={canFixInInput} />
             )}

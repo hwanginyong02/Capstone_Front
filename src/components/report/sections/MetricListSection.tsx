@@ -53,7 +53,7 @@ export function MetricListSection({
       {/* 멀티레이블 지표의 선택 기준(TS 4213 6.5.1) — 2층 항목. 다른 유형에는 해당 없음. */}
       {materials && materials.metricRationale !== undefined && (
         <p className="text-sm leading-relaxed text-slate-600">
-          지표 선택 기준: {materialText(materials.metricRationale)}
+          지표 선택 기준: {materialText(materials.metricRationale, materials.metricRationaleNote)}
         </p>
       )}
 
