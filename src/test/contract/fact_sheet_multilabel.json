@@ -253,6 +253,12 @@
       "class_share_basis": "label_occurrences",
       "report_purpose_label": "외부 제출",
       "core_metrics_source": "default",
+      "selected_metrics": [
+        "M4",
+        "M15",
+        "M16",
+        "M17"
+      ],
       "declarations": {
         "risk_direction": null,
         "class_priority": "samples_first",

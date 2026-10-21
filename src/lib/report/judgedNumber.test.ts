@@ -123,5 +123,6 @@ describe("cleanNumber·factText", () => {
     expect(factText(-0.000070252)).toBe("-0.0001");
     expect(factText(0.434343434)).toBe("0.4343");
     expect(factText(0.00001)).toBe("0");
+    expect(factText(-0.00001)).toBe("0");
   });
 });

@@ -85,6 +85,11 @@ export interface NarrativeFacts {
   class_share_basis: "samples" | "label_occurrences";
   report_purpose_label: string | null;
   core_metrics_source: "default" | "client";
+  /**
+   * 의뢰자가 고른 지표(M 표기, 표 지표 M21·M22 포함 — 산출 실패도). 사실 시트 지표 목록은 표 지표를 빼므로,
+   * 5절의 "M22 를 골랐으면"·"M2·M3 를 골랐으면" 같은 서술 조건은 이 목록으로 본다(백엔드 select_items).
+   */
+  selected_metrics: string[];
   declarations: {
     risk_direction: RiskDirection | null;
     class_priority: ClassPriority | null;
@@ -596,6 +601,7 @@ export function buildNarrativeFacts(input: NarrativeFactsInput & { nSamples: num
     class_share_basis: taskType === "multilabel" ? "label_occurrences" : "samples",
     report_purpose_label: input.reportPurpose ? REPORT_PURPOSE_LABEL[input.reportPurpose] ?? null : null,
     core_metrics_source: input.coreMetricsSource,
+    selected_metrics: kpiResults.map((r) => r.metricId),
     declarations: decl,
     verdict_detail: verdictDetail(kpiResults, taskType, input.coreMetricIds),
     error_totals: errorTotals(taskType, confusionCounts, input.nSamples),

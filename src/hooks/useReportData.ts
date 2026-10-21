@@ -224,7 +224,9 @@ async function evaluateAndStartNarrativeUnsafe(id: string, file: File): Promise<
   const created = await createNarrativeJob(payload);
   // 1단계 성적서는 완성본이 아니다(isEvaluated=false) — 서술이 끝나야(done) 완성본이 된다.
   const input = storableInput(payload);
-  const saveError = saveRun(id, (r) => applyCreated(r, stage1Report, created, input));
+  // 성적서 데이터의 facts 는 실제로 보낸 값(예산으로 목록을 비웠으면 비운 값)과 같아야 한다 — S7 D6 표가 이 값을 그린다.
+  const stored = payload.fact_sheet.facts ? { ...stage1Report, narrativeFacts: payload.fact_sheet.facts } : stage1Report;
+  const saveError = saveRun(id, (r) => applyCreated(r, stored, created, input));
   // 작업 번호를 저장하지 못했으면 새로고침 뒤 이어 조회할 수 없다 — 평가와 서술 작업을 다시 만들게 되니 알린다.
   const notice =
     saveError && created.kind === "started"

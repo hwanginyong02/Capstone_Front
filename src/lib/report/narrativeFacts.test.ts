@@ -123,6 +123,17 @@ describe("errorTotals — 자르기 전 엔진 건수로(혼동행렬이 잘려�
     expect(errorTotals("multilabel", per, 200)).toEqual({ unit: "label_cell", total: 400, misclassified: 176 });
     expect(errorTotals("binary", null, 200)).toBeNull();
   });
+  it("다중은 Σfn — 예측에만 나온 클래스(엔진이 줄을 뺌)로 간 오류도 센다(Σfp 와 다르다)", () => {
+    // 정답 a·b 만 줄이 있고, a 의 3건이 예측 전용 클래스로 갔다 — Σfn 5, Σfp 2.
+    const ghost: ConfusionCounts = {
+      kind: "perClass",
+      rows: [
+        { label: "a", tp: 5, fp: 1, fn: 4, tn: 10 },
+        { label: "b", tp: 8, fp: 1, fn: 1, tn: 10 },
+      ],
+    };
+    expect(errorTotals("multiclass", ghost, 20)?.misclassified).toBe(5);
+  });
 });
 
 describe("topConfusionPairs — 비대각 상위 3, 동률은 정답·예측의 엔진 순서", () => {
@@ -264,6 +275,15 @@ describe("distributionShift — 학습↔평가 분포 차(전 클래스)", () =
     const close = distributionShift(composer({ training: { a: "590", b: "410" } }), { a: 50, b: 50 });
     expect(close.rows.map((r) => r.flagged)).toEqual([false, false]);
   });
+  it("학습 칸 이름이 표기를 맞춘 뒤 겹치면('1'·'1.0') 건수를 더한다", () => {
+    const r = distributionShift(composer({ training: { "1": "300", "1.0": "300", "0": "400" } }), { "1": 50, "0": 50 });
+    expect(r.rows.find((x) => x.label === "1")?.training_ratio).toBe(0.6);
+  });
+  it("평가 분포 이름도 표기를 맞춘다(' cat ' = 'cat')", () => {
+    const r = distributionShift(composer({ training: { cat: "500", dog: "500" } }), { " cat ": 50, dog: 50 });
+    expect(r.status).toBe("compared");
+    expect(r.rows.map((x) => x.label).sort()).toEqual(["cat", "dog"]);
+  });
   it("클래스 이름 표기를 맞춘다(' 1.0' = '1') — S2 이전에 저장한 학습 칸 이름", () => {
     const r = distributionShift(composer({ training: { " 1.0": "700", "0": "300" } }), { "1": 50, "0": 50 });
     expect(r.status).toBe("compared");
@@ -358,6 +378,15 @@ describe("buildNarrativeFacts — 갈래 배선", () => {
     fixedSentences: [{ id: "6", section: "9", text: "문구" }],
     nSamples: 200,
   };
+  it("고른 지표 목록은 표 지표(M21·M22)·산출 실패까지 고른 그대로", () => {
+    const f = buildNarrativeFacts({
+      ...base,
+      taskType: "binary",
+      kpiResults: [kpi({}), kpi({ metricId: "M21", threshold: null }), kpi({ metricId: "M22", threshold: null }), kpi({ metricId: "M3", status: "unavailable" })],
+    });
+    expect(f.selected_metrics).toEqual(["M1", "M21", "M22", "M3"]);
+  });
+
   it("이진: 양성·위험 쪽·P↔R 은 있고 다중 전용 칸은 비어 있다", () => {
     const f = buildNarrativeFacts({ ...base, taskType: "binary" });
     expect(f).toMatchObject({

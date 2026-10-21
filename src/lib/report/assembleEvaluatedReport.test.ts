@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { assembleEvaluatedReport, type EvaluatedReportInputs } from "./assembleEvaluatedReport";
 import { mapWorkflowToFinalReport } from "./mapWorkflowToFinalReport";
-import { SAME_SOURCE_SENTENCE } from "./dataCautionPhrases";
+import { DIFFERENT_SOURCE_SENTENCE, SAME_SOURCE_SENTENCE } from "./dataCautionPhrases";
+import { derivationStatement } from "./derivationText";
+import { fitNarrativePayload } from "./factSheetFit";
+import { NO_PROBLEM_SENTENCE } from "./reportConstants";
 import type { ReportComposerInput } from "./reportMaterials";
 import { DEFAULT_BASIC_INFO, type MetricDetailStateMap } from "../../types/workflow.types";
 
@@ -286,5 +289,156 @@ describe("핵심 지표 출처 (W8)", () => {
         inputs({ composerMetrics: { coreMetrics: { choices: ["M1", "M4"] } } }),
       ).stage1Report.coreMetricsSource,
     ).toBe("client");
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * S4a — 사실 시트 facts 의 배선(검토·변이에서 이빨이 없던 줄들)
+ * ------------------------------------------------------------------ */
+
+describe("S4a 배선 — 옛 응답 대체, 새 칸 우선, 양성 클래스 출처", () => {
+  it("새 칸이 없는 옛 응답(M21·M22 만)이면 그것으로 사실 시트 표·최약 클래스를 만든다", () => {
+    const { factSheet } = assembleEvaluatedReport(baseReport(), GOLDEN_BINARY, inputs());
+    expect(factSheet.per_class.map((r) => r.label)).toEqual(["0", "1"]);
+    expect(factSheet.confusion?.labels).toEqual(["0", "1"]);
+    expect(factSheet.class_averages.map((r) => r.label)).toContain("매크로 평균");
+    expect(factSheet.facts?.weakest_class?.label).toBe("0");
+  });
+
+  it("새 칸과 M21 이 다르면 사실 시트는 새 칸, 6절 차트는 고른 M21 을 따른다", () => {
+    const copy = structuredClone(GOLDEN_BINARY);
+    const sm = copy.results.success_metrics as Record<string, unknown>;
+    sm.confusion_matrix = { type: "multiclass_or_binary", labels: ["0", "1"], matrix: [[60, 45], [40, 55]], n_samples: 200 };
+    sm.class_report = {
+      "0": { precision: 0.6, recall: 0.57, "f1-score": 0.58, support: 105 },
+      "1": { precision: 0.55, recall: 0.58, "f1-score": 0.56, support: 95 },
+      accuracy: 0.575,
+      "macro avg": { precision: 0.57, recall: 0.57, "f1-score": 0.57, support: 200 },
+      "weighted avg": { precision: 0.57, recall: 0.575, "f1-score": 0.57, support: 200 },
+    };
+    const { stage1Report, factSheet } = assembleEvaluatedReport(baseReport(), copy, inputs());
+    expect(factSheet.confusion?.matrix).toEqual([[60, 45], [40, 55]]);
+    expect(factSheet.per_class.find((r) => r.label === "1")?.f1).toBe(0.56);
+    expect(factSheet.facts?.weakest_class?.label).toBe("1");
+    expect(stage1Report.charts.confusionMatrix?.matrix).toEqual((sm.M21 as { matrix: number[][] }).matrix);
+    expect(stage1Report.classReport?.rows.find((r) => r.label === "1")?.f1).not.toBe(0.56);
+  });
+
+  it("양성 클래스는 엔진 confusion_counts 에서 — metadata 에 없어도", () => {
+    const { factSheet } = assembleEvaluatedReport(
+      baseReport(),
+      GOLDEN_BINARY,
+      inputs({ metadata: { detected_classes: ["0", "1"], class_distribution: { "0": 105, "1": 95 } } }),
+    );
+    expect(factSheet.facts?.positive_class).toBe("1");
+    expect(factSheet.confusion?.positive_class).toBe("1");
+    expect(factSheet.facts?.precision_recall_gap).not.toBeNull();
+  });
+});
+
+describe("S4a 배선 — 7~9절 고정 문장 목록(9·17·12·11b·18 / 6)", () => {
+  it("파생 예측·경계 오류·라벨 주의·다른 출처·근소 차이가 있으면 그 문장을 성적서에 저장한 문장 그대로 싣는다", () => {
+    const copy = structuredClone(GOLDEN_BINARY);
+    const derived = { method: "threshold" as const, threshold: 0.5, source_columns: ["prob"], target_role: "y_pred" };
+    (copy.results.success_metrics as Record<string, unknown>).derived_prediction = derived;
+    const composer: ReportComposerInput = {
+      ...COMPOSER,
+      testData: { testSourceRelation: { text: "Different source", unknown: false } },
+    };
+    const { stage1Report, factSheet } = assembleEvaluatedReport(baseReport(composer), copy, inputs({ composer }));
+    expect(factSheet.facts?.fixed_sentences).toEqual([
+      { id: "9", section: "7.1", text: derivationStatement(derived) },
+      { id: "17", section: "7.1", text: stage1Report.errorRatioSentence },
+      { id: "12", section: "7.2", text: stage1Report.labelCautionSentence },
+      { id: "11b", section: "8.2", text: DIFFERENT_SOURCE_SENTENCE },
+      { id: "18", section: "8.3", text: stage1Report.nearTargetNote },
+    ]);
+    expect(stage1Report.sourceRelationSentence).toBe(DIFFERENT_SOURCE_SENTENCE);
+  });
+
+  it("문제가 0개면 9절 고정 문구 6, 있으면 없다", () => {
+    const copy = structuredClone(GOLDEN_BINARY);
+    delete (copy.results.success_metrics as Record<string, unknown>).f1_threshold_gain;
+    const quiet: ReportComposerInput = { ...COMPOSER, groundTruth: {}, testData: {} };
+    const ok = assembleEvaluatedReport(
+      baseReport(quiet),
+      copy,
+      inputs({ composer: quiet, metricDetails: details({ M1: "0.3", M4: "0.3", M9: "0.3" }) }),
+    );
+    expect(ok.stage1Report.problems).toEqual([]);
+    expect(ok.factSheet.facts?.fixed_sentences).toEqual([
+      { id: "17", section: "7.1", text: ok.stage1Report.errorRatioSentence },
+      { id: "6", section: "9", text: NO_PROBLEM_SENTENCE },
+    ]);
+    const withProblems = assembleEvaluatedReport(baseReport(), GOLDEN_BINARY, inputs());
+    expect(withProblems.factSheet.facts?.fixed_sentences.map((s) => s.id)).not.toContain("6");
+  });
+
+  it("최약 클래스 문제는 facts 의 최약 클래스로 만든다(M22 를 고르지 않아도)", () => {
+    const copy = structuredClone(GOLDEN_BINARY);
+    const sm = copy.results.success_metrics as Record<string, unknown>;
+    delete sm.M22;
+    sm.class_report = {
+      "0": { precision: 0.9, recall: 0.9, "f1-score": 0.9, support: 180 },
+      "1": { precision: 0.3, recall: 0.3, "f1-score": 0.3, support: 20 },
+      accuracy: 0.84,
+      "macro avg": { precision: 0.6, recall: 0.6, "f1-score": 0.6, support: 200 },
+      "weighted avg": { precision: 0.84, recall: 0.84, "f1-score": 0.84, support: 200 },
+    };
+    const { stage1Report, factSheet } = assembleEvaluatedReport(
+      baseReport(),
+      copy,
+      inputs({ selectedMetricIds: ["M1", "M4", "M9"] }),
+    );
+    expect(stage1Report.classReport).toBeNull();
+    const weakest = stage1Report.problems?.find((p) => p.kind === "weakest_class");
+    expect(weakest?.title).toBe("최약 클래스 (1)");
+    expect(factSheet.problems).toEqual(stage1Report.problems);
+  });
+});
+
+describe("S4a 배선 — 조립이 백엔드 상한에 맞춰 미리 자른다(본문 예산 아래)", () => {
+  it("클래스 300개·짧은 이름: 표는 256개(꼭 남길 클래스 포함), 혼동행렬은 비우고, 본문 예산 단계는 손대지 않는다", () => {
+    const labels = Array.from({ length: 300 }, (_, i) => `c${i}`);
+    const support = (i: number) => (i === 0 ? 400 : 10);
+    const response = {
+      n_samples: 3390,
+      dropped_rows: 0,
+      class_distribution: Object.fromEntries(labels.map((l, i) => [l, support(i)])),
+      warnings: [],
+      results: {
+        failed_metrics: {},
+        success_metrics: {
+          M1: 0.5,
+          confusion_matrix: {
+            type: "multiclass_or_binary",
+            labels,
+            matrix: labels.map((_, i) => labels.map((__, j) => (i === j ? support(i) : 0))),
+            n_samples: 3390,
+          },
+          class_report: {
+            ...Object.fromEntries(
+              labels.map((l, i) => [l, { precision: 0.5, recall: 0.5, "f1-score": i === 299 ? 0.01 : 0.5, support: support(i) }]),
+            ),
+            accuracy: 0.5,
+            "macro avg": { precision: 0.5, recall: 0.5, "f1-score": 0.5, support: 3390 },
+            "weighted avg": { precision: 0.5, recall: 0.5, "f1-score": 0.5, support: 3390 },
+          },
+          confusion_counts: { type: "per_class", rows: labels.map((label, i) => ({ label, tp: support(i), fp: 0, fn: 0, tn: 0 })) },
+        },
+      },
+    };
+    const { factSheet } = assembleEvaluatedReport(
+      baseReport(),
+      response,
+      inputs({ taskType: "multiclass", selectedMetricIds: ["M1"], metadata: { detected_classes: labels } }),
+    );
+    expect(factSheet.per_class).toHaveLength(256);
+    expect(factSheet.per_class.map((r) => r.label)).toContain("c299"); // 최약 — 엔진 순서 맨 뒤
+    expect(factSheet.confusion).toBeNull();
+    expect(factSheet.facts?.weakest_class?.label).toBe("c299");
+    expect(factSheet.facts?.omitted).toMatchObject({ per_class: 44, confusion_counts: 44, class_distribution: 44, confusion: 300 });
+    const payload = fitNarrativePayload({ task_type: "multiclass", report_purpose: "external", fact_sheet: factSheet });
+    expect(payload.fact_sheet).toBe(factSheet);
   });
 });

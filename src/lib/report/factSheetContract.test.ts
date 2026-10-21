@@ -75,9 +75,9 @@ const CASES: Record<"binary" | "multiclass" | "multilabel", Case> = {
     taskType: "binary",
     golden: "evaluate_binary_csv.json",
     selected: ["M1", "M2", "M3", "M4", "M5", "M9"],
-    // M1 0.505 < 0.51 미달·근소, M4 0.5123 ≥ 0.5 충족·근소, M5 는 β 2.
+    // M1 0.505 < 0.51 미달·근소, M4 0.5123 ≥ 0.5 충족·근소. M5 는 β 기본값(1) — 골든이 β=1 로 계산한 값이라
+    // 다른 β 를 붙이면 계약 예시가 틀린 사실(β=2 인데 F1 과 같은 값)을 싣는다.
     targets: { M1: "0.51", M4: "0.5", M5: "0.5" },
-    beta: "2",
     composerMetrics: {},
     composer: composer({
       perspective: { criticalErrorType: { text: "Missed (FN)" }, usageMode: { text: "Real-time" } },
@@ -223,7 +223,8 @@ describe("계약 예시의 뜻 — M21·M22 를 고르지 않아도 표·최약 
     expect(sheet.confusion?.positive_class).toBe("1");
     expect(sheet.facts?.positive_class).toBe("1");
     const f5 = sheet.metrics.find((m) => m.metric_id === "M5")!;
-    expect(f5.beta).toBe(2);
+    expect(f5.beta).toBe(1);
+    expect(sheet.facts?.selected_metrics).toEqual(["M1", "M2", "M3", "M4", "M5", "M9"]);
     expect(f5.display_name).not.toMatch(/β/);
   });
 });

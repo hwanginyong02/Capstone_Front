@@ -70,6 +70,7 @@
     "class_share_basis": {"type": "\"samples\"|\"label_occurrences\"", "rule": "share 의 분모 — 이진·다중은 표본 수, 멀티레이블은 레이블 등장 총수(전체 표본 대비 비율이 아님)"},
     "report_purpose_label": {"type": "string|null", "values": ["내부 검증", "외부 제출", "과제 산출물"], "rule": "최상위 report_purpose 는 코드값 그대로(백엔드 enum)"},
     "core_metrics_source": {"type": "\"default\"|\"client\"", "rule": "기본값이면 '의뢰자가 지정한' 이라고 쓰지 않는다. 기본값이면 client_inputs.core_metrics 를 보내지 않는다(재-7). client 이면 core_metrics 값은 '(Mn)' 없이 지표 이름만"},
+    "selected_metrics": {"type": "[string]", "rule": "의뢰자가 고른 지표(M 표기, 표 지표 M21·M22·산출 실패 포함, 고른 순서). 사실 시트 metrics 는 표 지표를 빼므로 5절의 '지표 X 를 골랐으면' 조건(8.2 macro↔weighted·micro 의 M22, P↔R 의 M2·M3, Hamming↔Exact 의 M15·M16)은 이 목록으로 본다"},
     "declarations": {
       "risk_direction": {"type": "\"fn\"|\"fp\"|\"similar\"|null", "when": "이진", "from": "criticalErrorType: 'Missed (FN)'→fn, 'False alarm (FP)'→fp, 'Similar'→similar"},
       "class_priority": {"type": "\"all_equal\"|\"larger_first\"|\"samples_first\"|null", "when": "다중·멀티", "from": "classPriority: 'All equal'→all_equal, 'Larger classes first'→larger_first, 'Individual samples first'→samples_first"},

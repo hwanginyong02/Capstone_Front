@@ -37,6 +37,7 @@ function facts(over: Partial<NarrativeFacts> = {}): NarrativeFacts {
     class_share_basis: "samples",
     report_purpose_label: null,
     core_metrics_source: "default",
+    selected_metrics: [],
     declarations: { risk_direction: null, class_priority: null, usage_mode: null },
     verdict_detail: {
       verdict: "PASS", judged_count: 0, passed_count: 0, failed_core: [], failed_noncore: [], unavailable_core: [],
@@ -94,8 +95,10 @@ describe("keepTop — 꼭 남길 것 먼저, 남은 자리는 큰 순, 원래 �
     expect(keepTop([1, 5, 3, 5, 2], 3, (x) => x)).toEqual({ kept: [5, 3, 5], dropped: 2 });
     expect(keepTop(["a", "b", "c"], 2, () => 0)).toEqual({ kept: ["a", "b"], dropped: 1 });
   });
-  it("꼭 남길 것은 작아도 남는다", () => {
-    expect(keepTop([10, 1, 9, 8], 2, (x) => x, (x) => x === 1)).toEqual({ kept: [10, 1], dropped: 2 });
+  it("순위가 있는 것은 작아도 남고, 순위끼리는 작은 숫자가 먼저", () => {
+    expect(keepTop([10, 1, 9, 8], 2, (x) => x, (x) => (x === 1 ? 0 : undefined))).toEqual({ kept: [10, 1], dropped: 2 });
+    // 순위 있는 것이 자리보다 많으면 순위 숫자 작은 순 — 엔진 순서(앞)가 아니다.
+    expect(keepTop([1, 2, 3, 4], 2, () => 0, (x) => 10 - x)).toEqual({ kept: [3, 4], dropped: 2 });
   });
 });
 
@@ -126,6 +129,38 @@ describe("fitFactSheet — 클래스 표", () => {
     expect(Object.keys(s.distribution!.class_distribution)).toHaveLength(MAX_CLASS_ENTRIES);
     expect(s.confusion).toBeNull();
     expect(s.facts?.omitted).toEqual({ per_class: 44, confusion_counts: 44, class_distribution: 44, confusion: n });
+  });
+
+  it("작은 표본이 상한보다 많아도 최약·기준·오분류 쌍 클래스가 표에 남는다(엔진 순서 맨 뒤여도)", () => {
+    // 300클래스 모두 support 10(전부 5% 미만 = 작은 표본), c280 이 최약, c299 가 support 최대(기준 클래스).
+    const n = 300;
+    const support = (i: number) => (i === 299 ? 50 : 10);
+    const perClass = names(n).map((label, i) => ({ label, precision: 1, recall: 1, f1: i === 280 ? 0.1 : 0.5, support: support(i) }));
+    const low = names(n).map((label, i) => ({ label, support: support(i), share: 0.003, share_text: "0.003" }));
+    const s = fitFactSheet(
+      sheet({
+        per_class: perClass,
+        confusion_counts: perClass.map(({ label, support: sp }) => ({ label, tp: sp, fp: 0, fn: 0, tn: 0 })),
+        facts: facts({
+          weakest_class: {
+            label: "c280", f1: 0.1, support: 10, share: 0.003, share_text: "0.003", macro_f1: 0.5,
+            gap_from_macro: 0.4, gap_text: "0.4", low_support: true, far_below_macro: true,
+          },
+          low_support_classes: low,
+          top_confusion_pairs: [{ actual: "c290", predicted: "c291", count: 3, share_of_errors: 0.5 }],
+          average_gap: {
+            kind: "macro_vs_weighted", macro_f1: 0.5, other_f1: 0.5, difference: 0, difference_text: "0",
+            reference_class: { label: "c299", support: 50, f1: 0.5 },
+          },
+        }),
+      }),
+    );
+    for (const label of ["c280", "c290", "c291", "c299"]) {
+      expect([label, s.per_class.some((r) => r.label === label)]).toEqual([label, true]);
+      expect([label, s.confusion_counts.some((r) => r.label === label)]).toEqual([label, true]);
+    }
+    expect(s.facts?.low_support_classes.some((r) => r.label === "c280")).toBe(true);
+    expect(s.per_class).toHaveLength(MAX_CLASS_ENTRIES);
   });
 
   it("상한 이하면 손대지 않고 omitted 도 비어 있다", () => {
@@ -161,10 +196,14 @@ describe("fitFactSheet — 클래스 표", () => {
 
 describe("mustKeepClasses — facts 가 가리키는 클래스", () => {
   it("최약·작은 표본·최다 오분류 쌍 양쪽·평균 차이 기준·양성", () => {
-    const keep = mustKeepClasses(
+    const order = mustKeepClasses(
       facts({
         positive_class: "p",
-        low_support_classes: [{ label: "s", support: 1, share: 0, share_text: "0" }],
+        // 작은 표본은 엔진 순서가 아니라 support 작은 순으로 순위를 매긴다(s2 가 먼저).
+        low_support_classes: [
+          { label: "s", support: 9, share: 0, share_text: "0" },
+          { label: "s2", support: 1, share: 0, share_text: "0" },
+        ],
         top_confusion_pairs: [{ actual: "a", predicted: "b", count: 1, share_of_errors: 1 }],
         average_gap: {
           kind: "macro_vs_weighted", macro_f1: 0, other_f1: 0, difference: 0, difference_text: "0",
@@ -172,7 +211,7 @@ describe("mustKeepClasses — facts 가 가리키는 클래스", () => {
         },
       }),
     );
-    expect([...keep].sort()).toEqual(["a", "b", "p", "r", "s"]);
+    expect([...order]).toEqual([["a", 1], ["b", 1], ["r", 2], ["p", 3], ["s2", 4], ["s", 5]]);
   });
 });
 

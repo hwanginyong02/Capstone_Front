@@ -86,7 +86,7 @@
         "near_target": true,
         "value_text": "0.512",
         "higher_is_better": true,
-        "beta": 2,
+        "beta": 1,
         "margin_text": "0.0123",
         "ci_contains_target": true
       },
@@ -276,6 +276,14 @@
       "class_share_basis": "samples",
       "report_purpose_label": "외부 제출",
       "core_metrics_source": "default",
+      "selected_metrics": [
+        "M1",
+        "M2",
+        "M3",
+        "M4",
+        "M5",
+        "M9"
+      ],
       "declarations": {
         "risk_direction": "fn",
         "class_priority": null,

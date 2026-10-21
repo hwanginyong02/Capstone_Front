@@ -200,6 +200,8 @@ describe("성공 — 평가 1회·작업 1회, 단계는 화면에만", () => {
       expect([sent.fact_sheet.per_class, sent.fact_sheet.confusion_counts, sent.fact_sheet.distribution]).toEqual([[], [], null]);
       // 칸별 상한으로 먼저 뺀 144 + 예산으로 비운 256 = 400 — omitted 는 언제나 "뺀 수"의 합이다.
       expect(sent.fact_sheet.facts.omitted).toMatchObject({ per_class: 400, confusion_counts: 400, class_distribution: 400 });
+      // 저장한 facts 도 보낸 것과 같다(비운 목록·늘어난 omitted 까지).
+      await waitFor(() => expect(storedRun()!.reportData.narrativeFacts).toEqual(sent.fact_sheet.facts));
     });
 
     it("의뢰자가 고른 핵심 지표는 지표 번호 없이 이름만 보낸다(재-4)", async () => {
