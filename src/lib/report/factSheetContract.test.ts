@@ -164,7 +164,11 @@ function legacyMainShape(payload: NarrativeRequestPayload): Record<string, unkno
     delete gain.gain_text;
   }
   const effect = sheet.imbalance_effect as Record<string, unknown> | null;
-  if (effect) delete effect.display;
+  if (effect) {
+    delete effect.display;
+    // 차이를 만든 네 값(서술 라운드 세션 B 엔진부터)도 운영 main 프론트는 보내지 않았다.
+    for (const key of ["accuracy", "macro_f1", "majority_f1", "minority_f1"]) delete effect[key];
+  }
   return { task_type: payload.task_type, report_purpose: payload.report_purpose, fact_sheet: sheet };
 }
 

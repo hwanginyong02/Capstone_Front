@@ -204,10 +204,14 @@
       "majority_minus_minority_f1": 0.0134,
       "majority_class": "finance",
       "minority_class": "sports",
+      "majority_f1": 0.4455,
+      "minority_f1": 0.4322,
       "display": {
         "imbalance_ratio": "1.1031",
         "accuracy_minus_macro_f1": null,
-        "majority_minus_minority_f1": "0.0134"
+        "majority_minus_minority_f1": "0.0134",
+        "majority_f1": "0.4455",
+        "minority_f1": "0.4322"
       }
     },
     "problems": [
