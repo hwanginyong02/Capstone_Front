@@ -1,0 +1,703 @@
+{
+  "contentSchema": 2,
+  "targetDigits": 3,
+  "judgedValueDigits": true,
+  "meta": {
+    "reportId": "",
+    "title": "기계학습 분류 성능 시험결과서",
+    "issuedAt": "",
+    "evaluationPeriod": {
+      "from": "2026-10-22",
+      "to": "2026-10-22"
+    },
+    "taskType": "multiclass",
+    "taskTypeLabel": "다중 클래스 분류"
+  },
+  "applicant": {
+    "companyName": "보관본 주식회사",
+    "representative": "—",
+    "businessNumber": "—",
+    "contact": "—",
+    "fax": "",
+    "homepage": "",
+    "address": "—"
+  },
+  "performer": {
+    "orgName": "한국 AI 인증원",
+    "evaluator": "자동 평가 엔진",
+    "contact": "—"
+  },
+  "evalScope": {
+    "purpose": "외부 제출 및 인증/심사기관 검토 목적으로 활용",
+    "targetModel": "ArchiveModel",
+    "version": "v1.0.0",
+    "scope": "의뢰자가 제출한 평가 데이터셋을 기반으로 선택된 시험항목에 대해 정량적 성능 지표를 산출하고 합격 기준 충족 여부를 판정한다.",
+    "reportPurposeKey": "external"
+  },
+  "datasetInfo": {
+    "format": "정형 데이터 (CSV)",
+    "inputColumns": [
+      "id",
+      "y_true",
+      "y_pred",
+      "prob_class_*"
+    ],
+    "sampleCount": 200,
+    "taskTypeLabel": "다중 클래스 분류",
+    "classCount": 0,
+    "classLabels": [],
+    "fileName": "data.csv"
+  },
+  "datasetSamples": [],
+  "datasetDiagnosis": "평가 데이터셋은 총 200건이며, 클래스(레이블)별 분포는 bird 69건(34.5%), cat 57건(28.5%), dog 74건(37.0%)이다. 클래스 불균형 비율(Imbalance Ratio)은 1.30로, 허용 기준(< 1.50) 이내의 균형 상태이다.",
+  "evalEnv": {
+    "method": "서버 사이드 자동 연산 (Python 기반 metric 산출)",
+    "outputFormat": "성능 지표 수치 및 합격/불합격 판정 성적서 (PDF)",
+    "tools": [
+      "Python 3.11",
+      "scikit-learn 1.4.0",
+      "pandas 2.2.0",
+      "numpy 1.26.0"
+    ],
+    "systemSpec": {
+      "os": "제공되지 않음",
+      "cpu": "제공되지 않음",
+      "gpu": "제공되지 않음",
+      "memory": "제공되지 않음",
+      "software": "제공되지 않음"
+    },
+    "environment": {
+      "evaluated_at": "<비결정적 값 — 존재만 고정>",
+      "libraries": "<비결정적 값 — 존재만 고정>"
+    }
+  },
+  "metricList": [
+    {
+      "metricId": "M1",
+      "name": "Accuracy",
+      "threshold": 0.2,
+      "passCriteria": "≥ 0.200"
+    },
+    {
+      "metricId": "M2",
+      "name": "Precision",
+      "threshold": null,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M3",
+      "name": "Recall",
+      "threshold": null,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M4",
+      "name": "F1 Score",
+      "threshold": 0.2,
+      "passCriteria": "≥ 0.200"
+    }
+  ],
+  "metricFormulas": [
+    {
+      "metricId": "M1",
+      "name": "Accuracy",
+      "formula": "(TP + TN) / Total",
+      "description": "모델이 맞게 예측한 비율입니다.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M2",
+      "name": "Precision",
+      "formula": "binary: TP/(TP+FP) · 그 외: 클래스별 TP/(TP+FP) 의 macro 평균",
+      "description": "양성으로 예측한 것 중 실제 양성인 비율입니다.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M3",
+      "name": "Recall",
+      "formula": "binary: TP/(TP+FN) · 그 외: 클래스별 TP/(TP+FN) 의 macro 평균",
+      "description": "실제 양성 중 모델이 찾아낸 비율입니다.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M4",
+      "name": "F1 Score",
+      "formula": "binary: 2PR/(P+R) · 그 외: 클래스별 F1 의 macro 평균(macro-P·macro-R 의 조화평균이 아님)",
+      "description": "정밀도와 재현율을 하나로 묶어 균형을 봅니다.",
+      "isCommon": true
+    }
+  ],
+  "dataValidation": [],
+  "kpiResults": [
+    {
+      "metricId": "M1",
+      "name": "Accuracy",
+      "value": 0.335,
+      "threshold": 0.2,
+      "status": "pass",
+      "higherIsBetter": true,
+      "isCore": true,
+      "ci": {
+        "low": 0.2732,
+        "high": 0.403,
+        "method": "wilson"
+      },
+      "margin": 0.135,
+      "nearTarget": false
+    },
+    {
+      "metricId": "M2",
+      "name": "Precision",
+      "value": 0.3338518128551015,
+      "threshold": null,
+      "status": "pass",
+      "higherIsBetter": true,
+      "isCore": false
+    },
+    {
+      "metricId": "M3",
+      "name": "Recall",
+      "value": 0.33149511067131204,
+      "threshold": null,
+      "status": "pass",
+      "higherIsBetter": true,
+      "isCore": false
+    },
+    {
+      "metricId": "M4",
+      "name": "F1 Score",
+      "value": 0.3314034800929962,
+      "threshold": 0.2,
+      "status": "pass",
+      "higherIsBetter": true,
+      "isCore": true,
+      "ci": {
+        "low": 0.2665,
+        "high": 0.394,
+        "method": "bootstrap_multinomial"
+      },
+      "margin": 0.1314034801,
+      "nearTarget": false
+    }
+  ],
+  "charts": {
+    "confusionMatrix": null,
+    "rocCurve": null,
+    "prCurve": null
+  },
+  "latency": null,
+  "interpretation": {
+    "confusionAnalysis": "혼동행렬 기준 전체 200건 중 133건(66.5%)이 오분류되었다. 클래스별 오류(FP+FN)는 cat(고양이) FP 50건·FN 40건, dog(개) FP 45건·FN 45건, bird(새) FP 38건·FN 48건이다. 가장 많이 헷갈린 쌍(실제→예측)은 dog(개)→cat(고양이) 28건(전체 오분류의 21.1%), bird(새)→dog(개) 26건(전체 오분류의 19.5%), bird(새)→cat(고양이) 22건(전체 오분류의 16.5%)이다. 예측 수와 실제 수의 차이가 큰 클래스는 bird(새) 예측 59건·실제 69건, cat(고양이) 예측 67건·실제 57건이다. F1 이 가장 낮은 클래스는 F1 0.2742인 cat(고양이)이며, 표본은 57건으로 전체 표본의 28.5%이다. 매크로 F1 과의 차이는 0.0572이다. 확률이 있는 오분류 가운데 경계 오류가 확신 오류보다 많다. 경계 오류는 결정 경계 가까이에서 갈린 오류로, 경계에 가까운 사례의 판단에 따라 결과가 달라질 수 있는 오류다.",
+    "distributionAnalysis": "평가 데이터셋은 총 200건이며, 클래스 분포는 bird(새) 69건(34.5%), cat(고양이) 57건(28.5%), dog(개) 74건(37.0%)이다. 불균형 비율(1.2982)이 1.5 미만이어서 불균형은 경미하다. 학습 분포와 평가 분포의 비율 차가 10%p 이상인 클래스는 bird(새) 학습 20%·평가 34.5%, cat(고양이) 학습 60%·평가 28.5%, dog(개) 학습 20%·평가 37%이다."
+  },
+  "conclusion": {
+    "verdict": "PASS",
+    "score": 100,
+    "judgedCount": 2,
+    "benchmark": "내부 참조 기준과 비교하면 참조 범위에 비해 미흡한 지표는 Accuracy(0.335, 참조 범위 0.8~0.9), Precision(0.3339, 참조 범위 0.78~0.89), Recall(0.3315, 참조 범위 0.78~0.89), F1 Score(0.331, 참조 범위 0.78~0.89)이다. 비교 기준은 내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)이다. 목표값이 참조 범위보다 낮은 지표는 Accuracy(목표 0.4), F1 Score(목표 0.3)이다.",
+    "narrative": "핵심 지표가 목표에 미달하여 종합 판정은 '최종 불합격'이다(미달한 핵심 지표: Accuracy(0.335, 목표 0.4)). 참고로 목표값이 설정된 지표 2개 중 1개가 목표를 충족하였다(통과율 50.0%). 95% 신뢰구간이 목표값을 포함하는 지표는 Accuracy(구간 0.273~0.403, 목표 0.4), F1 Score(구간 0.267~0.394, 목표 0.3)로, 표본 변동에 따라 해당 지표의 판정이 달라질 수 있다. 의뢰자가 클래스 중요도를 '다수 클래스 우선'으로 밝혔으므로, 그에 맞춘 가중 평균 F1 은 0.3363이다. 의뢰자가 밝힌 모델 용도는 '생산 라인 2 의 불량 검출'이다.",
+    "risks": "목표에 미달한 지표가 있어 해당 영역의 성능 저하 위험이 존재한다(목표 미달 지표: Accuracy(0.335, 목표 0.4)). F1 이 가장 낮은 클래스는 F1 0.2742인 cat(고양이)이다.",
+    "benchmarkRefs": [
+      {
+        "metric": "Accuracy",
+        "modelValue": 0.335,
+        "refLow": 0.8,
+        "refHigh": 0.9,
+        "quality": "worse",
+        "direction": "higher",
+        "sourceNote": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)",
+        "targetValue": 0.2,
+        "targetPosition": "below"
+      },
+      {
+        "metric": "F1 Score",
+        "modelValue": 0.3314,
+        "refLow": 0.78,
+        "refHigh": 0.88,
+        "quality": "worse",
+        "direction": "higher",
+        "sourceNote": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)",
+        "targetValue": 0.2,
+        "targetPosition": "below"
+      }
+    ]
+  },
+  "recommendationNarrative": {
+    "dataQuality": "데이터 측면에서 권고 대상으로 지목된 문제는 없다.",
+    "modelOps": "모델 측면에서 권고 대상으로 지목된 문제는 없다."
+  },
+  "recommendations": [],
+  "signature": {
+    "issuer": "",
+    "signedAt": "",
+    "history": []
+  },
+  "materials": {
+    "declarations": [
+      {
+        "label": "클래스 중요도",
+        "value": "다수 클래스 우선"
+      },
+      {
+        "label": "사용 방식",
+        "value": "배치"
+      }
+    ],
+    "averagingSentence": "의뢰자가 클래스 중요도를 \"다수 클래스 우선\"으로 밝혔으나, 이에 맞는 가중 평균 지표는 시험 항목에 없다(1.4 참조).",
+    "training": [
+      {
+        "label": "학습 데이터셋명",
+        "value": null,
+        "item": 1
+      },
+      {
+        "label": "학습 데이터 출처",
+        "value": null,
+        "item": 1
+      },
+      {
+        "label": "학습 샘플 수",
+        "value": null,
+        "item": 1
+      },
+      {
+        "label": "검증 샘플 수",
+        "value": null,
+        "item": 1
+      },
+      {
+        "label": "학습 클래스 분포",
+        "value": null,
+        "item": 1
+      },
+      {
+        "label": "채널 효과",
+        "value": null,
+        "item": 9
+      },
+      {
+        "label": "편향 감소 노력",
+        "value": null,
+        "item": 3
+      }
+    ],
+    "test": [
+      {
+        "label": "평가 데이터 출처",
+        "value": null,
+        "item": 2
+      },
+      {
+        "label": "학습 데이터와의 관계",
+        "value": "같은 출처",
+        "item": 2
+      }
+    ],
+    "groundTruth": [
+      {
+        "label": "정답 라벨 구축 방법",
+        "value": null,
+        "item": 4
+      },
+      {
+        "label": "정답 라벨 신뢰성",
+        "value": null,
+        "item": 5
+      }
+    ],
+    "environment": [
+      {
+        "label": "학습 가속",
+        "value": null,
+        "item": 11
+      },
+      {
+        "label": "추론 가속",
+        "value": null,
+        "item": 11
+      }
+    ],
+    "hyperparameters": {
+      "algorithm": null,
+      "rows": null
+    }
+  },
+  "materialCheck": {
+    "version": "1.0",
+    "reporting": {
+      "total": 11,
+      "provided": 1,
+      "items": [
+        {
+          "item": 1,
+          "name": "학습 데이터의 출처·크기·구성",
+          "impact": "평가 결과를 학습 데이터와 견주어 해석할 수 있는지",
+          "provided": false,
+          "missing": [
+            "학습 데이터셋명",
+            "학습 데이터 출처",
+            "학습 샘플 수",
+            "검증 샘플 수",
+            "학습 클래스 분포"
+          ]
+        },
+        {
+          "item": 2,
+          "name": "평가 데이터 출처",
+          "impact": "평가 데이터가 용도를 대표하는지",
+          "provided": false,
+          "missing": [
+            "평가 데이터 출처"
+          ]
+        },
+        {
+          "item": 3,
+          "name": "편향 감소 노력",
+          "impact": "데이터 편향을 분석하고 줄였는지",
+          "provided": false,
+          "missing": [
+            "편향 감소 노력"
+          ]
+        },
+        {
+          "item": 4,
+          "name": "정답 라벨 구축 방법",
+          "impact": "정답 라벨을 얼마나 믿을 수 있는지",
+          "provided": false,
+          "missing": [
+            "정답 라벨 구축 방법"
+          ]
+        },
+        {
+          "item": 5,
+          "name": "정답 라벨 신뢰성",
+          "impact": "정답 라벨의 오류가 성능 수치에 얼마나 섞였는지",
+          "provided": false,
+          "missing": [
+            "정답 라벨 신뢰성"
+          ]
+        },
+        {
+          "item": 6,
+          "name": "대표 작동 지점의 TP·FP 건수",
+          "impact": "오류 건수를 확인할 수 있는지",
+          "provided": true,
+          "missing": []
+        },
+        {
+          "item": 7,
+          "name": "추론 환경",
+          "impact": "결과가 어떤 하드웨어·소프트웨어에서 나왔는지",
+          "provided": false,
+          "missing": [
+            "운영체제",
+            "CPU",
+            "GPU",
+            "메모리",
+            "소프트웨어"
+          ]
+        },
+        {
+          "item": 8,
+          "name": "추론 효율성(지연시간)",
+          "impact": "응답 속도가 용도에 맞는지",
+          "provided": false,
+          "missing": [
+            "지연시간 컬럼"
+          ]
+        },
+        {
+          "item": 9,
+          "name": "학습 데이터의 채널 효과",
+          "impact": "모델이 내용 대신 수집 방식을 배웠는지",
+          "provided": false,
+          "missing": [
+            "채널 효과"
+          ]
+        },
+        {
+          "item": 10,
+          "name": "하이퍼파라미터",
+          "impact": "같은 조건으로 모델을 다시 만들거나 공정하게 비교할 수 있는지",
+          "provided": false,
+          "missing": [
+            "알고리즘",
+            "하이퍼파라미터"
+          ]
+        },
+        {
+          "item": 11,
+          "name": "가속 사용",
+          "impact": "응답 시간이 어떤 조건에서 나온 값인지",
+          "provided": false,
+          "missing": [
+            "학습 가속",
+            "추론 가속"
+          ]
+        }
+      ]
+    },
+    "purpose": {
+      "applicable": 1,
+      "met": 0,
+      "lines": [
+        {
+          "id": "averaging",
+          "met": false,
+          "title": "클래스 중요도 → 평균 방식",
+          "declared": "다수 클래스 우선",
+          "recommended": [
+            "M13"
+          ],
+          "shortfall": "의뢰자가 클래스 중요도를 \"다수 클래스 우선\"으로 밝혔으나, 이에 맞는 가중 평균 지표가 시험 항목에 없다."
+        }
+      ]
+    },
+    "warningIds": [
+      "reporting:1",
+      "reporting:2",
+      "reporting:3",
+      "reporting:4",
+      "reporting:5",
+      "reporting:7",
+      "reporting:8",
+      "reporting:9",
+      "reporting:10",
+      "reporting:11",
+      "purpose:averaging"
+    ],
+    "imbalanceRatio": 1.2982456140350878,
+    "distributionSource": "upload",
+    "acknowledgement": null,
+    "printed": {
+      "cover": "ISO/IEC TS 4213:2022에 따라 평가. 일부 보고 항목 미제공(1.4 참조)",
+      "notProvided": "ISO/IEC TS 4213이 보고를 요구하는 항목 중 학습 데이터의 출처·크기·구성, 평가 데이터 출처, 편향 감소 노력, 정답 라벨 구축 방법, 정답 라벨 신뢰성, 추론 환경, 추론 효율성(지연시간), 학습 데이터의 채널 효과, 하이퍼파라미터, 가속 사용은 의뢰자로부터 제공받지 못해 기재하지 않았다. 따라서 본 결과서는 이 항목들에 대해 TS 4213의 보고 요구를 충족하지 않는다.",
+      "impacts": [
+        "학습 데이터의 출처·크기·구성: 평가 결과를 학습 데이터와 견주어 해석할 수 있는지 판단할 수 없다.",
+        "평가 데이터 출처: 평가 데이터가 용도를 대표하는지 판단할 수 없다.",
+        "편향 감소 노력: 데이터 편향을 분석하고 줄였는지 판단할 수 없다.",
+        "정답 라벨 구축 방법: 정답 라벨을 얼마나 믿을 수 있는지 판단할 수 없다.",
+        "정답 라벨 신뢰성: 정답 라벨의 오류가 성능 수치에 얼마나 섞였는지 판단할 수 없다.",
+        "추론 환경: 결과가 어떤 하드웨어·소프트웨어에서 나왔는지 판단할 수 없다.",
+        "추론 효율성(지연시간): 응답 속도가 용도에 맞는지 판단할 수 없다.",
+        "학습 데이터의 채널 효과: 모델이 내용 대신 수집 방식을 배웠는지 판단할 수 없다.",
+        "하이퍼파라미터: 같은 조건으로 모델을 다시 만들거나 공정하게 비교할 수 있는지 판단할 수 없다.",
+        "가속 사용: 응답 시간이 어떤 조건에서 나온 값인지 판단할 수 없다."
+      ],
+      "purposeShortfalls": [
+        "의뢰자가 클래스 중요도를 \"다수 클래스 우선\"으로 밝혔으나, 이에 맞는 가중 평균 지표가 시험 항목에 없다."
+      ],
+      "summary": [
+        {
+          "label": "보고 항목 제공",
+          "value": "11개 중 1개",
+          "note": "빠진 항목: 학습 데이터의 출처·크기·구성, 평가 데이터 출처, 편향 감소 노력, 정답 라벨 구축 방법, 정답 라벨 신뢰성, 추론 환경, 추론 효율성(지연시간), 학습 데이터의 채널 효과, 하이퍼파라미터, 가속 사용 (1.4 참조)"
+        },
+        {
+          "label": "목적별 점검",
+          "value": "1줄 중 0줄 충족",
+          "note": "미충족: 클래스 중요도 → 평균 방식 (1.4 참조)"
+        },
+        {
+          "label": "생성 전 안내 확인",
+          "value": "확인 기록 없음",
+          "note": "점검 표 1.0"
+        }
+      ],
+      "averagingSentence": "의뢰자가 클래스 중요도를 \"다수 클래스 우선\"으로 밝혔으나, 이에 맞는 가중 평균 지표는 시험 항목에 없다(1.4 참조)."
+    }
+  },
+  "evaluationWarnings": [],
+  "coreMetricsSource": "default",
+  "classReport": null,
+  "confusionCounts": {
+    "kind": "perClass",
+    "rows": [
+      {
+        "label": "bird",
+        "tp": 21,
+        "fp": 38,
+        "fn": 48,
+        "tn": 93
+      },
+      {
+        "label": "cat",
+        "tp": 17,
+        "fp": 50,
+        "fn": 40,
+        "tn": 93
+      },
+      {
+        "label": "dog",
+        "tp": 29,
+        "fp": 45,
+        "fn": 45,
+        "tn": 81
+      }
+    ]
+  },
+  "errorRatios": {
+    "unit": "sample",
+    "misclassified": 133,
+    "boundary": {
+      "count": 27,
+      "ratio": 0.203
+    },
+    "boundary_note": null,
+    "confident": {
+      "count": 2,
+      "ratio": 0.015
+    },
+    "boundary_margin": 0.1,
+    "confident_level": 0.9,
+    "threshold": null
+  },
+  "errorRatioSentence": "확률이 있는 오분류 133건 중 경계 오류(예측·정답 클래스 확률 차가 0.1 미만)는 27건(20.3%), 확신 오류(예측 클래스 확률 0.9 이상)는 2건(1.5%)이다.",
+  "confidenceIntervalNote": "판정 대상 지표의 95% 신뢰구간은 Wilson 점수 구간(M1), 다항 재표집 부트스트랩(2,000회, 시드 4213, 백분위 구간; M4)으로 산출하였습니다.",
+  "sourceRelationSentence": "평가 데이터는 학습 데이터와 동일한 출처에서 수집되었다. 본 결과는 동일 분포 내 성능을 나타내며, 다른 운영 환경에서의 일반화 성능을 보증하지 않는다.",
+  "problems": [],
+  "narrativeFacts": {
+    "contract": "facts-1",
+    "positive_class": null,
+    "n_classes": 3,
+    "class_share_basis": "samples",
+    "report_purpose_label": "외부 제출",
+    "core_metrics_source": "default",
+    "selected_metrics": [
+      "M1",
+      "M2",
+      "M3",
+      "M4"
+    ],
+    "declarations": {
+      "risk_direction": null,
+      "class_priority": "larger_first",
+      "usage_mode": "batch"
+    },
+    "verdict_detail": {
+      "verdict": "PASS",
+      "judged_count": 2,
+      "passed_count": 2,
+      "failed_core": [],
+      "failed_noncore": [],
+      "unavailable_core": [],
+      "inconclusive_cause": null,
+      "inconclusive_metrics": []
+    },
+    "error_totals": {
+      "unit": "sample",
+      "total": 200,
+      "misclassified": 133
+    },
+    "weakest_class": {
+      "label": "cat",
+      "f1": 0.27419354838709675,
+      "support": 57,
+      "share": 0.285,
+      "share_text": "0.285",
+      "macro_f1": 0.3314034800929962,
+      "gap_from_macro": 0.057209932,
+      "gap_text": "0.0572",
+      "low_support": false,
+      "far_below_macro": false
+    },
+    "low_support_classes": [],
+    "top_confusion_pairs": [
+      {
+        "actual": "dog",
+        "predicted": "cat",
+        "count": 28,
+        "share_of_errors": 0.210526316
+      },
+      {
+        "actual": "bird",
+        "predicted": "dog",
+        "count": 26,
+        "share_of_errors": 0.195488722
+      },
+      {
+        "actual": "bird",
+        "predicted": "cat",
+        "count": 22,
+        "share_of_errors": 0.165413534
+      }
+    ],
+    "prediction_bias": {
+      "unit": "per_class",
+      "rows": [
+        {
+          "label": "bird",
+          "predicted": 59,
+          "actual": 69,
+          "difference": -10
+        },
+        {
+          "label": "cat",
+          "predicted": 67,
+          "actual": 57,
+          "difference": 10
+        },
+        {
+          "label": "dog",
+          "predicted": 74,
+          "actual": 74,
+          "difference": 0
+        }
+      ]
+    },
+    "declared_risk_errors": null,
+    "precision_recall_gap": null,
+    "average_gap": {
+      "kind": "macro_vs_weighted",
+      "macro_f1": 0.3314034800929962,
+      "other_f1": 0.33634828629032254,
+      "difference": 0.004944806,
+      "difference_text": "0.0049",
+      "reference_class": {
+        "label": "dog",
+        "support": 74,
+        "f1": 0.3918918918918919
+      }
+    },
+    "declared_average": {
+      "class_priority": "larger_first",
+      "average": "weighted",
+      "precision": 0.3401100430053124,
+      "recall": 0.335,
+      "f1": 0.33634828629032254
+    },
+    "distribution_shift_status": "not_provided",
+    "distribution_shift": [],
+    "ci_available": true,
+    "ci_skipped": [],
+    "fixed_sentences": [
+      {
+        "id": "17",
+        "section": "7.1",
+        "text": "확률이 있는 오분류 133건 중 경계 오류(예측·정답 클래스 확률 차가 0.1 미만)는 27건(20.3%), 확신 오류(예측 클래스 확률 0.9 이상)는 2건(1.5%)이다."
+      },
+      {
+        "id": "11a",
+        "section": "8.2",
+        "text": "평가 데이터는 학습 데이터와 동일한 출처에서 수집되었다. 본 결과는 동일 분포 내 성능을 나타내며, 다른 운영 환경에서의 일반화 성능을 보증하지 않는다."
+      },
+      {
+        "id": "6",
+        "section": "9",
+        "text": "본 평가에서 지목된 데이터 또는 모델상의 문제점은 없다. 별도 권고 사항 없음."
+      }
+    ],
+    "omitted": {}
+  },
+  "narrativeSource": "fallback",
+  "narrativeSections": {
+    "9": "fixed",
+    "7.1": "fallback",
+    "7.2": "fallback",
+    "7.3": "fixed",
+    "8.1": "fallback",
+    "8.2": "fallback",
+    "8.3": "fallback"
+  },
+  "isEvaluated": true
+}
