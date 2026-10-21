@@ -161,6 +161,41 @@ describe("생성 전 안내와 '다음' (재료 선택 점검 6절)", () => {
     expect(useWorkflowStore.getState().materialCheckAck).toBeNull();
   });
 
+  it("⑨ 같은 이름 하이퍼파라미터처럼 화면 규칙에 걸린 값이 남아 있으면 막고 그 화면으로 보낸다(점검 나-16)", async () => {
+    const { materialCheckFixture } = await import("../test/materialCheckFixture");
+    const { next } = await setup(materialCheckFixture({}));
+    useWorkflowStore.setState({
+      composerCards: { trainingData: false, testData: false, groundTruth: false, modelEnv: true },
+      composerModelEnv: { hyperparameters: { entries: [{ key: "lr", value: "0.1" }, { key: "lr", value: "0.2" }] } },
+    });
+
+    next.click();
+
+    const list = await screen.findByRole("list", { name: "비어 있는 필수 입력" });
+    expect(list).toHaveTextContent("모델 설정과 실행 환경에서 고치기");
+    expect(screen.getByRole("list", { name: "모델 설정과 실행 환경 문제" })).toHaveTextContent(
+      "하이퍼파라미터: 같은 이름이 두 번 있어요: lr",
+    );
+    expect(addEvaluationRun).not.toHaveBeenCalled();
+  });
+
+  it("넣은 카드의 2층 빈칸은 막지 않는다", async () => {
+    const { materialCheckFixture } = await import("../test/materialCheckFixture");
+    const { next } = await setup(materialCheckFixture({}));
+    useWorkflowStore.setState({
+      composerCards: { trainingData: true, testData: true, groundTruth: true, modelEnv: true },
+      composerTrainingData: {},
+      composerTestData: {},
+      composerGroundTruth: {},
+      composerModelEnv: {},
+    });
+
+    next.click();
+
+    expect(screen.queryByRole("list", { name: "비어 있는 필수 입력" })).toBeNull();
+    expect(addEvaluationRun).toHaveBeenCalledTimes(1);
+  });
+
   it("매핑을 고친 뒤 계산할 수 없게 된 지표가 남아 있으면 막고 지표 화면으로 이유와 함께 안내한다 (B8)", async () => {
     const { materialCheckFixture } = await import("../test/materialCheckFixture");
     const { next } = await setup(materialCheckFixture({}));
