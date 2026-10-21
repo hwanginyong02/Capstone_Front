@@ -45,13 +45,26 @@ const rows = (name: string) =>
     .map((tr) => within(tr).getAllByRole(tr.querySelector("th") ? "columnheader" : "cell").map((c) => c.textContent));
 
 describe("최약 클래스 표", () => {
-  it("열·값 — 이름(설명), F1 은 넷째 자리, 비율·차이는 사실 시트의 표시 문자열, 작은 표본 표시", () => {
+  it("열·값 — 이름(설명), F1 은 넷째 자리, 차이는 사실 시트의 표시 문자열, 비율은 그 문자열을 %로, 작은 표본 표시", () => {
     render(<NarrativeFactTables facts={base} multiclass descriptions={DESCRIPTIONS} />);
     expect(rows("최약 클래스")).toEqual([
       ["클래스", "F1", "표본 수", "비율", "매크로 F1과의 차이", "작은 표본"],
-      ["cat(고양이)", "0.4123", "12", "0.0499", "0.2877", "예"],
+      ["cat(고양이)", "0.4123", "12", "4.99%", "0.2877", "예"],
     ]);
     expect(factText(0.41234567)).toBe("0.4123");
+    // 표본 기준이면 레이블 등장 합 각주가 없다
+    expect(screen.queryByText(/레이블의 등장 횟수 합/)).toBeNull();
+  });
+
+  it("비율 — 판정 쪽으로 늘린 자릿수(0.04996)를 그대로 %로, 곱셈 잡음 없이(0.285 → 28.5%)", () => {
+    render(
+      <NarrativeFactTables
+        facts={{ ...base, weakest_class: { ...base.weakest_class!, share: 0.04996, share_text: "0.04996" } } as NarrativeFacts}
+        multiclass={false}
+      />,
+    );
+    expect(rows("최약 클래스")[1][3]).toBe("4.996%");
+    expect(0.285 * 100).not.toBe(28.5); // 숫자 곱셈이었다면 28.499999999999996
   });
 
   it("매크로 F1 이 없으면 차이는 —, 작은 표본이 아니면 아니오, 멀티레이블은 '레이블'", () => {
@@ -63,8 +76,10 @@ describe("최약 클래스 표", () => {
     render(<NarrativeFactTables facts={facts} multiclass={false} />);
     expect(rows("최약 레이블")).toEqual([
       ["레이블", "F1", "표본 수", "비율", "매크로 F1과의 차이", "작은 표본"],
-      ["cat", "0.4123", "12", "0.0499", "—", "아니오"],
+      ["cat", "0.4123", "12", "4.99%", "—", "아니오"],
     ]);
+    // 멀티레이블 비율은 레이블 등장 합 대비 — 서술의 '전체 표본 대비'와 기준이 달라 각주로 밝힌다
+    expect(screen.getByText(/비율은 전체 표본 수가 아니라 모든 레이블의 등장 횟수 합에 대한 비율입니다\./)).toBeInTheDocument();
   });
 
   it("최약 클래스가 없으면(클래스 1종) 그 표는 없다", () => {
@@ -79,8 +94,8 @@ describe("최다 오분류 쌍 표(다중 클래스)", () => {
     expect(screen.getByText("최다 오분류 쌍(상위 2)")).toBeInTheDocument();
     expect(rows("최다 오분류 쌍")).toEqual([
       ["실제 → 예측", "건수", "오분류 중 비율"],
-      ["cat(고양이) → dog", "7", "0.35"],
-      ["dog → bird", "3", "0.15"],
+      ["cat(고양이) → dog", "7", "35%"],
+      ["dog → bird", "3", "15%"],
     ]);
   });
 

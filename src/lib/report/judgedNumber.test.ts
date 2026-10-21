@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cleanNumber, difference, factText, formatJudgedValue, judgedText, meetsTarget } from "./judgedNumber";
+import { cleanNumber, difference, factText, formatJudgedValue, judgedText, meetsTarget, percentText } from "./judgedNumber";
 import { evaluateStatus } from "./evaluateStatus";
 import { computeMargin, isNearTarget } from "./computeVerdict";
 import type { KpiResult } from "../../types/finalReport.types";
@@ -124,5 +124,27 @@ describe("cleanNumber·factText", () => {
     expect(factText(0.434343434)).toBe("0.4343");
     expect(factText(0.00001)).toBe("0");
     expect(factText(-0.00001)).toBe("0");
+  });
+});
+
+describe("percentText — 소수 문자열을 %로(글자 옮기기)", () => {
+  it.each([
+    ["0.285", "28.5%"],
+    ["0.2105", "21.05%"],
+    ["0.04996", "4.996%"],
+    ["0.5", "50%"],
+    ["0.05", "5%"],
+    ["1", "100%"],
+    ["0", "0%"],
+    ["0.000123456", "0.0123456%"],
+    ["-0.0659", "-6.59%"],
+    ["-0", "0%"],
+    ["12.3", "1230%"],
+  ])("%s → %s", (input, expected) => {
+    expect(percentText(input)).toBe(expected);
+  });
+
+  it("숫자 꼴이 아니면 그대로", () => {
+    expect(percentText("—")).toBe("—");
   });
 });

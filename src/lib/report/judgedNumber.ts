@@ -89,6 +89,23 @@ export function judgedText(value: number, threshold: number, meets: boolean): st
   return trimmedFixed(cut, MAX_FACT_DIGITS);
 }
 
+/**
+ * 소수 표기 문자열을 백분율로 — 소수점을 오른쪽으로 두 칸 옮긴다("0.285" → "28.5%", "0.04996" → "4.996%").
+ * 숫자로 곱하지 않고 글자를 옮겨, 판정 쪽으로 늘린 자릿수(`judgedText`)가 부동소수 곱셈으로 흐트러지지 않게
+ * 한다(0.285 × 100 = 28.499999999999996). 숫자 꼴이 아니면 그대로 돌려준다.
+ */
+export function percentText(decimalText: string): string {
+  const m = /^(-?)(\d+)(?:\.(\d*))?$/.exec(decimalText.trim());
+  if (!m) return decimalText;
+  const [, sign, int, frac = ""] = m;
+  const digits = int + frac.padEnd(2, "0");
+  const point = int.length + 2;
+  const whole = digits.slice(0, point).replace(/^0+(?=\d)/, "");
+  const rest = digits.slice(point).replace(/0+$/, "");
+  const text = rest ? `${whole}.${rest}` : whole;
+  return `${sign && text !== "0" ? "-" : ""}${text}%`;
+}
+
 /** 기준과 비교하지 않는 파생값의 표기 — 넷째 자리, 끝의 0 은 뺀다. */
 export function factText(value: number): string {
   return trimmedFixed(value, FACT_DIGITS);
