@@ -36,6 +36,7 @@ import { evaluateStatus } from "./evaluateStatus";
 import type { MapWorkflowToReportInput } from "./mapWorkflowToFinalReport";
 import { attachNearTarget, nearTargetNote } from "./nearTarget";
 import { noBenchmarkSentence } from "./benchmarkBaselines";
+import { MULTILABEL_IMBALANCE_DEFINITION } from "./narrativeSectionText";
 import { buildProblemList, parseF1ThresholdGain, parseImbalanceEffect } from "./problemList";
 
 /** 조립에 쓰는 워크플로우 값. 훅은 스토어와 `buildReportInput` 결과에서 그대로 꺼내 넘긴다. */
@@ -344,6 +345,8 @@ export function assembleEvaluatedReport(
   const fixedSentences: FixedSentenceFact[] = [
     ...(derivedPrediction ? [{ id: "9", section: "7.1", text: derivationStatement(derivedPrediction) }] : []),
     ...(errorRatioText ? [{ id: "17", section: "7.1", text: errorRatioText }] : []),
+    // 7.2 고정 문구 7 — 멀티레이블 불균형 비율 정의(화면 InterpretSection 이 판 3 멀티레이블에 늘 찍는다).
+    ...(taskTypeResolved === "multilabel" ? [{ id: "7", section: "7.2", text: MULTILABEL_IMBALANCE_DEFINITION }] : []),
     ...(labelSentence ? [{ id: "12", section: "7.2", text: labelSentence }] : []),
     ...(noBenchmarkText ? [{ id: "16", section: "8.1", text: noBenchmarkText }] : []),
     ...(sourceSentence

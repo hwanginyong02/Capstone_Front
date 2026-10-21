@@ -125,7 +125,8 @@ describe("세 갈래 × 유형 × 새 칸 — 정확한 문장", () => {
     expect(diagnose("multilabel", effect("affected", { task: "multilabel", accGap: "", classGap: "0.2833", withNew }))).toBe(
       `${PREFIX}${IR_HEAD} 허용 기준(1.50 미만)을 벗어나며, ` +
         "다수 레이블 'A'와 소수 레이블 'B'의 F1 차이가 0.2833으로 0.10 이상이어서 " +
-        AFFECTED_TAIL,
+        // 멀티레이블은 정확도가 판정에 쓰이지 않아 끝 문장이 레이블별 지표를 가리킨다.
+        "불균형에 따른 성능 지표 왜곡이 관찰되었다. 매크로 F1과 레이블별 지표를 우선 참고해야 한다.",
     );
   });
 

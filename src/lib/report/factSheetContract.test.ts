@@ -11,6 +11,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { MULTILABEL_IMBALANCE_DEFINITION } from "./narrativeSectionText";
 import type { TaskType } from "../../data/evaluationData";
 import { DEFAULT_BASIC_INFO, type MetricDetailStateMap } from "../../types/workflow.types";
 import type { ComposerValueMap } from "../../types/reportComposer.types";
@@ -228,6 +229,16 @@ describe("계약 예시의 뜻 — M21·M22 를 고르지 않아도 표·최약 
     ]);
     expect(buildPayload(CASES.multiclass).payload.fact_sheet.facts?.fixed_sentences.length).toBeGreaterThan(0);
     expect(sixteen("multiclass")).toEqual([]);
+  });
+
+  it("고정 문구 7: 멀티레이블만 7.2 에 정의 문장을 싣고(12 앞), 이진·다중은 없다", () => {
+    const ids = (name: keyof typeof CASES) =>
+      buildPayload(CASES[name]).payload.fact_sheet.facts?.fixed_sentences.map((s) => s.id) ?? [];
+    const seven = buildPayload(CASES.multilabel).payload.fact_sheet.facts?.fixed_sentences.find((s) => s.id === "7");
+    expect(seven).toEqual({ id: "7", section: "7.2", text: MULTILABEL_IMBALANCE_DEFINITION });
+    expect(ids("binary").length).toBeGreaterThan(0);
+    expect(ids("binary")).not.toContain("7");
+    expect(ids("multiclass")).not.toContain("7");
   });
 
   it("다중: 혼동행렬이 사실 시트에 실리고 6.2 와 같은 마이크로 평균 줄(accuracy)이 있다", () => {
