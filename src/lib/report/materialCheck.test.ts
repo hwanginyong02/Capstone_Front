@@ -1,5 +1,5 @@
 /**
- * 재료 선택 점검(입력 설계 › 재료 선택 점검, 점검 표 1.0) — 8절 "입력 조합 테스트".
+ * 재료 선택 점검(입력 설계 › 재료 선택 점검, 점검 표 2.0) — 8절 "입력 조합 테스트".
  *
  * 층마다 빠진 항목을 정확히 찾는지, "모름"은 빠짐·"알려진 것 없음"·"측정 안 함"은 제공으로 세는지,
  * 표지 문구가 실제 상태에 맞게 바뀌는지, 경계값(β·IR)과 결정성을 고정한다.
@@ -12,6 +12,7 @@ import {
   AVERAGING_METRICS,
   HIGH_IMBALANCE_RATIO,
   MATERIAL_CHECK_VERSION,
+  isMaterialCheckOutdated,
   REPORTING_ITEMS,
   checkMaterialSelection,
   type MaterialCheckInput,
@@ -74,9 +75,10 @@ function input(
 const answer = (fields: Record<string, string>): ComposerValueMap =>
   Object.fromEntries(Object.entries(fields).map(([id, text]) => [id, { text }]));
 
-describe("점검 표 1.0 — 버전과 규칙 표를 리터럴로 고정 (판정이 바뀌면 주 버전을 올린다)", () => {
+describe("점검 표 2.0 — 버전과 규칙 표를 리터럴로 고정 (판정이 바뀌면 주 버전을 올린다)", () => {
   it("버전", () => {
-    expect(MATERIAL_CHECK_VERSION).toBe("1.0");
+    // 2.0: 덧붙이는 글의 셈 규칙이 바뀌어(같은 입력의 판정이 바뀜) 주 번호를 올렸다(서술 라운드 B).
+    expect(MATERIAL_CHECK_VERSION).toBe("2.0");
     expect(HIGH_IMBALANCE_RATIO).toBe(9);
   });
 
@@ -402,7 +404,7 @@ describe("진행 기록 (6절) — 버전이 같고 지금 경고를 모두 담�
     expect(checkMaterialSelection(input()).printed.summary[2]).toEqual({
       label: "생성 전 안내 확인",
       value: "안내할 부족 없음",
-      note: "점검 표 1.0",
+      note: "점검 표 2.0",
     });
   });
 
@@ -415,15 +417,15 @@ describe("진행 기록 (6절) — 버전이 같고 지금 경고를 모두 담�
   it("지금 경고를 모두 담은 같은 버전 기록이면 인정하고 시각(KST)을 찍는다", () => {
     const result = checkMaterialSelection({
       ...warned,
-      ack: { at, version: "1.0", warningIds: ["reporting:8", "purpose:latency"] },
+      ack: { at, version: "2.0", warningIds: ["reporting:8", "purpose:latency"] },
     });
-    expect(result.acknowledgement).toEqual({ at, version: "1.0" });
+    expect(result.acknowledgement).toEqual({ at, version: "2.0" });
     expect(result.printed.summary[2].value).toBe("확인 후 진행 (2026-10-17 14:03)");
   });
 
   it("기록에 없는 경고가 생겼거나 버전이 다르면 인정하지 않는다", () => {
     expect(
-      checkMaterialSelection({ ...warned, ack: { at, version: "1.0", warningIds: ["reporting:8"] } }).acknowledgement,
+      checkMaterialSelection({ ...warned, ack: { at, version: "2.0", warningIds: ["reporting:8"] } }).acknowledgement,
     ).toBeNull();
     expect(
       checkMaterialSelection({
@@ -431,6 +433,25 @@ describe("진행 기록 (6절) — 버전이 같고 지금 경고를 모두 담�
         ack: { at, version: "0.9", warningIds: ["reporting:8", "purpose:latency"] },
       }).acknowledgement,
     ).toBeNull();
+  });
+
+  it("점검 표 1.0 으로 남긴 기록은 2.0 에서 인정하지 않는다(경고를 다 담았어도) — '확인 기록 없음'", () => {
+    const result = checkMaterialSelection({
+      ...warned,
+      ack: { at, version: "1.0", warningIds: ["reporting:8", "purpose:latency"] },
+    });
+    expect(result.acknowledgement).toBeNull();
+    expect(result.printed.summary[2].value).toBe("확인 기록 없음");
+  });
+});
+
+describe("isMaterialCheckOutdated — 진행 중 run 의 '다시 확인' 안내", () => {
+  it("저장된 결과의 버전이 지금과 다르면 참, 같거나 결과가 없으면 거짓", () => {
+    expect(isMaterialCheckOutdated({ version: "1.0" })).toBe(true);
+    expect(isMaterialCheckOutdated({ version: "2.0" })).toBe(false);
+    expect(isMaterialCheckOutdated(checkMaterialSelection(input()))).toBe(false);
+    expect(isMaterialCheckOutdated(undefined)).toBe(false);
+    expect(isMaterialCheckOutdated(null)).toBe(false);
   });
 });
 

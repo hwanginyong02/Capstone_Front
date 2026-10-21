@@ -127,8 +127,9 @@ export function hasValue(
   // "Other" 를 골랐으면 무엇인지 적어야 답한 것이다. 선택지만으로는 내용이 없다.
   if (isOtherChosen(field, value) && (value.otherText ?? "").trim() === "") return false;
 
-  // 덧붙이는 글을 받는 필드는 맞는 선택지가 없을 때 글만 써도 답한 것이다(서술 설계 D26).
-  if (field.allowsNote && (value.note ?? "").trim() !== "") return true;
+  // 덧붙이는 글을 받는 필드는 맞는 선택지가 없을 때 글만 써도 답한 것이다(서술 설계 D26) — 1층 선언과
+  // GPU 사용 여부(`noteNeedsChoice`)는 빼고.
+  if (noteAnswers(field, value)) return true;
 
   if (field.input === "multi") return (value.choices?.length ?? 0) > 0;
 
@@ -160,6 +161,27 @@ export function hasValue(
   }
 
   return (value.text ?? "").trim() !== "";
+}
+
+/**
+ * 덧붙이는 글이 **선택지 대신** 답이 되는가(셈 규칙, 서술 라운드 B). 글을 받는 필드(`allowsNote`)이고, 선택 필수
+ * 필드(`noteNeedsChoice` — 1층 선언·GPU 사용 여부)가 아니고, 글이 비지 않았을 때. "모름"·빈 "기타"와 함께 쓴 글은
+ * 여기서 따지지 않는다 — 진행 점검(`hasValue`)은 그 둘을 먼저 보고, 성적서(`describeAnswer`)는 제공되지 않음 +
+ * 의뢰자 글로 싣는다. 진행 점검과 성적서가 이 함수 하나를 본다.
+ */
+export function noteAnswers(field: ComposerField, value: ComposerFieldValue | undefined): boolean {
+  return Boolean(field.allowsNote && !field.noteNeedsChoice && (value?.note ?? "").trim() !== "");
+}
+
+/**
+ * 하나 고르기 답의 선택값. "모름"이거나 고르지 않았으면(글만 쓴 답 포함) null. 선택값으로 갈리는 조건(조건부 칸,
+ * 재료 선택 점검 3층, 고정 문구, D24 선언 코드)이 같이 쓴다 — 글만 쓴 답은 "선택값 없음"으로 읽혀 어느 조건도
+ * 열지 않고, 글은 성적서와 AI 에 "의뢰자 제공"으로 따로 간다.
+ */
+export function chosenText(value: ComposerFieldValue | undefined): string | null {
+  if (!value || value.unknown) return null;
+  const text = (value.text ?? "").trim();
+  return text === "" ? null : value.text!;
 }
 
 /** `otherChoice` 가 골라져 있는가. 하나 고르기·여럿 고르기 모두 본다. */
@@ -289,9 +311,9 @@ function invalidReason(
  * 체크해도 고른 글자가 남아 있어 라벨러 수 칸이 계속 필수였다.
  */
 function conditionHolds(condition: FieldCondition, values: ComposerValueMap): boolean {
-  const trigger = values[condition.field];
-  if (!trigger || trigger.unknown) return false;
-  const text = trigger.text ?? "";
+  // 글만 쓴 답은 선택값이 없어 어떤 조건도 열지 않는다(`chosenText`).
+  const text = chosenText(values[condition.field]);
+  if (text === null) return false;
   if (condition.equals !== undefined && text !== condition.equals) return false;
   if (condition.in !== undefined && !condition.in.includes(text)) return false;
   return condition.equals !== undefined || condition.in !== undefined;

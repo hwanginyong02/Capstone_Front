@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   INCOMPLETE_ROW_MESSAGE,
+  chosenText,
   completeEntryRows,
   duplicateEntryNames,
   getCardIssues,
@@ -524,8 +525,50 @@ describe("덧붙이는 글", () => {
   });
 
   it("글을 받지 않는 필드는 글만으로 답이 되지 않는다", () => {
+    const 출처 = getCard("testData").fields.find((f) => f.id === "testDataSource")!;
+    expect(hasValue(출처, { note: "something" })).toBe(false);
+  });
+
+  it("2층 서술 칸은 글만으로 답이다 — 출처 관계(종전에는 글을 받지 않았다)", () => {
     const 관계 = getCard("testData").fields.find((f) => f.id === "testSourceRelation")!;
-    expect(hasValue(관계, { note: "something" })).toBe(false);
+    expect(hasValue(관계, { note: "일부 겹침" })).toBe(true);
+  });
+
+  it("1층 선언·GPU 사용 여부(noteNeedsChoice)는 글만으로 답이 아니다 — 고르면 답", () => {
+    for (const id of ["criticalErrorType", "classPriority", "usageMode"]) {
+      const field = 평가관점.fields.find((f) => f.id === id)!;
+      expect(field.noteNeedsChoice, id).toBe(true);
+      expect(hasValue(field, { note: "설명" }), id).toBe(false);
+      expect(hasValue(field, { text: field.choices![0], note: "설명" }), id).toBe(true);
+    }
+    const gpu = 모델환경.fields.find((f) => f.id === "gpuUsage")!;
+    expect(gpu.noteNeedsChoice).toBe(true);
+    expect(hasValue(gpu, { note: "설명" })).toBe(false);
+    expect(
+      hasValue(gpu, { entries: [{ key: "Training", value: "Yes" }, { key: "Inference", value: "Unknown" }], note: "설명" }),
+    ).toBe(true);
+  });
+
+  it("'기타'를 고르고 내용을 비우면 글이 있어도 답이 아니다", () => {
+    const 작성주체 = 정답라벨.fields.find((f) => f.id === "labelAuthor")!;
+    expect(hasValue(작성주체, { text: "Other (free text)", note: "설명" })).toBe(false);
+  });
+
+  it("글만 쓴 신뢰성은 선택값이 없어 라벨러 수·일치도 칸을 열지 않는다", () => {
+    const values: ComposerValueMap = { labelAuthor: { text: "Domain experts" }, labelReview: { note: "여럿이 봄" } };
+    const reviewerCount = 정답라벨.fields.find((f) => f.id === "labelReviewerCount")!;
+    expect(isFieldVisible(reviewerCount, values)).toBe(false);
+    expect(isCardComplete(정답라벨, "binary", values, true)).toBe(true);
+  });
+});
+
+describe("chosenText — 선택값으로 갈리는 조건이 같이 쓴다", () => {
+  it("고른 값만. 모름·글만·빈 값은 null", () => {
+    expect(chosenText({ text: "Several reviewers" })).toBe("Several reviewers");
+    expect(chosenText({ text: "Several reviewers", unknown: true })).toBeNull();
+    expect(chosenText({ note: "글만" })).toBeNull();
+    expect(chosenText({ text: "  " })).toBeNull();
+    expect(chosenText(undefined)).toBeNull();
   });
 });
 

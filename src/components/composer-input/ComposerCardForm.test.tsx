@@ -520,15 +520,74 @@ describe("덧붙이는 글", () => {
     expect(onChange).toHaveBeenLastCalledWith("preprocessingMatch", {
       text: "Different",
       note: "Y",
-      unknown: false,
     });
   });
 
   it("글을 받지 않는 칸에는 글칸이 없다", () => {
     renderForm("testData");
-    expect(screen.queryByRole("textbox", { name: "학습 데이터와 출처 관계 덧붙이는 글" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "데이터 출처 덧붙이는 글" })).not.toBeInTheDocument();
+  });
+
+  it("서술 칸 11개에 글칸이 있다(서술 설계 D26 — 화면별로 확인)", () => {
+    const expected: Array<[ComposerCardId, TaskType, string[]]> = [
+      ["perspective", "binary", ["중요 오류 유형", "사용 방식"]],
+      ["perspective", "multiclass", ["클래스 중요도"]],
+      ["trainingData", "binary", ["수집 방식 차이(채널 효과)", "편향 감소 노력"]],
+      ["testData", "binary", ["학습 데이터와 출처 관계"]],
+      ["groundTruth", "binary", ["라벨 작성 주체", "정답 라벨 신뢰성"]],
+      ["modelEnv", "binary", ["GPU 사용 여부"]],
+    ];
+    for (const [cardId, taskType, labels] of expected) {
+      const { unmount } = renderAndKeep(cardId, taskType);
+      for (const label of labels) {
+        expect(screen.getByRole("textbox", { name: label + " 덧붙이는 글" }), label).toBeInTheDocument();
+      }
+      unmount();
+    }
+    // 일치도 종류는 복수 라벨러 합의일 때만 나타난다.
+    const { unmount } = renderAndKeep("groundTruth", "binary", { labelReview: { text: "Several reviewers" } });
+    expect(screen.getByRole("textbox", { name: "일치도 종류 덧붙이는 글" })).toBeInTheDocument();
+    unmount();
+  });
+
+  it("1층 선언은 글칸 안내가 '위에서 하나를 고르세요' — 글만으로는 답이 아니다", () => {
+    renderForm("perspective");
+    expect(screen.getByRole("textbox", { name: "중요 오류 유형 덧붙이는 글" })).toHaveAttribute(
+      "placeholder",
+      "덧붙이는 글 (선택 — 위에서 하나를 고르세요)",
+    );
+  });
+
+  it("'모름'을 골라도 글을 쓸 수 있고, 글을 써도 모름이 풀리지 않는다(모름 + 글)", async () => {
+    const { onChange } = renderForm("groundTruth", { values: { labelAuthor: { unknown: true } } });
+    const box = screen.getByRole("textbox", { name: "라벨 작성 주체 덧붙이는 글" });
+    expect(box).toBeEnabled();
+    await userEvent.type(box, "Z");
+    expect(onChange).toHaveBeenLastCalledWith("labelAuthor", { unknown: true, note: "Z" });
+  });
+
+  it("GPU 사용 여부의 글칸은 학습·추론 두 줄 아래에 있다", () => {
+    renderForm("modelEnv");
+    const note = screen.getByRole("textbox", { name: "GPU 사용 여부 덧붙이는 글" });
+    const inference = screen.getByRole("radiogroup", { name: "GPU 사용 여부 추론" });
+    expect(inference.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
+
+/** `renderForm` 과 같되 unmount 를 돌려준다(한 테스트에서 여러 카드를 차례로 그린다). */
+function renderAndKeep(cardId: ComposerCardId, taskType: TaskType, values: ComposerValueMap = {}) {
+  const card = getCard(cardId);
+  return render(
+    <ComposerCardForm
+      card={card}
+      taskType={taskType}
+      values={values}
+      onChange={vi.fn()}
+      issues={getCardIssues(card, taskType, values, true)}
+      classNames={["정상", "이탈"]}
+    />,
+  );
+}
 
 describe("[B6②] 하이퍼파라미터 줄 — 이름과 값 둘 다", () => {
   const values: ComposerValueMap = {

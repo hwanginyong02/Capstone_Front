@@ -203,7 +203,7 @@ describe("생성 전 안내와 '다음' (재료 선택 점검 6절)", () => {
     next.click();
 
     const ack = useWorkflowStore.getState().materialCheckAck;
-    expect(ack).toMatchObject({ version: "1.0", warningIds: check.warningIds });
+    expect(ack).toMatchObject({ version: "2.0", warningIds: check.warningIds });
     expect(Number.isNaN(Date.parse(ack!.at))).toBe(false);
     // 기록을 남긴 뒤 성적서를 다시 만든다 — 그래야 6.0 이 "확인 후 진행"을 찍는다.
     expect(buildEvaluationResult).toHaveBeenCalledTimes(2);

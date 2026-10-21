@@ -236,6 +236,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "required",
         taskTypes: ["multilabel"],
         input: "single",
+        allowsNote: true,
         description: "멀티레이블 지표를 고른 이유입니다. 예: 레이블이 하나라도 틀리면 안 되는 모델이면 모든 레이블 일치",
         choiceLabels: {
           "Errors weighted evenly": "오차를 고르게 봄",
@@ -475,6 +476,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "required",
         taskTypes: ["binary"],
         input: "single",
+        allowsNote: true,
+        // 1층 선택 필수 — 글만으로는 답한 것이 아니다(서술 라운드 B 셈 규칙).
+        noteNeedsChoice: true,
         description: "놓치는 오류(FN)와 잘못 잡는 오류(FP) 중 무엇이 더 치명적인지입니다. 예: 암 진단 모델이면 놓침",
         choiceLabels: {
           "Missed (FN)": "놓침(FN)",
@@ -501,6 +505,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         kind: "required",
         taskTypes: ["multiclass", "multilabel"],
         input: "single",
+        allowsNote: true,
+        // 1층 선택 필수 — 글만으로는 답한 것이 아니다(서술 라운드 B 셈 규칙).
+        noteNeedsChoice: true,
         description: "클래스를 어떤 기준으로 중요하게 볼지입니다. 예: 드문 클래스도 똑같이 중요하면 모두 동등",
         choiceLabels: {
           "All equal": "모두 동등",
@@ -526,6 +533,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "실시간 응답 / 일괄 처리",
         kind: "required",
         input: "single",
+        allowsNote: true,
+        // 1층 선택 필수 — 글만으로는 답한 것이 아니다(서술 라운드 B 셈 규칙).
+        noteNeedsChoice: true,
         description: "요청마다 바로 응답하는지, 모아서 한꺼번에 처리하는지입니다. 예: 챗봇은 실시간 응답, 야간 정산은 일괄 처리",
         choiceLabels: {
           "Real-time": "실시간 응답",
@@ -554,7 +564,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
     steps: ["trainingData"],
     help:
       "수집 방식 차이는 같은 클래스의 데이터가 서로 다른 장비, 처리 방식, 사람, 환경에서 " +
-      "모였는지(TS 4213 5.3.8 채널 효과)를 묻습니다. 불균형 보정은 한쪽 클래스에 몰린 " +
+      "모였는지(TS 4213 5.3.8 채널 효과)를 묻습니다. 편향 감소 노력은 한쪽 클래스에 몰린 " +
       "데이터를 어떻게 다뤘는지(TS 4213 8절)를 묻습니다.",
     fields: [
       {
@@ -630,6 +640,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
           "알려진 것 없음 / 수집 장치 차이 / 전처리 차이 / 수집자 차이 / 수집 환경 차이 / 기타 (복수 선택)",
         kind: "required",
         input: "multi",
+        allowsNote: true,
         description: "같은 클래스의 데이터가 서로 다른 장비, 처리 방식, 사람, 환경에서 모였는지입니다. 예: 정상 사진은 병원 A, 이상 사진은 병원 B 장비로 찍었으면 수집 장치 차이",
         choiceLabels: {
           "None known": "알려진 것 없음",
@@ -671,10 +682,13 @@ export const COMPOSER_CARDS: ComposerCard[] = [
          * 노력과 함께 고를 수 없다 — 둘을 같이 고르면 어느 쪽이 참인지 알 수 없다.
          */
         id: "imbalanceHandling",
-        label: "불균형 보정",
+        // TS 4213 8절 보고 항목 이름 그대로(점검 다-7). 종전 화면 이름 "불균형 보정"은 성적서·점검 표(3번
+        // "편향 감소 노력")와 달라 같은 항목인지 알아보기 어려웠다.
+        label: "편향 감소 노력",
         inputExample: "클래스 수 맞춤 / 출처 다양화 / 보정 안 함 / 기타 (복수 선택)",
         kind: "required",
         input: "multi",
+        allowsNote: true,
         description: "한쪽 클래스에 몰린 데이터를 어떻게 보정했는지입니다. 예: 적은 클래스를 늘려 수를 맞췄으면 클래스 수 맞춤",
         choiceLabels: {
           "Balanced the counts": "클래스 수 맞춤",
@@ -836,6 +850,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "같은 출처 / 다른 출처",
         kind: "required",
         input: "single",
+        allowsNote: true,
         description: "테스트 데이터가 학습 데이터와 같은 곳에서 왔는지입니다. 같은 곳이면 점수가 실제보다 좋게 나올 수 있습니다. 예: 같은 CRM 로그에서 나눴으면 같은 출처",
         // 성적서 이름과 같다(W7). '같음/다름'은 무엇이 같은지 읽히지 않았다.
         choiceLabels: {
@@ -880,6 +895,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "전문가 / 크라우드소싱(외부 작업자) / 프로그램·규칙 / 실제 결과 기록 / 기타",
         kind: "required",
         input: "single",
+        allowsNote: true,
         description: "정답을 붙인 주체입니다. 실제 결과 기록은 사후에 확인된 결과를 정답으로 쓴 경우입니다. 예: 의사가 진단명을 붙였으면 전문가",
         choiceLabels: {
           "Domain experts": "전문가",
@@ -916,6 +932,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "복수 라벨러 합의 / 단일 라벨러 / 검토 없음",
         kind: "required",
         input: "single",
+        allowsNote: true,
         description: "정답을 몇 사람이 붙였고 서로 맞춰 봤는지입니다. 예: 두 사람이 따로 붙이고 맞춰 봤으면 복수 라벨러 합의",
         choiceLabels: {
           "Several reviewers": "복수 라벨러 합의",
@@ -975,6 +992,7 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         conditionLabel: "정답 라벨 신뢰성에서 복수 라벨러 합의 선택 시",
         requiredWhen: { field: "labelReview", equals: "Several reviewers" },
         input: "single",
+        allowsNote: true,
         description: "라벨러끼리 일치도를 무엇으로 쟀는지입니다. 라벨러가 2명이면 Fleiss의 카파, 3명 이상이면 Cohen의 카파를 고를 수 없습니다. 예: 두 사람이면 Cohen의 카파",
         choiceLabels: {
           "Percent agreement": "단순 일치율",
@@ -1133,6 +1151,9 @@ export const COMPOSER_CARDS: ComposerCard[] = [
         inputExample: "학습 예 / 아니오 · 추론 예 / 아니오",
         kind: "required",
         input: "entries",
+        allowsNote: true,
+        // 줄마다 예·아니오·모름이 있어 글은 덧붙임만 — 진행 점검은 두 줄의 선택을 본다.
+        noteNeedsChoice: true,
         description: "학습과 추론에 GPU 같은 가속 장치를 썼는지입니다. 예: 학습은 예, 추론은 아니오",
         entryLabels: {
           Training: "학습",
@@ -1317,7 +1338,7 @@ export function fieldFormat(field: ComposerField): string {
     case "entries":
       if (field.entryKeysFrom === "classes") return field.numeric ? "클래스마다 숫자" : "클래스마다 한 줄 글";
       if (field.entryKeysFrom === "metrics") return "지표마다 값";
-      if (field.entryKeys) return fieldParts(field).map((part) => part.label).join(" · ");
+      if (field.entryKeys) return withNote(fieldParts(field).map((part) => part.label).join(" · "));
       return "\"이름 = 값\" 줄 추가";
     case "metricSelect":
       return "지표 선택";

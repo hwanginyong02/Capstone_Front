@@ -346,7 +346,7 @@ describe("재료 선택 점검 연결 (판정은 checkMaterialSelection 한 곳)
   });
 
   it("카드 값이 있으면 결과를 싣고, 옛 스냅샷(카드 값 없음)에는 싣지 않는다", () => {
-    expect(mapWorkflowToFinalReport(baseInput({ composer: composer() })).materialCheck?.version).toBe("1.0");
+    expect(mapWorkflowToFinalReport(baseInput({ composer: composer() })).materialCheck?.version).toBe("2.0");
     expect(mapWorkflowToFinalReport(baseInput()).materialCheck).toBeUndefined();
   });
 
@@ -384,10 +384,10 @@ describe("재료 선택 점검 연결 (판정은 checkMaterialSelection 한 곳)
   it("진행 기록을 넘기면 점검이 인정 여부를 정한다", () => {
     const input = baseInput({ composer: composer() });
     const warningIds = mapWorkflowToFinalReport(input).materialCheck!.warningIds;
-    const ack = { at: "2026-10-17T05:03:00.000Z", version: "1.0", warningIds };
+    const ack = { at: "2026-10-17T05:03:00.000Z", version: "2.0", warningIds };
     expect(mapWorkflowToFinalReport({ ...input, materialCheckAck: ack }).materialCheck!.acknowledgement).toEqual({
       at: ack.at,
-      version: "1.0",
+      version: "2.0",
     });
   });
 
