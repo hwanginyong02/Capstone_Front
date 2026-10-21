@@ -95,3 +95,75 @@ describe("ReportSections — 6.1 에 judgedValueDigits 를 넘긴다 (S2 판정 
     expect(screen.queryByText(/자릿수를 늘려 표기하였습니다/)).not.toBeInTheDocument();
   });
 });
+
+/**
+ * 소절 번호(서술 라운드 세션 B) — 판 3 은 모든 소제목에 번호, 판 2 이하는 발급 당시처럼 번호 없음. 판 1·2 의
+ * 전문 모양은 `src/test/archive` 스냅샷이 따로 지킨다. 여기서는 판 번호 하나만 바꾼 같은 데이터로 두 갈래를 본다.
+ */
+describe("ReportSections — 소절 번호는 판 3 에서만", () => {
+  // 지도(b_report-sections §1) 표 순서. 4절은 하이퍼파라미터 h3 하나라 번호 없음, 5절 의뢰자 선언은 번호 없음.
+  const NUMBERED: Array<[string, string]> = [
+    ["1.1", "대상"],
+    ["1.2", "회사 개요"],
+    ["1.3", "시험결과서 용도"],
+    ["1.4", "제약사항"],
+    ["2.1", "시험 목적"],
+    ["2.2", "시험 절차"],
+    ["2.3", "수행내용 및 시험기간"],
+    ["3.1", "학습 데이터셋"],
+    ["3.2", "평가 데이터셋"],
+    ["5.1", "공통 지표"],
+    ["5.2", "이진 분류 전용 지표"],
+    ["6.0", "시험 수행 요약"],
+    ["6.0.1", "데이터 검증 상세 내역"],
+    ["6.1", "종합 핵심 성능 (Key Performance Indicators)"],
+    ["6.2", "세부 시험항목별 결과"],
+    ["6.3", "시각화 자료"],
+    ["6.4", "응답시간 지표"],
+    ["7.1", "혼동 행렬 기반 클래스 간 간섭 분석"],
+    ["7.2", "데이터 분포 유의성 및 클래스 편향성 평가"],
+    ["8.1", "도메인 성능 벤치마크"],
+    ["8.2", "전반적 성능 및 일반화 능력 총평"],
+    ["8.3", "기술적 취약점 및 잠재적 리스크 요약"],
+    ["9.1", "데이터셋 보완 및 품질 개선 전략"],
+    ["9.2", "모델 고도화 및 운영 관리 가이드"],
+  ];
+
+  const withTraining = (contentSchema: number) =>
+    report({
+      contentSchema,
+      metricList: [
+        { metricId: "M1", name: "Accuracy", threshold: 0.856, passCriteria: "≥ 0.856" },
+        { metricId: "M9", name: "AUROC", threshold: null, passCriteria: "정보 제공" },
+      ],
+      trainingDatasetInfo: {
+        name: "학습셋",
+        trainingSampleCount: 10,
+        validationSampleCount: 2,
+        validExamples: [],
+        edgeExamples: [],
+      },
+    });
+
+  const h3Texts = () => [...document.querySelectorAll("h3")].map((h) => (h.textContent ?? "").replace(/\s+/g, " ").trim());
+
+  it("판 3 — 소제목마다 번호 접두", () => {
+    render(<ReportSections data={withTraining(3)} />);
+    const texts = h3Texts();
+    expect(NUMBERED.length).toBeGreaterThan(20);
+    for (const [number, title] of NUMBERED) {
+      expect(texts.some((t) => t.startsWith(`${number} ${title}`))).toBe(true);
+    }
+    // 번호 없는 소제목 — 4절 하이퍼파라미터(있을 때)·5절 의뢰자 선언(있을 때)은 번호를 붙이지 않는다.
+    expect(texts.filter((t) => /^(하이퍼파라미터|의뢰자 선언)/.test(t)).every((t) => !/^\d/.test(t))).toBe(true);
+  });
+
+  it("판 2 — 같은 데이터라도 번호 없이(발급 당시 모양)", () => {
+    render(<ReportSections data={withTraining(2)} />);
+    const texts = h3Texts();
+    for (const [, title] of NUMBERED) {
+      expect(texts.some((t) => t.startsWith(title))).toBe(true);
+    }
+    expect(texts.filter((t) => /^\d+\.\d/.test(t))).toEqual([]);
+  });
+});

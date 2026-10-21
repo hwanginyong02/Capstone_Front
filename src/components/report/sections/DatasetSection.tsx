@@ -10,6 +10,7 @@ import type {
 import { SectionTitle } from "../shared/SectionTitle";
 import { TwoColTable } from "../shared/TwoColTable";
 import { toTableRows } from "../shared/materialRows";
+import { SubsectionTitle } from "../shared/SubsectionTitle";
 
 interface DatasetSectionProps {
   datasetInfo: DatasetInfo;
@@ -21,6 +22,8 @@ interface DatasetSectionProps {
    * 줄을 더한다. 2층 항목이 빠졌으면 "제공되지 않음"으로 적는다. 옛 성적서에는 없다.
    */
   materials?: ReportMaterials;
+  /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
+  schema3?: boolean;
 }
 
 export function DatasetSection({
@@ -29,6 +32,7 @@ export function DatasetSection({
   datasetDiagnosis,
   trainingDatasetInfo,
   materials,
+  schema3,
 }: DatasetSectionProps) {
   const [activeImage, setActiveImage] = useState<{ url: string; title: string } | null>(null);
 
@@ -89,7 +93,7 @@ export function DatasetSection({
 
       {/* ===== 학습 데이터셋 ===== */}
       <div className="space-y-6">
-        <h3 className="text-base font-semibold text-slate-800">학습 데이터셋</h3>
+        <SubsectionTitle number="3.1" schema3={schema3} className="text-base font-semibold text-slate-800">학습 데이터셋</SubsectionTitle>
 
         {hasTrainingTable ? (
           <>
@@ -118,7 +122,7 @@ export function DatasetSection({
 
       {/* ===== 평가 데이터셋 ===== */}
       <div className="space-y-6">
-        <h3 className="text-base font-semibold text-slate-800">평가 데이터셋</h3>
+        <SubsectionTitle number="3.2" schema3={schema3} className="text-base font-semibold text-slate-800">평가 데이터셋</SubsectionTitle>
 
         {/* 평가 데이터 정보 */}
         <div className="space-y-3">

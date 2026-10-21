@@ -8,6 +8,7 @@ import type {
 import { REPORT_PURPOSE_LABEL, REPORT_PURPOSE_OVERVIEW, constraintsFor } from "../../../lib/report/reportConstants";
 import { SectionTitle } from "../shared/SectionTitle";
 import { TwoColTable } from "../shared/TwoColTable";
+import { SubsectionTitle } from "../shared/SubsectionTitle";
 
 interface CompanyInfoSectionProps {
   applicant: ApplicantInfo;
@@ -18,6 +19,8 @@ interface CompanyInfoSectionProps {
   materialCheck?: MaterialCheckResult;
   /** 신뢰구간을 찍은 성적서인지(`confidenceIntervalNote` 키). 그렇다면 1.4 에 고정 문구 3 을 더한다. */
   hasConfidenceIntervals?: boolean;
+  /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
+  schema3?: boolean;
 }
 
 export function CompanyInfoSection({
@@ -27,6 +30,7 @@ export function CompanyInfoSection({
   meta,
   materialCheck,
   hasConfidenceIntervals = false,
+  schema3,
 }: CompanyInfoSectionProps) {
   const projectNumber = evalScope.projectNumber ?? evalScope.projectInfo?.projectNumber;
   return (
@@ -35,7 +39,7 @@ export function CompanyInfoSection({
 
       {/* 대상 */}
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-slate-700">대상</h3>
+        <SubsectionTitle number="1.1" schema3={schema3} className="text-sm font-semibold text-slate-700">대상</SubsectionTitle>
         <p className="text-sm leading-relaxed text-slate-600">
           본 시험결과서는 <strong>"{evalScope.targetModel}"</strong> 을 대상으로 ISO/IEC TS 4213:2022 기준에
           따른 기계학습 분류 성능 및 신뢰성 시험을 수행한 결과를 기술한 문서이다.
@@ -52,7 +56,7 @@ export function CompanyInfoSection({
 
       {/* 회사 개요 */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-700">회사 개요</h3>
+        <SubsectionTitle number="1.2" schema3={schema3} className="text-sm font-semibold text-slate-700">회사 개요</SubsectionTitle>
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-2">
             <p className="text-xs font-medium uppercase tracking-wider text-slate-400">신청인 (의뢰자)</p>
@@ -87,7 +91,7 @@ export function CompanyInfoSection({
 
       {/* 시험결과서 용도 */}
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-slate-700">시험결과서 용도</h3>
+        <SubsectionTitle number="1.3" schema3={schema3} className="text-sm font-semibold text-slate-700">시험결과서 용도</SubsectionTitle>
         <TwoColTable
           rows={[
             { label: "용도", value: REPORT_PURPOSE_LABEL[evalScope.reportPurposeKey] },
@@ -112,7 +116,7 @@ export function CompanyInfoSection({
 
       {/* 제약사항 */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-700">제약사항</h3>
+        <SubsectionTitle number="1.4" schema3={schema3} className="text-sm font-semibold text-slate-700">제약사항</SubsectionTitle>
         <p className="text-sm text-slate-500">
           본 시험결과서에서 기술한 내용은 다음의 전제 및 명시적 한계를 지닌다.
         </p>

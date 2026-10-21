@@ -5,6 +5,7 @@ import { NarrativeSourceBadge } from "../shared/NarrativeSourceBadge";
 import { narrativePlaceholder } from "../shared/narrativePlaceholder";
 import { cn } from "../../../utils/styling/styles";
 import { formatMetricValue } from "../../../lib/report/metricValueFormat";
+import { SubsectionTitle } from "../shared/SubsectionTitle";
 
 const VERDICT_CONFIG = {
   PASS: {
@@ -52,14 +53,28 @@ interface ConclusionSectionProps {
    * 아래 찍는다. 의뢰자가 출처 관계를 답하지 않았거나 이 키가 생기기 전 성적서에는 없다.
    */
   sourceRelationSentence?: string;
+  /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
+  schema3?: boolean;
 }
 
 /** 서술 블록: LLM이 채울 텍스트가 있으면 인용, 없으면 "생성 예정" 플레이스홀더 표시 */
-function NarrativeBlock({ title, text, source }: { title: string; text: string; source?: NarrativeSource }) {
+function NarrativeBlock({
+  number,
+  title,
+  text,
+  source,
+  schema3,
+}: {
+  number: string;
+  title: string;
+  text: string;
+  source?: NarrativeSource;
+  schema3?: boolean;
+}) {
   const hasText = (text ?? "").trim().length > 0;
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
+      <SubsectionTitle number={number} schema3={schema3} className="text-sm font-semibold text-slate-700">{title}</SubsectionTitle>
       {hasText ? (
         <blockquote className="rounded-lg border border-slate-200 bg-slate-50 px-5 py-4">
           <p className="text-sm font-medium leading-relaxed text-slate-700">"{text}"</p>
@@ -78,6 +93,7 @@ export function ConclusionSection({
   source,
   nearTargetNote,
   sourceRelationSentence,
+  schema3,
 }: ConclusionSectionProps) {
   const config = VERDICT_CONFIG[conclusion.verdict];
   const Icon = config.icon;
@@ -124,12 +140,12 @@ export function ConclusionSection({
         {conclusion.benchmarkRefs && conclusion.benchmarkRefs.length > 0 && (
           <BenchmarkTable refs={conclusion.benchmarkRefs} />
         )}
-        <NarrativeBlock title="도메인 성능 벤치마크" text={conclusion.benchmark} source={source} />
+        <NarrativeBlock number="8.1" schema3={schema3} title="도메인 성능 벤치마크" text={conclusion.benchmark} source={source} />
       </div>
 
       {/* 8.2 전반적 성능 및 일반화 능력 총평 — 일반화 고정 문구(11a·11b)는 의뢰자 답으로 정해 서술 아래 찍는다. */}
       <div className="space-y-3">
-        <NarrativeBlock title="전반적 성능 및 일반화 능력 총평" text={conclusion.narrative} source={source} />
+        <NarrativeBlock number="8.2" schema3={schema3} title="전반적 성능 및 일반화 능력 총평" text={conclusion.narrative} source={source} />
         {sourceRelationSentence && (
           <p className="text-sm leading-relaxed text-slate-700">{sourceRelationSentence}</p>
         )}
@@ -137,7 +153,7 @@ export function ConclusionSection({
 
       {/* 8.3 기술적 취약점 및 잠재적 리스크 요약 — 아슬아슬 지표 표시는 규칙으로 정해 서술 아래 찍는다. */}
       <div className="space-y-3">
-        <NarrativeBlock title="기술적 취약점 및 잠재적 리스크 요약" text={conclusion.risks} source={source} />
+        <NarrativeBlock number="8.3" schema3={schema3} title="기술적 취약점 및 잠재적 리스크 요약" text={conclusion.risks} source={source} />
         {nearTargetNote && (
           <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">
             {nearTargetNote}

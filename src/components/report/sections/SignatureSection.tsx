@@ -10,9 +10,11 @@ interface SignatureSectionProps {
   meta: FinalReportMeta;
   evalScope: EvalScope;
   performer: PerformerInfo;
+  /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
+  schema3?: boolean;
 }
 
-export function SignatureSection({ signature, meta, evalScope, performer }: SignatureSectionProps) {
+export function SignatureSection({ signature, meta, evalScope, performer, schema3 }: SignatureSectionProps) {
   // 문서 번호가 없으면 미발급(초안) — 발급 전에는 서명/이력 대신 안내를 표시한다(설계 §6·§10).
   const issued = !!meta.reportId;
   if (!issued) {

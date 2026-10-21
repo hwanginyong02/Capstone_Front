@@ -8,6 +8,7 @@ import { derivationStatement, perLabelThresholds } from "../../../lib/report/der
 import { SectionTitle } from "../shared/SectionTitle";
 import { NarrativeSourceBadge } from "../shared/NarrativeSourceBadge";
 import { narrativePlaceholder } from "../shared/narrativePlaceholder";
+import { SubsectionTitle } from "../shared/SubsectionTitle";
 
 interface InterpretSectionProps {
   interpretation: InterpretationData;
@@ -29,6 +30,8 @@ interface InterpretSectionProps {
    * 생기기 전 성적서에는 없다.
    */
   labelCautionSentence?: string;
+  /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
+  schema3?: boolean;
 }
 
 const PLACEHOLDER =
@@ -36,20 +39,24 @@ const PLACEHOLDER =
 
 /** 서술 블록: LLM이 채운 텍스트가 있으면 인용, 없으면 "생성 예정" 플레이스홀더 */
 function NarrativeBlock({
+  number,
   title,
   text,
   source,
+  schema3,
   children,
 }: {
+  number: string;
   title: string;
   text: string;
   source?: NarrativeSource;
+  schema3?: boolean;
   children?: React.ReactNode;
 }) {
   const hasText = (text ?? "").trim().length > 0;
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
+      <SubsectionTitle number={number} schema3={schema3} className="text-sm font-semibold text-slate-700">{title}</SubsectionTitle>
       {children}
       {hasText ? (
         <blockquote className="rounded-lg border border-slate-200 bg-slate-50 px-5 py-4">
@@ -140,6 +147,7 @@ export function InterpretSection({
   confusionCounts,
   errorRatioSentence,
   labelCautionSentence,
+  schema3,
 }: InterpretSectionProps) {
   // 구버전 persist 데이터 등으로 interpretation 이 객체가 아닐 수 있어 방어적으로 정규화한다.
   const interp: InterpretationData =
@@ -157,11 +165,13 @@ export function InterpretSection({
       {/* 7.1 앞 고정 문구 9 — 파생 예측 사실 */}
       {derivedPrediction && <DerivationNote fact={derivedPrediction} />}
 
-      <NarrativeBlock title="혼동 행렬 기반 클래스 간 간섭 분석" text={interp.confusionAnalysis} source={source}>
+      <NarrativeBlock number="7.1" schema3={schema3} title="혼동 행렬 기반 클래스 간 간섭 분석" text={interp.confusionAnalysis} source={source}>
         {confusionCounts && <ConfusionCountsTable counts={confusionCounts} />}
         {errorRatioSentence && <p className="text-sm text-slate-700">{errorRatioSentence}</p>}
       </NarrativeBlock>
       <NarrativeBlock
+        number="7.2"
+        schema3={schema3}
         title="데이터 분포 유의성 및 클래스 편향성 평가"
         text={interp.distributionAnalysis}
         source={source}

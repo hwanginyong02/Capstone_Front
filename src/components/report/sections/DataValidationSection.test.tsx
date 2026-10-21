@@ -71,8 +71,40 @@ function propsPassedTo(component: string, relPath: string): string[] {
   const open = src.indexOf(`<${component}`);
   if (open === -1) throw new Error(`${relPath} 에 <${component}> 사용처가 없다`);
   const close = src.indexOf("/>", open);
-  const block = src.slice(open + component.length + 1, close);
-  return [...block.matchAll(/(\w+)=\{/g)].map((m) => m[1]).sort();
+  return propNamesIn(src.slice(open + component.length + 1, close));
+}
+
+/**
+ * JSX 여는 태그 안의 prop 이름. `name={…}`·`name="…"` 뿐 아니라 값 없는 불리언 prop(`<X flag />`)도 잡는다 —
+ * 판 3 표시처럼 한쪽만 `flag` 로 넘기면 `=\{` 만 보던 정규식이 놓쳤다(서술 라운드 세션 B).
+ * 주석과 값(`{…}`·따옴표)은 먼저 지운다 — 값 안의 낱말(`undefined` …)을 prop 으로 읽지 않게.
+ */
+function propNamesIn(block: string): string[] {
+  let bare = "";
+  let depth = 0;
+  for (let i = 0; i < block.length; i++) {
+    const ch = block[i];
+    if (depth === 0 && ch === "/" && block[i + 1] === "/") {
+      i = block.indexOf("\n", i);
+      if (i === -1) break;
+      bare += " ";
+      continue;
+    }
+    if (depth === 0 && ch === "/" && block[i + 1] === "*") {
+      i = block.indexOf("*/", i) + 1;
+      bare += " ";
+      continue;
+    }
+    if (depth === 0 && (ch === '"' || ch === "'")) {
+      i = block.indexOf(ch, i + 1);
+      bare += " ";
+      continue;
+    }
+    if (ch === "{") depth += 1;
+    else if (ch === "}") depth -= 1;
+    else if (depth === 0) bare += ch;
+  }
+  return [...bare.matchAll(/([A-Za-z_]\w*)\s*=?/g)].map((m) => m[1]).sort();
 }
 
 /** 화면 본문의 단일 출처. /report/:id 와 /report/no/:reportNo 가 함께 쓴다. */
@@ -80,6 +112,24 @@ const SCREEN = "../ReportSections.tsx";
 const PRINT = "../../../pages/report/ReportPrint.tsx";
 
 describe("화면 ↔ 인쇄본 배선", () => {
+  it("prop 이름 읽기 — 값 있는 prop, 따옴표 값, 값 없는 불리언 prop 을 모두 잡고 주석·값 안 낱말은 뺀다", () => {
+    const block = `
+        a={x ? undefined : y.z}
+        // 주석 안의 낱말 words
+        b="문자열 value"
+        flag
+        {/* 블록 주석 c */}
+        d={{ nested: 1 }} last `;
+    expect(propNamesIn(block)).toEqual(["a", "b", "d", "flag", "last"]);
+  });
+
+  it("판 3 표시(schema3)를 모든 섹션에 넘긴다 — 화면과 인쇄 양쪽", () => {
+    for (const section of ["ReportCoverSection", "CompanyInfoSection", "InterpretSection", "SignatureSection"]) {
+      expect(propsPassedTo(section, SCREEN)).toContain("schema3");
+      expect(propsPassedTo(section, PRINT)).toContain("schema3");
+    }
+  });
+
   it("[E-17] 인쇄본이 화면과 같은 prop 을 DataValidationSection 에 넘긴다", () => {
     const onScreen = propsPassedTo("DataValidationSection", SCREEN);
     const onPrint = propsPassedTo("DataValidationSection", PRINT);

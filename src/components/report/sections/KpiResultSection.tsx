@@ -12,6 +12,7 @@ import { hasNearTargetMarks } from "../../../lib/report/nearTarget";
 import { describeDerivation } from "../../../lib/report/derivationText";
 
 import type { TaskType } from "../../../data/evaluationData";
+import { SubsectionTitle } from "../shared/SubsectionTitle";
 
 interface KpiResultSectionProps {
   kpiResults: KpiResult[];
@@ -43,6 +44,8 @@ interface KpiResultSectionProps {
   judgedValueDigits?: boolean;
   /** 핵심 지표의 출처(W8). 판정 규칙 문장이 두 갈래로 읽는다. 없으면 종전 문장. */
   coreMetricsSource?: CoreMetricsSource;
+  /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
+  schema3?: boolean;
 }
 
 /**
@@ -67,6 +70,7 @@ export function KpiResultSection({
   targetDigits,
   judgedValueDigits,
   coreMetricsSource,
+  schema3,
 }: KpiResultSectionProps) {
   const showCi = confidenceIntervalNote !== undefined;
   // 6.1 은 고객이 정한 핵심 지표다(판정 규칙 D19 의 핵심 지표와 같다). 핵심 지표 표시가 없는 옛
@@ -107,7 +111,7 @@ export function KpiResultSection({
 
       {/* 6.1 종합 핵심 성능 */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-700">종합 핵심 성능 (Key Performance Indicators)</h3>
+        <SubsectionTitle number="6.1" schema3={schema3} className="text-sm font-semibold text-slate-700">종합 핵심 성능 (Key Performance Indicators)</SubsectionTitle>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b-2 border-slate-200">
@@ -159,7 +163,7 @@ export function KpiResultSection({
 
       {/* 6.2 세부 시험항목별 결과 */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-700">세부 시험항목별 결과</h3>
+        <SubsectionTitle number="6.2" schema3={schema3} className="text-sm font-semibold text-slate-700">세부 시험항목별 결과</SubsectionTitle>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b-2 border-slate-200">

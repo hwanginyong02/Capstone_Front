@@ -8,9 +8,11 @@ interface ReportCoverSectionProps {
    * 성적서는 종전 문구.
    */
   materialCheck?: MaterialCheckResult;
+  /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
+  schema3?: boolean;
 }
 
-export function ReportCoverSection({ meta, performer, materialCheck }: ReportCoverSectionProps) {
+export function ReportCoverSection({ meta, performer, materialCheck, schema3 }: ReportCoverSectionProps) {
   return (
     <div className="mb-12 space-y-6 border-b border-slate-200 pb-10 text-center">
       <p className="text-xs font-medium uppercase tracking-widest text-slate-400">

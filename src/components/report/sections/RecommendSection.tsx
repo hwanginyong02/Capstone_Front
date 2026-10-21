@@ -25,11 +25,14 @@ interface RecommendSectionProps {
    * 없으면(이 키가 생기기 전 성적서) 종전 표 그대로다.
    */
   problems?: Problem[];
+  /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
+  schema3?: boolean;
 }
 
 // 성적서 고정 문구 6 — 사실 시트의 고정 문장 목록과 같은 상수 하나(reportConstants).
 export { NO_PROBLEM_SENTENCE } from "../../../lib/report/reportConstants";
 import { NO_PROBLEM_SENTENCE } from "../../../lib/report/reportConstants";
+import { SubsectionTitle } from "../shared/SubsectionTitle";
 
 /** 문제는 있는데 그 문제에 묶인 권고가 아직 없을 때(서술 생성 전·실패) 권고 칸에 찍는다. */
 const RECOMMENDATION_PENDING = "권고 생성 예정";
@@ -37,11 +40,23 @@ const RECOMMENDATION_PENDING = "권고 생성 예정";
 const PLACEHOLDER = "자동 서술 생성(LLM) 연동 예정 — 계산된 지표를 바탕으로 한 권고가 표시됩니다.";
 
 /** 서술 블록: 텍스트가 있으면 인용, 없으면 "생성 예정" 플레이스홀더 */
-function NarrativeBlock({ title, text, source }: { title: string; text: string; source?: NarrativeSource }) {
+function NarrativeBlock({
+  number,
+  title,
+  text,
+  source,
+  schema3,
+}: {
+  number: string;
+  title: string;
+  text: string;
+  source?: NarrativeSource;
+  schema3?: boolean;
+}) {
   const hasText = (text ?? "").trim().length > 0;
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
+      <SubsectionTitle number={number} schema3={schema3} className="text-sm font-semibold text-slate-700">{title}</SubsectionTitle>
       {hasText ? (
         <blockquote className="rounded-lg border border-slate-200 bg-slate-50 px-5 py-4">
           <p className="text-sm font-medium leading-relaxed text-slate-700">"{text}"</p>
@@ -129,7 +144,7 @@ function ProblemTable({
   );
 }
 
-export function RecommendSection({ recommendations, narrative, source, problems }: RecommendSectionProps) {
+export function RecommendSection({ recommendations, narrative, source, problems, schema3 }: RecommendSectionProps) {
   return (
     <section className="space-y-6 border-t border-slate-200 py-10">
       <div className="flex items-center justify-between gap-3">
@@ -138,10 +153,10 @@ export function RecommendSection({ recommendations, narrative, source, problems 
       </div>
 
       {/* 9.1 데이터셋 보완 및 품질 개선 전략 */}
-      <NarrativeBlock title="데이터셋 보완 및 품질 개선 전략" text={narrative.dataQuality} source={source} />
+      <NarrativeBlock number="9.1" schema3={schema3} title="데이터셋 보완 및 품질 개선 전략" text={narrative.dataQuality} source={source} />
 
       {/* 9.2 모델 고도화 및 운영 관리 가이드 */}
-      <NarrativeBlock title="모델 고도화 및 운영 관리 가이드" text={narrative.modelOps} source={source} />
+      <NarrativeBlock number="9.2" schema3={schema3} title="모델 고도화 및 운영 관리 가이드" text={narrative.modelOps} source={source} />
 
       {/* 권고 표 — 문제 목록이 있는 성적서는 문제 번호 표(0개면 고정 문구 6), 없으면 종전 표 */}
       {problems !== undefined ? (
