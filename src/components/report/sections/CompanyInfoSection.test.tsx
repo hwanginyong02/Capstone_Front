@@ -138,7 +138,11 @@ describe("1.4 제약사항 — constraintsFor 한 곳에서 조립 (고정 문�
   const items = () => screen.getAllByRole("listitem").filter((li) => /^\d+\./.test(li.textContent ?? ""));
   const titles = () => items().map((li) => li.querySelector("strong")?.textContent);
 
-  function renderWith(materialCheck?: Parameters<typeof CompanyInfoSection>[0]["materialCheck"], hasConfidenceIntervals?: boolean) {
+  function renderWith(
+    materialCheck?: Parameters<typeof CompanyInfoSection>[0]["materialCheck"],
+    hasConfidenceIntervals?: boolean,
+    schema3?: boolean,
+  ) {
     render(
       <CompanyInfoSection
         applicant={applicant}
@@ -147,6 +151,7 @@ describe("1.4 제약사항 — constraintsFor 한 곳에서 조립 (고정 문�
         meta={meta}
         materialCheck={materialCheck}
         hasConfidenceIntervals={hasConfidenceIntervals}
+        schema3={schema3}
       />,
     );
   }
@@ -221,6 +226,32 @@ describe("1.4 제약사항 — constraintsFor 한 곳에서 조립 (고정 문�
     renderWith(undefined, true);
     expect(titles()).toHaveLength(5);
     expect(titles()[4]).toBe("통계적 유의성 검정:");
+  });
+
+  // 판 3 본문에서 AI/LLM 표현을 뺀다(서술 라운드 세션 B, 사용자 결정 2) — 판 2 는 그대로. 점검 결과 있음/없음·신뢰구간 있음 세 꼴.
+  const LLM_TITLE = "LLM 생성 소견에 대한 면책:";
+  const CASES: Array<[name: string, mc: Parameters<typeof CompanyInfoSection>[0]["materialCheck"], ci: boolean, oldCount: number]> = [
+    ["점검 결과 없음", undefined, false, 4],
+    ["모두 제공", materialCheckFixture(), false, 5],
+    ["빠진 항목·신뢰구간", materialCheckFixture({ missingLatencyAndLabel: true, realTime: true }), true, 8],
+  ];
+
+  it.each(CASES)("판 2 — %s: 'LLM 생성 소견에 대한 면책' 이 넷째 항목으로 있다", (_name, mc, ci, oldCount) => {
+    renderWith(mc, ci, false);
+    expect(titles()).toHaveLength(oldCount);
+    expect(titles()[3]).toBe(LLM_TITLE);
+  });
+
+  it.each(CASES)("판 3 — %s: 'LLM 생성 소견에 대한 면책' 만 빠지고 '자동화 진단 소견에 대한 면책' 은 남는다", (_name, mc, ci, oldCount) => {
+    renderWith(mc, ci, true);
+    expect(titles()).toHaveLength(oldCount - 1);
+    expect(titles()).not.toContain(LLM_TITLE);
+    expect(titles().slice(0, 3)).toEqual([
+      "데이터 기반 평가의 국한성:",
+      "결과서 효력의 한계:",
+      "자동화 진단 소견에 대한 면책:",
+    ]);
+    expect(screen.queryByText(/LLM\(Large Language Model\)/)).not.toBeInTheDocument();
   });
 });
 
