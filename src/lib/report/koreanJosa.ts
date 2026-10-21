@@ -23,3 +23,24 @@ export function josaEunNeun(word: string): string {
   if (!hangul) return "은(는)";
   return (hangul.charCodeAt(0) - 0xac00) % 28 === 0 ? "는" : "은";
 }
+
+/**
+ * 숫자 뒤 "으로/로" — 숫자를 읽는 끝소리로(서술 라운드 세션 B). 끝소리가 ㄹ(1 일·7 칠·8 팔)이거나 받침이 없으면
+ * (2 이·4 사·5 오·9 구) "로", 그 밖(0 영·3 삼·6 육)은 "으로". 정수 끝의 0 은 십·백·천·만으로 읽혀 역시 "으로".
+ * 예: 1.53으로 / 1.57로 / 0.1177로 / 10으로. 숫자가 아니면 끝 글자의 받침으로(`josaEuroRo`).
+ */
+export function josaEuroRoNumber(value: string): string {
+  const last = [...value.trim()].reverse().find((ch) => ch >= "0" && ch <= "9");
+  if (last === undefined) return josaEuroRo(value);
+  return "036".includes(last) ? "으로" : "로";
+}
+
+/**
+ * 숫자 뒤 "과/와" — 숫자를 읽는 끝소리에 받침이 있으면(0 영·1 일·3 삼·6 육·7 칠·8 팔, 정수 끝 0 은 십·백·천·만)
+ * "과", 없으면(2 이·4 사·5 오·9 구) "와". 예: 0.83과 / 0.505와.
+ */
+export function josaWaGwaNumber(value: string): string {
+  const last = [...value.trim()].reverse().find((ch) => ch >= "0" && ch <= "9");
+  if (last === undefined) return "와";
+  return "2459".includes(last) ? "와" : "과";
+}

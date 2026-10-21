@@ -175,7 +175,7 @@ describe("새 키가 있는 응답(백엔드 골든 이진) — 성적서 저장
 
   it("3절 진단은 엔진의 불균형 판정(mild)을 따른다", () => {
     expect(stage1Report.datasetDiagnosis).toContain("1.11로");
-    expect(stage1Report.datasetDiagnosis).toContain("균형 상태이다.");
+    expect(stage1Report.datasetDiagnosis).toContain("허용 기준(1.50 미만) 이내이다.");
   });
 
   it("사실 시트: 신뢰구간·margin·near_target", () => {
@@ -218,23 +218,37 @@ describe("3절 진단 — 엔진 판정(imbalance_effect)이 조립을 거쳐 3�
     return assembleEvaluatedReport(baseReport(), copy, inputs()).stage1Report.datasetDiagnosis;
   }
 
-  it("mild·IR 1.497 이면 '1.497로' 균형 문장이다", () => {
+  it("mild·IR 1.497 이면 '1.497로' 경미 문장이다(D20 세 갈래의 mild)", () => {
     const text = withImbalance(1.497, "mild", 1.497);
     expect(text).toContain("1.497로");
-    expect(text).toContain("균형 상태이다.");
+    expect(text).toContain("허용 기준(1.50 미만) 이내이다.");
   });
 
   it("M23(1.6)과 판정(mild, 1.497)이 다르면 판정을 따른다", () => {
     // 조립이 imbalanceEffect 를 넘기지 않으면 M23 1.6 으로 "1.60로 … 벗어나" 가 된다.
     const text = withImbalance(1.6, "mild", 1.497);
     expect(text).toContain("1.497로");
-    expect(text).toContain("균형 상태이다.");
+    expect(text).toContain("허용 기준(1.50 미만) 이내이다.");
+  });
+
+  it("다수·소수 클래스는 3절 클래스 레이블 설명으로 '이름(설명)' 이라 부른다(D37) — 조립이 설명을 넘긴다", () => {
+    const copy = structuredClone(GOLDEN_BINARY);
+    copy.results.success_metrics.imbalance_effect = {
+      ...copy.results.success_metrics.imbalance_effect,
+      level: "affected",
+      imbalance_ratio: 1.6,
+      majority_minus_minority_f1: 0.2,
+    };
+    const base = baseReport();
+    base.datasetInfo = { ...base.datasetInfo, classLabelDescriptions: [{ label: "0", description: "정상" }] };
+    const text = assembleEvaluatedReport(base, copy, inputs()).stage1Report.datasetDiagnosis;
+    expect(text).toContain("다수 클래스 '0(정상)'와 소수 클래스 '1'의 F1 차이가 0.2로 0.10 이상이어서");
   });
 
   it("M23(1.4)과 판정(affected, 1.6)이 다르면 판정을 따른다", () => {
     const text = withImbalance(1.4, "affected", 1.6);
-    expect(text).toContain("1.60로");
-    expect(text).toContain("허용 기준(1.50 미만)을 벗어나");
+    expect(text).toContain("1.60으로");
+    expect(text).toContain("허용 기준(1.50 미만)을 벗어나며");
     expect(text).not.toContain("균형 상태");
   });
 });
@@ -271,9 +285,9 @@ describe("옛 모양 응답(새 키 없음) — 선택 키를 두지 않는다",
     expect(factSheet.metrics.every((m) => m.ci_low === null && m.ci_high === null && !m.near_target)).toBe(true);
   });
 
-  it("3절 진단은 반올림 전 IR 로 판정한다(엔진 판정이 없을 때)", () => {
+  it("3절 진단은 반올림 전 IR 로 판정한다(엔진 판정이 없을 때 — 종전 두 갈래 문장)", () => {
     expect(stage1Report.datasetDiagnosis).toContain("1.11로");
-    expect(stage1Report.datasetDiagnosis).toContain("균형 상태이다.");
+    expect(stage1Report.datasetDiagnosis).toContain("허용 기준(< 1.50) 이내의 균형 상태이다.");
   });
 });
 
