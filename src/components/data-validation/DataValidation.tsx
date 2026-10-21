@@ -15,7 +15,7 @@ import {
   TASK_TYPE_LABELS_KO,
   type TaskType,
 } from "../../data/evaluationData";
-import { checkNameKo } from "../../lib/report/mapValidationResultToReport";
+import { checkNameKo, summaryItemKo, validationResultText } from "../../lib/report/mapValidationResultToReport";
 import type {
   ValidationDetailItem as ValidationCheckItem,
   ValidateDataResponseData,
@@ -106,7 +106,7 @@ function ValidationGroupSection({ items, group }: { items: ValidationCheckItem[]
           {items.map((item, idx) => (
             <TableRow key={`${item.name}-${idx}`}>
               <TableCell className="align-top whitespace-normal font-medium">{checkNameKo(item.name)}</TableCell>
-              <TableCell className="align-top whitespace-normal">{item.result}</TableCell>
+              <TableCell className="align-top whitespace-normal">{validationResultText(item)}</TableCell>
               <TableCell className="align-top whitespace-normal text-muted-foreground">{item.handling}</TableCell>
               <TableCell className="align-top">{getStatusBadge(item.status)}</TableCell>
             </TableRow>
@@ -231,8 +231,8 @@ export function DataValidation({
               <TableBody>
                 {execution_summary.map((item) => (
                   <TableRow key={item.label}>
-                    <TableCell className="align-top whitespace-normal font-semibold">{item.label}</TableCell>
-                    <TableCell className="align-top whitespace-normal">{item.value}</TableCell>
+                    <TableCell className="align-top whitespace-normal font-semibold">{summaryItemKo(item).label}</TableCell>
+                    <TableCell className="align-top whitespace-normal">{summaryItemKo(item).value}</TableCell>
                     <TableCell className="align-top whitespace-normal text-muted-foreground">{item.note}</TableCell>
                   </TableRow>
                 ))}
