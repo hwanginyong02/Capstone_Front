@@ -106,13 +106,32 @@ export function createdResponse(jobId = "job-1") {
 
 const SIX = ["7.1", "7.2", "8.1", "8.2", "8.3", "9"];
 
-export function jobResult(source: "llm" | "fallback" = "llm") {
+/** 작업 결과를 칸별로 고르는 값(서술 라운드 세션 B). 출처 하나만 주면 종전처럼 여섯 칸이 모두 그 출처다. */
+export interface JobResultOptions {
+  /** 칸마다 출처 — 주면 `source` 대신 이것을 그대로 싣는다(7.3 포함 여부도 이것이 정한다). */
+  sections?: Record<string, "llm" | "fallback" | "fixed">;
+  /** 7.3 추가 관찰 글. 주지 않으면 키를 싣지 않는다(옛 응답 모양). */
+  additionalObservations?: string;
+  /** 칸별 모델(section_models). 주지 않으면 키를 싣지 않는다(옛 응답 모양). */
+  models?: Record<string, string | null>;
+}
+
+export type JobResultSpec = "llm" | "fallback" | JobResultOptions;
+
+export function jobResult(spec: JobResultSpec = "llm") {
+  const options: JobResultOptions = typeof spec === "string" ? {} : spec;
+  const source = typeof spec === "string" ? spec : "llm";
   return {
-    interpretation: { confusion_analysis: "AI 가 쓴 혼동행렬 해석", distribution_analysis: "AI 가 쓴 분포 해석" },
+    interpretation: {
+      confusion_analysis: "AI 가 쓴 혼동행렬 해석",
+      distribution_analysis: "AI 가 쓴 분포 해석",
+      ...(options.additionalObservations !== undefined ? { additional_observations: options.additionalObservations } : {}),
+    },
     conclusion: { verdict: "FAIL", benchmark: "AI 벤치마크 서술", narrative: "AI 총평", risks: "AI 리스크" },
     recommendation_narrative: { data_quality: "AI 데이터 권고", model_ops: "AI 운영 권고" },
     recommendations: [],
-    section_sources: Object.fromEntries(SIX.map((k) => [k, source])),
+    section_sources: options.sections ?? Object.fromEntries(SIX.map((k) => [k, source])),
+    ...(options.models ? { section_models: options.models } : {}),
   };
 }
 
@@ -120,9 +139,9 @@ export function runningView(stage: string, jobId = "job-1") {
   return { job_id: jobId, status: "running", stage, failure: null, benchmark_refs: [BENCHMARK_REF], result: null };
 }
 
-export function doneView(jobId = "job-1", source: "llm" | "fallback" = "llm") {
+export function doneView(jobId = "job-1", spec: JobResultSpec = "llm") {
   return {
-    job_id: jobId, status: "done", stage: "done", failure: null, benchmark_refs: [BENCHMARK_REF], result: jobResult(source),
+    job_id: jobId, status: "done", stage: "done", failure: null, benchmark_refs: [BENCHMARK_REF], result: jobResult(spec),
   };
 }
 

@@ -49,6 +49,11 @@ export interface NarrativeFields {
   recommendations: ReportRecommendation[];
   /** 칸(소절 번호)마다 출처. */
   sectionSources: Record<string, NarrativeSectionSource>;
+  /**
+   * 칸마다 쓴 모델 이름(llm 칸만, 나머지 null — 사용자 결정 4). 응답에 section_models 가 없으면(이 칸이 생기기 전
+   * 서버) undefined — "기록 없음"이지 "모든 칸이 규칙"이 아니다.
+   */
+  sectionModels?: Record<string, string | null>;
   /** 성적서 전체 출처(옛 배지용) — 칸이 모두 llm 이면 llm, 하나라도 아니면 fallback. */
   source: "llm" | "fallback";
 }
@@ -96,6 +101,14 @@ function normalizePriority(v: unknown): ReportRecommendation["priority"] {
   return "MEDIUM";
 }
 
+/** 칸별 모델 이름. 객체가 아니면 없음, 빈 글·문자열이 아닌 값은 null. */
+function toSectionModels(raw: unknown): Record<string, string | null> | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  return Object.fromEntries(
+    Object.entries(raw as Record<string, unknown>).map(([k, v]) => [k, typeof v === "string" && v.trim() !== "" ? v.trim() : null]),
+  );
+}
+
 function toSectionSources(raw: unknown): Record<string, NarrativeSectionSource> {
   if (!raw || typeof raw !== "object") return {};
   return Object.fromEntries(
@@ -116,6 +129,8 @@ export function mapNarrativeResult(n: any): NarrativeFields {
     interpretation: {
       confusionAnalysis: n?.interpretation?.confusion_analysis ?? "",
       distributionAnalysis: n?.interpretation?.distribution_analysis ?? "",
+      // 7.3 — 응답에 없으면(옛 서버) 빈 글.
+      additionalObservations: n?.interpretation?.additional_observations ?? "",
     },
     conclusionText: {
       benchmark: n?.conclusion?.benchmark ?? "",
@@ -139,6 +154,7 @@ export function mapNarrativeResult(n: any): NarrativeFields {
         }))
       : [],
     sectionSources,
+    sectionModels: toSectionModels(n?.section_models),
     source: values.length > 0 && values.every((v) => v === "llm") ? "llm" : "fallback",
   };
 }

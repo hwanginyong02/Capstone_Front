@@ -254,8 +254,11 @@ function stillWaitingFor(run: WorkspaceEvaluationRun, jobId: string): boolean {
 
 /** 1단계 성적서에 끝난 서술을 병합해 완성본으로. verdict/score 는 규칙 산출값, 서술(benchmark/narrative/risks)만 병합한다. */
 function mergeNarrative(report: FinalReportData, fields: NarrativeFields, benchmarkRefs: BenchmarkRef[]): FinalReportData {
+  // 칸별 모델(작성 기록, 사용자 결정 4). 모델을 알려 주지 않은 응답이면 키를 두지 않는다 — 이전 서술의 기록도 남기지 않는다.
+  const { narrativeModels: _previous, ...rest } = report;
   return {
-    ...report,
+    ...rest,
+    ...(fields.sectionModels ? { narrativeModels: fields.sectionModels } : {}),
     conclusion: {
       ...report.conclusion,
       ...fields.conclusionText,

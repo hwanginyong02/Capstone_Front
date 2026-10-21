@@ -678,3 +678,32 @@ describe("다시 만들기 — 훅을 직접 부를 때", () => {
     expect(fetchStub.count("POST", JOBS)).toBe(2); // 처음 1 + 다시 만들기 1
   });
 });
+
+describe("끝난 서술 저장 — 7.3·칸별 출처·칸별 모델(서술 라운드 세션 B)", () => {
+  it("칸마다 다른 출처, 7.3 글, 칸별 모델을 성적서 데이터에 저장한다", async () => {
+    const sections = { "7.1": "llm", "7.2": "llm", "7.3": "llm", "8.1": "fallback", "8.2": "llm", "8.3": "llm", "9": "fixed" } as const;
+    const models = { "7.1": "claude-x", "7.2": "claude-x", "7.3": "claude-y", "8.1": null, "8.2": "claude-x", "8.3": "claude-x", "9": null };
+    stubFetch({ views: [{ body: doneView("job-1", { sections, additionalObservations: "AI 가 쓴 추가 관찰", models }) }] });
+    seedStores();
+    renderReportPage();
+    await waitFor(() => expect(storedRun()!.reportData.isEvaluated).toBe(true));
+    const saved = storedRun()!.reportData;
+    expect(saved.interpretation.additionalObservations).toBe("AI 가 쓴 추가 관찰");
+    expect(saved.narrativeSections).toEqual(sections);
+    expect(saved.narrativeModels).toEqual(models);
+    // 8.1 이 규칙 기반이라 전체(옛 장 배지용) 출처는 fallback.
+    expect(saved.narrativeSource).toBe("fallback");
+  });
+
+  it("7.3·모델 키가 없는 옛 응답 — 7.3 은 빈 글, 모델 기록은 남기지 않는다", async () => {
+    stubFetch({ views: [{ body: doneView() }] });
+    seedStores();
+    renderReportPage();
+    await waitFor(() => expect(storedRun()!.reportData.isEvaluated).toBe(true));
+    const saved = storedRun()!.reportData;
+    expect(doneView().result).not.toHaveProperty("section_models");
+    expect(doneView().result.interpretation).not.toHaveProperty("additional_observations");
+    expect(saved.interpretation.additionalObservations).toBe("");
+    expect(saved).not.toHaveProperty("narrativeModels");
+  });
+});

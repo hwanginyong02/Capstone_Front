@@ -38,7 +38,9 @@ const FULL_RESULT = {
 describe("결과 매핑(mapNarrativeResult)", () => {
   it("결과 전체를 리포트 필드로 옮긴다", () => {
     const n = mapNarrativeResult(FULL_RESULT);
-    expect(n.interpretation).toEqual({ confusionAnalysis: "혼동 해석", distributionAnalysis: "분포 해석" });
+    // 7.3·칸별 모델 키가 없는 응답(세션 B 전 서버) — 7.3 은 빈 글, 모델 기록은 없음.
+    expect(n.interpretation).toEqual({ confusionAnalysis: "혼동 해석", distributionAnalysis: "분포 해석", additionalObservations: "" });
+    expect(n.sectionModels).toBeUndefined();
     expect(n.conclusionText).toEqual({ benchmark: "벤치마크 서술", narrative: "총평", risks: "리스크" });
     expect(n.recommendationNarrative).toEqual({ dataQuality: "데이터 품질", modelOps: "모델 운영" });
     expect(n.recommendations).toEqual([
@@ -50,12 +52,31 @@ describe("결과 매핑(mapNarrativeResult)", () => {
 
   it("빠진 필드는 빈 값으로 채우고, 칸 출처가 없으면 전체 출처는 fallback", () => {
     const n = mapNarrativeResult({});
-    expect(n.interpretation).toEqual({ confusionAnalysis: "", distributionAnalysis: "" });
+    expect(n.interpretation).toEqual({ confusionAnalysis: "", distributionAnalysis: "", additionalObservations: "" });
+    expect(n.sectionModels).toBeUndefined();
     expect(n.conclusionText).toEqual({ benchmark: "", narrative: "", risks: "" });
     expect(n.recommendationNarrative).toEqual({ dataQuality: "", modelOps: "" });
     expect(n.recommendations).toEqual([]);
     expect(n.sectionSources).toEqual({});
     expect(n.source).toBe("fallback");
+  });
+
+  it("7.3 추가 관찰과 칸별 모델(section_models)을 옮긴다 — llm 칸만 이름, 나머지 null", () => {
+    const n = mapNarrativeResult({
+      ...FULL_RESULT,
+      interpretation: { ...FULL_RESULT.interpretation, additional_observations: "추가 관찰" },
+      section_sources: { ...allSources("llm"), "7.3": "llm", "8.1": "fallback", "9": "fixed" },
+      section_models: { "7.1": "claude-x", "7.3": " claude-y ", "8.1": null, "9": null },
+    });
+    expect(n.interpretation.additionalObservations).toBe("추가 관찰");
+    expect(n.sectionModels).toEqual({ "7.1": "claude-x", "7.3": "claude-y", "8.1": null, "9": null });
+  });
+
+  it("칸별 모델의 모양이 틀리면 — 빈 글·문자열이 아닌 값은 null, 객체가 아니면 기록 없음", () => {
+    expect(mapNarrativeResult({ section_models: { "7.1": "", "7.2": 3 } }).sectionModels).toEqual({ "7.1": null, "7.2": null });
+    expect(mapNarrativeResult({ section_models: ["claude-x"] }).sectionModels).toBeUndefined();
+    expect(mapNarrativeResult({ section_models: "claude-x" }).sectionModels).toBeUndefined();
+    expect(mapNarrativeResult({ section_models: null }).sectionModels).toBeUndefined();
   });
 
   it("고정 문구 칸(fixed)은 전체 출처를 정할 때 빼고 본다", () => {

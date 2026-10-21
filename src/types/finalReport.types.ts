@@ -219,13 +219,25 @@ export interface ImbalanceEffect {
   majority_class: string;
   minority_class: string;
   /**
-   * 세 값의 표시 문자열(S2) — 엔진이 판정과 같은 쪽으로 읽히게 자릿수를 늘렸다(IR 1.49996 은 넷째 자리로 1.5 지만
-   * '경미'라 "1.49996"). 사실 시트로 서술에 간다. 옛 응답에는 없다.
+   * 차이를 만든 값 넷(서술 설계 D20 세 갈래 문장 — 서술 라운드 세션 B). 정확도·매크로 F1·다수·소수 클래스 F1.
+   * 멀티레이블은 정확도가 없어 null. 이 칸이 생기기 전 엔진 응답에는 없다 — 그때 3절 문장은 차이만 찍는다.
+   */
+  accuracy?: number | null;
+  macro_f1?: number;
+  majority_f1?: number;
+  minority_f1?: number;
+  /**
+   * 값들의 표시 문자열(S2) — 엔진이 판정과 같은 쪽으로 읽히게 자릿수를 늘렸다(IR 1.49996 은 넷째 자리로 1.5 지만
+   * '경미'라 "1.49996"). 사실 시트로 서술에 간다. 옛 응답에는 없다. 아래 넷(accuracy …)은 세션 B 엔진부터.
    */
   display?: {
     imbalance_ratio: string;
     accuracy_minus_macro_f1: string | null;
     majority_minus_minority_f1: string;
+    accuracy?: string | null;
+    macro_f1?: string;
+    majority_f1?: string;
+    minority_f1?: string;
   };
 }
 
@@ -403,6 +415,11 @@ export interface InterpretationData {
   confusionAnalysis: string;
   /** 데이터 분포 유의성 및 클래스 편향성 평가 */
   distributionAnalysis: string;
+  /**
+   * 7.3 추가 관찰(작업 응답 interpretation.additional_observations). AI 가 쓸 것이 없으면 빈 글 — 판 3 은 그때
+   * 고정 문구 15 "해당 없음"을 찍는다. 이 칸이 생기기 전 저장본에는 없다.
+   */
+  additionalObservations?: string;
 }
 
 export interface TrainingDatasetInfo {
@@ -488,6 +505,12 @@ export interface FinalReportData {
    */
   nearTargetNote?: string;
   /**
+   * 8.1 표 아래 고정 문구 16(서술 설계, 사용자 결정 5) — 고른 서술 지표 중 내부 참조 기준치가 없는 것.
+   * 조립 때 만들어 저장한다(`benchmarkBaselines.noBenchmarkSentence`). 모두 기준이 있거나 서술 지표가 없으면,
+   * 그리고 이 키가 생기기 전 성적서에는 없다.
+   */
+  noBenchmarkSentence?: string;
+  /**
    * 7.2 정답 라벨 주의 고정 문구 12(`dataCautionPhrases.ts`). 9절 문제 "정답 라벨 주의"와 같은 판정으로
    * 생성 때 만들어 저장한다. 걸리지 않았거나 이 키가 생기기 전 성적서에는 없다.
    */
@@ -526,6 +549,12 @@ export interface FinalReportData {
    * 칸별 표시는 S7 에서 그린다. 이 칸이 생기기 전 저장본에는 없다.
    */
   narrativeSections?: Record<string, NarrativeSectionSource>;
+  /**
+   * 칸마다 서술을 쓴 모델 이름(작업 응답 section_models, 사용자 결정 4 — "작성 기록"). llm 칸만 이름이 있고
+   * 규칙 기반·고정 칸은 null. 서비스 화면(`/report/:id`·`/report/no/:번호`)에만 보이고 인쇄 본문에는 없다.
+   * 이 칸이 생기기 전 저장본과 모델을 알려 주지 않는 서버 응답에는 없다.
+   */
+  narrativeModels?: Record<string, string | null>;
   /**
    * 서술까지 끝난 완성본인가. 이것이 true 일 때만 발급·PDF·인쇄가 열린다(서술 라운드 S3b — 끝나지 않은 서술은
    * 완성본이 아니다). 성적서 훅이 서술 작업이 끝났을(done) 때만 세운다.
