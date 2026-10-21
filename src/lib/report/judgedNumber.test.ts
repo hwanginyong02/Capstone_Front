@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { difference, formatJudgedValue, meetsTarget } from "./judgedNumber";
+import { cleanNumber, difference, factText, formatJudgedValue, judgedText, meetsTarget } from "./judgedNumber";
 import { evaluateStatus } from "./evaluateStatus";
 import { computeMargin, isNearTarget } from "./computeVerdict";
 import type { KpiResult } from "../../types/finalReport.types";
@@ -87,5 +87,41 @@ describe("formatJudgedValue — 판정과 어긋나 보이면 자릿수를 늘�
     const printed = formatJudgedValue(0.79999996, 0.8, true, false);
     expect(Number(printed)).toBeLessThan(0.8);
     expect(printed).toBe("0.799999");
+  });
+});
+
+describe("judgedText — 엔진 judged_text 와 같은 규칙(넷째 자리부터, 판정과 반대로 읽히면 아홉째 자리까지)", () => {
+  it("평소엔 넷째 자리, 끝의 0 은 뺀다", () => {
+    expect(judgedText(0.525, 0.05, true)).toBe("0.525");
+    expect(judgedText(0.30000001, 0.05, true)).toBe("0.3");
+    expect(judgedText(0.12345678, 0.1, true)).toBe("0.1235");
+  });
+
+  it("반올림하면 기준과 같아 보이는 값은 자릿수를 늘린다(백엔드 골든 재현 값)", () => {
+    expect(judgedText(1.49996, 1.5, false)).toBe("1.49996");
+    expect(judgedText(0.09996, 0.1, false)).toBe("0.09996");
+    expect(judgedText(0.04996, 0.05, false)).toBe("0.04996");
+  });
+
+  it("마진 −0.00004 는 '0' 이 아니라 미달로 읽히게", () => {
+    expect(judgedText(-0.00004, 0, false)).toBe("-0.00004");
+    expect(judgedText(0, 0, true)).toBe("0");
+  });
+
+  it("아홉째 자리로도 반대면 판정 쪽으로 자른다", () => {
+    expect(judgedText(1.4999999999, 1.5, false)).toBe("1.499999999");
+  });
+});
+
+describe("cleanNumber·factText", () => {
+  it("뺄셈 잡음만 걷고(9자리) −0 은 0", () => {
+    expect(cleanNumber(0.1 + 0.2)).toBe(0.3);
+    expect(cleanNumber(-0)).toBe(0);
+    expect(Object.is(cleanNumber(-1e-12), 0)).toBe(true);
+  });
+  it("factText 는 넷째 자리 — 아주 작은 값도 지수 표기가 아니다", () => {
+    expect(factText(-0.000070252)).toBe("-0.0001");
+    expect(factText(0.434343434)).toBe("0.4343");
+    expect(factText(0.00001)).toBe("0");
   });
 });

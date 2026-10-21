@@ -24,7 +24,7 @@ function input(overrides: Partial<BuildFactSheetInput> = {}): BuildFactSheetInpu
     droppedRows: 0,
     verdict: "PASS",
     score: 90,
-    classLabels: [],
+    classTable: null,
     nSamples: 0,
     ...overrides,
   };
@@ -222,7 +222,7 @@ describe("아슬아슬 margin·near_target (설계 D12)", () => {
     metricId: "M1", name: "Accuracy", value: 0.8, threshold: 0.7, status: "pass", ...p,
   });
 
-  it("판정 대상 지표는 margin(4자리)과 near_target, 아니면 null·false", () => {
+  it("판정 대상 지표는 margin(9자리로 잡음만 걷음 — S4a)과 near_target, 아니면 null·false", () => {
     const fs = buildFactSheet(
       input({
         kpiResults: [
@@ -234,7 +234,7 @@ describe("아슬아슬 margin·near_target (설계 D12)", () => {
       }),
     );
     expect(fs.metrics.map((m) => [m.metric_id, m.margin, m.near_target])).toEqual([
-      ["M4", 0.0123, true], // 싣는 값은 4자리 — 뺄셈 끝자리 잡음이 서술로 새지 않는다
+      ["M4", 0.01234, true], // 뺄셈 끝자리 잡음(0.01234000…01)만 걷는다 — 서술 표기는 margin_text
       ["M8", -0.002, true],
       ["M1", 0.1, false],
       ["M2", null, false],
@@ -303,5 +303,54 @@ describe("문제 목록·임계값 조정 여지·불균형 영향", () => {
     expect(fs.problems).toEqual([]);
     expect(fs.f1_threshold_gain).toBeNull();
     expect(fs.imbalance_effect).toBeNull();
+  });
+});
+
+/** S4a 지표 칸 — 방향·β·마진 표기·구간 포함, 표 지표(M21·M22) 제외. */
+describe("지표의 새 칸(S4a)", () => {
+  const k = (p: Partial<KpiResult>): KpiResult => ({
+    metricId: "M1", name: "Accuracy", value: 0.9, threshold: 0.8, status: "pass", ...p,
+  });
+
+  it("M21·M22 는 값이 없는 표 지표라 싣지 않는다(다-3)", () => {
+    const fs = buildFactSheet(
+      input({ kpiResults: [k({}), k({ metricId: "M21", name: "Confusion Matrix", value: 0, threshold: null }), k({ metricId: "M22", value: 0, threshold: null })] }),
+    );
+    expect(fs.metrics.map((m) => m.metric_id)).toEqual(["M1"]);
+  });
+
+  it("낮을수록 좋은 지표는 higher_is_better false — margin 은 목표 − 값", () => {
+    const fs = buildFactSheet(input({ kpiResults: [k({ metricId: "M15", name: "Hamming Loss", value: 0.52, threshold: 0.6, higherIsBetter: false })] }));
+    expect(fs.metrics[0]).toMatchObject({ higher_is_better: false, margin: 0.08, margin_text: "0.08" });
+    expect(buildFactSheet(input({ kpiResults: [k({})] })).metrics[0].higher_is_better).toBe(true);
+  });
+
+  it("margin_text 는 판정 쪽으로 — 미달 −0.00004 는 '0' 이 아니다", () => {
+    const fs = buildFactSheet(input({ kpiResults: [k({ value: 0.79996, threshold: 0.8, status: "fail" })] }));
+    expect(fs.metrics[0]).toMatchObject({ margin: -0.00004, margin_text: "-0.00004" });
+  });
+
+  it("β 는 따로 싣고 이름에는 넣지 않는다", () => {
+    const fs = buildFactSheet(input({ kpiResults: [k({ metricId: "M5", name: "F-beta Score" })], betas: { M5: 2 } }));
+    expect(fs.metrics[0]).toMatchObject({ display_name: "F-beta Score", beta: 2 });
+    expect(buildFactSheet(input({ kpiResults: [k({})] })).metrics[0].beta).toBeNull();
+  });
+
+  it("ci_contains_target — 끝값이 목표와 같아도 포함, 바로 밖이면 아니다, 구간·판정 대상이 아니면 null", () => {
+    const at = (low: number, high: number) =>
+      buildFactSheet(input({ kpiResults: [k({ ci: { low, high, method: "wilson" } })] })).metrics[0].ci_contains_target;
+    expect(at(0.8, 0.95)).toBe(true);
+    expect(at(0.75, 0.8)).toBe(true);
+    expect(at(0.80001, 0.95)).toBe(false);
+    expect(at(0.7, 0.79999)).toBe(false);
+    expect(buildFactSheet(input({ kpiResults: [k({})] })).metrics[0].ci_contains_target).toBeNull();
+    const info = buildFactSheet(input({ kpiResults: [k({ threshold: null, ci: { low: 0.1, high: 0.9, method: "wilson" } })] }));
+    expect(info.metrics[0].ci_contains_target).toBeNull();
+  });
+
+  it("facts 를 주면 그대로 싣고, 안 주면 키가 없다", () => {
+    const f = { contract: "facts-1" } as unknown as NonNullable<BuildFactSheetInput["facts"]>;
+    expect(buildFactSheet(input({ facts: f })).facts).toBe(f);
+    expect("facts" in buildFactSheet(input())).toBe(false);
   });
 });

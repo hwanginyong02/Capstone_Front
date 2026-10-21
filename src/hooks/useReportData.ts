@@ -28,6 +28,7 @@ import { buildClientInputs } from "../lib/report/reportMaterials";
 import { assembleEvaluatedReport } from "../lib/report/assembleEvaluatedReport";
 import { normalizeReportContent } from "../lib/report/normalizeReportContent";
 import type { NarrativeRequestPayload } from "../lib/report/buildFactSheet";
+import { fitNarrativePayload } from "../lib/report/factSheetFit";
 import { sameFile, type FileFingerprint } from "../lib/report/evaluationRequest";
 import {
   createNarrativeJob,
@@ -194,7 +195,11 @@ async function evaluateAndStartNarrativeUnsafe(id: string, file: File): Promise<
             category: snapshot.model.category,
           },
           reportPurposeNote: snapshot.model.reportPurposeNote,
-          coreMetrics: stage1Report.kpiResults.filter((r) => r.isCore).map((r) => `${r.name}(${r.metricId})`),
+          // 의뢰자가 고른 핵심 지표만 — 기본값이면 보내지 않는다(재-7). 지표 번호(Mn)는 빼고 이름만(재-4).
+          coreMetrics:
+            stage1Report.coreMetricsSource === "client"
+              ? stage1Report.kpiResults.filter((r) => r.isCore).map((r) => r.name)
+              : null,
           // 성적서 3절과 같은 출처 — 놓지 않은 설명은 `buildReportInput` 이 이미 비웠다.
           classLabelDescriptions: reportInput.classLabelDescriptions,
           // 성적서 4절과 같은 출처 — ⑨ 실행 환경을 넣었으면 그 값이다(`buildReportInput`).
@@ -208,12 +213,13 @@ async function evaluateAndStartNarrativeUnsafe(id: string, file: File): Promise<
         })
       : undefined;
 
-  const payload: NarrativeRequestPayload = {
+  // 본문이 백엔드 상한(2MB)에 가까우면 클래스 단위 칸을 비운다 — 413 으로 서술을 잃지 않게(유-11).
+  const payload: NarrativeRequestPayload = fitNarrativePayload({
     task_type: resolveTaskType(snapshot.assemble.taskType),
     report_purpose: baseReport.evalScope.reportPurposeKey,
     fact_sheet: factSheet,
     ...(clientInputs ? { client_inputs: clientInputs } : {}),
-  };
+  });
 
   const created = await createNarrativeJob(payload);
   // 1단계 성적서는 완성본이 아니다(isEvaluated=false) — 서술이 끝나야(done) 완성본이 된다.

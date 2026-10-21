@@ -162,3 +162,7 @@ export function constraintsFor(
       : []),
   ];
 }
+
+/** 성적서 고정 문구 6 — 지목된 문제가 없을 때 9절에 찍는다(9절 화면과 AI 사실 시트의 고정 문장 목록이 같이 쓴다). */
+export const NO_PROBLEM_SENTENCE =
+  "본 평가에서 지목된 데이터 또는 모델상의 문제점은 없다. 별도 권고 사항 없음.";

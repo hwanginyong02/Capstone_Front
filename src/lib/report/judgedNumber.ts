@@ -54,3 +54,42 @@ export function formatJudgedValue(
   const cut = (towardPass ? Math.ceil(value * scale) : Math.floor(value * scale)) / scale;
   return cut.toFixed(MAX_VALUE_DIGITS);
 }
+
+/** 사실 시트 파생값의 평소 자릿수 — 엔진이 싣는 값(round(x, 4))과 같다. */
+export const FACT_DIGITS = 4;
+/** 이 자릿수까지 늘린다 — 엔진 `metrics/display.MAX_DIGITS` 와 같다. */
+export const MAX_FACT_DIGITS = 9;
+
+function trimmedFixed(value: number, digits: number): string {
+  const text = value.toFixed(digits).replace(/\.?0+$/, "");
+  return text === "-0" || text === "" ? "0" : text;
+}
+
+/** 반올림 전 값을 9자리로 정리한 숫자(뺄셈 끝자리 잡음만 걷는다). */
+export function cleanNumber(value: number): number {
+  const v = Number(value.toFixed(MAX_FACT_DIGITS));
+  return v === 0 ? 0 : v;
+}
+
+/**
+ * 기준과 비교되는 파생값의 서술용 표기 — 백엔드 엔진 `metrics/display.judged_text` 와 같은 규칙.
+ * 넷째 자리로 찍되(끝의 0 은 뺀다), 찍힌 숫자를 기준과 비교한 결과가 실제 판정(`meets` = 값 ≥ 기준)과
+ * 반대로 읽히면 아홉째 자리까지 늘린다. 그래도 반대면 판정 쪽으로 자른다.
+ *
+ * - 작은 표본 비율 0.04996 · 기준 0.05 · 미만 → "0.04996" (넷째 자리 "0.05" 는 기준과 같아 보인다)
+ * - 매크로와의 차 0.09996 · 기준 0.1 · 미만 → "0.09996"
+ */
+export function judgedText(value: number, threshold: number, meets: boolean): string {
+  for (let digits = FACT_DIGITS; digits <= MAX_FACT_DIGITS; digits += 1) {
+    const text = trimmedFixed(value, digits);
+    if ((difference(Number(text), threshold) >= 0) === meets) return text;
+  }
+  const scale = 10 ** MAX_FACT_DIGITS;
+  const cut = (meets ? Math.ceil(value * scale) : Math.floor(value * scale)) / scale;
+  return trimmedFixed(cut, MAX_FACT_DIGITS);
+}
+
+/** 기준과 비교하지 않는 파생값의 표기 — 넷째 자리, 끝의 0 은 뺀다. */
+export function factText(value: number): string {
+  return trimmedFixed(value, FACT_DIGITS);
+}

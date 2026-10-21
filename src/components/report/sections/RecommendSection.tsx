@@ -27,9 +27,9 @@ interface RecommendSectionProps {
   problems?: Problem[];
 }
 
-/** 성적서 고정 문구 6 — 지목된 문제가 없을 때 9절에 찍는다. */
-export const NO_PROBLEM_SENTENCE =
-  "본 평가에서 지목된 데이터 또는 모델상의 문제점은 없다. 별도 권고 사항 없음.";
+// 성적서 고정 문구 6 — 사실 시트의 고정 문장 목록과 같은 상수 하나(reportConstants).
+export { NO_PROBLEM_SENTENCE } from "../../../lib/report/reportConstants";
+import { NO_PROBLEM_SENTENCE } from "../../../lib/report/reportConstants";
 
 /** 문제는 있는데 그 문제에 묶인 권고가 아직 없을 때(서술 생성 전·실패) 권고 칸에 찍는다. */
 const RECOMMENDATION_PENDING = "권고 생성 예정";

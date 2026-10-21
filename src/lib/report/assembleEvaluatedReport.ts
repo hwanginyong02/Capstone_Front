@@ -11,21 +11,26 @@
 import type { TaskType } from "../../data/evaluationData";
 import { getMetricDisplayId, METRICS, resolveTaskType } from "../../data/evaluationData";
 import type { FinalReportData, LatencyStats } from "../../types/finalReport.types";
+import type { ConfusionMatrixData } from "../../types/report.types";
 import type { MappingRow } from "../../types/mapping.types";
 import type { ComposerValueMap } from "../../types/reportComposer.types";
 import type { MetricDetailStateMap } from "../../types/workflow.types";
-import { resolveTargetValue } from "../../utils/domain/validation";
+import { resolveBeta, resolveTargetValue } from "../../utils/domain/validation";
+import { NO_PROBLEM_SENTENCE } from "./reportConstants";
 import { buildDatasetDiagnosis } from "./buildDatasetDiagnosis";
 import { buildFactSheet, type FactSheet } from "./buildFactSheet";
 import { buildClassReportTable } from "./classReportTable";
 import { buildConclusion, coreMetricsSource, resolveCoreMetricIds } from "./computeVerdict";
+import { derivationStatement } from "./derivationText";
+import { fitFactSheet } from "./factSheetFit";
+import { buildNarrativeFacts, type FixedSentenceFact, type SingleConfusion } from "./narrativeFacts";
 import {
   attachConfidenceIntervals,
   confidenceIntervalNote,
   parseConfidenceIntervals,
 } from "./confidenceIntervals";
 import { parseConfusionCounts } from "./confusionCounts";
-import { labelCautionSentence, sourceRelationSentence } from "./dataCautionPhrases";
+import { labelCautionSentence, SAME_SOURCE_SENTENCE, sourceRelationSentence } from "./dataCautionPhrases";
 import { errorRatioSentence, parseErrorRatios } from "./errorRatios";
 import { evaluateStatus } from "./evaluateStatus";
 import type { MapWorkflowToReportInput } from "./mapWorkflowToFinalReport";
@@ -277,19 +282,49 @@ export function assembleEvaluatedReport(
   // 9절 문제 목록(설계 D22) — 판정 사유·아슬아슬·임계값 조정 여지(D40)·불균형 영향(D20)·M22 표·
   // 학습 분포·정답 라벨로 9종을 고른다. 지금 만들어 저장하고, 같은 목록을 AI 사실 시트에 싣는다.
   const thresholdGain = parseF1ThresholdGain(success_metrics.f1_threshold_gain);
+  // 6.2 클래스별 표 인쇄는 M22 를 골랐을 때만(지표 선택을 따른다).
   const classReport = buildClassReportTable(
     success_metrics.M22,
     classLabels,
     inputs.taskType || undefined,
   );
+  // 서술·문제 목록·D6 표가 읽는 표는 지표 선택과 무관하게 엔진이 늘 계산하는 새 칸에서(S2 응답, S4a).
+  // 새 칸이 없는 옛 응답이면 M21·M22 로 대신한다. 클래스 순서는 엔진 순서(혼동행렬 labels) 하나.
+  const engineMatrix = parseEngineConfusion(success_metrics.confusion_matrix ?? success_metrics.M21);
+  const engineLabels = engineMatrix?.labels ?? classLabels;
+  const engineClassTable = buildClassReportTable(
+    success_metrics.class_report ?? success_metrics.M22,
+    engineLabels,
+    taskTypeResolved,
+  );
+  const positiveClass =
+    (taskTypeResolved === "binary" && confusionCounts?.kind === "binary" ? confusionCounts.rows[0].label : null) ||
+    inputs.metadata?.positive_class ||
+    null;
+  const nSamples = result.n_samples ?? confusionMatrix?.totalSamples ?? 0;
+  const factsWithoutSentences = buildNarrativeFacts({
+    taskType: taskTypeResolved,
+    kpiResults: updatedKpiResults,
+    coreMetricIds: [...coreDisplayIds],
+    coreMetricsSource: coreMetricsSource(inputs.composerMetrics),
+    classTable: engineClassTable,
+    confusion: engineMatrix?.single ?? null,
+    confusionCounts,
+    positiveClass,
+    reportPurpose: baseReport.evalScope?.reportPurposeKey,
+    composer: inputs.composer,
+    evaluationDistribution: resolvedClassDistribution,
+    confidenceIntervals,
+    fixedSentences: [],
+    nSamples,
+  });
   const problems = buildProblemList({
     kpiResults: updatedKpiResults,
     taskType: taskTypeResolved,
     coreMetricIds: [...coreDisplayIds],
     thresholdGain,
     imbalanceEffect,
-    classReport,
-    evaluationDistribution: resolvedClassDistribution,
+    facts: factsWithoutSentences,
     composer: inputs.composer,
   });
 
@@ -297,30 +332,52 @@ export function assembleEvaluatedReport(
   // client_inputs 로 이미 AI 에 가므로 사실 시트에 따로 싣지 않는다.
   const labelSentence = labelCautionSentence(inputs.composer);
   const sourceSentence = sourceRelationSentence(inputs.composer);
+  const errorRatioText = errorRatios ? errorRatioSentence(errorRatios, taskTypeResolved) : null;
 
-  const factSheet = buildFactSheet({
-    kpiResults: updatedKpiResults,
-    confusionMatrix,
-    classDistribution: resolvedClassDistribution,
-    // 표본 수는 서버가 확정한 값을 그대로 쓴다. 분포 합계로 추측하면 멀티레이블에서
-    // 200행이 408 이 된다(ISSUES.md B-02).
-    nSamples: result.n_samples ?? confusionMatrix?.totalSamples ?? 0,
-    imbalanceRatio,
-    droppedRows: result.dropped_rows,
-    verdict: ruleConclusion.verdict,
-    score: ruleConclusion.score,
-    classReport: success_metrics.M22 ?? null,
-    classLabels,
-    latencyStats,
-    positiveClass: inputs.metadata?.positive_class ?? null,
-    confusionCounts,
-    derivedPrediction,
-    errorRatios,
-    confidenceIntervalNote: ciNote,
-    thresholdGain,
-    imbalanceEffect,
-    problems,
-  });
+  // 7~9절에 코드가 찍을 고정 문장 — AI·템플릿은 같은 숫자를 되풀이하지 않고 해석만 쓴다(생-12).
+  const fixedSentences: FixedSentenceFact[] = [
+    ...(derivedPrediction ? [{ id: "9", section: "7.1", text: derivationStatement(derivedPrediction) }] : []),
+    ...(errorRatioText ? [{ id: "17", section: "7.1", text: errorRatioText }] : []),
+    ...(labelSentence ? [{ id: "12", section: "7.2", text: labelSentence }] : []),
+    ...(sourceSentence
+      ? [{ id: sourceSentence === SAME_SOURCE_SENTENCE ? "11a" : "11b", section: "8.2", text: sourceSentence }]
+      : []),
+    ...(nearNote ? [{ id: "18", section: "8.3", text: nearNote }] : []),
+    ...(problems.length === 0 ? [{ id: "6", section: "9", text: NO_PROBLEM_SENTENCE }] : []),
+  ];
+
+  const betas: Record<string, number> = {};
+  for (const r of updatedKpiResults) {
+    const metric = METRICS.find((m) => getMetricDisplayId(m.id) === r.metricId);
+    if (metric?.additionalFields?.includes("beta")) betas[r.metricId] = resolveBeta(inputs.metricDetails);
+  }
+
+  const factSheet = fitFactSheet(
+    buildFactSheet({
+      kpiResults: updatedKpiResults,
+      confusionMatrix: engineMatrix?.chart ?? null,
+      classDistribution: resolvedClassDistribution,
+      // 표본 수는 서버가 확정한 값을 그대로 쓴다. 분포 합계로 추측하면 멀티레이블에서
+      // 200행이 408 이 된다(ISSUES.md B-02).
+      nSamples,
+      imbalanceRatio,
+      droppedRows: result.dropped_rows,
+      verdict: ruleConclusion.verdict,
+      score: ruleConclusion.score,
+      classTable: engineClassTable,
+      latencyStats,
+      positiveClass,
+      confusionCounts,
+      derivedPrediction,
+      errorRatios,
+      confidenceIntervalNote: ciNote,
+      thresholdGain,
+      imbalanceEffect,
+      problems,
+      betas,
+      facts: { ...factsWithoutSentences, fixed_sentences: fixedSentences },
+    }),
+  );
 
   // ── Stage 1: 서술과 무관한 결정론적 결과(KPI·차트·규칙 verdict).
   //    interpretation/recommendation* 은 baseReport 의 빈 기본값 유지, narrativeSource 미설정.
@@ -345,14 +402,14 @@ export function assembleEvaluatedReport(
     // 클래스별 표(M22) — 평균 줄까지. M22 만 골라도 보인다.
     classReport,
     confusionCounts,
-    ...(errorRatios
-      ? { errorRatios, errorRatioSentence: errorRatioSentence(errorRatios, taskTypeResolved) }
-      : {}),
+    ...(errorRatios && errorRatioText ? { errorRatios, errorRatioSentence: errorRatioText } : {}),
     ...(ciNote ? { confidenceIntervalNote: ciNote } : {}),
     ...(nearNote ? { nearTargetNote: nearNote } : {}),
     ...(labelSentence ? { labelCautionSentence: labelSentence } : {}),
     ...(sourceSentence ? { sourceRelationSentence: sourceSentence } : {}),
     problems,
+    // AI 에 보낸 서술용 파생값(자른 뒤 — 보낸 것과 같은 값). S7 D6 표와 /report/:id 가 같은 값을 그린다.
+    ...(factSheet.facts ? { narrativeFacts: factSheet.facts } : {}),
     conclusion: ruleConclusion, // full ConclusionData (verdict/score + 빈 서술)
     datasetDiagnosis,
     charts: { confusionMatrix, rocCurve, prCurve },
@@ -360,4 +417,38 @@ export function assembleEvaluatedReport(
   };
 
   return { stage1Report, factSheet };
+}
+
+/**
+ * 엔진 혼동행렬(새 칸 `confusion_matrix`, 옛 응답은 M21)을 읽는다. 이진·다중은 행렬 하나(`single`), 멀티레이블은
+ * 레이블별 2×2 를 사실 시트 모양(`chart` — 레이블 합계는 `buildFactSheet` 가 만든다)으로. 모양이 틀리면 null.
+ */
+function parseEngineConfusion(
+  raw: unknown,
+): { labels: string[]; single: SingleConfusion | null; chart: ConfusionMatrixData } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const cm = raw as { type?: string; labels?: unknown; matrix?: unknown };
+  if (!Array.isArray(cm.labels) || !Array.isArray(cm.matrix)) return null;
+  const labels = cm.labels.map(String);
+  if (cm.type === "multilabel") {
+    const multilabelMatrices = (cm.matrix as number[][][]).map((mat, idx) => ({
+      label: labels[idx] ?? `Label ${idx}`,
+      matrix: mat,
+      totalSamples: mat.reduce((acc, row) => acc + row.reduce((a, b) => a + b, 0), 0),
+    }));
+    const first = multilabelMatrices[0] ?? { label: "Label 0", matrix: [[0, 0], [0, 0]], totalSamples: 0 };
+    return {
+      labels,
+      single: null,
+      chart: {
+        labels: [`Negative (${first.label})`, `Positive (${first.label})`],
+        matrix: first.matrix,
+        totalSamples: first.totalSamples,
+        multilabelMatrices,
+      } as ConfusionMatrixData,
+    };
+  }
+  const matrix = cm.matrix as number[][];
+  const total = matrix.reduce((acc, row) => acc + row.reduce((a, b) => a + b, 0), 0);
+  return { labels, single: { labels, matrix }, chart: { labels, matrix, totalSamples: total } as ConfusionMatrixData };
 }

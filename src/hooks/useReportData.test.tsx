@@ -30,8 +30,11 @@ import {
   runningView,
   seedStores,
   storedRun,
+  evaluateResponse,
   stubFetch,
+  workflowSnapshot,
 } from "./reportJob.harness";
+import { mapWorkflowToFinalReport } from "../lib/report/mapWorkflowToFinalReport";
 import { NARRATIVE_INPUT_MAX_CHARS, narrativePolling, storableInput, useReportData } from "./useReportData";
 import { renderHook } from "@testing-library/react";
 import { Report } from "../pages/report/Report";
@@ -108,6 +111,103 @@ describe("성공 — 평가 1회·작업 1회, 단계는 화면에만", () => {
     expect(sent.task_type).toBe("binary");
     expect(sent.fact_sheet.metrics.length).toBeGreaterThan(0);
     await waitFor(() => expect(storedRun()!.narrative?.input).toEqual(sent));
+  });
+
+  describe("서술 요청의 사실 시트(S4a) — facts·핵심 지표 출처·본문 예산", () => {
+    /** 의뢰자 입력이 있는 run — 선언(FN 위험·실시간)과 출처 관계. */
+    function seedWithComposer(coreChoices?: string[]) {
+      seedStores();
+      const snapshot = {
+        ...workflowSnapshot(),
+        composer: {
+          cards: { trainingData: true, testData: true, groundTruth: true, modelEnv: true },
+          metrics: {},
+          perspective: { criticalErrorType: { text: "Missed (FN)" }, usageMode: { text: "Real-time" } },
+          trainingData: {},
+          testData: { testSourceRelation: { text: "Same source" } },
+          groundTruth: {},
+          modelEnv: {},
+        },
+      } as any;
+      const run = storedRun()!;
+      const assemble = {
+        ...run.evaluationRequest!.assemble,
+        ...(coreChoices ? { composerMetrics: { coreMetrics: { choices: coreChoices } } } : {}),
+      };
+      useWorkspaceStore.setState({
+        evaluationRuns: [
+          {
+            ...run,
+            workflowSnapshot: snapshot,
+            reportData: mapWorkflowToFinalReport(snapshot),
+            evaluationRequest: { ...run.evaluationRequest!, assemble },
+          },
+        ],
+      });
+    }
+
+    async function sentPayload() {
+      // 엔진이 늘 내리는 건수(confusion_counts)까지 든 응답 — 백엔드 골든 이진과 같은 값.
+      const response = evaluateResponse();
+      response.results.success_metrics.confusion_counts = { type: "binary", positive_class: "1", tp: 52, tn: 49, fp: 56, fn: 43 };
+      const fetchStub = stubFetch({ evaluate: [{ body: response }], views: [{ body: runningView("generating") }] });
+      renderReportPage();
+      await waitFor(() => expect(fetchStub.count("POST", JOBS)).toBe(1));
+      return fetchStub.calls.find((c) => c.method === "POST" && JOBS.test(c.url))!.body as any;
+    }
+
+    it("facts(계약 facts-1)를 싣고, 성적서 데이터에 같은 값을 저장한다", async () => {
+      seedWithComposer();
+      const sent = await sentPayload();
+      expect(sent.fact_sheet.facts).toMatchObject({
+        contract: "facts-1",
+        positive_class: "1",
+        declarations: { risk_direction: "fn", usage_mode: "realtime" },
+        declared_risk_errors: { side: "fn", count: 43, total_errors: 99 },
+      });
+      expect(sent.fact_sheet.metrics.map((m: any) => m.metric_id)).not.toContain("M21");
+      await waitFor(() => expect(storedRun()!.reportData.narrativeFacts).toEqual(sent.fact_sheet.facts));
+    });
+
+    it("핵심 지표가 기본값이면 client_inputs.core_metrics 를 보내지 않는다(재-7)", async () => {
+      seedWithComposer();
+      const sent = await sentPayload();
+      expect(sent.client_inputs).toBeDefined();
+      expect(sent.client_inputs).not.toHaveProperty("core_metrics");
+      expect(sent.fact_sheet.facts.core_metrics_source).toBe("default");
+    });
+
+    it("본문이 2MB 상한에 가까우면 클래스 단위 칸을 비워 보낸다(413 대신 서술 — 유-11)", async () => {
+      seedWithComposer();
+      // 클래스 400개 × 이름 1000자(한글 3바이트) — 칸별 상한(256)으로 잘라도 본문이 1.8MB 를 넘는다.
+      const labels = Array.from({ length: 400 }, (_, i) => `${"클".repeat(1000)}${i}`);
+      const response = evaluateResponse();
+      const sm = response.results.success_metrics;
+      sm.class_report = Object.fromEntries(
+        labels.map((l) => [l, { precision: 0.5, recall: 0.5, "f1-score": 0.5, support: 5 }]),
+      );
+      sm.confusion_counts = { type: "per_class", rows: labels.map((label) => ({ label, tp: 1, fp: 1, fn: 1, tn: 1 })) };
+      (response as { class_distribution: Record<string, number> }).class_distribution = Object.fromEntries(
+        labels.map((l) => [l, 5]),
+      );
+      const fetchStub = stubFetch({ evaluate: [{ body: response }], views: [{ body: runningView("generating") }] });
+      renderReportPage();
+      await waitFor(() => expect(fetchStub.count("POST", JOBS)).toBe(1));
+      const call = vi.mocked(fetch).mock.calls.find(([u, o]) => JOBS.test(String(u)) && (o as RequestInit)?.method === "POST")!;
+      const raw = String((call[1] as RequestInit).body);
+      expect(new TextEncoder().encode(raw).length).toBeLessThanOrEqual(1_800_000);
+      const sent = JSON.parse(raw);
+      expect([sent.fact_sheet.per_class, sent.fact_sheet.confusion_counts, sent.fact_sheet.distribution]).toEqual([[], [], null]);
+      // 칸별 상한으로 먼저 뺀 144 + 예산으로 비운 256 = 400 — omitted 는 언제나 "뺀 수"의 합이다.
+      expect(sent.fact_sheet.facts.omitted).toMatchObject({ per_class: 400, confusion_counts: 400, class_distribution: 400 });
+    });
+
+    it("의뢰자가 고른 핵심 지표는 지표 번호 없이 이름만 보낸다(재-4)", async () => {
+      seedWithComposer(["M4"]);
+      const sent = await sentPayload();
+      expect(sent.client_inputs.core_metrics).toEqual(["F1 Score"]);
+      expect(sent.fact_sheet.facts.core_metrics_source).toBe("client");
+    });
   });
 
   it("평가 요청은 run 스냅샷으로 만든다 — 지금 워크플로우 입력이 바뀌어도 이 평가의 입력을 보낸다", async () => {

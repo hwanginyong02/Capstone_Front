@@ -318,7 +318,12 @@ export interface ClientInputsSource {
   materials: ReportMaterials;
   model: { name: string; version: string; purpose: string; category: string };
   reportPurposeNote: string;
-  coreMetrics: string[];
+  /**
+   * 의뢰자가 고른 핵심 지표 이름. 고르지 않아 유형별 기본값을 썼으면 null — 그때는 보내지 않는다. 이 묶음은
+   * "의뢰자가 제공한 정보"라 기본값을 넣으면 AI 가 "의뢰자가 지정한 핵심 지표"라고 쓴다(재-7). 출처는 사실 시트
+   * `facts.core_metrics_source` 가 따로 알린다.
+   */
+  coreMetrics: string[] | null;
   classLabelDescriptions: Record<string, string>;
   /**
    * 실행 환경 다섯 칸(운영체제·CPU·GPU·메모리·소프트웨어). 성적서 4절이 찍는 값과 같은 출처다 —
@@ -358,7 +363,7 @@ function rawClientInputs(source: ClientInputsSource): ClientInputs {
     ...(materials.metricRationale !== undefined
       ? { metric_rationale: materials.metricRationale ?? NOT_PROVIDED }
       : {}),
-    core_metrics: source.coreMetrics,
+    ...(source.coreMetrics ? { core_metrics: source.coreMetrics } : {}),
     training_data: rowsToObject(materials.training),
     test_data: rowsToObject(materials.test),
     ground_truth: rowsToObject(materials.groundTruth),

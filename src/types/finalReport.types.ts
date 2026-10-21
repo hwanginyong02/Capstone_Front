@@ -1,3 +1,4 @@
+import type { NarrativeFacts } from "../lib/report/narrativeFacts";
 import type { TaskType } from "../data/evaluationData";
 import type { ConfusionMatrixData, ReportRecommendation } from "./report.types";
 import type { ValidationGroup } from "./validation.types";
@@ -500,6 +501,11 @@ export interface FinalReportData {
    * 성적서는 종전 표(우선순위·분류·권고 내용·기대 효과)다.
    */
   problems?: Problem[];
+  /**
+   * AI 에 보낸 서술용 파생값(S4a, 계약 facts-1 — `lib/report/narrativeFacts.ts`). 자른 뒤 값(보낸 것과 같음).
+   * S7 D6 표(최약 클래스·최다 오분류 쌍)와 /report/:id 가 이 값을 그린다. 이 키가 생기기 전 성적서에는 없다.
+   */
+  narrativeFacts?: NarrativeFacts;
   charts: {
     confusionMatrix: ConfusionMatrixData | null;
     rocCurve: { fpr: number[]; tpr: number[]; auroc?: number } | null;

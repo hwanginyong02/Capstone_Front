@@ -9,6 +9,7 @@ import {
   type ProblemListInput,
 } from "./problemList";
 import type { ReportComposerInput } from "./reportMaterials";
+import { distributionShift, weakestClass } from "./narrativeFacts";
 import type {
   ClassReportRow,
   ClassReportTable,
@@ -27,8 +28,18 @@ function kpi(p: Partial<KpiResult>): KpiResult {
   return { metricId: "M1", name: "Accuracy", value: 0.9, threshold: 0.8, status: "pass", ...p };
 }
 
+/**
+ * 테스트 입력 — 클래스별 표·평가 분포를 주면 실제 경로대로 서술용 파생값(`narrativeFacts`)을 거쳐 문제 목록의
+ * `facts` 로 만든다. 최약 클래스·분포 차의 계산은 narrativeFacts 한 곳이고, 문제 목록은 그 값을 읽기만 한다(S4a).
+ */
+type TestInput = Omit<ProblemListInput, "facts"> & {
+  classReport?: ClassReportTable | null;
+  evaluationDistribution?: Record<string, number>;
+};
+
 /** 문제가 하나도 없는 기본 입력 — 핵심 M1·M4 합격(여유 있음), 비핵심 없음. */
-function input(overrides: Partial<ProblemListInput> = {}): ProblemListInput {
+function input(overrides: Partial<TestInput> = {}): ProblemListInput {
+  const { classReport = null, evaluationDistribution = {}, ...rest } = overrides;
   return {
     kpiResults: [
       kpi({ metricId: "M1", name: "Accuracy", value: 0.9, threshold: 0.8 }),
@@ -38,9 +49,11 @@ function input(overrides: Partial<ProblemListInput> = {}): ProblemListInput {
     coreMetricIds: ["M1", "M4"],
     thresholdGain: null,
     imbalanceEffect: null,
-    classReport: null,
-    evaluationDistribution: {},
-    ...overrides,
+    ...rest,
+    facts: {
+      weakest_class: weakestClass(classReport),
+      distribution_shift: distributionShift(rest.composer, evaluationDistribution).rows,
+    },
   };
 }
 
@@ -226,7 +239,7 @@ describe("불균형 영향 있음 — level affected", () => {
   });
 });
 
-describe("최약 클래스 — M22, F1 최저 클래스가 표본 부족(30건·5% 미만)이거나 매크로보다 0.10 이상 낮음", () => {
+describe("최약 클래스 — 늘 계산하는 클래스별 표, F1 최저 클래스가 표본 부족(30건·5% 미만)이거나 매크로보다 0.10 이상 낮음", () => {
   const row = (label: string, f1: number, support: number): ClassReportRow => ({
     label, precision: f1, recall: f1, f1, support,
   });
@@ -277,7 +290,7 @@ describe("최약 클래스 — M22, F1 최저 클래스가 표본 부족(30건·
     expect(p.evidence).toMatchObject({ x: { f1: 0.6, support: 20 } });
   });
 
-  it("M22 표가 없으면 보지 않는다", () => {
+  it("클래스별 표가 없으면 보지 않는다(엔진이 class_report 를 늘 내므로 옛 응답·M22 없는 옛 응답에서만)", () => {
     expect(weakestOf(null)).toEqual([]);
   });
 });
@@ -374,7 +387,7 @@ describe("정답 라벨 주의 — 신뢰성 '검토 없음' 또는 구축 방�
 
 describe("번호 — 우선순위 순, 같은 우선순위는 표 순서, P1… 연속", () => {
   it("9종이 모두 걸리면 P1~P9 가 표 순서다", () => {
-    const all = buildProblemList({
+    const all = buildProblemList(input({
       kpiResults: [
         kpi({ metricId: "M1", name: "Accuracy", value: 0.7, status: "fail" }), // 핵심 미달
         kpi({ metricId: "M4", name: "F1 Score", value: 102, threshold: 100 }), // 핵심 아슬아슬 합격
@@ -399,7 +412,7 @@ describe("번호 — 우선순위 순, 같은 우선순위는 표 순서, P1… 
         trainingData: { trainingClassVolume: { entries: [{ key: "a", value: "50" }, { key: "b", value: "50" }] } },
         groundTruth: { labelReview: { text: "No review" } },
       }),
-    });
+    }));
     // FAIL 이라 판정 불가는 나오지 않는다 — 나머지 8종의 순서를 본다.
     expect(all.map((p) => `${p.id}:${p.kind}:${p.priority}`)).toEqual([
       "P1:core_fail:HIGH",

@@ -17,10 +17,11 @@ import type {
   LatencyStats,
   Problem,
 } from "../../types/finalReport.types";
+import type { ClassReportTable } from "../../types/finalReport.types";
 import type { ConfusionMatrixData } from "../../types/report.types";
-import { buildClassReportTable } from "./classReportTable";
 import { computeMargin, isJudged, isNearTarget } from "./computeVerdict";
-import { formatJudgedValue } from "./judgedNumber";
+import { cleanNumber, difference, formatJudgedValue, judgedText } from "./judgedNumber";
+import type { NarrativeFacts } from "./narrativeFacts";
 
 export interface FactSheetMetric {
   metric_id: string;
@@ -45,6 +46,17 @@ export interface FactSheetMetric {
    * 판정 대상이 아니면 null.
    */
   value_text: string | null;
+  /** 높을수록 좋은 지표인가(S4a, 재-8) — margin 부호의 뜻. 낮을수록 좋은 지표(FPR·Hamming Loss 등)는 false. */
+  higher_is_better: boolean;
+  /** F-beta 의 β(S4a, 다-2). 이름에는 넣지 않는다 — 이름이 두 벌이 되고 숫자 검문에 걸린다. */
+  beta: number | null;
+  /**
+   * margin 의 서술용 표기(S4a) — 0 과 비교한 판정(충족 = margin ≥ 0)과 같은 쪽으로 읽히게 자릿수를 늘린다
+   * (`judgedText`). 실패 지표 −0.00004 가 "0" 으로 찍혀 충족처럼 읽히지 않게. 판정 대상이 아니면 null.
+   */
+  margin_text: string | null;
+  /** 구간이 목표값을 포함하는가(S4a, D29) — 반올림 전 값으로. 판정 대상이고 구간이 있을 때만, 아니면 null. */
+  ci_contains_target: boolean | null;
 }
 
 export interface FactSheetPerClass {
@@ -61,8 +73,8 @@ export interface FactSheet {
   metrics: FactSheetMetric[];
   per_class: FactSheetPerClass[];
   /**
-   * 클래스별 표(M22)의 평균 줄 — 매크로·가중·마이크로(멀티레이블은 샘플 평균도). 평균 방식
-   * 차이를 8.2 에 쓰는 재료다(서술 설계 D17·D39). M22 를 고르지 않으면 빈 배열.
+   * 클래스별 표의 평균 줄 — 매크로·가중·마이크로(다중은 accuracy 로 만든 줄, 멀티레이블은 샘플 평균도).
+   * 평균 방식 차이를 8.2 에 쓰는 재료다(서술 설계 D17·D39). 엔진이 늘 계산하는 class_report 에서 읽는다(S4a).
    */
   class_averages: FactSheetPerClass[];
   confusion: { labels: string[]; matrix: number[][]; positive_class: string | null } | null;
@@ -101,6 +113,8 @@ export interface FactSheet {
     p99: number | null;
     unit: string;
   };
+  /** 서술용 파생값(S4a, 계약 facts-1 — `narrativeFacts.ts`). 옛 요청에는 없다. */
+  facts?: NarrativeFacts;
 }
 
 export interface NarrativeRequestPayload {
@@ -132,10 +146,11 @@ export interface BuildFactSheetInput {
   nSamples: number;
   verdict: string;
   score: number;
-  /** success_metrics.M22 (classification report) — 클래스별 precision/recall/f1/support */
-  classReport?: Record<string, any> | null;
-  /** per_class 순서를 정하는 클래스 라벨 목록 (감지된 클래스/레이블 또는 y_true 고유값) */
-  classLabels: string[];
+  /**
+   * 클래스별 표 — 엔진이 늘 계산하는 class_report(없으면 M22)를 작업 유형을 넘겨 엔진 순서로 만든 것(S4a).
+   * M22 선택과 무관하다. 없으면 null.
+   */
+  classTable: ClassReportTable | null;
   /** latency 컬럼이 매핑/측정된 경우의 통계 (미측정이면 null/undefined) */
   latencyStats?: LatencyStats | null;
   /** 양성 클래스 라벨 (2x2 혼동행렬 FN/FP 매핑 기준, binary) */
@@ -154,17 +169,16 @@ export interface BuildFactSheetInput {
   imbalanceEffect?: ImbalanceEffect | null;
   /** 문제 목록(`buildProblemList`). 없으면 빈 배열로 싣는다. */
   problems?: Problem[];
+  /** 지표별 β(M 표기 → 값). F-beta 처럼 β 를 받는 지표만. */
+  betas?: Record<string, number>;
+  /** 서술용 파생값(`buildNarrativeFacts`). 자르기는 `fitFactSheet` 가 한다. */
+  facts?: NarrativeFacts | null;
 }
 
 function num(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
-/** 소수 4자리 반올림. 숫자가 아니면 null. */
-function round4(v: number | null): number | null {
-  const n = num(v);
-  return n === null ? null : Math.round(n * 1e4) / 1e4;
-}
 
 /**
  * fact_sheet 의 혼동행렬 — 멀티레이블은 **전 레이블 합계**로 보낸다 (ISSUES.md C-08).
@@ -217,8 +231,7 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
     droppedRows,
     verdict,
     score,
-    classReport,
-    classLabels,
+    classTable,
     latencyStats,
     positiveClass,
     confusionCounts,
@@ -228,14 +241,18 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
     thresholdGain,
     imbalanceEffect,
     problems,
+    betas,
+    facts,
   } = input;
 
   // 지표: 목표값이 없으면(null) 정보 제공(info)으로 표기한다.
   // 계산 실패(unavailable) 지표는 value 0 이 서술로 새지 않도록 아예 제외한다(D4).
+  // 혼동행렬(M21)·클래스별 표(M22)는 값이 없는 표 지표라 빼고(다-3), 표는 confusion·per_class 가 싣는다.
   const metrics: FactSheetMetric[] = kpiResults
-    .filter((r) => r.status !== "unavailable")
+    .filter((r) => r.status !== "unavailable" && r.metricId !== "M21" && r.metricId !== "M22")
     .map((r) => {
-    const isInfoOnly = r.metricId === "M21" || r.metricId === "M22" || r.threshold === null;
+    const isInfoOnly = r.threshold === null;
+    const margin = computeMargin(r);
     return {
       metric_id: r.metricId,
       display_name: r.name,
@@ -246,19 +263,25 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
       // 판정 대상 여부는 판정과 같은 식 하나로 본다 — 구간은 판정 대상 지표에만 싣는다.
       ci_low: r.ci && isJudged(r) ? r.ci.low : null,
       ci_high: r.ci && isJudged(r) ? r.ci.high : null,
-      // 아슬아슬도 판정과 같은 식으로 본다. 마진은 뺄셈 끝자리 잡음(0.02399999…)이 서술로 새지 않게
-      // 4자리로 반올림해 싣는다 — 아슬아슬 판정은 반올림 전 값으로 이미 했다.
-      margin: round4(computeMargin(r)),
+      // 아슬아슬도 판정과 같은 식으로 본다. 마진은 9자리로 뺄셈 잡음(0.02399999…)만 걷어 싣고(S4a — 종전 4자리
+      // 반올림은 미달 −0.00004 를 0 으로 만들어 충족처럼 읽혔다), 서술이 인용할 표기는 margin_text 다.
+      margin: margin === null ? null : cleanNumber(margin),
       near_target: isNearTarget(r),
       value_text:
         isJudged(r) && r.threshold !== null && !isInfoOnly
           ? formatJudgedValue(r.value, r.threshold, r.higherIsBetter !== false, r.status === "pass")
           : null,
+      higher_is_better: r.higherIsBetter !== false,
+      beta: betas?.[r.metricId] ?? null,
+      margin_text: margin === null ? null : judgedText(margin, 0, margin >= 0),
+      ci_contains_target:
+        r.ci && isJudged(r) && r.threshold !== null
+          ? difference(r.threshold, r.ci.low) >= 0 && difference(r.ci.high, r.threshold) >= 0
+          : null,
     };
   });
 
   const hasDistribution = Object.keys(classDistribution).length > 0;
-  const classTable = buildClassReportTable(classReport, classLabels);
 
   return {
     n_samples: nSamples,
@@ -306,5 +329,6 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
           p99: null,
           unit: "ms",
         },
+    ...(facts ? { facts } : {}),
   };
 }
