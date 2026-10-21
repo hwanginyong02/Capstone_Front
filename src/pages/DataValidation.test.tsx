@@ -341,3 +341,29 @@ describe("생성 전 안내 → 평가 흐름 만들기", () => {
     expect(screen.getByRole("button", { name: "컬럼 매핑에서 고치기" })).toBeInTheDocument();
   });
 });
+
+describe("점검 표 변경 안내 — 이 흐름의 마지막 run 이 옛 점검 표로 점검됐으면(점검 표 2.0)", () => {
+  async function seedLastRun(run: Record<string, unknown>) {
+    const { useWorkspaceStore } = await import("../utils/stores/useWorkspaceStore");
+    useWorkspaceStore.setState({ evaluationRuns: [{ id: "run-old", ...run }] } as never);
+    useWorkflowStore.setState({ lastRunId: "run-old" });
+  }
+
+  it("발급 전 run 의 점검 결과가 1.0 이면 안내한다", async () => {
+    await seedLastRun({ reportId: "", reportData: { meta: { reportId: "" }, materialCheck: { version: "1.0" } } });
+    renderPage({ validationData: { error_count: 0 } });
+    expect(screen.getByRole("region", { name: "점검 표 변경 안내" })).toHaveTextContent("1.0 → 2.0");
+  });
+
+  it("발급된 run 이면 안내하지 않는다(발급 당시 모양 그대로)", async () => {
+    await seedLastRun({ reportId: "R-1", reportData: { meta: { reportId: "R-1" }, materialCheck: { version: "1.0" } } });
+    renderPage({ validationData: { error_count: 0 } });
+    expect(screen.queryByRole("region", { name: "점검 표 변경 안내" })).toBeNull();
+  });
+
+  it("같은 버전이면 안내하지 않는다", async () => {
+    await seedLastRun({ reportId: "", reportData: { meta: { reportId: "" }, materialCheck: { version: "2.0" } } });
+    renderPage({ validationData: { error_count: 0 } });
+    expect(screen.queryByRole("region", { name: "점검 표 변경 안내" })).toBeNull();
+  });
+});

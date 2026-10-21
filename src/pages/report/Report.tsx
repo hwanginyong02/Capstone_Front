@@ -19,6 +19,7 @@ import {
   SaveErrorBanner,
 } from "../../components/report/ReportStateNotices";
 import { BackendNoticePanel } from "../../components/workflow/BackendNoticePanel";
+import { MaterialCheckOutdatedNotice } from "../../components/workflow/MaterialCheckNotice";
 
 export function Report() {
   // 기본값을 두지 않는다 — 폐지된 임시 성적서("preview")로 조용히 떨어지지 않게(E-06).
@@ -64,6 +65,7 @@ export function Report() {
     >
       <SaveErrorBanner message={report.saveError} />
       {migrationNote === "issued_empty_narrative" && <IssuedEmptyNarrativeNotice />}
+      <MaterialCheckOutdatedNotice check={data.materialCheck} active={!issuance.issued} />
       {/* 빠진 재료 안내는 검증 화면(생성 전 안내)으로 옮겼다 — 성적서는 표지·1.4·6.0 에 점검 결과를
           찍는다(재료 선택 점검 6절). 여기서 지금 입력을 다시 판정하면 두 번째 판정 경로가 된다.
           평가를 마친 뒤(서술 진행·실패)에는 서술 띠가 상태를 말한다 — 미평가 안내는 평가 전 초안에만. */}

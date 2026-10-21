@@ -15,7 +15,12 @@ import {
   getValidationGateReason,
 } from "../utils/domain/validationGate";
 import { FileReuploadNotice } from "../components/workflow/FileReuploadNotice";
-import { canFixInInputOf, MaterialCheckNotice, type MaterialCheckTarget } from "../components/workflow/MaterialCheckNotice";
+import {
+  canFixInInputOf,
+  MaterialCheckNotice,
+  MaterialCheckOutdatedNotice,
+  type MaterialCheckTarget,
+} from "../components/workflow/MaterialCheckNotice";
 import { layerOneGaps, type LayerOneGap } from "../utils/domain/layerOne";
 import { buildEvaluationRequestSnapshot } from "../lib/report/evaluationRequest";
 import { getCard, stepOfLeaf } from "../data/reportComposer";
@@ -50,6 +55,8 @@ export function DataValidation() {
   const store = useWorkflowStore();
   const flow = useStepFlow("validation");
   const { activeWorkspaceId, addEvaluationRun } = useWorkspaceStore();
+  // 이 흐름으로 마지막에 만든 run — 발급 전인데 옛 점검 표로 점검했으면 다시 확인하라고 알린다(점검 표 2.0).
+  const lastRun = useWorkspaceStore((state) => state.evaluationRuns.find((run) => run.id === store.lastRunId));
   const { validationData, isLoading, error, buildEvaluationResult } = useDataValidation();
 
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -207,6 +214,10 @@ export function DataValidation() {
               </Alert>
             )}
             <FileReuploadNotice />
+            <MaterialCheckOutdatedNotice
+              check={lastRun?.reportData?.materialCheck}
+              active={!!lastRun && !lastRun.reportId && !lastRun.reportData?.meta?.reportId}
+            />
             {materialCheck && (
               <MaterialCheckNotice check={materialCheck} onFix={handleFix} canFixInInput={canFixInInput} />
             )}
