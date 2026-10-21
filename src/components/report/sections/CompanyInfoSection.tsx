@@ -121,7 +121,7 @@ export function CompanyInfoSection({
           본 시험결과서에서 기술한 내용은 다음의 전제 및 명시적 한계를 지닌다.
         </p>
         <ol className="space-y-3">
-          {constraintsFor(materialCheck, hasConfidenceIntervals).map((c, i) => (
+          {constraintsFor(materialCheck, hasConfidenceIntervals, schema3).map((c, i) => (
             <li key={i} className="flex gap-3 text-sm">
               <span className="shrink-0 font-semibold text-slate-700">{i + 1}.</span>
               <div className="space-y-1.5 text-slate-600 leading-relaxed">

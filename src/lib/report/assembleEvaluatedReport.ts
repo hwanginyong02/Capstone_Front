@@ -251,6 +251,8 @@ export function assembleEvaluatedReport(
     datasetSize,
     taskTypeResolved,
     imbalanceEffect,
+    // 다수·소수 클래스를 '이름(설명)' 으로 부른다(D37) — 3절 클래스 레이블 설명 표와 같은 값.
+    Object.fromEntries((baseReport.datasetInfo.classLabelDescriptions ?? []).map((c) => [c.label, c.description])),
   );
 
   // 4. verdict/score 규칙 산출 (서술의 권위 값 — 백엔드도 fact_sheet.verdict 로 강제)

@@ -14,10 +14,10 @@ import { ISSUANCE_TEXT_MAX_CHARS, issueReport, reissueReport } from "./issuanceA
 const ISSUANCE_RESPONSE = {
   report_no: "RPT-2026-0001",
   version: "v1.0",
-  issuer: "한국 AI 인증원 평가부",
+  issuer: "리트머스 평가부",
   issued_at: "2026-07-04T08:10:52+00:00",
   organization: {
-    org_name: "한국 AI 인증원",
+    org_name: "리트머스",
     department: "평가부",
     evaluator: "자동 평가 엔진",
     contact: "—",

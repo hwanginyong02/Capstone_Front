@@ -62,3 +62,12 @@ export function josaEuroRoNumber(value: number | string): string {
   if (sound === null) return "(으)로";
   return sound === "other" ? "으로" : "로";
 }
+
+/**
+ * 숫자 뒤 "과/와" — 숫자를 읽는 끝소리에 받침이 있으면(ㄹ 포함 — 0 영·1 일·3 삼·6 육·7 칠·8 팔, 정수 끝 0 은
+ * 십·백·천·만) "과", 없으면(2 이·4 사·5 오·9 구) "와". 숫자가 아니면 "와". 예: 0.83과 / 0.505와.
+ */
+export function josaWaGwaNumber(value: number | string): string {
+  const sound = numberFinalSound(value);
+  return sound === null || sound === "none" ? "와" : "과";
+}

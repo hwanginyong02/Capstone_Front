@@ -24,7 +24,8 @@ import type {
  * 받아오지 못한 초안 화면의 자리표시자일 뿐이다.
  */
 export const DEFAULT_PERFORMER: PerformerInfo = {
-  orgName: "한국 AI 인증원",
+  // 서버 시드와 같은 이름(서술 라운드 세션 B, 사용자 결정 2). 데이터라 판 구분 없음 — 옛 보관본은 저장된 이름 그대로.
+  orgName: "리트머스",
   evaluator: "자동 평가 엔진",
   contact: "—",
 };
@@ -89,13 +90,19 @@ export function verdictRuleText(
 export const NEAR_TARGET_SENTENCE = "목표값과의 차이가 목표값의 3% 미만인 지표는 8.3에 별도 표시하였다.";
 
 /** 1.4 제약사항 한 항목. `details` 는 그 항목 아래 줄(영향 문장·목적별 미충족 문장). */
+/** 판 3 에서 빼는 1.4 항목의 제목(판 1·2 보관본은 발급 당시처럼 찍는다). */
+const LLM_DISCLAIMER_TITLE = "LLM 생성 소견에 대한 면책";
+
 export interface ConstraintItem {
   title: string;
   body: string;
   details?: string[];
 }
 
-/** 1.4 의 종전 4항목 — 모든 성적서에 찍는다. */
+/**
+ * 1.4 의 종전 4항목 — 판 1·2 성적서에 찍는다. 판 3 은 마지막 "LLM 생성 소견에 대한 면책" 을 뺀 3항목
+ * (`LLM_DISCLAIMER_TITLE`, 서술 라운드 세션 B, 사용자 결정 2 — 본문에서 AI/LLM 표현 제거).
+ */
 const BASE_CONSTRAINTS: ConstraintItem[] = [
   {
     title: "데이터 기반 평가의 국한성",
@@ -110,7 +117,7 @@ const BASE_CONSTRAINTS: ConstraintItem[] = [
     body: "종합 분석 소견은 산출된 통계 지표를 바탕으로 한 성능 해석 및 기술적 권고안으로, 모델 개선을 위한 보조적 참고 자료이다. 최종적인 서비스 운영 및 상용화 의사결정의 책임은 전적으로 평가 의뢰자에게 있다.",
   },
   {
-    title: "LLM 생성 소견에 대한 면책",
+    title: LLM_DISCLAIMER_TITLE,
     body: "본 결과서의 서술형 분석 소견(7절 이후)은 산출된 정량 지표를 바탕으로 LLM(Large Language Model) 및 RAG(Retrieval-Augmented Generation) 기술을 활용하여 자동 생성되었다. 해당 소견은 참고용이며, 전문가의 추가 검토를 권장한다.",
   },
 ];
@@ -138,16 +145,19 @@ const CONFIDENCE_INTERVAL_ITEM: ConstraintItem = {
  * 재료 선택 점검 결과가 없는 옛 성적서는 종전 4항목 그대로다 — 문장은 발급 당시 그대로 둔다.
  * 신뢰구간 여부(`hasConfidenceIntervals`)는 점검 결과와 따로 받는다. 성적서의 `confidenceIntervalNote`
  * 키가 그 표시다(6.1·6.2 의 신뢰구간 열과 같은 표시).
+ * 판 3(`schema3`)이면 종전 4항목에서 "LLM 생성 소견에 대한 면책" 을 뺀다 — 판 1·2 는 그대로(사용자 결정 2).
  */
 export function constraintsFor(
   materialCheck: MaterialCheckResult | undefined,
   hasConfidenceIntervals: boolean,
+  schema3 = false,
 ): ConstraintItem[] {
+  const base = schema3 ? BASE_CONSTRAINTS.filter((c) => c.title !== LLM_DISCLAIMER_TITLE) : BASE_CONSTRAINTS;
   const ciItems = hasConfidenceIntervals ? [CONFIDENCE_INTERVAL_ITEM] : [];
-  if (!materialCheck) return [...BASE_CONSTRAINTS, ...ciItems];
+  if (!materialCheck) return [...base, ...ciItems];
   const { printed } = materialCheck;
   return [
-    ...BASE_CONSTRAINTS,
+    ...base,
     { title: "의뢰자 제공 정보에 대한 전제", body: CLIENT_PROVIDED_PREMISE },
     ...ciItems,
     ...(printed.notProvided ? [{ title: "제공되지 않은 정보", body: printed.notProvided, details: printed.impacts }] : []),

@@ -114,6 +114,16 @@ export function parseImbalanceEffect(raw: unknown): ImbalanceEffect | null {
     majority_class: raw.majority_class,
     minority_class: raw.minority_class,
   };
+  // 차이를 만든 값 넷(서술 라운드 세션 B 엔진부터) — 칸마다 모양이 맞을 때만 싣는다. 없거나 틀리면 그 칸만 없다
+  // (3절 문장이 차이만 찍는다). 멀티레이블은 정확도·매크로 F1 이 null 이라 싣지 않는다(정확도 갈래가 없다).
+  const accuracy = finite(raw.accuracy);
+  if (accuracy !== null) parsed.accuracy = accuracy;
+  const macroF1 = finite(raw.macro_f1);
+  if (macroF1 !== null) parsed.macro_f1 = macroF1;
+  const majorityF1 = finite(raw.majority_f1);
+  if (majorityF1 !== null) parsed.majority_f1 = majorityF1;
+  const minorityF1 = finite(raw.minority_f1);
+  if (minorityF1 !== null) parsed.minority_f1 = minorityF1;
   const display = parseImbalanceDisplay(raw.display, accuracyGap === null);
   if (display) parsed.display = display;
   return parsed;
@@ -125,7 +135,16 @@ function parseImbalanceDisplay(raw: unknown, noAccuracyGap: boolean): ImbalanceE
   const { imbalance_ratio: ir, accuracy_minus_macro_f1: acc, majority_minus_minority_f1: cls } = raw;
   if (typeof ir !== "string" || typeof cls !== "string") return null;
   if (noAccuracyGap ? acc !== null : typeof acc !== "string") return null;
-  return { imbalance_ratio: ir, accuracy_minus_macro_f1: acc as string | null, majority_minus_minority_f1: cls };
+  const display: NonNullable<ImbalanceEffect["display"]> = {
+    imbalance_ratio: ir,
+    accuracy_minus_macro_f1: acc as string | null,
+    majority_minus_minority_f1: cls,
+  };
+  // 새 칸(세션 B 엔진부터)은 문자열일 때만 — 없거나 null 이면 그 칸만 없다.
+  for (const key of ["accuracy", "macro_f1", "majority_f1", "minority_f1"] as const) {
+    if (typeof raw[key] === "string") display[key] = raw[key] as string;
+  }
+  return display;
 }
 
 /** 정답 라벨 주의에 걸린 답 하나 — 무엇(구축 방법/신뢰성)이 어떤 값(성적서 이름)인지. */

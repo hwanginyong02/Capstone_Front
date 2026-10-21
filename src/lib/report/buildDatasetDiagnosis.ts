@@ -1,4 +1,5 @@
 import type { ImbalanceEffect } from "../../types/finalReport.types";
+import { josaEuroRoNumber, josaWaGwaNumber } from "./koreanJosa";
 
 /**
  * 데이터셋 분포 사전 진단 문구 생성 (3절).
@@ -68,14 +69,91 @@ export function formatImbalanceRatio(ratio: number, balanced: boolean): string {
   return (Math.floor(ratio * scale) / scale).toFixed(MAX_IMBALANCE_DECIMALS);
 }
 
+/** 차이 판정 기준(서술 설계 D20·D12). 차이가 이 값 **이상**이면 왜곡으로 본다. */
+const IMBALANCE_F1_GAP = 0.1;
+
+/** 클래스·레이블을 부르는 꼴 — 설명이 있으면 '이름(설명)', 없으면 이름만(서술 설계 D37, 백엔드 `class_name` 과 같은 규칙). */
+function className(label: string, descriptions: Record<string, string> | undefined): string {
+  const description = descriptions?.[label.trim()]?.trim();
+  return description && description !== "제공되지 않음" && description !== label.trim()
+    ? `${label}(${description})`
+    : label;
+}
+
+/**
+ * 엔진 판정이 있을 때의 불균형 진단 한 문장 — 서술 설계 D20 세 갈래(경미·영향 있음·불균형 있으나 왜곡 미관찰).
+ * 문구는 사용자가 정한 그대로(서술 라운드 세션 B, 결정 6). 숫자는 엔진 표시 문자열(판정과 같은 쪽으로 자릿수를
+ * 늘린 값)을 쓰고, 표시값이 없는 옛 응답만 숫자 칸을 그대로 찍는다. 기준(0.10) 이상인지는 백엔드 7.2 문장과 같이
+ * 표시값으로 본다(4자리 값 0.1 이 실제로는 0.09996 일 수 있다). 정확도·매크로 F1 값(새 칸)이 없는 옛 응답이면
+ * 조건 문장은 차이만 찍는다. 멀티레이블은 엔진이 정확도 차이를 null 로 두므로 그 갈래를 빼고 '레이블' 로 부른다.
+ */
+function imbalanceEffectSentence(
+  effect: ImbalanceEffect,
+  irText: string,
+  descriptions: Record<string, string> | undefined,
+): string {
+  const head = `클래스 불균형 비율(Imbalance Ratio)은 ${irText}${josaEuroRoNumber(irText)}`;
+  if (effect.level === "mild") return `${head}, 허용 기준(1.50 미만) 이내이다.`;
+
+  const shown = effect.display;
+  // 멀티레이블인지는 엔진이 정확도 차이를 null 로 둔 것으로 안다(백엔드 7.2 문장과 같은 판단 — 한 곳).
+  const unit = effect.accuracy_minus_macro_f1 === null ? "레이블" : "클래스";
+  const accuracyGap =
+    effect.accuracy_minus_macro_f1 === null
+      ? null
+      : (shown?.accuracy_minus_macro_f1 ?? String(effect.accuracy_minus_macro_f1));
+  const classGap = shown?.majority_minus_minority_f1 ?? String(effect.majority_minus_minority_f1);
+  const atLeast = (text: string, value: number) => {
+    const parsed = Number(text);
+    return Number.isFinite(parsed) ? parsed >= IMBALANCE_F1_GAP : value >= IMBALANCE_F1_GAP;
+  };
+  const pair = `다수 ${unit} '${className(effect.majority_class, descriptions)}'와 소수 ${unit} '${className(effect.minority_class, descriptions)}'의 F1 차이`;
+
+  if (effect.level === "affected") {
+    const conditions: string[] = [];
+    if (accuracyGap !== null && atLeast(accuracyGap, effect.accuracy_minus_macro_f1 as number)) {
+      const accuracy = shown?.accuracy ?? (effect.accuracy != null ? String(effect.accuracy) : null);
+      const macroF1 = shown?.macro_f1 ?? (effect.macro_f1 != null ? String(effect.macro_f1) : null);
+      const subject =
+        accuracy !== null && macroF1 !== null
+          ? `정확도 ${accuracy}${josaWaGwaNumber(accuracy)} 매크로 F1 ${macroF1}의 차이`
+          : "정확도와 매크로 F1의 차이";
+      conditions.push(`${subject}가 ${accuracyGap}${josaEuroRoNumber(accuracyGap)} 0.10 이상`);
+    }
+    if (atLeast(classGap, effect.majority_minus_minority_f1)) {
+      conditions.push(`${pair}가 ${classGap}${josaEuroRoNumber(classGap)} 0.10 이상`);
+    }
+    // 엔진은 '영향 있음'인데 기준 이상인 차이를 찾지 못하면(표시값이 없는 옛 응답의 반올림) 조건을 지어내지 않는다.
+    const because = conditions.length > 0 ? `${conditions.join("이고, ")}이어서 ` : "";
+    return (
+      `${head} 허용 기준(1.50 미만)을 벗어나며, ${because}불균형에 따른 성능 지표 왜곡이 관찰되었다. ` +
+      "정확도보다 매크로 F1과 클래스별 지표를 우선 참고해야 한다."
+    );
+  }
+
+  // no_distortion
+  if (accuracyGap === null) {
+    return (
+      `${head} 허용 기준(1.50 미만)을 벗어나나, 다수·소수 ${unit} F1의 차이가 0.10 미만이라 ` +
+      `불균형에 따른 성능 왜곡은 관찰되지 않았다(${pair} ${classGap}).`
+    );
+  }
+  return (
+    `${head} 허용 기준(1.50 미만)을 벗어나나, 정확도와 매크로 F1, 다수·소수 ${unit} F1의 차이가 모두 0.10 미만이라 ` +
+    `불균형에 따른 성능 왜곡은 관찰되지 않았다(정확도와 매크로 F1의 차이 ${accuracyGap}, ${pair} ${classGap}).`
+  );
+}
+
 export function buildDatasetDiagnosis(
   metadata: { class_distribution?: Record<string, number> } | null | undefined,
   imbalanceRatio?: number,
   droppedRows: number = 0,
   datasetSize?: number,
   taskType?: "binary" | "multiclass" | "multilabel",
-  /** 백엔드 D20 판정(`parseImbalanceEffect`). 있으면 3절 균형 판정이 이 결과를 따른다. */
+  /** 백엔드 D20 판정(`parseImbalanceEffect`). 있으면 3절 문장이 이 판정의 세 갈래를 따른다. */
   imbalanceEffect?: ImbalanceEffect | null,
+  /** 클래스 레이블 설명({클래스: 설명}). 다수·소수 클래스를 '이름(설명)' 으로 부른다(D37). */
+  classDescriptions?: Record<string, string>,
 ): string {
   const dist: Record<string, number> = metadata?.class_distribution ?? {};
   const entries = Object.entries(dist).filter(([, count]) => typeof count === "number");
@@ -136,12 +214,21 @@ export function buildDatasetDiagnosis(
       // 경미이므로 "1.50" 이 아니라 "1.497" 로 찍는다.
       // 이 문장은 생성 때 만들어 저장하므로 이미 발행된 성적서의 3절은 바뀌지 않는다.
       const balanced = isBalancedImbalance(ratio, imbalanceEffect);
-      parts.push(
-        `클래스 불균형 비율(Imbalance Ratio)은 ${formatImbalanceRatio(ratio, balanced)}로, ` +
-          (balanced
-            ? "허용 기준(< 1.50) 이내의 균형 상태이다."
-            : "허용 기준(1.50 미만)을 벗어나 클래스 불균형에 따른 성능 지표 해석에 주의가 필요하다."),
-      );
+      if (imbalanceEffect) {
+        // 엔진 판정이 있으면 세 갈래(D20, 새 run 부터 — 이 문장은 조립 때 저장하므로 판 조건이 필요 없다).
+        // IR 은 엔진 표시 문자열(판정과 같은 쪽으로 자릿수를 늘린 값), 없으면(S2 이전 응답) 위에서 고른 값.
+        const irText = imbalanceEffect.display?.imbalance_ratio ?? formatImbalanceRatio(ratio, balanced);
+        parts.push(imbalanceEffectSentence(imbalanceEffect, irText, classDescriptions));
+      } else {
+        // 엔진 판정이 없으면(옛 응답·예측 없음) 왜곡 여부를 알 수 없다 — 종전 두 갈래. 조사만 숫자 끝소리로.
+        const irText = formatImbalanceRatio(ratio, balanced);
+        parts.push(
+          `클래스 불균형 비율(Imbalance Ratio)은 ${irText}${josaEuroRoNumber(irText)}, ` +
+            (balanced
+              ? "허용 기준(< 1.50) 이내의 균형 상태이다."
+              : "허용 기준(1.50 미만)을 벗어나 클래스 불균형에 따른 성능 지표 해석에 주의가 필요하다."),
+        );
+      }
     }
   }
 

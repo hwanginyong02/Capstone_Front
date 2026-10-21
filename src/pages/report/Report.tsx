@@ -7,6 +7,7 @@ import { ReportLayout } from "../../components/report/layout/ReportLayout";
 import { ReportLoadingState } from "../../components/report/ReportLoadingState";
 import { ReportErrorState } from "../../components/report/ReportErrorState";
 import { ReportSections } from "../../components/report/ReportSections";
+import { NarrativeRecordPanel } from "../../components/report/NarrativeRecordPanel";
 import { UnevaluatedDraftNotice } from "../../components/report/UnevaluatedDraftNotice";
 import {
   IssuedEmptyNarrativeNotice,
@@ -82,6 +83,9 @@ export function Report() {
         retrying={narrative.retrying}
         onRetry={() => void report.retryNarrative()}
       />
+      {/* 작성 기록(판 3, 서술이 끝난 성적서) — 화면에만. 본문(ReportSections)·인쇄 경로에는 없다(사용자 결정 4).
+          서술 대기·실패는 화면 출처(displaySource → narrativeSource pending·failed)로 상자가 스스로 가린다. */}
+      <NarrativeRecordPanel data={data} />
       <ReportSections data={data} />
     </ReportLayout>
   );
