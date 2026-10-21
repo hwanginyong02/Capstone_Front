@@ -22,3 +22,11 @@ export function recommendationPlaceholder(source: NarrativeSource | undefined, o
   if (source === "failed") return "권고를 만들지 못함";
   return otherwise;
 }
+
+/**
+ * 서술이 아직 없는 초안(옛 저장본·미평가)의 종전 안내 문구. 판 3 은 본문에서 AI 표현을 빼므로(사용자 결정 2)
+ * "자동 서술 생성(LLM)" 의 "(LLM)" 을 지운다. 판 1·2 는 종전 문구 그대로.
+ */
+export function draftPlaceholder(legacyText: string, schema3: boolean | undefined): string {
+  return schema3 ? legacyText.replace("(LLM)", "") : legacyText;
+}

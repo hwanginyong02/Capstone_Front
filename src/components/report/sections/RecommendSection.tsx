@@ -1,12 +1,14 @@
 import type { ReportRecommendation } from "../../../types/report.types";
 import type {
   RecommendationNarrative,
+  NarrativeSectionSource,
   NarrativeSource,
   Problem,
 } from "../../../types/finalReport.types";
 import { SectionTitle } from "../shared/SectionTitle";
 import { NarrativeSourceBadge } from "../shared/NarrativeSourceBadge";
-import { narrativePlaceholder, recommendationPlaceholder } from "../shared/narrativePlaceholder";
+import { SectionSourceBadge, sectionBadgeKind } from "../shared/SectionSourceBadge";
+import { draftPlaceholder, narrativePlaceholder, recommendationPlaceholder } from "../shared/narrativePlaceholder";
 import { cn } from "../../../utils/styling/styles";
 import { problemLabel } from "../../../lib/report/problemList";
 
@@ -27,6 +29,8 @@ interface RecommendSectionProps {
   problems?: Problem[];
   /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
   schema3?: boolean;
+  /** 칸(소절)별 출처(`FinalReportData.narrativeSections`). 판 3 에서 9 칸이 규칙 기반이면 9절 머리에 화면 전용 배지. */
+  narrativeSections?: Record<string, NarrativeSectionSource>;
 }
 
 // 성적서 고정 문구 6 — 사실 시트의 고정 문장 목록과 같은 상수 하나(reportConstants).
@@ -59,11 +63,11 @@ function NarrativeBlock({
       <SubsectionTitle number={number} schema3={schema3} className="text-sm font-semibold text-slate-700">{title}</SubsectionTitle>
       {hasText ? (
         <blockquote className="rounded-lg border border-slate-200 bg-slate-50 px-5 py-4">
-          <p className="text-sm font-medium leading-relaxed text-slate-700">"{text}"</p>
+          <p className={schema3 ? "whitespace-pre-line text-sm font-medium leading-relaxed text-slate-700" : "text-sm font-medium leading-relaxed text-slate-700"}>"{text}"</p>
         </blockquote>
       ) : (
         <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-xs text-slate-400">
-          {narrativePlaceholder(source, PLACEHOLDER)}
+          {narrativePlaceholder(source, draftPlaceholder(PLACEHOLDER, schema3))}
         </p>
       )}
     </div>
@@ -144,19 +148,31 @@ function ProblemTable({
   );
 }
 
-export function RecommendSection({ recommendations, narrative, source, problems, schema3 }: RecommendSectionProps) {
+export function RecommendSection({ recommendations, narrative, source, problems, schema3, narrativeSections }: RecommendSectionProps) {
+  // 판 3 에서 문제 0개면 9절은 고정 문구 6 만(9.1·9.2 서술·배지 없음 — 서술 설계 D22). 옛 판·문제 목록이 없는 아주
+  // 옛 판은 발급 당시 모양.
+  const onlyNoProblem = schema3 && problems !== undefined && problems.length === 0;
   return (
     <section className="space-y-6 border-t border-slate-200 py-10">
       <div className="flex items-center justify-between gap-3">
         <SectionTitle number={9} title="기술 개선 권고안" />
-        <NarrativeSourceBadge source={source} />
+        {/* 판 3 은 장 단위 배지 대신 9 칸(9.1·9.2·권고 표 한 칸)의 화면 전용 배지 하나(사용자 결정 3). */}
+        {schema3 ? (
+          !onlyNoProblem && <SectionSourceBadge kind={sectionBadgeKind(schema3, source, narrativeSections, "9")} />
+        ) : (
+          <NarrativeSourceBadge source={source} />
+        )}
       </div>
 
-      {/* 9.1 데이터셋 보완 및 품질 개선 전략 */}
-      <NarrativeBlock number="9.1" schema3={schema3} title="데이터셋 보완 및 품질 개선 전략" text={narrative.dataQuality} source={source} />
+      {!onlyNoProblem && (
+        <>
+          {/* 9.1 데이터셋 보완 및 품질 개선 전략 */}
+          <NarrativeBlock number="9.1" schema3={schema3} title="데이터셋 보완 및 품질 개선 전략" text={narrative.dataQuality} source={source} />
 
-      {/* 9.2 모델 고도화 및 운영 관리 가이드 */}
-      <NarrativeBlock number="9.2" schema3={schema3} title="모델 고도화 및 운영 관리 가이드" text={narrative.modelOps} source={source} />
+          {/* 9.2 모델 고도화 및 운영 관리 가이드 */}
+          <NarrativeBlock number="9.2" schema3={schema3} title="모델 고도화 및 운영 관리 가이드" text={narrative.modelOps} source={source} />
+        </>
+      )}
 
       {/* 권고 표 — 문제 목록이 있는 성적서는 문제 번호 표(0개면 고정 문구 6), 없으면 종전 표 */}
       {problems !== undefined ? (
@@ -169,7 +185,7 @@ export function RecommendSection({ recommendations, narrative, source, problems,
         )
       ) : recommendations.length === 0 ? (
         <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-xs text-slate-400">
-          {narrativePlaceholder(source, "권고 항목은 자동 서술 생성(LLM) 연동 시 표시됩니다.")}
+          {narrativePlaceholder(source, draftPlaceholder("권고 항목은 자동 서술 생성(LLM) 연동 시 표시됩니다.", schema3))}
         </p>
       ) : (
       <table className="w-full text-sm border-collapse">

@@ -85,6 +85,10 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         errorRatioSentence={data.errorRatioSentence}
         labelCautionSentence={data.labelCautionSentence}
         schema3={usesSchema3(data)}
+        narrativeSections={data.narrativeSections}
+        taskType={data.meta.taskType}
+        narrativeFacts={data.narrativeFacts}
+        classLabelDescriptions={data.datasetInfo.classLabelDescriptions}
       />
       <ConclusionSection
         conclusion={data.conclusion}
@@ -92,6 +96,11 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         nearTargetNote={data.nearTargetNote}
         sourceRelationSentence={data.sourceRelationSentence}
         schema3={usesSchema3(data)}
+        narrativeSections={data.narrativeSections}
+        noBenchmarkSentence={data.noBenchmarkSentence}
+        kpiResults={data.kpiResults}
+        targetDigits={data.targetDigits}
+        judgedValueDigits={data.judgedValueDigits}
       />
       <RecommendSection
         recommendations={data.recommendations}
@@ -99,6 +108,7 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         source={data.narrativeSource}
         problems={data.problems}
         schema3={usesSchema3(data)}
+        narrativeSections={data.narrativeSections}
       />
       <SignatureSection
         signature={data.signature}
