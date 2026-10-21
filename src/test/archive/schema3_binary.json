@@ -1,0 +1,1103 @@
+{
+  "contentSchema": 3,
+  "targetDigits": 3,
+  "judgedValueDigits": true,
+  "meta": {
+    "reportId": "",
+    "title": "기계학습 분류 성능 시험결과서",
+    "issuedAt": "",
+    "evaluationPeriod": {
+      "from": "2026-10-22",
+      "to": "2026-10-22"
+    },
+    "taskType": "binary",
+    "taskTypeLabel": "이진 분류",
+    "positiveClass": "1",
+    "derivedPrediction": {
+      "method": "threshold",
+      "threshold": 0.5,
+      "source_columns": [
+        "prob"
+      ],
+      "target_role": "y_pred"
+    }
+  },
+  "applicant": {
+    "companyName": "보관본 주식회사",
+    "representative": "—",
+    "businessNumber": "—",
+    "contact": "—",
+    "fax": "",
+    "homepage": "",
+    "address": "—"
+  },
+  "performer": {
+    "orgName": "한국 AI 인증원",
+    "evaluator": "자동 평가 엔진",
+    "contact": "—"
+  },
+  "evalScope": {
+    "purpose": "외부 제출 및 인증/심사기관 검토 목적으로 활용",
+    "targetModel": "ArchiveModel",
+    "version": "v1.0.0",
+    "scope": "의뢰자가 제출한 평가 데이터셋을 기반으로 선택된 시험항목에 대해 정량적 성능 지표를 산출하고 합격 기준 충족 여부를 판정한다.",
+    "reportPurposeKey": "external"
+  },
+  "datasetInfo": {
+    "format": "정형 데이터 (CSV)",
+    "inputColumns": [
+      "id",
+      "y_true",
+      "y_pred",
+      "score"
+    ],
+    "sampleCount": 200,
+    "taskTypeLabel": "이진 분류",
+    "classCount": 2,
+    "classLabels": [
+      "Negative (0)",
+      "Positive (1)"
+    ],
+    "fileName": "data.csv"
+  },
+  "datasetSamples": [],
+  "datasetDiagnosis": "평가 데이터셋은 총 200건이며, 클래스(레이블)별 분포는 0 105건(52.5%), 1 95건(47.5%)이다. 클래스 불균형 비율(Imbalance Ratio)은 1.11로, 허용 기준(< 1.50) 이내의 균형 상태이다.",
+  "trainingDatasetInfo": {
+    "name": "—",
+    "trainingSampleCount": 0,
+    "validationSampleCount": 0,
+    "classDistribution": "0 600 / 1 400",
+    "validExamples": [],
+    "edgeExamples": []
+  },
+  "evalEnv": {
+    "method": "서버 사이드 자동 연산 (Python 기반 metric 산출)",
+    "outputFormat": "성능 지표 수치 및 합격/불합격 판정 성적서 (PDF)",
+    "tools": [
+      "Python 3.11",
+      "scikit-learn 1.4.0",
+      "pandas 2.2.0",
+      "numpy 1.26.0"
+    ],
+    "systemSpec": {
+      "os": "제공되지 않음",
+      "cpu": "제공되지 않음",
+      "gpu": "제공되지 않음",
+      "memory": "제공되지 않음",
+      "software": "제공되지 않음"
+    },
+    "environment": {
+      "evaluated_at": "<비결정적 값 — 존재만 고정>",
+      "libraries": "<비결정적 값 — 존재만 고정>"
+    }
+  },
+  "metricList": [
+    {
+      "metricId": "M1",
+      "name": "Accuracy",
+      "threshold": 0.51,
+      "passCriteria": "≥ 0.510"
+    },
+    {
+      "metricId": "M2",
+      "name": "Precision",
+      "threshold": null,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M3",
+      "name": "Recall",
+      "threshold": null,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M4",
+      "name": "F1 Score",
+      "threshold": 0.5,
+      "passCriteria": "≥ 0.500"
+    },
+    {
+      "metricId": "M5",
+      "name": "F-beta Score",
+      "threshold": 0.5,
+      "passCriteria": "≥ 0.500"
+    },
+    {
+      "metricId": "M9",
+      "name": "AUROC",
+      "threshold": null,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M20",
+      "name": "MCC",
+      "threshold": 0,
+      "passCriteria": "≥ 0.000"
+    }
+  ],
+  "metricFormulas": [
+    {
+      "metricId": "M1",
+      "name": "Accuracy",
+      "formula": "(TP + TN) / Total",
+      "description": "모델이 맞게 예측한 비율입니다.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M2",
+      "name": "Precision",
+      "formula": "binary: TP/(TP+FP) · 그 외: 클래스별 TP/(TP+FP) 의 macro 평균",
+      "description": "양성으로 예측한 것 중 실제 양성인 비율입니다.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M3",
+      "name": "Recall",
+      "formula": "binary: TP/(TP+FN) · 그 외: 클래스별 TP/(TP+FN) 의 macro 평균",
+      "description": "실제 양성 중 모델이 찾아낸 비율입니다.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M4",
+      "name": "F1 Score",
+      "formula": "binary: 2PR/(P+R) · 그 외: 클래스별 F1 의 macro 평균(macro-P·macro-R 의 조화평균이 아님)",
+      "description": "정밀도와 재현율을 하나로 묶어 균형을 봅니다.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M5",
+      "name": "F-beta Score",
+      "formula": "binary: (1+β²)PR/(β²P+R) · 그 외: 클래스별 Fβ 의 macro 평균",
+      "description": "β로 정밀도와 재현율의 비중을 조정합니다.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M9",
+      "name": "AUROC",
+      "formula": "Area under ROC Curve",
+      "description": "모든 임계값에서 양성과 음성을 얼마나 잘 가르는지 봅니다.",
+      "isCommon": false
+    },
+    {
+      "metricId": "M20",
+      "name": "MCC",
+      "formula": "(TP*TN - FP*FN) / √((TP+FP)(TP+FN)(TN+FP)(TN+FN))",
+      "description": "혼동행렬의 네 칸을 모두 반영하는 이진 분류 지표입니다.",
+      "isCommon": false
+    }
+  ],
+  "dataValidation": [],
+  "kpiResults": [
+    {
+      "metricId": "M1",
+      "name": "Accuracy",
+      "value": 0.505,
+      "threshold": 0.51,
+      "status": "fail",
+      "higherIsBetter": true,
+      "isCore": true,
+      "ci": {
+        "low": 0.4363,
+        "high": 0.5735,
+        "method": "wilson"
+      },
+      "margin": -0.005,
+      "nearTarget": true
+    },
+    {
+      "metricId": "M2",
+      "name": "Precision",
+      "value": 0.48148148148148145,
+      "threshold": null,
+      "status": "pass",
+      "higherIsBetter": true,
+      "isCore": false
+    },
+    {
+      "metricId": "M3",
+      "name": "Recall",
+      "value": 0.5473684210526316,
+      "threshold": null,
+      "status": "pass",
+      "higherIsBetter": true,
+      "isCore": false
+    },
+    {
+      "metricId": "M4",
+      "name": "F1 Score",
+      "value": 0.5123152709359606,
+      "threshold": 0.5,
+      "status": "pass",
+      "higherIsBetter": true,
+      "isCore": true,
+      "ci": {
+        "low": 0.4271,
+        "high": 0.5909,
+        "method": "bootstrap_multinomial"
+      },
+      "margin": 0.0123152709,
+      "nearTarget": true
+    },
+    {
+      "metricId": "M5",
+      "name": "F-beta Score",
+      "value": 0.5123152709359606,
+      "threshold": 0.5,
+      "status": "pass",
+      "higherIsBetter": true,
+      "isCore": false,
+      "ci": {
+        "low": 0.4271,
+        "high": 0.5909,
+        "method": "bootstrap_multinomial"
+      },
+      "margin": 0.0123152709,
+      "nearTarget": true
+    },
+    {
+      "metricId": "M9",
+      "name": "AUROC",
+      "value": 0.5111779448621554,
+      "threshold": null,
+      "status": "pass",
+      "higherIsBetter": true,
+      "isCore": false
+    },
+    {
+      "metricId": "M20",
+      "name": "MCC",
+      "value": 0.014062605450317654,
+      "threshold": 0,
+      "status": "pass",
+      "higherIsBetter": true,
+      "isCore": false,
+      "ci": {
+        "low": -0.1272,
+        "high": 0.1503,
+        "method": "bootstrap_multinomial"
+      },
+      "margin": 0.0140626055,
+      "nearTarget": false
+    }
+  ],
+  "charts": {
+    "confusionMatrix": null,
+    "rocCurve": {
+      "fpr": [
+        0,
+        0.009523809523809525,
+        0.009523809523809525,
+        0.047619047619047616,
+        0.0761904761904762,
+        0.0761904761904762,
+        0.08571428571428572,
+        0.09523809523809523,
+        0.14285714285714285,
+        0.1619047619047619,
+        0.18095238095238095,
+        0.22857142857142856,
+        0.2571428571428571,
+        0.26666666666666666,
+        0.3047619047619048,
+        0.3142857142857143,
+        0.3333333333333333,
+        0.34285714285714286,
+        0.3523809523809524,
+        0.38095238095238093,
+        0.38095238095238093,
+        0.4,
+        0.4095238095238095,
+        0.4095238095238095,
+        0.42857142857142855,
+        0.45714285714285713,
+        0.4666666666666667,
+        0.4857142857142857,
+        0.5047619047619047,
+        0.5142857142857142,
+        0.5238095238095238,
+        0.5333333333333333,
+        0.5428571428571428,
+        0.5523809523809524,
+        0.5714285714285714,
+        0.5714285714285714,
+        0.6,
+        0.6,
+        0.6285714285714286,
+        0.638095238095238,
+        0.6476190476190476,
+        0.6761904761904762,
+        0.6857142857142857,
+        0.6857142857142857,
+        0.6952380952380952,
+        0.7333333333333333,
+        0.7619047619047619,
+        0.7714285714285715,
+        0.780952380952381,
+        0.8,
+        0.8095238095238095,
+        0.8571428571428571,
+        0.8857142857142857,
+        0.9047619047619048,
+        0.9238095238095239,
+        0.9333333333333333,
+        0.9523809523809523,
+        0.9619047619047619,
+        0.9904761904761905,
+        1
+      ],
+      "tpr": [
+        0,
+        0,
+        0.031578947368421054,
+        0.05263157894736842,
+        0.05263157894736842,
+        0.08421052631578947,
+        0.09473684210526316,
+        0.1368421052631579,
+        0.14736842105263157,
+        0.14736842105263157,
+        0.16842105263157894,
+        0.23157894736842105,
+        0.24210526315789474,
+        0.25263157894736843,
+        0.29473684210526313,
+        0.3368421052631579,
+        0.3368421052631579,
+        0.3368421052631579,
+        0.3473684210526316,
+        0.35789473684210527,
+        0.3684210526315789,
+        0.3894736842105263,
+        0.4105263157894737,
+        0.42105263157894735,
+        0.45263157894736844,
+        0.45263157894736844,
+        0.4631578947368421,
+        0.4631578947368421,
+        0.49473684210526314,
+        0.49473684210526314,
+        0.5263157894736842,
+        0.5473684210526316,
+        0.6105263157894737,
+        0.6105263157894737,
+        0.631578947368421,
+        0.6526315789473685,
+        0.6631578947368421,
+        0.6736842105263158,
+        0.6947368421052632,
+        0.7052631578947368,
+        0.7052631578947368,
+        0.7157894736842105,
+        0.7157894736842105,
+        0.7578947368421053,
+        0.7684210526315789,
+        0.7789473684210526,
+        0.7789473684210526,
+        0.7894736842105263,
+        0.7894736842105263,
+        0.8105263157894737,
+        0.8210526315789474,
+        0.8315789473684211,
+        0.8421052631578947,
+        0.8736842105263158,
+        0.9157894736842105,
+        0.9157894736842105,
+        0.9473684210526315,
+        0.9894736842105263,
+        0.9894736842105263,
+        1
+      ],
+      "auroc": 0.5111779448621554
+    },
+    "prCurve": {
+      "recall": [
+        0,
+        0,
+        0.031578947368421054,
+        0.05263157894736842,
+        0.08421052631578947,
+        0.09473684210526316,
+        0.1368421052631579,
+        0.14736842105263157,
+        0.14736842105263157,
+        0.16842105263157894,
+        0.22105263157894736,
+        0.23157894736842105,
+        0.24210526315789474,
+        0.2736842105263158,
+        0.29473684210526313,
+        0.3263157894736842,
+        0.3368421052631579,
+        0.3368421052631579,
+        0.3473684210526316,
+        0.35789473684210527,
+        0.3684210526315789,
+        0.3894736842105263,
+        0.4105263157894737,
+        0.43157894736842106,
+        0.4421052631578947,
+        0.45263157894736844,
+        0.45263157894736844,
+        0.45263157894736844,
+        0.4631578947368421,
+        0.4842105263157895,
+        0.49473684210526314,
+        0.5263157894736842,
+        0.5789473684210527,
+        0.5894736842105263,
+        0.6105263157894737,
+        0.6105263157894737,
+        0.6210526315789474,
+        0.6421052631578947,
+        0.6526315789473685,
+        0.6631578947368421,
+        0.6736842105263158,
+        0.7052631578947368,
+        0.7052631578947368,
+        0.7157894736842105,
+        0.7157894736842105,
+        0.7684210526315789,
+        0.7684210526315789,
+        0.7789473684210526,
+        0.7789473684210526,
+        0.7894736842105263,
+        0.8,
+        0.8105263157894737,
+        0.8315789473684211,
+        0.8421052631578947,
+        0.8736842105263158,
+        0.9157894736842105,
+        0.9473684210526315,
+        0.9789473684210527,
+        0.9894736842105263,
+        1
+      ],
+      "precision": [
+        1,
+        0,
+        0.6,
+        0.5,
+        0.5,
+        0.5,
+        0.5652173913043478,
+        0.4827586206896552,
+        0.45161290322580644,
+        0.45714285714285713,
+        0.4883720930232558,
+        0.4782608695652174,
+        0.46,
+        0.4642857142857143,
+        0.4666666666666667,
+        0.484375,
+        0.49230769230769234,
+        0.47058823529411764,
+        0.4714285714285714,
+        0.4594594594594595,
+        0.4666666666666667,
+        0.46835443037974683,
+        0.47560975609756095,
+        0.4823529411764706,
+        0.4827586206896552,
+        0.48863636363636365,
+        0.4777777777777778,
+        0.4725274725274725,
+        0.4631578947368421,
+        0.46938775510204084,
+        0.46534653465346537,
+        0.47619047619047616,
+        0.49107142857142855,
+        0.49557522123893805,
+        0.5043478260869565,
+        0.5,
+        0.5,
+        0.5041322314049587,
+        0.5081967213114754,
+        0.5,
+        0.5039370078740157,
+        0.5,
+        0.4962962962962963,
+        0.4892086330935252,
+        0.4857142857142857,
+        0.5,
+        0.49324324324324326,
+        0.4900662251655629,
+        0.4805194805194805,
+        0.4807692307692308,
+        0.4810126582278481,
+        0.4782608695652174,
+        0.46745562130177515,
+        0.4624277456647399,
+        0.46629213483146065,
+        0.47282608695652173,
+        0.47368421052631576,
+        0.48186528497409326,
+        0.47474747474747475,
+        0.475
+      ],
+      "auprc": 0.49404782320259494
+    }
+  },
+  "latency": null,
+  "interpretation": {
+    "confusionAnalysis": "오분류 99건 가운데 거짓 양성이 56건으로 거짓 음성보다 많아, 모델이 양성 쪽으로 기우는 경향이 보인다. 다만 의뢰자가 더 위험하다고 밝힌 놓침(FN)도 43건으로 적지 않다.",
+    "distributionAnalysis": "두 클래스의 비율이 52.5% 대 47.5%로 고르게 나뉘어 있어, 분포 치우침이 지표를 왜곡했다고 보기 어렵다.",
+    "additionalObservations": "확신 오류 31건은 결정 임계값을 옮겨도 줄지 않는 오류라, 해당 사례의 입력과 정답 라벨을 따로 점검할 필요가 있다."
+  },
+  "conclusion": {
+    "verdict": "FAIL",
+    "score": 75,
+    "judgedCount": 4,
+    "benchmark": "내부 참조 기준과 비교하면 참조 범위에 비해 미흡한 지표는 Accuracy(0.505, 참조 범위 0.85~0.92), Precision(0.4815, 참조 범위 0.8~0.92), Recall(0.5474, 참조 범위 0.8~0.92), F1 Score(0.512, 참조 범위 0.83~0.91), AUROC(0.5112, 참조 범위 0.85~0.95)이다. 비교 기준은 내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)이다. 목표값이 참조 범위보다 낮은 지표는 Accuracy(목표 0.51), F1 Score(목표 0.5)이다.",
+    "narrative": "핵심 지표 Accuracy 가 목표에 근소하게 미달해 종합 판정은 불합격이다. 신뢰구간이 목표값을 포함하므로 표본을 늘려 다시 확인할 여지가 있다.",
+    "risks": "임계값이 최적이 아니어서 같은 데이터에서 가능한 것보다 낮은 F1 로 운영될 위험이 있다.",
+    "benchmarkRefs": [
+      {
+        "metric": "Accuracy",
+        "modelValue": 0.505,
+        "refLow": 0.85,
+        "refHigh": 0.92,
+        "quality": "worse",
+        "direction": "higher",
+        "sourceNote": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)",
+        "targetValue": 0.51,
+        "targetPosition": "below"
+      },
+      {
+        "metric": "Precision",
+        "modelValue": 0.4815,
+        "refLow": 0.8,
+        "refHigh": 0.92,
+        "quality": "worse",
+        "direction": "higher",
+        "sourceNote": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)",
+        "targetValue": null,
+        "targetPosition": null
+      },
+      {
+        "metric": "Recall",
+        "modelValue": 0.5474,
+        "refLow": 0.8,
+        "refHigh": 0.92,
+        "quality": "worse",
+        "direction": "higher",
+        "sourceNote": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)",
+        "targetValue": null,
+        "targetPosition": null
+      },
+      {
+        "metric": "F1 Score",
+        "modelValue": 0.5123,
+        "refLow": 0.83,
+        "refHigh": 0.91,
+        "quality": "worse",
+        "direction": "higher",
+        "sourceNote": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)",
+        "targetValue": 0.5,
+        "targetPosition": "below"
+      },
+      {
+        "metric": "AUROC",
+        "modelValue": 0.5112,
+        "refLow": 0.85,
+        "refHigh": 0.95,
+        "quality": "worse",
+        "direction": "higher",
+        "sourceNote": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)",
+        "targetValue": null,
+        "targetPosition": null
+      },
+      {
+        "metric": "MCC",
+        "modelValue": 0.0141,
+        "refLow": 0.6,
+        "refHigh": 0.8,
+        "quality": "worse",
+        "direction": "higher",
+        "sourceNote": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)",
+        "targetValue": 0,
+        "targetPosition": "below"
+      }
+    ]
+  },
+  "recommendationNarrative": {
+    "dataQuality": "데이터 측면에서 권고 대상으로 지목된 문제는 없다.",
+    "modelOps": "모델 측면에서 권고 대상으로 지목된 문제는 없다."
+  },
+  "recommendations": [],
+  "signature": {
+    "issuer": "",
+    "signedAt": "",
+    "history": []
+  },
+  "materials": {
+    "declarations": [
+      {
+        "label": "위험 방향",
+        "value": "FN이 더 위험"
+      },
+      {
+        "label": "사용 방식",
+        "value": "대화형(실시간)"
+      }
+    ],
+    "training": [
+      {
+        "label": "학습 데이터셋명",
+        "value": null,
+        "item": 1
+      },
+      {
+        "label": "학습 데이터 출처",
+        "value": null,
+        "item": 1
+      },
+      {
+        "label": "학습 샘플 수",
+        "value": null,
+        "item": 1
+      },
+      {
+        "label": "검증 샘플 수",
+        "value": null,
+        "item": 1
+      },
+      {
+        "label": "학습 클래스 분포",
+        "value": "0 600 / 1 400",
+        "item": 1
+      },
+      {
+        "label": "채널 효과",
+        "value": null,
+        "item": 9
+      },
+      {
+        "label": "편향 감소 노력",
+        "value": null,
+        "item": 3
+      }
+    ],
+    "test": [
+      {
+        "label": "평가 데이터 출처",
+        "value": null,
+        "item": 2
+      },
+      {
+        "label": "학습 데이터와의 관계",
+        "value": "같은 출처",
+        "item": 2
+      }
+    ],
+    "groundTruth": [
+      {
+        "label": "정답 라벨 구축 방법",
+        "value": null,
+        "item": 4
+      },
+      {
+        "label": "정답 라벨 신뢰성",
+        "value": null,
+        "item": 5
+      }
+    ],
+    "environment": [
+      {
+        "label": "학습 가속",
+        "value": null,
+        "item": 11
+      },
+      {
+        "label": "추론 가속",
+        "value": null,
+        "item": 11
+      }
+    ],
+    "hyperparameters": {
+      "algorithm": null,
+      "rows": null
+    }
+  },
+  "materialCheck": {
+    "version": "1.0",
+    "reporting": {
+      "total": 11,
+      "provided": 1,
+      "items": [
+        {
+          "item": 1,
+          "name": "학습 데이터의 출처·크기·구성",
+          "impact": "평가 결과를 학습 데이터와 견주어 해석할 수 있는지",
+          "provided": false,
+          "missing": [
+            "학습 데이터셋명",
+            "학습 데이터 출처",
+            "학습 샘플 수",
+            "검증 샘플 수"
+          ]
+        },
+        {
+          "item": 2,
+          "name": "평가 데이터 출처",
+          "impact": "평가 데이터가 용도를 대표하는지",
+          "provided": false,
+          "missing": [
+            "평가 데이터 출처"
+          ]
+        },
+        {
+          "item": 3,
+          "name": "편향 감소 노력",
+          "impact": "데이터 편향을 분석하고 줄였는지",
+          "provided": false,
+          "missing": [
+            "편향 감소 노력"
+          ]
+        },
+        {
+          "item": 4,
+          "name": "정답 라벨 구축 방법",
+          "impact": "정답 라벨을 얼마나 믿을 수 있는지",
+          "provided": false,
+          "missing": [
+            "정답 라벨 구축 방법"
+          ]
+        },
+        {
+          "item": 5,
+          "name": "정답 라벨 신뢰성",
+          "impact": "정답 라벨의 오류가 성능 수치에 얼마나 섞였는지",
+          "provided": false,
+          "missing": [
+            "정답 라벨 신뢰성"
+          ]
+        },
+        {
+          "item": 6,
+          "name": "대표 작동 지점의 TP·FP 건수",
+          "impact": "오류 건수를 확인할 수 있는지",
+          "provided": true,
+          "missing": []
+        },
+        {
+          "item": 7,
+          "name": "추론 환경",
+          "impact": "결과가 어떤 하드웨어·소프트웨어에서 나왔는지",
+          "provided": false,
+          "missing": [
+            "운영체제",
+            "CPU",
+            "GPU",
+            "메모리",
+            "소프트웨어"
+          ]
+        },
+        {
+          "item": 8,
+          "name": "추론 효율성(지연시간)",
+          "impact": "응답 속도가 용도에 맞는지",
+          "provided": false,
+          "missing": [
+            "지연시간 컬럼"
+          ]
+        },
+        {
+          "item": 9,
+          "name": "학습 데이터의 채널 효과",
+          "impact": "모델이 내용 대신 수집 방식을 배웠는지",
+          "provided": false,
+          "missing": [
+            "채널 효과"
+          ]
+        },
+        {
+          "item": 10,
+          "name": "하이퍼파라미터",
+          "impact": "같은 조건으로 모델을 다시 만들거나 공정하게 비교할 수 있는지",
+          "provided": false,
+          "missing": [
+            "알고리즘",
+            "하이퍼파라미터"
+          ]
+        },
+        {
+          "item": 11,
+          "name": "가속 사용",
+          "impact": "응답 시간이 어떤 조건에서 나온 값인지",
+          "provided": false,
+          "missing": [
+            "학습 가속",
+            "추론 가속"
+          ]
+        }
+      ]
+    },
+    "purpose": {
+      "applicable": 2,
+      "met": 1,
+      "lines": [
+        {
+          "id": "latency",
+          "met": false,
+          "title": "사용 방식 → 지연시간",
+          "declared": "대화형(실시간)",
+          "recommended": [],
+          "shortfall": "의뢰자가 사용 방식을 \"대화형(실시간)\"으로 밝혔으나 응답시간(latency) 자료가 제공되지 않아, 응답 속도가 용도에 맞는지 판단할 수 없다."
+        },
+        {
+          "id": "riskDirection",
+          "met": true,
+          "title": "위험 방향 → 재현율·정밀도",
+          "declared": "FN이 더 위험",
+          "recommended": [
+            "M3"
+          ],
+          "shortfall": "의뢰자가 위험 방향을 \"FN이 더 위험\"으로 밝혔으나, 이에 맞는 재현율(Recall) 또는 β가 1보다 큰 Fβ가 시험 항목에 없다."
+        }
+      ]
+    },
+    "warningIds": [
+      "reporting:1",
+      "reporting:2",
+      "reporting:3",
+      "reporting:4",
+      "reporting:5",
+      "reporting:7",
+      "reporting:8",
+      "reporting:9",
+      "reporting:10",
+      "reporting:11",
+      "purpose:latency"
+    ],
+    "imbalanceRatio": 1.105263157894737,
+    "distributionSource": "upload",
+    "acknowledgement": null,
+    "printed": {
+      "cover": "ISO/IEC TS 4213:2022에 따라 평가. 일부 보고 항목 미제공(1.4 참조)",
+      "notProvided": "ISO/IEC TS 4213이 보고를 요구하는 항목 중 학습 데이터의 출처·크기·구성, 평가 데이터 출처, 편향 감소 노력, 정답 라벨 구축 방법, 정답 라벨 신뢰성, 추론 환경, 추론 효율성(지연시간), 학습 데이터의 채널 효과, 하이퍼파라미터, 가속 사용은 의뢰자로부터 제공받지 못해 기재하지 않았다. 따라서 본 결과서는 이 항목들에 대해 TS 4213의 보고 요구를 충족하지 않는다.",
+      "impacts": [
+        "학습 데이터의 출처·크기·구성: 평가 결과를 학습 데이터와 견주어 해석할 수 있는지 판단할 수 없다.",
+        "평가 데이터 출처: 평가 데이터가 용도를 대표하는지 판단할 수 없다.",
+        "편향 감소 노력: 데이터 편향을 분석하고 줄였는지 판단할 수 없다.",
+        "정답 라벨 구축 방법: 정답 라벨을 얼마나 믿을 수 있는지 판단할 수 없다.",
+        "정답 라벨 신뢰성: 정답 라벨의 오류가 성능 수치에 얼마나 섞였는지 판단할 수 없다.",
+        "추론 환경: 결과가 어떤 하드웨어·소프트웨어에서 나왔는지 판단할 수 없다.",
+        "추론 효율성(지연시간): 응답 속도가 용도에 맞는지 판단할 수 없다.",
+        "학습 데이터의 채널 효과: 모델이 내용 대신 수집 방식을 배웠는지 판단할 수 없다.",
+        "하이퍼파라미터: 같은 조건으로 모델을 다시 만들거나 공정하게 비교할 수 있는지 판단할 수 없다.",
+        "가속 사용: 응답 시간이 어떤 조건에서 나온 값인지 판단할 수 없다."
+      ],
+      "purposeShortfalls": [
+        "의뢰자가 사용 방식을 \"대화형(실시간)\"으로 밝혔으나 응답시간(latency) 자료가 제공되지 않아, 응답 속도가 용도에 맞는지 판단할 수 없다."
+      ],
+      "summary": [
+        {
+          "label": "보고 항목 제공",
+          "value": "11개 중 1개",
+          "note": "빠진 항목: 학습 데이터의 출처·크기·구성, 평가 데이터 출처, 편향 감소 노력, 정답 라벨 구축 방법, 정답 라벨 신뢰성, 추론 환경, 추론 효율성(지연시간), 학습 데이터의 채널 효과, 하이퍼파라미터, 가속 사용 (1.4 참조)"
+        },
+        {
+          "label": "목적별 점검",
+          "value": "2줄 중 1줄 충족",
+          "note": "미충족: 사용 방식 → 지연시간 (1.4 참조)"
+        },
+        {
+          "label": "생성 전 안내 확인",
+          "value": "확인 기록 없음",
+          "note": "점검 표 1.0"
+        }
+      ]
+    }
+  },
+  "evaluationWarnings": [],
+  "coreMetricsSource": "default",
+  "classReport": null,
+  "confusionCounts": {
+    "kind": "binary",
+    "rows": [
+      {
+        "label": "1",
+        "tp": 52,
+        "fp": 56,
+        "fn": 43,
+        "tn": 49
+      }
+    ]
+  },
+  "errorRatios": {
+    "unit": "sample",
+    "misclassified": 99,
+    "boundary": null,
+    "boundary_note": "threshold_unknown",
+    "confident": {
+      "count": 31,
+      "ratio": 0.3131
+    },
+    "boundary_margin": 0.1,
+    "confident_level": 0.9,
+    "threshold": null
+  },
+  "errorRatioSentence": "확률이 있는 오분류 99건 중 확신 오류(틀린 쪽 확률 0.9 이상)는 31건(31.3%)이다. 경계 오류는 예측값을 직접 제출해 결정 임계값을 알 수 없어 계산하지 않았다.",
+  "confidenceIntervalNote": "판정 대상 지표의 95% 신뢰구간은 Wilson 점수 구간(M1), 다항 재표집 부트스트랩(2,000회, 시드 4213, 백분위 구간; M4, M5, M20)으로 산출하였습니다.",
+  "nearTargetNote": "목표값과의 차이가 목표값의 3% 미만인 지표(근소 차이): Accuracy(M1) 0.505(목표 0.510 이상, 미달), F1 Score(M4) 0.512(목표 0.500 이상, 충족), F-beta Score(M5) 0.512(목표 0.500 이상, 충족).",
+  "sourceRelationSentence": "평가 데이터는 학습 데이터와 동일한 출처에서 수집되었다. 본 결과는 동일 분포 내 성능을 나타내며, 다른 운영 환경에서의 일반화 성능을 보증하지 않는다.",
+  "problems": [],
+  "narrativeFacts": {
+    "contract": "facts-1",
+    "positive_class": "1",
+    "n_classes": 2,
+    "class_share_basis": "samples",
+    "report_purpose_label": "외부 제출",
+    "core_metrics_source": "default",
+    "selected_metrics": [
+      "M1",
+      "M2",
+      "M3",
+      "M4",
+      "M5",
+      "M9",
+      "M20"
+    ],
+    "declarations": {
+      "risk_direction": "fn",
+      "class_priority": null,
+      "usage_mode": "realtime"
+    },
+    "verdict_detail": {
+      "verdict": "FAIL",
+      "judged_count": 4,
+      "passed_count": 3,
+      "failed_core": [
+        {
+          "metric_id": "M1",
+          "display_name": "Accuracy"
+        }
+      ],
+      "failed_noncore": [],
+      "unavailable_core": [],
+      "inconclusive_cause": null,
+      "inconclusive_metrics": []
+    },
+    "error_totals": {
+      "unit": "sample",
+      "total": 200,
+      "misclassified": 99
+    },
+    "weakest_class": {
+      "label": "0",
+      "f1": 0.49746192893401014,
+      "support": 105,
+      "share": 0.525,
+      "share_text": "0.525",
+      "macro_f1": 0.5048885999349854,
+      "gap_from_macro": 0.007426671,
+      "gap_text": "0.0074",
+      "low_support": false,
+      "far_below_macro": false
+    },
+    "low_support_classes": [],
+    "top_confusion_pairs": [],
+    "prediction_bias": {
+      "unit": "positive_class",
+      "rows": [
+        {
+          "label": "1",
+          "predicted": 108,
+          "actual": 95,
+          "difference": 13
+        }
+      ]
+    },
+    "declared_risk_errors": {
+      "side": "fn",
+      "count": 43,
+      "total_errors": 99,
+      "share": 0.434343434,
+      "share_text": "0.4343"
+    },
+    "precision_recall_gap": {
+      "precision": 0.48148148148148145,
+      "recall": 0.5473684210526316,
+      "difference": -0.06588694,
+      "difference_text": "-0.0659",
+      "flagged": false
+    },
+    "average_gap": null,
+    "declared_average": null,
+    "distribution_shift_status": "compared",
+    "distribution_shift": [
+      {
+        "label": "0",
+        "training_ratio": 0.6,
+        "evaluation_ratio": 0.525,
+        "difference": 0.075,
+        "difference_text": "0.075",
+        "flagged": false
+      },
+      {
+        "label": "1",
+        "training_ratio": 0.4,
+        "evaluation_ratio": 0.475,
+        "difference": -0.075,
+        "difference_text": "-0.075",
+        "flagged": false
+      }
+    ],
+    "ci_available": true,
+    "ci_skipped": [],
+    "fixed_sentences": [
+      {
+        "id": "9",
+        "section": "7.1",
+        "text": "본 평가의 예측값은 제출된 확률값에 결정 임계값 0.5를 적용하여 산출하였다."
+      },
+      {
+        "id": "17",
+        "section": "7.1",
+        "text": "확률이 있는 오분류 99건 중 확신 오류(틀린 쪽 확률 0.9 이상)는 31건(31.3%)이다. 경계 오류는 예측값을 직접 제출해 결정 임계값을 알 수 없어 계산하지 않았다."
+      },
+      {
+        "id": "16",
+        "section": "8.1",
+        "text": "다음 지표는 내부 참조 기준치가 없어 벤치마크 비교를 하지 않았다: F-beta Score."
+      },
+      {
+        "id": "11a",
+        "section": "8.2",
+        "text": "평가 데이터는 학습 데이터와 동일한 출처에서 수집되었다. 본 결과는 동일 분포 내 성능을 나타내며, 다른 운영 환경에서의 일반화 성능을 보증하지 않는다."
+      },
+      {
+        "id": "18",
+        "section": "8.3",
+        "text": "목표값과의 차이가 목표값의 3% 미만인 지표(근소 차이): Accuracy(M1) 0.505(목표 0.510 이상, 미달), F1 Score(M4) 0.512(목표 0.500 이상, 충족), F-beta Score(M5) 0.512(목표 0.500 이상, 충족)."
+      },
+      {
+        "id": "6",
+        "section": "9",
+        "text": "본 평가에서 지목된 데이터 또는 모델상의 문제점은 없다. 별도 권고 사항 없음."
+      }
+    ],
+    "omitted": {}
+  },
+  "narrativeSource": "fallback",
+  "narrativeSections": {
+    "7.1": "llm",
+    "7.2": "llm",
+    "7.3": "llm",
+    "8.1": "fallback",
+    "8.2": "llm",
+    "8.3": "llm",
+    "9": "fixed"
+  },
+  "isEvaluated": true,
+  "narrativeModels": {
+    "7.1": "claude-sonnet-4-5",
+    "7.2": "claude-sonnet-4-5",
+    "7.3": "claude-sonnet-4-5",
+    "8.1": null,
+    "8.2": "claude-sonnet-4-5",
+    "8.3": "claude-sonnet-4-5",
+    "9": null
+  },
+  "noBenchmarkSentence": "다음 지표는 내부 참조 기준치가 없어 벤치마크 비교를 하지 않았다: F-beta Score."
+}

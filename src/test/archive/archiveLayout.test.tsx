@@ -11,6 +11,9 @@
  *   (`ReportByNumber`, issuanceApi 만 가짜). 본문 글을 블록마다 한 줄로 떠 `__snapshots__/` 에 고정한다.
  * - **판 1·2 스냅샷이 바뀌면 그 판 분기를 고친다** — 스냅샷을 다시 뜨지 않는다(판 3 변경이 옛 판에 샜다는 뜻).
  * - 인쇄 경로는 `print:hidden` 요소를 뺀 글이다(jsdom 은 @media print 를 적용하지 않는다).
+ * - 판 3(`schema3_binary.json`, 손으로 만든 픽스처 — 판 2 이진에서 칸 출처를 섞고(7.1 llm·8.1 fallback·9 fixed)
+ *   칸별 모델·7.3 글·고정 문구 16·문제 0개를 더함)은 스냅샷을 뜨지 않는다 — 판 3 모양은 다음 갈래들이 채운다.
+ *   여기서는 세 경로가 그려지고 소절 번호가 보이는지만.
  */
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -36,6 +39,7 @@ import type { FinalReportData } from "../../types/finalReport.types";
 import schema1Binary from "./schema1_binary.json";
 import schema2Binary from "./schema2_binary.json";
 import schema2MulticlassNoProblems from "./schema2_multiclass_noproblems.json";
+import schema3Binary from "./schema3_binary.json";
 
 const LEGACY: Array<[name: string, fixture: unknown]> = [
   ["schema1_binary", schema1Binary],
@@ -185,6 +189,41 @@ describe("옛 보관본(판 1·2)은 발급 당시 모양 그대로 — 세 경�
   it.each(LEGACY)("%s — 번호로 연 보관본(ReportByNumber)", async (name, fixture) => {
     const nodes = await renderByNumber(fixture);
     await expect(blockText(nodes)).toMatchFileSnapshot(`__snapshots__/${name}.byNumber.txt`);
+  });
+});
+
+describe("판 3 보관본 — 세 경로로 그려지고 소절 번호가 보인다(모양 단정은 다음 갈래가 늘린다)", () => {
+  it("픽스처는 판 3 모양이다 — 칸 섞임·칸별 모델·7.3·고정 문구 16", () => {
+    const s3 = schema3Binary as Record<string, any>;
+    expect(s3.contentSchema).toBe(3);
+    expect(s3.narrativeSections).toMatchObject({ "7.1": "llm", "8.1": "fallback", "9": "fixed" });
+    expect(s3.narrativeModels["7.1"]).toEqual(expect.any(String));
+    expect(s3.narrativeModels["8.1"]).toBeNull();
+    expect(s3.interpretation.additionalObservations).not.toBe("");
+    expect(s3.noBenchmarkSentence).toMatch(/^다음 지표는 내부 참조 기준치가 없어/);
+  });
+
+  const has71 = (text: string) => expect(text).toMatch(/^7\.1 혼동 행렬 기반 클래스 간 간섭 분석$/m);
+
+  it("화면 본문", () => {
+    const { container } = renderSections(schema3Binary);
+    has71(blockText([container]));
+  });
+
+  it("인쇄", async () => {
+    stubFetchForbidden();
+    const root = await renderPrint(schema3Binary, print);
+    has71(blockText([root], { dropPrintHidden: true }));
+  });
+
+  it("번호로 연 보관본", async () => {
+    has71(blockText(await renderByNumber(schema3Binary)));
+  });
+
+  it("판 2 보관본에는 소절 번호가 없다(같은 단정의 반대쪽)", () => {
+    const { container } = renderSections(schema2Binary);
+    expect(blockText([container])).not.toMatch(/^7\.1 /m);
+    expect(blockText([container])).toMatch(/^혼동 행렬 기반 클래스 간 간섭 분석$/m);
   });
 });
 
