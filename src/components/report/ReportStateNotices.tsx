@@ -198,15 +198,36 @@ export function SaveErrorBanner({ message }: { message: string | null }) {
   );
 }
 
-/** 서술이 빈 채로 발급된 옛 성적서(저장소 판 3 이행 표시) — 보관본은 그대로 두고 고치는 길을 알린다. */
+/**
+ * 서술이 빈 채로 발급된 옛 성적서(저장소 판 3 이행 표시) — 보관본은 그대로 두고, 지금 할 수 있는 일만 알린다.
+ *
+ * 같은 번호로 서술을 다시 만들어 정정 발급하는 길은 없다(서술 라운드 세션 B, 남은 일 "옛 빈 서술 성적서 정정 안내").
+ * 이런 run 은 서술 작업 기록이 없는 이전 판 평가라(대개 평가 요청 기록도 없다) "서술 다시 만들기" 가 동작하지 않고,
+ * 정정 발급은 열려 있지만 누르면 같은 빈 서술을 다시 발급할 뿐이다. 그래서 새 평가로 새 성적서를 받는 길을 알린다.
+ */
+export const ISSUED_EMPTY_NARRATIVE_TEXT = {
+  what: "이 성적서는 7·8·9절 서술(정밀 분석·종합 진단 소견·기술 개선 권고)이 비어 있는 채로 발급됐습니다.",
+  why:
+    "발급된 성적서는 고칠 수 없고, 이 평가는 서술 작업 기록이 남아 있지 않은 이전 판 평가라 이 화면에서 서술을 다시 만들 수 없습니다. " +
+    "그래서 같은 번호로 서술을 채워 정정 발급할 수 없습니다 — 정정 발급을 해도 빈 서술이 그대로 다시 발급됩니다.",
+  todo:
+    "서술이 있는 성적서가 필요하면 데이터 검증 화면에서 같은 파일로 다시 평가해 새 성적서를 발급해 주세요. " +
+    "새 성적서는 새 번호를 받고, 지금 번호의 성적서는 서버 보관본 그대로 남습니다.",
+} as const;
+
 export function IssuedEmptyNarrativeNotice() {
   return (
     <Alert className="mb-4">
       <AlertTriangle className="h-4 w-4" />
       <AlertDescription>
-        이 성적서는 서술(7·8·9절)이 비어 있는 채로 발급됐습니다. 발급본은 바꿀 수 없으므로 정정 발급으로만 고칠 수
-        있는데, 이 화면에서 서술을 다시 만들어 정정하는 길은 아직 없습니다. 지금은 데이터 검증 화면에서 다시 평가해 새
-        성적서로 발급해 주세요.
+        <p>{ISSUED_EMPTY_NARRATIVE_TEXT.what}</p>
+        <p>{ISSUED_EMPTY_NARRATIVE_TEXT.why}</p>
+        <p>
+          {ISSUED_EMPTY_NARRATIVE_TEXT.todo}{" "}
+          <Link to="/app/data-validation" className="font-medium underline underline-offset-2">
+            검증 화면으로 이동
+          </Link>
+        </p>
       </AlertDescription>
     </Alert>
   );
