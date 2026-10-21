@@ -80,7 +80,10 @@ interface ConclusionSectionProps {
 
 const PLACEHOLDER = "자동 서술 생성(LLM) 연동 예정 — 현재는 규칙 기반 판정·점수만 표시됩니다.";
 
-/** 서술 블록: 채운 텍스트가 있으면 인용, 없으면 자리표시자. 판 3 은 소절 제목 옆 칸별 배지, 줄바꿈 보존, 제목 아래 표(children). */
+/**
+ * 서술 블록: 채운 텍스트가 있으면 인용, 없으면 자리표시자. 판 3 은 소절 제목 옆 칸별 배지, 줄바꿈 보존, 제목 아래 표(children).
+ * `hideEmpty` 는 끝난 성적서에서 빈 글을 비워 두는 칸(판 3 의 8.1 고정 칸) — 서술 대기·실패면 자리표시자 그대로.
+ */
 function NarrativeBlock({
   number,
   title,
@@ -88,6 +91,7 @@ function NarrativeBlock({
   source,
   schema3,
   badge = null,
+  hideEmpty = false,
   children,
 }: {
   number: string;
@@ -96,9 +100,11 @@ function NarrativeBlock({
   source?: NarrativeSource;
   schema3?: boolean;
   badge?: "fallback" | null;
+  hideEmpty?: boolean;
   children?: React.ReactNode;
 }) {
   const hasText = (text ?? "").trim().length > 0;
+  const waiting = source === "pending" || source === "failed";
   const heading = (
     <SubsectionTitle number={number} schema3={schema3} className="text-sm font-semibold text-slate-700">{title}</SubsectionTitle>
   );
@@ -117,7 +123,7 @@ function NarrativeBlock({
         <blockquote className="rounded-lg border border-slate-200 bg-slate-50 px-5 py-4">
           <p className={schema3 ? "whitespace-pre-line text-sm font-medium leading-relaxed text-slate-700" : "text-sm font-medium leading-relaxed text-slate-700"}>"{text}"</p>
         </blockquote>
-      ) : (
+      ) : hideEmpty && !waiting ? null : (
         <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-xs text-slate-400">
           {narrativePlaceholder(source, draftPlaceholder(PLACEHOLDER, schema3))}
         </p>
@@ -142,6 +148,9 @@ export function ConclusionSection({
   const Icon = config.icon;
   const badge = (section: string) => sectionBadgeKind(schema3, source, narrativeSections, section);
   const refs = conclusion.benchmarkRefs ?? [];
+  // 판 3 에서 서술 지표가 전부 기준표 밖이면 백엔드가 8.1 칸을 고정(fixed)·빈 글로 준다(사용자 결정 5). 그때 8.1 은
+  // 표(있으면)와 고정 문구 16 만 — 빈 글에 "연동 예정" 자리표시자를 찍으면 끝난 성적서가 미완성처럼 보인다.
+  const benchmarkFixed = !!schema3 && narrativeSections?.["8.1"] === "fixed";
   const table =
     refs.length > 0 ? (
       <BenchmarkTable
@@ -192,7 +201,7 @@ export function ConclusionSection({
       {/* 판 3 은 표·고정 문구 16 을 소절 제목 아래에 둔다(옛 판은 발급 당시처럼 표가 제목 위). */}
       <div className="space-y-3">
         {!schema3 && table}
-        <NarrativeBlock number="8.1" schema3={schema3} title="도메인 성능 벤치마크" text={conclusion.benchmark} source={source} badge={badge("8.1")}>
+        <NarrativeBlock number="8.1" schema3={schema3} title="도메인 성능 벤치마크" text={conclusion.benchmark} source={source} badge={badge("8.1")} hideEmpty={benchmarkFixed}>
           {schema3 && table}
           {/* 8.1 고정 문구 16 — 기준표에 없는 서술 지표(사용자 결정 5). */}
           {schema3 && noBenchmarkSentence && <p className="text-sm text-slate-700">{noBenchmarkSentence}</p>}

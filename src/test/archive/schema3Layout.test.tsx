@@ -35,6 +35,7 @@ import { ReportByNumber } from "../../pages/report/ReportByNumber";
 import type { FinalReportData } from "../../types/finalReport.types";
 import schema2Binary from "./schema2_binary.json";
 import schema3Binary from "./schema3_binary.json";
+import schema3BinaryPass from "./schema3_binary_pass.json";
 
 /** 픽스처에 발급 정보만 얹는다 — 서명란을 그리려고. */
 function issued(fixture: unknown): FinalReportData {
@@ -202,8 +203,14 @@ describe("작성 기록 상자 — 화면 두 곳에만(판 3)", () => {
       "8.1 도메인 성능 벤치마크 — 규칙 기반 문장",
       `8.2 전반적 성능 및 일반화 능력 총평 — AI 작성(${S3.narrativeModels["8.2"]})`,
       `8.3 기술적 취약점 및 잠재적 리스크 요약 — AI 작성(${S3.narrativeModels["8.3"]})`,
-      "9 기술 개선 권고안 — 고정 문구",
+      "9 기술 개선 권고안 — 규칙 기반 문장",
     ]);
+  });
+
+  it("/report/no/:번호 — 합격 변형(문제 0개)은 9 칸이 고정 문구", async () => {
+    await renderByNumber(issued(schema3BinaryPass));
+    const panel = screen.getByRole("group", { name: RECORD });
+    expect(rows(panel).at(-1)).toBe("9 기술 개선 권고안 — 고정 문구");
   });
 
   it("/report/no/:번호 — 상자는 본문(표지가 든 칸부터) 밖, 머리 상자 다음에 있다", async () => {

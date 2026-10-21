@@ -3,7 +3,8 @@
  *
  * - 7절 ※ 한 줄, 장 단위 배지 대신 칸별 화면 전용 배지(대기·실패면 없음), 7.3 추가 관찰(빈 글 → 고정 문구 15),
  *   고정 문구 7(멀티레이블), 고정 문구 9 조사, D6 표.
- * - 8.1 고정 문구 16·값 표기(6.1 과 같은 판정 자릿수).
+ * - 8.1 고정 문구 16·값 표기(6.1 과 같은 판정 자릿수). 16 '전부' 갈래(8.1 fixed·빈 글)는 자리표시자 없이 16 만.
+ * - 칸별 배지 배선 — 일곱 칸 각각 그 칸만 fallback 일 때 그 소절 줄에만 하나.
  * - 9절 문제 0개 → 고정 문구 6 만.
  * - 빈 서술 자리표시자의 "(LLM)" 은 판 3 에서 뺀다.
  */
@@ -285,6 +286,18 @@ const conclusion: ConclusionData = {
   benchmarkRefs: [benchmarkRef({})],
 };
 
+const NARRATIVE = { dataQuality: "9.1 글", modelOps: "9.2 글" };
+const PROBLEM: Problem = {
+  id: "P1",
+  kind: "core_fail",
+  priority: "HIGH",
+  title: "핵심 지표 미달 (F1 Score)",
+  source_section: "8.2",
+  recommend_section: "9.2",
+  evidence: {},
+  note: null,
+};
+
 const SIXTEEN = "다음 지표는 내부 참조 기준치가 없어 벤치마크 비교를 하지 않았다: F-beta Score.";
 
 describe("8절 — 칸별 배지", () => {
@@ -307,6 +320,31 @@ describe("8절 — 칸별 배지", () => {
   });
 });
 
+describe("칸별 배지 배선 — 그 칸만 fallback 이면 그 소절 줄에만 하나", () => {
+  const ALL_LLM: Record<string, NarrativeSectionSource> = Object.fromEntries(Object.keys(SECTIONS).map((k) => [k, "llm"]));
+  /** 소절 제목이 든 줄. 9 는 장 머리 줄(제목 칸 + 배지). */
+  const rowOf = (section: string) =>
+    section === "9" ? heading(/^9\. 기술 개선 권고안$/).parentElement!.parentElement! : titleRow(new RegExp(`^${section.replace(".", "\\.")} `));
+
+  it("전제 — 일곱 칸", () => {
+    expect(Object.keys(SECTIONS).sort()).toEqual(["7.1", "7.2", "7.3", "8.1", "8.2", "8.3", "9"]);
+  });
+
+  it.each(Object.keys(SECTIONS))("%s 만 fallback", (section) => {
+    const sections = { ...ALL_LLM, [section]: "fallback" as const };
+    render(
+      <>
+        <InterpretSection interpretation={interp} source="llm" schema3 narrativeSections={sections} />
+        <ConclusionSection conclusion={conclusion} source="llm" schema3 narrativeSections={sections} />
+        <RecommendSection recommendations={[]} narrative={NARRATIVE} problems={[PROBLEM]} source="llm" schema3 narrativeSections={sections} />
+      </>,
+    );
+    const badges = screen.getAllByText(SECTION_SOURCE_BADGE_TEXT);
+    expect(badges).toHaveLength(1);
+    expect(within(rowOf(section)).getByText(SECTION_SOURCE_BADGE_TEXT)).toBe(badges[0]);
+  });
+});
+
 describe("8.1 고정 문구 16", () => {
   it("판 3: 8.1 소절 안, 표 바로 아래", () => {
     render(<ConclusionSection conclusion={conclusion} schema3 noBenchmarkSentence={SIXTEEN} />);
@@ -321,6 +359,62 @@ describe("8.1 고정 문구 16", () => {
     render(<ConclusionSection conclusion={{ ...conclusion, benchmarkRefs: [] }} schema3 noBenchmarkSentence={all} />);
     expect(screen.queryByRole("table", { name: "벤치마크 참조 범위" })).toBeNull();
     expect(within(titleRow(/^8\.1 /).parentElement!).getByText(all)).toBeInTheDocument();
+  });
+
+  const ALL = "선택한 지표에 내부 참조 기준치가 없어 벤치마크 비교를 하지 않았다.";
+  /** 백엔드가 '전부 기준치 없음'에 돌려주는 모양 — 8.1 출처 fixed·빈 글, 표 없음(사용자 결정 5). */
+  const allMissing: ConclusionData = { ...conclusion, benchmark: "", benchmarkRefs: [] };
+  const block81 = () => titleRow(/^8\.1 /).parentElement!;
+
+  it.each(["llm", "fallback"] as const)(
+    "판 3·전부 없음(8.1 fixed·빈 글)·서술 끝남(%s): 8.1 은 16 한 줄뿐 — 자리표시자 없음",
+    (source) => {
+      render(
+        <ConclusionSection conclusion={allMissing} source={source} schema3 narrativeSections={{ ...SECTIONS, "8.1": "fixed" }} noBenchmarkSentence={ALL} />,
+      );
+      const block = block81();
+      expect(block).not.toHaveTextContent(/연동 예정/);
+      expect(block.querySelector("blockquote")).toBeNull();
+      // 제목 줄 다음 형제가 16, 그 뒤로 아무것도 없다
+      const sentence = within(block).getByText(ALL);
+      expect(titleRow(/^8\.1 /).nextElementSibling).toBe(sentence);
+      expect(sentence.nextElementSibling).toBeNull();
+      expect(within(titleRow(/^8\.1 /)).queryByText(SECTION_SOURCE_BADGE_TEXT)).toBeNull();
+    },
+  );
+
+  it("판 3·8.1 fixed·빈 글이어도 표가 있으면 표와 16 은 그대로", () => {
+    render(
+      <ConclusionSection conclusion={{ ...conclusion, benchmark: "" }} source="llm" schema3 narrativeSections={{ ...SECTIONS, "8.1": "fixed" }} noBenchmarkSentence={SIXTEEN} />,
+    );
+    const block = block81();
+    expect(within(block).getByRole("table", { name: "벤치마크 참조 범위" })).toBeInTheDocument();
+    expect(within(block).getByText(SIXTEEN).nextElementSibling).toBeNull();
+    expect(block).not.toHaveTextContent(/연동 예정/);
+  });
+
+  it.each([
+    ["pending", NARRATIVE_PENDING_TEXT],
+    ["failed", NARRATIVE_FAILED_TEXT],
+  ] as const)("판 3·8.1 fixed·빈 글이라도 서술 %s 이면 자리표시자 그대로", (source, text) => {
+    render(
+      <ConclusionSection conclusion={allMissing} source={source} schema3 narrativeSections={{ ...SECTIONS, "8.1": "fixed" }} noBenchmarkSentence={ALL} />,
+    );
+    expect(within(block81()).getByText(text)).toBeInTheDocument();
+  });
+
+  it("판 3·8.1 fallback·빈 글(고정 칸 아님): 종전 자리표시자 그대로", () => {
+    render(<ConclusionSection conclusion={allMissing} source="fallback" schema3 narrativeSections={SECTIONS} noBenchmarkSentence={ALL} />);
+    expect(block81()).toHaveTextContent("자동 서술 생성 연동 예정");
+  });
+
+  it("옛 판(판 2)·8.1 fixed·빈 글: 발급 당시처럼 자리표시자(16 없음)", () => {
+    render(
+      <ConclusionSection conclusion={allMissing} source="fallback" narrativeSections={{ ...SECTIONS, "8.1": "fixed" }} noBenchmarkSentence={ALL} />,
+    );
+    const block = screen.getByRole("heading", { name: /도메인 성능 벤치마크/ }).parentElement!;
+    expect(block).toHaveTextContent("자동 서술 생성(LLM) 연동 예정");
+    expect(screen.queryByText(ALL)).toBeNull();
   });
 
   it("판 3: 키가 없으면 안 찍는다", () => {
@@ -398,18 +492,6 @@ describe("8.1 표 값 표기 — 판 3 은 6.1 과 같은 판정 자릿수", () 
     expect(h.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
   });
 });
-
-const NARRATIVE = { dataQuality: "9.1 글", modelOps: "9.2 글" };
-const PROBLEM: Problem = {
-  id: "P1",
-  kind: "core_fail",
-  priority: "HIGH",
-  title: "핵심 지표 미달 (F1 Score)",
-  source_section: "8.2",
-  recommend_section: "9.2",
-  evidence: {},
-  note: null,
-};
 
 describe("9절 — 문제 0개면 판 3 은 고정 문구 6 만", () => {
   it("판 3·문제 0개: 고정 문구 6 한 번, 9.1·9.2 서술·배지 없음", () => {

@@ -621,9 +621,24 @@
   },
   "recommendationNarrative": {
     "dataQuality": "데이터 측면에서 권고 대상으로 지목된 문제는 없다.",
-    "modelOps": "모델 측면에서 권고 대상으로 지목된 문제는 없다."
+    "modelOps": "모델 측면에서 지목된 문제는 P1(핵심 지표 미달 (Accuracy)), P2(핵심 지표 아슬아슬 합격 (F1 Score))이며, 9절 권고표의 해당 항목에 따른 개선 후 재평가를 권고한다."
   },
-  "recommendations": [],
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "category": "핵심 지표 개선",
+      "action": "미달한 핵심 지표의 오분류 사례를 분석하고 재학습·데이터 보강·결정 임계값 재조정을 검토한 뒤 재평가한다",
+      "expectedImpact": "핵심 지표 충족 여부 재확인 및 종합 판정 개선 근거 확보",
+      "problemId": "P1"
+    },
+    {
+      "priority": "MEDIUM",
+      "category": "판정 안정성 확인",
+      "action": "목표값에 근접해 합격한 핵심 지표를 별도 평가 데이터나 더 큰 표본으로 다시 측정해 합격이 유지되는지 확인한다",
+      "expectedImpact": "표본 변동에 따른 판정 뒤집힘 위험 확인",
+      "problemId": "P2"
+    }
+  ],
   "signature": {
     "issuer": "",
     "signedAt": "",
@@ -941,7 +956,39 @@
   "confidenceIntervalNote": "판정 대상 지표의 95% 신뢰구간은 Wilson 점수 구간(M1), 다항 재표집 부트스트랩(2,000회, 시드 4213, 백분위 구간; M4, M5, M20)으로 산출하였습니다.",
   "nearTargetNote": "목표값과의 차이가 목표값의 3% 미만인 지표(근소 차이): Accuracy(M1) 0.505(목표 0.510 이상, 미달), F1 Score(M4) 0.512(목표 0.500 이상, 충족), F-beta Score(M5) 0.512(목표 0.500 이상, 충족).",
   "sourceRelationSentence": "평가 데이터는 학습 데이터와 동일한 출처에서 수집되었다. 본 결과는 동일 분포 내 성능을 나타내며, 다른 운영 환경에서의 일반화 성능을 보증하지 않는다.",
-  "problems": [],
+  "problems": [
+    {
+      "id": "P1",
+      "kind": "core_fail",
+      "priority": "HIGH",
+      "title": "핵심 지표 미달 (Accuracy)",
+      "source_section": "8.2",
+      "recommend_section": "9.2",
+      "evidence": {
+        "Accuracy": {
+          "value": 0.505,
+          "target": 0.51
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "P2",
+      "kind": "core_near_target",
+      "priority": "MEDIUM",
+      "title": "핵심 지표 아슬아슬 합격 (F1 Score)",
+      "source_section": "8.3",
+      "recommend_section": "9.2",
+      "evidence": {
+        "F1 Score": {
+          "value": 0.5123152709359606,
+          "target": 0.5,
+          "margin": 0.0123
+        }
+      },
+      "note": null
+    }
+  ],
   "narrativeFacts": {
     "contract": "facts-1",
     "positive_class": "1",
@@ -1070,11 +1117,6 @@
         "id": "18",
         "section": "8.3",
         "text": "목표값과의 차이가 목표값의 3% 미만인 지표(근소 차이): Accuracy(M1) 0.505(목표 0.510 이상, 미달), F1 Score(M4) 0.512(목표 0.500 이상, 충족), F-beta Score(M5) 0.512(목표 0.500 이상, 충족)."
-      },
-      {
-        "id": "6",
-        "section": "9",
-        "text": "본 평가에서 지목된 데이터 또는 모델상의 문제점은 없다. 별도 권고 사항 없음."
       }
     ],
     "omitted": {}
@@ -1087,7 +1129,7 @@
     "8.1": "fallback",
     "8.2": "llm",
     "8.3": "llm",
-    "9": "fixed"
+    "9": "fallback"
   },
   "isEvaluated": true,
   "narrativeModels": {

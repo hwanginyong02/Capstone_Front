@@ -11,8 +11,8 @@
  *   (`ReportByNumber`, issuanceApi 만 가짜). 본문 글을 블록마다 한 줄로 떠 `__snapshots__/` 에 고정한다.
  * - **판 1·2 스냅샷이 바뀌면 그 판 분기를 고친다** — 스냅샷을 다시 뜨지 않는다(판 3 변경이 옛 판에 샜다는 뜻).
  * - 인쇄 경로는 `print:hidden` 요소를 뺀 글이다(jsdom 은 @media print 를 적용하지 않는다).
- * - 판 3(`schema3_binary.json`, 손으로 만든 픽스처 — 판 2 이진에서 칸 출처를 섞고(7.1 llm·8.1 fallback·9 fixed)
- *   칸별 모델·7.3 글·고정 문구 16·문제 0개를 더함)은 스냅샷을 뜨지 않는다 — 판 3 모양은 다음 갈래들이 채운다.
+ * - 판 3(`schema3_binary.json`, 손으로 만든 픽스처 — 판 2 이진에서 칸 출처를 섞고(7.1 llm·8.1 fallback·9 fallback)
+ *   칸별 모델·7.3 글·고정 문구 16·문제 목록(불합격이라 core_fail 포함)을 더함, 합격 변형 `schema3_binary_pass.json`)은 스냅샷을 뜨지 않는다 — 판 3 모양은 다음 갈래들이 채운다.
  *   여기서는 세 경로가 그려지고 소절 번호가 보이는지만.
  */
 import { render, screen } from "@testing-library/react";
@@ -196,7 +196,7 @@ describe("판 3 보관본 — 세 경로로 그려지고 소절 번호가 보인
   it("픽스처는 판 3 모양이다 — 칸 섞임·칸별 모델·7.3·고정 문구 16", () => {
     const s3 = schema3Binary as Record<string, any>;
     expect(s3.contentSchema).toBe(3);
-    expect(s3.narrativeSections).toMatchObject({ "7.1": "llm", "8.1": "fallback", "9": "fixed" });
+    expect(s3.narrativeSections).toMatchObject({ "7.1": "llm", "8.1": "fallback", "9": "fallback" });
     expect(s3.narrativeModels["7.1"]).toEqual(expect.any(String));
     expect(s3.narrativeModels["8.1"]).toBeNull();
     expect(s3.interpretation.additionalObservations).not.toBe("");

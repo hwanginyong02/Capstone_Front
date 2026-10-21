@@ -2,8 +2,10 @@
  * 판 3 보관본의 7·8·9절 모양(서술 라운드 세션 B 갈래 R1) — 세 경로(화면 본문 `ReportSections`, 인쇄 `ReportPrint`,
  * 번호로 연 보관본 `ReportByNumber`)에서 같은 단정을 한다. 판 1·2 는 `archiveLayout.test.tsx` 의 스냅샷이 지킨다.
  *
- * 픽스처 `schema3_binary.json`: 서술 전체 출처 fallback(장 배지가 그려질 조건)인데 칸은 섞임(7.1 llm·8.1 fallback·
- * 9 fixed), 7.3 글, 고정 문구 16, 문제 0개. 변형(7.3 빈 글·8.1 자릿수)은 테스트 안에서 복사본으로 만든다.
+ * 픽스처 `schema3_binary.json`: 불합격(핵심 Accuracy 미달) — 문제 2개(core_fail·core_near_target), 9.1·9.2 글, 고정 문구
+ * 6 없음. 서술 전체 출처 fallback(장 배지가 그려질 조건)인데 칸은 섞임(7.1 llm·8.1 fallback·9 fallback), 7.3 글, 고정
+ * 문구 16(일부). `schema3_binary_pass.json`: 같은 데이터의 합격 변형(목표값 0.45 — 미달·근소 차이 없음) — 문제 0개,
+ * 9 fixed·고정 문구 6. 변형(7.3 빈 글·8.1 자릿수·16 전부)은 테스트 안에서 복사본으로 만든다.
  */
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
@@ -31,6 +33,7 @@ import { ReportByNumber } from "../../pages/report/ReportByNumber";
 import type { FinalReportData } from "../../types/finalReport.types";
 import schema2Binary from "./schema2_binary.json";
 import schema3Binary from "./schema3_binary.json";
+import schema3BinaryPass from "./schema3_binary_pass.json";
 
 const BLOCK = new Set(["H1", "H2", "H3", "H4", "H5", "P", "LI", "TR", "BLOCKQUOTE", "DT", "DD", "SECTION", "DIV", "TH", "TD"]);
 
@@ -155,14 +158,33 @@ afterEach(() => {
 const after = (lines: string[], line: string) => lines[lines.indexOf(line) + 1];
 
 describe("판 3 보관본 7·8·9절 — 세 경로", () => {
-  it("픽스처 전제 — 전체 출처 fallback(장 배지 조건)·칸 섞임·문제 0개·16·7.3 글", () => {
+  it("픽스처 전제 — 불합격·문제 있음(core_fail)·9 fallback·고정 문구 6 없음, 칸 섞임·16·7.3 글", () => {
     const s3 = schema3Binary as Record<string, any>;
+    expect(s3.conclusion.verdict).toBe("FAIL");
+    expect(s3.narrativeFacts.verdict_detail.failed_core.map((m: any) => m.display_name)).toEqual(["Accuracy"]);
+    // 핵심 미달이면 조립이 반드시 core_fail 을 넣는다(buildProblemList)
+    expect(s3.problems.map((p: any) => p.kind)).toEqual(["core_fail", "core_near_target"]);
     expect(s3.narrativeSource).toBe("fallback");
-    expect(s3.narrativeSections).toMatchObject({ "7.1": "llm", "8.1": "fallback", "9": "fixed" });
-    expect(Object.entries(s3.narrativeSections).filter(([, v]) => v === "fallback").map(([k]) => k)).toEqual(["8.1"]);
-    expect(s3.problems).toEqual([]);
+    expect(s3.narrativeSections).toMatchObject({ "7.1": "llm", "8.1": "fallback", "9": "fallback" });
+    expect(Object.entries(s3.narrativeSections).filter(([, v]) => v === "fallback").map(([k]) => k).sort()).toEqual(["8.1", "9"]);
+    expect(s3.narrativeFacts.fixed_sentences.map((f: any) => f.id)).not.toContain("6");
+    expect(s3.recommendationNarrative.dataQuality).not.toBe("");
+    expect(s3.recommendationNarrative.modelOps).not.toBe("");
     expect(s3.interpretation.additionalObservations).not.toBe("");
     expect(s3.conclusion.benchmarkRefs.length).toBeGreaterThan(0);
+  });
+
+  it("합격 변형 전제 — 합격·미달 없음·근소 차이 없음·문제 0개·9 fixed·고정 문구 6", () => {
+    const p = schema3BinaryPass as Record<string, any>;
+    expect(p.contentSchema).toBe(3);
+    expect(p.conclusion.verdict).toBe("PASS");
+    expect(p.narrativeFacts.verdict_detail).toMatchObject({ verdict: "PASS", failed_core: [], failed_noncore: [] });
+    expect(p.kpiResults.filter((k: any) => k.status === "fail")).toEqual([]);
+    expect(p.kpiResults.filter((k: any) => k.nearTarget)).toEqual([]);
+    expect("nearTargetNote" in p).toBe(false);
+    expect(p.problems).toEqual([]);
+    expect(p.narrativeSections["9"]).toBe("fixed");
+    expect(p.narrativeFacts.fixed_sentences.map((f: any) => f.id)).toContain("6");
   });
 
   it.each(PATHS)("%s — ※ 줄이 7절 제목 바로 다음, 장 단위 옛 배지 없음, 본문 7~9절에 AI·LLM 없음", async (path) => {
@@ -174,18 +196,26 @@ describe("판 3 보관본 7·8·9절 — 세 경로", () => {
     expect(chapters.join("\n")).not.toMatch(/AI|LLM/);
   });
 
-  it.each(["sections", "byNumber"] as const)("%s(화면) — 칸별 배지는 8.1(fallback) 옆 하나", async (path) => {
+  it.each(["sections", "byNumber"] as const)("%s(화면) — 칸별 배지는 8.1·9(fallback) 옆에 하나씩", async (path) => {
     const { lines } = await linesOf(path, asReport(schema3Binary));
-    expect(lines.filter((l) => l === SECTION_SOURCE_BADGE_TEXT)).toHaveLength(1);
+    expect(lines.filter((l) => l === SECTION_SOURCE_BADGE_TEXT)).toHaveLength(2);
     expect(after(lines, "8.1 도메인 성능 벤치마크")).toBe(SECTION_SOURCE_BADGE_TEXT);
+    expect(after(lines, "9. 기술 개선 권고안")).toBe(SECTION_SOURCE_BADGE_TEXT);
   });
 
-  it("인쇄 — 배지 요소는 DOM 에 있으나 print:hidden 이라 인쇄 글에는 없다", async () => {
+  it("인쇄 — 배지 요소는 DOM 에 있으나 print:hidden 이라 인쇄 글에는 없다(8.1·9 둘 다)", async () => {
     const { lines, root } = await linesOf("print", asReport(schema3Binary));
     expect(lines).not.toContain(SECTION_SOURCE_BADGE_TEXT);
+    expect(after(lines, "9. 기술 개선 권고안")).toBe("9.1 데이터셋 보완 및 품질 개선 전략");
     const badges = [...root.querySelectorAll("span")].filter((el) => el.textContent === SECTION_SOURCE_BADGE_TEXT);
-    expect(badges).toHaveLength(1);
-    expect(badges[0]).toHaveClass("print:hidden");
+    expect(badges).toHaveLength(2);
+    badges.forEach((b) => expect(b).toHaveClass("print:hidden"));
+  });
+
+  it.each(["sections", "byNumber"] as const)("%s(화면) — 합격 변형(문제 0개)은 9 배지 없이 8.1 배지 하나", async (path) => {
+    const { lines } = await linesOf(path, asReport(schema3BinaryPass));
+    expect(lines.filter((l) => l === SECTION_SOURCE_BADGE_TEXT)).toHaveLength(1);
+    expect(after(lines, "8.1 도메인 성능 벤치마크")).toBe(SECTION_SOURCE_BADGE_TEXT);
   });
 
   it.each(PATHS)("%s — 7.3 추가 관찰은 인용 글, 빈 글이면 '해당 없음'", async (path) => {
@@ -211,8 +241,38 @@ describe("판 3 보관본 7·8·9절 — 세 경로", () => {
     expect(lines[i + 1]).toBe(`"${report.conclusion.benchmark}"`);
   });
 
-  it.each(PATHS)("%s — 문제 0개: 9절은 고정 문구 6 만(9.1·9.2 없음)", async (path) => {
-    const { lines } = await linesOf(path, asReport(schema3Binary));
+  it.each(PATHS)("%s — 불합격·문제 있음: 9.1·9.2 서술과 권고 표, 고정 문구 6 없음", async (path) => {
+    const report = asReport(schema3Binary);
+    const { lines } = await linesOf(path, report);
+    const chapters = narrativeChapters(lines);
+    const nine = chapters.slice(chapters.indexOf("9. 기술 개선 권고안")).filter((l) => l !== SECTION_SOURCE_BADGE_TEXT);
+    expect(nine.slice(0, 5)).toEqual([
+      "9. 기술 개선 권고안",
+      "9.1 데이터셋 보완 및 품질 개선 전략",
+      `"${report.recommendationNarrative.dataQuality}"`,
+      "9.2 모델 고도화 및 운영 관리 가이드",
+      `"${report.recommendationNarrative.modelOps}"`,
+    ]);
+    expect(nine).toContain("| P1 · 핵심 지표 미달 (Accuracy)");
+    expect(lines).not.toContain(NO_PROBLEM_SENTENCE);
+  });
+
+  it.each(PATHS)("%s — 16 전부(8.1 fixed·빈 글·표 없음): 8.1 은 16 한 줄, 바로 다음이 8.2 — '연동 예정' 없음", async (path) => {
+    const report = asReport(schema3Binary);
+    const all = "선택한 지표에 내부 참조 기준치가 없어 벤치마크 비교를 하지 않았다.";
+    report.conclusion.benchmark = "";
+    report.conclusion.benchmarkRefs = [];
+    report.noBenchmarkSentence = all;
+    report.narrativeSections = { ...report.narrativeSections!, "8.1": "fixed" };
+    const { lines } = await linesOf(path, report);
+    const i = lines.indexOf("8.1 도메인 성능 벤치마크");
+    expect(i).toBeGreaterThan(0);
+    expect(lines.slice(i + 1, i + 3)).toEqual([all, "8.2 전반적 성능 및 일반화 능력 총평"]);
+    expect(lines.join("\n")).not.toMatch(/연동 예정/);
+  });
+
+  it.each(PATHS)("%s — 합격 변형·문제 0개: 9절은 고정 문구 6 만(9.1·9.2 없음)", async (path) => {
+    const { lines } = await linesOf(path, asReport(schema3BinaryPass));
     const chapters = narrativeChapters(lines);
     const nine = chapters.slice(chapters.indexOf("9. 기술 개선 권고안"));
     expect(nine).toEqual(["9. 기술 개선 권고안", NO_PROBLEM_SENTENCE]);
