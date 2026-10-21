@@ -417,6 +417,37 @@ describe("S4a 배선 — 7~9절 고정 문장 목록(9·17·12·11b·18 / 6)", (
     expect(withProblems.factSheet.facts?.fixed_sentences.map((s) => s.id)).not.toContain("6");
   });
 
+  describe("판 3 전용 고정 문장은 판 3 바탕에만(옛 판 run 을 새 코드로 조립해도 그 판 화면과 같은 글)", () => {
+    const derived = { method: "threshold" as const, threshold: 0.3, source_columns: ["prob"], target_role: "y_pred" };
+    const selected = ["M1", "M4", "M5", "M9", "M21", "M22"];
+    const assemble = (contentSchema: number) => {
+      const copy = structuredClone(GOLDEN_BINARY);
+      (copy.results.success_metrics as Record<string, unknown>).derived_prediction = derived;
+      const base = { ...baseReport(), contentSchema };
+      return assembleEvaluatedReport(base, copy, inputs({ selectedMetricIds: selected }));
+    };
+    const nine = (r: ReturnType<typeof assemble>) => r.factSheet.facts!.fixed_sentences.find((f) => f.id === "9")?.text;
+
+    it("전제 — 매퍼가 찍는 판은 3", () => {
+      expect(baseReport().contentSchema).toBe(3);
+    });
+
+    it("판 3 바탕: 16 을 싣고 저장, 9 는 숫자 읽는 소리 조사(0.3을)", () => {
+      const r = assemble(3);
+      expect(r.factSheet.facts!.fixed_sentences.map((f) => f.id)).toContain("16");
+      expect(r.stage1Report.noBenchmarkSentence).toBe("다음 지표는 내부 참조 기준치가 없어 벤치마크 비교를 하지 않았다: F-beta Score.");
+      expect(nine(r)).toBe("본 평가의 예측값은 제출된 확률값에 결정 임계값 0.3을 적용하여 산출하였다.");
+    });
+
+    it.each([2, 1])("판 %s 바탕: 16 없음·저장 없음, 9 는 그 판 화면처럼 '를'(0.3를)", (schema) => {
+      const r = assemble(schema);
+      expect(r.factSheet.facts!.fixed_sentences.length).toBeGreaterThan(0);
+      expect(r.factSheet.facts!.fixed_sentences.map((f) => f.id)).not.toContain("16");
+      expect(r.stage1Report).not.toHaveProperty("noBenchmarkSentence");
+      expect(nine(r)).toBe("본 평가의 예측값은 제출된 확률값에 결정 임계값 0.3를 적용하여 산출하였다.");
+    });
+  });
+
   it("최약 클래스 문제는 facts 의 최약 클래스로 만든다(M22 를 고르지 않아도)", () => {
     const copy = structuredClone(GOLDEN_BINARY);
     const sm = copy.results.success_metrics as Record<string, unknown>;

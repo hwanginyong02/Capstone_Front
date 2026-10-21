@@ -112,8 +112,11 @@ const CASES: Record<"binary" | "multiclass" | "multilabel", Case> = {
   },
 };
 
-function buildPayload(c: Case): { payload: NarrativeRequestPayload; report: ReturnType<typeof assembleEvaluatedReport> } {
-  const base = mapWorkflowToFinalReport({
+function buildPayload(
+  c: Case,
+  options: { contentSchema?: number } = {},
+): { payload: NarrativeRequestPayload; report: ReturnType<typeof assembleEvaluatedReport> } {
+  const mapped = mapWorkflowToFinalReport({
     basicInfo: { ...DEFAULT_BASIC_INFO, companyName: "계약 주식회사", modelName: "ContractModel", reportPurpose: "external" },
     taskType: c.taskType,
     selectedMetricIds: c.selected,
@@ -126,6 +129,8 @@ function buildPayload(c: Case): { payload: NarrativeRequestPayload; report: Retu
     metadata: null,
     composer: c.composer,
   });
+  // 옛 판 바탕(배포 전에 만든 run 을 배포 뒤 평가) — 판 표시만 바꾼다.
+  const base = options.contentSchema === undefined ? mapped : { ...mapped, contentSchema: options.contentSchema };
   const golden = readJson(resolve(CONTRACT_DIR, c.golden));
   // 골든은 모든 지표를 골라 만든 응답이다. 엔진은 고른 지표만 돌려주므로 고르지 않은 M21·M22 를 뺀다 —
   // 늘 계산하는 새 칸(confusion_matrix·class_report)만 남는 실제 모양.
@@ -239,6 +244,18 @@ describe("계약 예시의 뜻 — M21·M22 를 고르지 않아도 표·최약 
     expect(ids("binary").length).toBeGreaterThan(0);
     expect(ids("binary")).not.toContain("7");
     expect(ids("multiclass")).not.toContain("7");
+  });
+
+  it("고정 문구 7·16 은 판 3 바탕에만 — 판 2 바탕 멀티레이블은 싣지도 저장하지도 않는다(판 2 화면이 찍지 않는다)", () => {
+    const s3 = buildPayload(CASES.multilabel);
+    const s2 = buildPayload(CASES.multilabel, { contentSchema: 2 });
+    const ids = (r: typeof s3) => r.payload.fact_sheet.facts?.fixed_sentences.map((f) => f.id) ?? [];
+    expect(ids(s3)).toEqual(expect.arrayContaining(["7", "16"]));
+    expect(s3.report.stage1Report.noBenchmarkSentence).toEqual(expect.any(String));
+    expect(ids(s2).length).toBeGreaterThan(0);
+    expect(ids(s2)).not.toContain("7");
+    expect(ids(s2)).not.toContain("16");
+    expect(s2.report.stage1Report).not.toHaveProperty("noBenchmarkSentence");
   });
 
   it("다중: 혼동행렬이 사실 시트에 실리고 6.2 와 같은 마이크로 평균 줄(accuracy)이 있다", () => {

@@ -37,6 +37,7 @@ import type { MapWorkflowToReportInput } from "./mapWorkflowToFinalReport";
 import { attachNearTarget, nearTargetNote } from "./nearTarget";
 import { noBenchmarkSentence } from "./benchmarkBaselines";
 import { MULTILABEL_IMBALANCE_DEFINITION } from "./narrativeSectionText";
+import { usesSchema3 } from "./normalizeReportContent";
 import { buildProblemList, parseF1ThresholdGain, parseImbalanceEffect } from "./problemList";
 
 /** 조립에 쓰는 워크플로우 값. 훅은 스토어와 `buildReportInput` 결과에서 그대로 꺼내 넘긴다. */
@@ -339,14 +340,17 @@ export function assembleEvaluatedReport(
   const errorRatioText = errorRatios ? errorRatioSentence(errorRatios, taskTypeResolved) : null;
   // 8.1 표 아래 고정 문구 16 — 고른 서술 지표 중 내부 참조 기준치가 없는 것(사용자 결정 5). 8.1 표는 작업 생성
   // 응답으로 오므로 기준표 이름 사본으로 지금 계산해 저장하고 사실 시트에도 싣는다(백엔드는 되풀이하지 않는다).
-  const noBenchmarkText = noBenchmarkSentence(updatedKpiResults, taskTypeResolved);
+  // 판 3 전용 고정 문장(16·7)은 판 3 바탕일 때만 — 판 1·2 화면은 이 문장을 찍지 않으므로, 실으면 AI 가 "성적서가
+  // 따로 찍는다"고 믿고 빼 버려 그 판 성적서에서 말이 빠진다. 고정 문구 9 도 그 판 화면과 같은 조사로 싣는다.
+  const schema3 = usesSchema3(baseReport);
+  const noBenchmarkText = schema3 ? noBenchmarkSentence(updatedKpiResults, taskTypeResolved) : null;
 
   // 7~9절에 코드가 찍을 고정 문장 — AI·템플릿은 같은 숫자를 되풀이하지 않고 해석만 쓴다(생-12).
   const fixedSentences: FixedSentenceFact[] = [
-    ...(derivedPrediction ? [{ id: "9", section: "7.1", text: derivationStatement(derivedPrediction) }] : []),
+    ...(derivedPrediction ? [{ id: "9", section: "7.1", text: derivationStatement(derivedPrediction, { legacyParticle: !schema3 }) }] : []),
     ...(errorRatioText ? [{ id: "17", section: "7.1", text: errorRatioText }] : []),
     // 7.2 고정 문구 7 — 멀티레이블 불균형 비율 정의(화면 InterpretSection 이 판 3 멀티레이블에 늘 찍는다).
-    ...(taskTypeResolved === "multilabel" ? [{ id: "7", section: "7.2", text: MULTILABEL_IMBALANCE_DEFINITION }] : []),
+    ...(schema3 && taskTypeResolved === "multilabel" ? [{ id: "7", section: "7.2", text: MULTILABEL_IMBALANCE_DEFINITION }] : []),
     ...(labelSentence ? [{ id: "12", section: "7.2", text: labelSentence }] : []),
     ...(noBenchmarkText ? [{ id: "16", section: "8.1", text: noBenchmarkText }] : []),
     ...(sourceSentence

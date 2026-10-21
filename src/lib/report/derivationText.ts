@@ -15,7 +15,7 @@ import { josaEulReul } from "./koreanJosa";
  *
  * "결정 임계값 {t}를" 의 조사는 판 3 부터 숫자를 읽는 소리로 고른다(0.5를 · 0.3을, 서술 라운드 세션 B).
  * 판 2 보관본은 발급 당시처럼 늘 "를" — 그 판을 그리는 곳만 `legacyParticle` 을 켠다. 사실 시트의 고정 문장
- * (새 run = 판 3)은 기본값 그대로 부른다.
+ * 도 바탕 성적서의 판에 맞춰 부른다(판 3 이면 기본값, 옛 판 바탕이면 `legacyParticle`) — 화면과 같은 글.
  */
 export function derivationStatement(
   fact: DerivedPredictionFact,
