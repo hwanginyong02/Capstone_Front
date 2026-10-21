@@ -51,6 +51,20 @@ describe("지표 선택 이유", () => {
     });
   });
 
+  it("덧붙이는 글 칸이 있다(서술 칸 11개 중 이 화면의 한 칸 — 나머지 10칸은 ComposerCardForm.test) — 2층이라 글만으로도 답", async () => {
+    const { onMetricCardChange } = renderScreen("multilabel");
+    const note = screen.getByRole("textbox", { name: "지표 선택 이유 덧붙이는 글" });
+    // 2층(선택 필수가 아님) — 1층 선언의 '위에서 하나를 고르세요' 안내가 아니다
+    expect(note).toHaveAttribute("placeholder", "덧붙이는 글 (선택)");
+    await userEvent.type(note, "n");
+    expect(onMetricCardChange).toHaveBeenLastCalledWith("metricRationale", expect.objectContaining({ note: "n" }));
+  });
+
+  it.each(["binary", "multiclass"] as TaskType[])("%s 에서는 덧붙이는 글 칸도 없다", (taskType) => {
+    renderScreen(taskType);
+    expect(screen.queryByRole("textbox", { name: "지표 선택 이유 덧붙이는 글" })).not.toBeInTheDocument();
+  });
+
   it("Other 를 고르면 직접 적을 칸이 나타난다", () => {
     renderScreen("multilabel", { metricRationale: { text: "Other (own words)" } });
 

@@ -528,7 +528,8 @@ describe("덧붙이는 글", () => {
     expect(screen.queryByRole("textbox", { name: "데이터 출처 덧붙이는 글" })).not.toBeInTheDocument();
   });
 
-  it("서술 칸 11개에 글칸이 있다(서술 설계 D26 — 화면별로 확인)", () => {
+  // 11번째 칸(멀티레이블 지표 선택 이유)은 이 부품이 아니라 지표 화면(TestItems)이 그린다 — TestItems.test 가 본다.
+  it("서술 칸 11개에 글칸이 있다(서술 설계 D26 — 화면별로 확인, 이 부품 10칸)", () => {
     const expected: Array<[ComposerCardId, TaskType, string[]]> = [
       ["perspective", "binary", ["중요 오류 유형", "사용 방식"]],
       ["perspective", "multiclass", ["클래스 중요도"]],
@@ -548,6 +549,7 @@ describe("덧붙이는 글", () => {
     const { unmount } = renderAndKeep("groundTruth", "binary", { labelReview: { text: "Several reviewers" } });
     expect(screen.getByRole("textbox", { name: "일치도 종류 덧붙이는 글" })).toBeInTheDocument();
     unmount();
+    expect(expected.flatMap(([, , labels]) => labels).length + 1).toBe(10);
   });
 
   it("1층 선언은 글칸 안내가 '위에서 하나를 고르세요' — 글만으로는 답이 아니다", () => {
