@@ -3,6 +3,7 @@ import { useReportData } from "../../hooks/useReportData";
 import { useIssuance } from "../../hooks/useIssuance";
 import { usePdfDownload } from "../../hooks/usePdfDownload";
 import { useWorkspaceStore } from "../../utils/stores/useWorkspaceStore";
+import { useWorkflowStore } from "../../utils/stores/useWorkflowStore";
 import { ReportLayout } from "../../components/report/layout/ReportLayout";
 import { ReportLoadingState } from "../../components/report/ReportLoadingState";
 import { ReportErrorState } from "../../components/report/ReportErrorState";
@@ -37,6 +38,9 @@ export function Report() {
   const migrationNote = useWorkspaceStore(
     (state) => state.evaluationRuns.find((r) => r.id === id)?.migrationNote,
   );
+  // 이 run 이 지금 워크플로 흐름의 run 인가 — 검증 화면 "다음"은 지금 입력으로 새 run 을 만들므로, 점검 표 변경
+  // 안내의 "다음을 누르면 다시 만든다"는 이때만 참이다.
+  const inCurrentFlow = useWorkflowStore((state) => state.lastRunId === id);
 
   if (status === "not_found") return <ReportNotFoundState />;
   if (status === "loading") return <ReportLoadingState />;
@@ -66,7 +70,7 @@ export function Report() {
     >
       <SaveErrorBanner message={report.saveError} />
       {migrationNote === "issued_empty_narrative" && <IssuedEmptyNarrativeNotice />}
-      <MaterialCheckOutdatedNotice check={data.materialCheck} active={!issuance.issued} />
+      <MaterialCheckOutdatedNotice check={data.materialCheck} active={!issuance.issued} inCurrentFlow={inCurrentFlow} />
       {/* 빠진 재료 안내는 검증 화면(생성 전 안내)으로 옮겼다 — 성적서는 표지·1.4·6.0 에 점검 결과를
           찍는다(재료 선택 점검 6절). 여기서 지금 입력을 다시 판정하면 두 번째 판정 경로가 된다.
           평가를 마친 뒤(서술 진행·실패)에는 서술 띠가 상태를 말한다 — 미평가 안내는 평가 전 초안에만. */}

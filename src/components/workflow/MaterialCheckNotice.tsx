@@ -247,12 +247,17 @@ export function MaterialCheckNotice({ check, onFix, canFixInInput = () => false 
 /**
  * 점검 표가 바뀐 뒤의 "다시 확인" 안내 문장(점검 표 2.0). 진행 중인 run 의 재료 선택 점검(표지·1.4·6.0)은 run 을
  * 만들 때 저장되어 다시 계산되지 않으므로, 옛 점검 표로 만든 결과가 그대로 남는다.
+ *
+ * 검증 화면의 "다음"은 **지금 워크플로 입력**으로 새 run 을 만든다. 그래서 "다음을 누르면 다시 만든다"는 이 run 이
+ * 지금 흐름의 run(`lastRunId`)일 때만 참이다(`inCurrentFlow`). 워크스페이스에서 연 다른 run 이면 사실만 알린다.
  */
-export function materialCheckOutdatedMessage(storedVersion: string): string {
+export function materialCheckOutdatedMessage(storedVersion: string, inCurrentFlow = true): string {
   return (
     `점검 표가 바뀌어(${storedVersion} → ${MATERIAL_CHECK_VERSION}) 다시 확인이 필요합니다. ` +
     "이 평가의 재료 선택 점검(표지·1.4·6.0)은 옛 점검 표로 만든 것입니다. " +
-    "데이터 검증 화면에서 생성 전 안내를 다시 보고 \"다음\"을 누르면 새 점검 표로 성적서를 다시 만듭니다."
+    (inCurrentFlow
+      ? "데이터 검증 화면에서 생성 전 안내를 다시 보고 \"다음\"을 누르면 새 점검 표로 성적서를 다시 만듭니다."
+      : "이 평가는 지금 진행 중인 평가 흐름의 결과가 아니어서, 새 점검 표를 적용하려면 같은 입력으로 평가를 새로 해야 합니다.")
   );
 }
 
@@ -263,9 +268,12 @@ export function materialCheckOutdatedMessage(storedVersion: string): string {
 export function MaterialCheckOutdatedNotice({
   check,
   active,
+  inCurrentFlow = true,
 }: {
   check: { version: string } | null | undefined;
   active: boolean;
+  /** 이 run 이 지금 워크플로 흐름의 run(`lastRunId`)인가 — 아니면 "다음을 누르면 다시 만든다" 대신 사실 문장. */
+  inCurrentFlow?: boolean;
 }) {
   if (!active || !isMaterialCheckOutdated(check)) return null;
   return (
@@ -274,7 +282,7 @@ export function MaterialCheckOutdatedNotice({
       className="mb-6 flex items-start gap-2 rounded-lg border border-warning-border bg-warning-subtle px-5 py-4 text-sm text-warning-strong"
     >
       <RefreshCw className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-      <p>{materialCheckOutdatedMessage(check!.version)}</p>
+      <p>{materialCheckOutdatedMessage(check!.version, inCurrentFlow)}</p>
     </section>
   );
 }
