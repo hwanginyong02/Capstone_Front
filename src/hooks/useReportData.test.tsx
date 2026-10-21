@@ -708,4 +708,18 @@ describe("끝난 서술 저장 — 7.3·칸별 출처·칸별 모델(서술 라�
     expect(saved.interpretation.additionalObservations).toBe("");
     expect(saved).not.toHaveProperty("narrativeModels");
   });
+
+  it("이전 서술의 모델 기록이 남은 run 을 새로 서술할 때 새 응답에 모델이 없으면 옛 기록을 남기지 않는다", async () => {
+    stubFetch({ views: [{ body: doneView() }] });
+    seedStores();
+    const previous = { "7.1": "claude-old", "7.2": "claude-old", "7.3": null, "8.1": null, "8.2": "claude-old", "8.3": "claude-old", "9": null };
+    const run = storedRun()!;
+    useWorkspaceStore.setState({
+      evaluationRuns: [{ ...run, reportData: { ...run.reportData, narrativeModels: previous } }],
+    });
+    expect(storedRun()!.reportData.narrativeModels).toEqual(previous); // 전제 — 옛 기록이 실제로 있다
+    renderReportPage();
+    await waitFor(() => expect(storedRun()!.reportData.isEvaluated).toBe(true));
+    expect("narrativeModels" in storedRun()!.reportData).toBe(false);
+  });
 });

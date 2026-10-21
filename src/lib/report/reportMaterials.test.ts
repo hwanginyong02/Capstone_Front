@@ -17,6 +17,7 @@ import {
   buildClientInputs,
   buildReportMaterials,
   fitClientInputs,
+  materialRowText,
   type ReportComposerInput,
 } from "./reportMaterials";
 import type { MaterialRow } from "../../types/finalReport.types";
@@ -540,3 +541,15 @@ describe("'기타'를 고르고 글을 비우면 답이 아니다 (검토 반영
     expect(valueOf(materials.training, "편향 감소 노력")).toBe("수행 안 함");
   });
 });
+
+describe("materialRowText — 줄 하나의 인쇄·AI 글", () => {
+  it.each([
+    [{ value: "X" }, "X"],
+    [{ value: "X", note: "n" }, "X (의뢰자 제공: n)"],
+    [{ value: null, note: "n" }, `${NOT_PROVIDED} (의뢰자 제공: n)`],
+    [{ value: null }, NOT_PROVIDED],
+  ])("%j → %s", (row, expected) => {
+    expect(materialRowText(row)).toBe(expected);
+  });
+});
+

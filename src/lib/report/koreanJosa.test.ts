@@ -1,7 +1,7 @@
 /** 고정 문구 조사 — 끼워 넣는 말의 받침에 맞춘다. */
 import { describe, expect, it } from "vitest";
 
-import { josaEulReul, josaEunNeun, josaEuroRo, josaEuroRoNumber } from "./koreanJosa";
+import { josaEulReul, josaEunNeun, josaEuroRo, josaEuroRoNumber, josaWaGwaNumber } from "./koreanJosa";
 
 describe("으로/로", () => {
   it.each([
@@ -103,3 +103,31 @@ describe("숫자 뒤 로/으로 — josaEuroRoNumber(3절 불균형 비율 등)"
     expect(josaEuroRoNumber("x")).toBe("(으)로");
   });
 });
+
+describe("숫자 뒤 과/와 — josaWaGwaNumber(3절 D20 '정확도 {acc}와 매크로 F1')", () => {
+  it.each([
+    ["0.83", "과"], // 삼 — 받침
+    ["0.505", "와"], // 오 — 받침 없음
+    ["0.81", "과"], // 일 — ㄹ 도 받침
+    ["0.87", "과"], // 칠
+    ["0.9", "와"], // 구
+    ["10", "과"], // 십
+    ["1000000000000", "와"], // 조 — 받침 없는 자리 이름
+    [0.6, "과"], // 육(숫자로 받아도)
+  ] as const)("%s%s", (value, expected) => {
+    expect(josaWaGwaNumber(value)).toBe(expected);
+  });
+
+  it("숫자가 아니면 와", () => {
+    expect(josaWaGwaNumber("abc")).toBe("와");
+    expect(josaWaGwaNumber("—")).toBe("와");
+  });
+});
+
+describe("소수의 끝 0 — 자리 이름이 아니라 끝 숫자로 읽는다", () => {
+  it("소수점 뒤 끝 0 이 12개여도 '영'으로 읽어 '을'(정수였다면 '조'라 '를')", () => {
+    expect(josaEulReul("1.000000000000")).toBe("을");
+    expect(josaEulReul("1000000000000")).toBe("를");
+  });
+});
+

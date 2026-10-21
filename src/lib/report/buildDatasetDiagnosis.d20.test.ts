@@ -188,6 +188,58 @@ describe("기준(0.10) 이상 판단과 숫자 출처", () => {
   });
 });
 
+describe("변이 시험 구멍 — 숫자 출처·한쪽만 있는 새 칸·설명 거르기", () => {
+  it("표시값이 숫자가 아니면(—) 원값으로 판단 — 원값이 꼭 기준(0.1)이어도 '이상'이라 조건을 쓴다", () => {
+    const ie = effect("affected", { task: "binary", accGap: "0.05", classGap: "0.2", withNew: false });
+    ie.majority_minus_minority_f1 = 0.1;
+    ie.display!.majority_minus_minority_f1 = "—";
+    const text = diagnose("binary", ie);
+    expect(text).toContain("다수 클래스 'A'와 소수 클래스 'B'의 F1 차이가 —(으)로 0.10 이상이어서 ");
+    expect(text).not.toContain("매크로 F1의 차이가");
+  });
+
+  it("정확도만 있고 매크로 F1 이 원값·표시값 모두 없으면 값 없는 꼴('정확도와 매크로 F1의 차이') — null 을 찍지 않는다", () => {
+    const ie = effect("affected", { task: "binary", accGap: "0.15", classGap: "0.03", withNew: true });
+    delete ie.macro_f1;
+    delete ie.display!.macro_f1;
+    const text = diagnose("binary", ie);
+    expect(text).toContain("정확도와 매크로 F1의 차이가 0.15로 0.10 이상이어서 ");
+    expect(text).not.toContain("null");
+    expect(text).not.toContain("정확도 0.9");
+  });
+
+  it("매크로 F1 만 있어도 값 없는 꼴", () => {
+    const ie = effect("affected", { task: "binary", accGap: "0.15", classGap: "0.03", withNew: true });
+    delete ie.accuracy;
+    delete ie.display!.accuracy;
+    expect(diagnose("binary", ie)).toContain("정확도와 매크로 F1의 차이가 0.15로 0.10 이상이어서 ");
+  });
+
+  it("정확도·매크로 F1 은 표시값을 원값보다 먼저 찍는다(판정 쪽으로 늘린 자릿수)", () => {
+    const ie = effect("affected", { task: "binary", accGap: "0.15", classGap: "0.03", withNew: true });
+    ie.accuracy = 0.90004;
+    ie.display!.accuracy = "0.9000";
+    ie.macro_f1 = 0.75004;
+    ie.display!.macro_f1 = "0.7500";
+    const text = diagnose("binary", ie);
+    expect(text).toContain("정확도 0.9000과 매크로 F1 0.7500의 차이가 0.15로 0.10 이상이어서 ");
+    expect(text).not.toContain("0.90004");
+    expect(text).not.toContain("0.75004");
+  });
+
+  it.each([
+    ["제공되지 않음", "설명 자리에 '제공되지 않음'이 저장돼 있으면"],
+    ["A", "설명이 이름과 같으면"],
+    [" A ", "설명이 앞뒤 공백만 다른 이름이면"],
+  ])("설명 %j — %s 이름만", (description) => {
+    const text = diagnose("binary", effect("no_distortion", { task: "binary", accGap: "0.05", classGap: "0.03", withNew: true }), {
+      A: description,
+    });
+    expect(text).toContain("다수 클래스 'A'와 소수 클래스 'B'의 F1 차이 0.03");
+    expect(text).not.toContain("'A(");
+  });
+});
+
 describe("숫자 뒤 조사 — 숫자 끝소리", () => {
   it.each([
     ["1.51", "로"], // 일(ㄹ)

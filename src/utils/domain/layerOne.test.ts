@@ -159,6 +159,23 @@ describe("⑥~⑨ 화면 규칙 재확인 — screenRuleGaps", () => {
     expect(detailsOf({ ...withClasses, composerTrainingData: { trainingClassVolume: { entries: [] } } })).toEqual([]);
   });
 
+  it("⑥ 옛 정답 컬럼의 클래스 키만 적혀 있고 지금 클래스는 비었으면 '일부만'이 아니라 빈칸(막지 않음)", () => {
+    const withClasses = {
+      columnMapping: [
+        { originalName: "label", sampleValues: ["0", "1"], inferredRole: "y_true", confirmedRole: "y_true", modified: false, warnings: [] },
+      ] as never,
+      metadata: { column_unique_values: { label: ["0", "1"] } } as never,
+    };
+    // 정답 컬럼을 바꾸기 전 클래스(cat·dog)로 적은 값이 저장본에 남은 경우 — 지금 클래스(0·1) 칸은 비었다
+    const stale = { trainingClassVolume: { entries: [{ key: "cat", value: "10" }, { key: "dog", value: "5" }] } };
+    expect(detailsOf({ ...withClasses, composerTrainingData: stale })).toEqual([]);
+    // 같은 모양에 지금 클래스 하나를 적으면 '일부만'으로 막는다(이 판정이 살아 있음을 함께)
+    const mixed = { trainingClassVolume: { entries: [...stale.trainingClassVolume.entries, { key: "0", value: "3" }] } };
+    expect(detailsOf({ ...withClasses, composerTrainingData: mixed })[0].details).toEqual([
+      "클래스별 데이터 양: 클래스마다 모두 적어 주세요(일부만 적었습니다).",
+    ]);
+  });
+
   it("⑦ 수집 기간 역전", () => {
     const gaps = detailsOf({
       composerTestData: { testPeriod: { entries: [{ key: "From", value: "2025-05" }, { key: "To", value: "2025-01" }] } },
