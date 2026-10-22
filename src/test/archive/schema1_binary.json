@@ -4,11 +4,12 @@
     "title": "기계학습 분류 성능 시험결과서",
     "issuedAt": "",
     "evaluationPeriod": {
-      "from": "2026-10-22",
-      "to": "2026-10-22"
+      "from": "2026-10-01",
+      "to": "2026-10-01"
     },
     "taskType": "binary",
-    "taskTypeLabel": "이진 분류",
+    "taskTypeLabel": "Binary",
+    "contractDate": "2026-10-01",
     "positiveClass": "1",
     "derivedPrediction": {
       "method": "threshold",
@@ -21,12 +22,12 @@
   },
   "applicant": {
     "companyName": "보관본 주식회사",
-    "representative": "—",
-    "businessNumber": "—",
-    "contact": "—",
-    "fax": "",
-    "homepage": "",
-    "address": "—"
+    "representative": "홍길동",
+    "businessNumber": "123-45-67890",
+    "contact": "02-000-0000",
+    "fax": "02-000-0001",
+    "homepage": "https://archive.example",
+    "address": "서울특별시 노원구 공릉로 232"
   },
   "performer": {
     "orgName": "한국 AI 인증원",
@@ -38,33 +39,52 @@
     "targetModel": "ArchiveModel",
     "version": "v1.0.0",
     "scope": "의뢰자가 제출한 평가 데이터셋을 기반으로 선택된 시험항목에 대해 정량적 성능 지표를 산출하고 합격 기준 충족 여부를 판정한다.",
-    "reportPurposeKey": "external"
+    "reportPurposeKey": "external",
+    "modelPurpose": "생산 라인 2 의 불량 검출",
+    "modelCategory": "XGBoost"
   },
   "datasetInfo": {
     "format": "정형 데이터 (CSV)",
     "inputColumns": [
       "id",
-      "y_true",
-      "y_pred",
-      "score"
+      "label",
+      "prob"
     ],
     "sampleCount": 200,
-    "taskTypeLabel": "이진 분류",
+    "taskTypeLabel": "Binary",
     "classCount": 2,
     "classLabels": [
-      "Negative (0)",
-      "Positive (1)"
+      "0",
+      "1"
+    ],
+    "classLabelDescriptions": [
+      {
+        "label": "0",
+        "description": "정상"
+      },
+      {
+        "label": "1",
+        "description": "불량"
+      }
     ],
     "fileName": "data.csv"
   },
   "datasetSamples": [],
-  "datasetDiagnosis": "평가 데이터셋은 총 200건이며, 클래스(레이블)별 분포는 0 105건(52.5%), 1 95건(47.5%)이다. 클래스 불균형 비율(Imbalance Ratio)은 1.11로, 허용 기준(< 1.50) 이내의 균형 상태이다.",
+  "datasetDiagnosis": "평가 데이터셋은 총 200건이며, 클래스(레이블)별 분포는 0 105건(52.5%), 1 95건(47.5%)이다. 클래스 불균형 비율(Imbalance Ratio)은 1.11로, 허용 기준(≤ 1.50) 이내의 균형 상태이다.",
   "trainingDatasetInfo": {
-    "name": "—",
-    "trainingSampleCount": 0,
-    "validationSampleCount": 0,
+    "name": "학습셋 A",
+    "trainingSampleCount": 800,
+    "validationSampleCount": 200,
+    "format": "CSV",
     "classDistribution": "0 600 / 1 400",
-    "validExamples": [],
+    "description": "2026년 상반기 라인 2 검사 이미지에서 뽑은 특징",
+    "validExamples": [
+      {
+        "name": "good_example.png",
+        "size": "12 KB",
+        "type": "image/png"
+      }
+    ],
     "edgeExamples": []
   },
   "evalEnv": {
@@ -77,15 +97,20 @@
       "numpy 1.26.0"
     ],
     "systemSpec": {
-      "os": "제공되지 않음",
-      "cpu": "제공되지 않음",
-      "gpu": "제공되지 않음",
-      "memory": "제공되지 않음",
-      "software": "제공되지 않음"
+      "os": "Ubuntu 22.04",
+      "cpu": "8 vCPU",
+      "gpu": "없음",
+      "memory": "32GB",
+      "software": "Python 3.11"
     },
     "environment": {
-      "evaluated_at": "<비결정적 값 — 존재만 고정>",
-      "libraries": "<비결정적 값 — 존재만 고정>"
+      "evaluated_at": "2026-10-01T02:00:00+00:00",
+      "libraries": {
+        "python": "3.11.9",
+        "scikit-learn": "1.4.0",
+        "pandas": "2.2.0",
+        "numpy": "1.26.0"
+      }
     }
   },
   "metricList": [
@@ -93,7 +118,7 @@
       "metricId": "M1",
       "name": "Accuracy",
       "threshold": 0.51,
-      "passCriteria": "≥ 0.510"
+      "passCriteria": "≥ 0.51"
     },
     {
       "metricId": "M2",
@@ -111,13 +136,13 @@
       "metricId": "M4",
       "name": "F1 Score",
       "threshold": 0.5,
-      "passCriteria": "≥ 0.500"
+      "passCriteria": "≥ 0.50"
     },
     {
       "metricId": "M5",
-      "name": "F-beta Score",
+      "name": "F-beta Score (β=1)",
       "threshold": 0.5,
-      "passCriteria": "≥ 0.500"
+      "passCriteria": "≥ 0.50"
     },
     {
       "metricId": "M9",
@@ -129,7 +154,25 @@
       "metricId": "M20",
       "name": "MCC",
       "threshold": 0,
-      "passCriteria": "≥ 0.000"
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M21",
+      "name": "Confusion Matrix",
+      "threshold": 0,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M22",
+      "name": "Class-wise Metric",
+      "threshold": 0,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M23",
+      "name": "Imbalance Ratio",
+      "threshold": 0,
+      "passCriteria": "정보 제공"
     }
   ],
   "metricFormulas": [
@@ -137,53 +180,134 @@
       "metricId": "M1",
       "name": "Accuracy",
       "formula": "(TP + TN) / Total",
-      "description": "모델이 맞게 예측한 비율입니다.",
+      "description": "Measures how often the classifier predicts the correct result.",
       "isCommon": true
     },
     {
       "metricId": "M2",
       "name": "Precision",
       "formula": "binary: TP/(TP+FP) · 그 외: 클래스별 TP/(TP+FP) 의 macro 평균",
-      "description": "양성으로 예측한 것 중 실제 양성인 비율입니다.",
+      "description": "Among predicted positives, measures how many are actually positive.",
       "isCommon": true
     },
     {
       "metricId": "M3",
       "name": "Recall",
       "formula": "binary: TP/(TP+FN) · 그 외: 클래스별 TP/(TP+FN) 의 macro 평균",
-      "description": "실제 양성 중 모델이 찾아낸 비율입니다.",
+      "description": "Measures how many true positives are successfully detected.",
       "isCommon": true
     },
     {
       "metricId": "M4",
       "name": "F1 Score",
       "formula": "binary: 2PR/(P+R) · 그 외: 클래스별 F1 의 macro 평균(macro-P·macro-R 의 조화평균이 아님)",
-      "description": "정밀도와 재현율을 하나로 묶어 균형을 봅니다.",
+      "description": "Balances precision and recall in a single metric.",
       "isCommon": true
     },
     {
       "metricId": "M5",
       "name": "F-beta Score",
       "formula": "binary: (1+β²)PR/(β²P+R) · 그 외: 클래스별 Fβ 의 macro 평균",
-      "description": "β로 정밀도와 재현율의 비중을 조정합니다.",
+      "description": "Adjusts the balance between precision and recall using beta.",
       "isCommon": true
     },
     {
       "metricId": "M9",
       "name": "AUROC",
       "formula": "Area under ROC Curve",
-      "description": "모든 임계값에서 양성과 음성을 얼마나 잘 가르는지 봅니다.",
+      "description": "Measures ranking quality across classification thresholds.",
       "isCommon": false
     },
     {
       "metricId": "M20",
       "name": "MCC",
       "formula": "(TP*TN - FP*FN) / √((TP+FP)(TP+FN)(TN+FP)(TN+FN))",
-      "description": "혼동행렬의 네 칸을 모두 반영하는 이진 분류 지표입니다.",
+      "description": "A robust binary metric that considers all confusion matrix cells.",
       "isCommon": false
+    },
+    {
+      "metricId": "M21",
+      "name": "Confusion Matrix",
+      "formula": "실제/예측 클래스의 교차 분포를 행렬로 산출",
+      "description": "Shows actual versus predicted counts by class or label.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M22",
+      "name": "Class-wise Metric",
+      "formula": "개별 클래스별 P/R/F1 산출",
+      "description": "Breaks down metrics for each class or label.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M23",
+      "name": "Imbalance Ratio",
+      "formula": "max(class count) / min(class count)",
+      "description": "Measures the balance of the evaluation dataset itself.",
+      "isCommon": true
     }
   ],
-  "dataValidation": [],
+  "dataValidation": [
+    {
+      "checkName": "Empty dataset (no data rows)",
+      "status": "pass",
+      "detail": "200 건",
+      "group": "common"
+    },
+    {
+      "checkName": "필수 컬럼 누락",
+      "status": "pass",
+      "detail": "없음",
+      "group": "common"
+    },
+    {
+      "checkName": "누락값(NaN)",
+      "status": "pass",
+      "detail": "없음",
+      "group": "common"
+    },
+    {
+      "checkName": "중복 ID",
+      "status": "pass",
+      "detail": "없음",
+      "group": "common"
+    },
+    {
+      "checkName": "클래스 불일치",
+      "status": "pass",
+      "detail": "없음",
+      "group": "common"
+    },
+    {
+      "checkName": "Label notation",
+      "status": "pass",
+      "detail": "없음",
+      "group": "common"
+    },
+    {
+      "checkName": "제외된 샘플 수",
+      "status": "pass",
+      "detail": "0 건",
+      "group": "common"
+    },
+    {
+      "checkName": "score 범위 오류",
+      "status": "pass",
+      "detail": "0 건",
+      "group": "binary"
+    },
+    {
+      "checkName": "이진 클래스 체계 오류",
+      "status": "pass",
+      "detail": "없음",
+      "group": "binary"
+    }
+  ],
+  "validationSummary": {
+    "totalRows": 200,
+    "validRows": 200,
+    "excludedRows": 0
+  },
   "kpiResults": [
     {
       "metricId": "M1",
@@ -199,7 +323,19 @@
       "value": 0.48148148148148145,
       "threshold": 0,
       "status": "pass",
-      "higherIsBetter": true
+      "higherIsBetter": true,
+      "perClass": [
+        {
+          "label": "0",
+          "value": 0.532608695652174,
+          "status": "pass"
+        },
+        {
+          "label": "1",
+          "value": 0.48148148148148145,
+          "status": "pass"
+        }
+      ]
     },
     {
       "metricId": "M3",
@@ -207,7 +343,19 @@
       "value": 0.5473684210526316,
       "threshold": 0,
       "status": "pass",
-      "higherIsBetter": true
+      "higherIsBetter": true,
+      "perClass": [
+        {
+          "label": "0",
+          "value": 0.4666666666666667,
+          "status": "pass"
+        },
+        {
+          "label": "1",
+          "value": 0.5473684210526316,
+          "status": "pass"
+        }
+      ]
     },
     {
       "metricId": "M4",
@@ -215,7 +363,19 @@
       "value": 0.5123152709359606,
       "threshold": 0.5,
       "status": "pass",
-      "higherIsBetter": true
+      "higherIsBetter": true,
+      "perClass": [
+        {
+          "label": "0",
+          "value": 0.49746192893401014,
+          "status": "fail"
+        },
+        {
+          "label": "1",
+          "value": 0.5123152709359606,
+          "status": "pass"
+        }
+      ]
     },
     {
       "metricId": "M5",
@@ -240,10 +400,50 @@
       "threshold": 0,
       "status": "pass",
       "higherIsBetter": true
+    },
+    {
+      "metricId": "M21",
+      "name": "Confusion Matrix",
+      "value": 0,
+      "threshold": 0,
+      "status": "pass",
+      "higherIsBetter": true
+    },
+    {
+      "metricId": "M22",
+      "name": "Class-wise Metric",
+      "value": 0,
+      "threshold": 0,
+      "status": "pass",
+      "higherIsBetter": true
+    },
+    {
+      "metricId": "M23",
+      "name": "Imbalance Ratio",
+      "value": 1.105263157894737,
+      "threshold": 0,
+      "status": "pass",
+      "higherIsBetter": false
     }
   ],
   "charts": {
-    "confusionMatrix": null,
+    "confusionMatrix": {
+      "labels": [
+        "0",
+        "1"
+      ],
+      "matrix": [
+        [
+          49,
+          56
+        ],
+        [
+          43,
+          52
+        ]
+      ],
+      "totalSamples": 200
+    },
     "rocCurve": {
       "fpr": [
         0,
@@ -499,17 +699,25 @@
       "auprc": 0.49404782320259494
     }
   },
-  "latency": null,
+  "latency": {
+    "mean": 12.3,
+    "min": 4.1,
+    "p50": 11.8,
+    "p95": 20.4,
+    "p99": 25.9,
+    "max": 31.2,
+    "unit": "ms"
+  },
   "interpretation": {
-    "confusionAnalysis": "혼동행렬 기준 전체 200건 중 99건(49.5%)이 오분류되었다. 양성 클래스 1(불량) 기준으로 거짓 양성(FP)은 56건, 거짓 음성(FN)은 43건이다. 의뢰자가 더 위험하다고 밝힌 거짓 음성(FN, 놓침)은 43건으로 전체 오류 99건의 43.4%이다. 양성 클래스 1(불량)로 예측한 것은 108건, 실제 양성은 95건으로, 양성을 실제보다 13건 많이 예측했다. F1 이 가장 낮은 클래스는 F1 0.4975인 0(정상)이며, 표본은 105건으로 전체 표본의 52.5%이다. 매크로 F1 과의 차이는 0.0074이다. 확신 오류는 모델이 틀린 쪽에 높은 확률을 준 오류라 결정 임계값을 조정해도 잘 줄지 않으므로, 해당 사례의 입력과 정답 라벨을 함께 점검할 필요가 있다.",
-    "distributionAnalysis": "평가 데이터셋은 총 200건이며, 클래스 분포는 0(정상) 105건(52.5%), 1(불량) 95건(47.5%)이다. 불균형 비율(1.1053)이 1.5 미만이어서 불균형은 경미하다. 학습 분포와 평가 분포의 클래스 비율 차는 모두 10%p 미만이다."
+    "confusionAnalysis": "혼동행렬 기준 전체 200건 중 99건(49.5%)이 오분류되었다. 양성 클래스 1 기준으로 거짓 양성(FP)은 56건, 거짓 음성(FN)은 43건이다. 오분류 99건 중 예측값을 직접 제출해 결정 임계값을 알 수 없으므로 경계 오류는 계산하지 않았고, 틀린 쪽 확률이 0.9 이상인 확신 오류는 31건(31.3%)이다. 확신 오류는 모델이 틀린 쪽에 높은 확률을 준 오류라 결정 임계값을 조정해도 잘 줄지 않으므로, 해당 사례의 입력과 정답 라벨을 함께 점검할 필요가 있다.",
+    "distributionAnalysis": "평가 데이터셋은 총 200건이며, 클래스 분포는 0 105건(52.5%), 1 95건(47.5%)이다. 불균형 비율(1.1053)이 1.5 미만이어서 불균형은 경미하다."
   },
   "conclusion": {
     "verdict": "FAIL",
-    "score": 75,
+    "score": 66.7,
     "benchmark": "내부 참조 기준과 비교하면 참조 범위에 비해 미흡한 지표는 Accuracy(0.505, 참조 범위 0.85~0.92), Precision(0.4815, 참조 범위 0.8~0.92), Recall(0.5474, 참조 범위 0.8~0.92), F1 Score(0.512, 참조 범위 0.83~0.91), AUROC(0.5112, 참조 범위 0.85~0.95)이다. 비교 기준은 내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)이다. 목표값이 참조 범위보다 낮은 지표는 Accuracy(목표 0.51), F1 Score(목표 0.5)이다.",
-    "narrative": "핵심 지표가 목표에 미달하여 종합 판정은 '최종 불합격'이다(미달한 핵심 지표: Accuracy(0.505, 목표 0.51)). 참고로 목표값이 설정된 지표 3개 중 2개가 목표를 충족하였다(통과율 66.7%). 95% 신뢰구간이 목표값을 포함하는 지표는 Accuracy(구간 0.436~0.574, 목표 0.51), F1 Score(구간 0.427~0.591, 목표 0.5), F-beta Score(구간 0.427~0.591, 목표 0.5)로, 표본 변동에 따라 해당 지표의 판정이 달라질 수 있다. 양성 클래스의 Precision 은 0.4815, Recall 은 0.5474로 Recall 쪽이 0.0659 높고, 두 값의 차이는 기준(0.1) 미만이어서 치우침은 크지 않다. 결정 임계값을 0.03으로 바꾸면 F1 이 0.5123에서 0.6483까지 오를 수 있다. 다만 이 향상폭(0.136)은 같은 평가 데이터로 고른 임계값에서 나온 이 데이터의 최대폭이므로 별도 데이터에서 확인해야 한다. 의뢰자가 밝힌 모델 용도는 '생산 라인 2 의 불량 검출'이다.",
-    "risks": "목표에 미달한 지표가 있어 해당 영역의 성능 저하 위험이 존재한다(목표 미달 지표: Accuracy(0.505, 목표 0.51)). F1 이 가장 낮은 클래스는 F1 0.4975인 0(정상)이다. 목표값에 근소한 차이로 걸친 지표는 표본이 달라지면 충족과 미달이 서로 바뀔 수 있어 판정의 여유가 작다. 현재 결정 임계값이 최적이 아닐 수 있어, 임계값을 그대로 두면 이 데이터에서 가능한 것보다 낮은 F1 로 운영될 위험이 있다."
+    "narrative": "핵심 지표가 목표에 미달하여 종합 판정은 '최종 불합격'이다(미달한 핵심 지표: Accuracy(0.505, 목표 0.51)). 참고로 목표값이 설정된 지표 3개 중 2개가 목표를 충족하였다(통과율 66.7%). 95% 신뢰구간이 목표값을 포함하는 지표는 Accuracy(구간 0.436~0.574, 목표 0.51), F1 Score(구간 0.427~0.591, 목표 0.5), F-beta Score(구간 0.427~0.591, 목표 0.5)로, 표본 변동에 따라 해당 지표의 판정이 달라질 수 있다. 결정 임계값을 0.03으로 바꾸면 F1 이 0.5123에서 0.6483까지 오를 수 있다. 다만 이 향상폭(0.136)은 같은 평가 데이터로 고른 임계값에서 나온 이 데이터의 최대폭이므로 별도 데이터에서 확인해야 한다.",
+    "risks": "목표에 미달한 지표가 있어 해당 영역의 성능 저하 위험이 존재한다(목표 미달 지표: Accuracy(0.505, 목표 0.51)). 목표값과의 차이가 목표값의 3% 미만인 아슬아슬 합격 지표는 F1 Score(0.512, 목표 0.5, 차이 0.012), F-beta Score(0.512, 목표 0.5, 차이 0.012)로, 표본이 달라지면 목표에 미달할 위험이 있다. 현재 결정 임계값이 최적이 아닐 수 있어, 임계값을 그대로 두면 이 데이터에서 가능한 것보다 낮은 F1 로 운영될 위험이 있다."
   },
   "recommendationNarrative": {
     "dataQuality": "데이터 측면에서 권고 대상으로 지목된 문제는 없다.",
@@ -540,6 +748,9 @@
     "signedAt": "",
     "history": []
   },
-  "evaluationWarnings": [],
-  "narrativeSource": "fallback"
+  "evaluationWarnings": [
+    "확률 컬럼 prob 에서 결정 임계값 0.5 로 예측을 파생했습니다."
+  ],
+  "narrativeSource": "fallback",
+  "isEvaluated": true
 }

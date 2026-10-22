@@ -1,0 +1,17 @@
+{
+  "reportNo": "RPT-2026-0001",
+  "version": "v1.1",
+  "issuer": "자동화 평가 시스템",
+  "issuedAt": "2026-10-02T05:30:00+00:00",
+  "organization": {
+    "orgName": "한국 AI 인증원",
+    "department": null,
+    "evaluator": "자동 평가 엔진",
+    "contact": "02-000-0000",
+    "address": null
+  },
+  "history": [
+    { "version": "v1.0", "issuedAt": "2026-10-01T03:00:00+00:00", "note": null },
+    { "version": "v1.1", "issuedAt": "2026-10-02T05:30:00+00:00", "note": "오기 수정" }
+  ]
+}

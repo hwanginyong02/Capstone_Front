@@ -76,6 +76,11 @@ interface ConclusionSectionProps {
   targetDigits?: number;
   /** 판정 자릿수를 쓰는 성적서인가(`FinalReportData.judgedValueDigits`) — 6.1 과 같은 조건. */
   judgedValueDigits?: boolean;
+  /**
+   * 판 1 보관본인가(`isLegacyLayout`) — 운영 main 이 발급하던 '종합 점수' 라벨·정의 문장 그대로 찍는다.
+   * 판 1 의 6.1 에는 판정 규칙이 없으므로 "판정 규칙은 6.1에 적었고"를 붙이면 없는 곳을 가리킨다.
+   */
+  legacyLayout?: boolean;
 }
 
 const PLACEHOLDER = "자동 서술 생성(LLM) 연동 예정 — 현재는 규칙 기반 판정·점수만 표시됩니다.";
@@ -143,6 +148,7 @@ export function ConclusionSection({
   kpiResults,
   targetDigits,
   judgedValueDigits,
+  legacyLayout = false,
 }: ConclusionSectionProps) {
   const config = VERDICT_CONFIG[conclusion.verdict];
   const Icon = config.icon;
@@ -178,7 +184,7 @@ export function ConclusionSection({
             {/* 판정 대상이 없으면 통과율을 셀 수 없다 — 0% 로 적으면 전부 미달로 읽힌다. */}
             {conclusion.judgedCount === 0 ? "—" : `${conclusion.score.toFixed(1)}%`}
           </span>
-          <p className="text-xs font-medium text-slate-500">통과율 (참고)</p>
+          <p className="text-xs font-medium text-slate-500">{legacyLayout ? "종합 점수" : "통과율 (참고)"}</p>
         </div>
       </div>
 
@@ -188,14 +194,25 @@ export function ConclusionSection({
         신뢰도로 읽을 수 있었다. 실제 정의는 "사용자가 설정한 합격 기준의 달성률"이고
         데이터셋 특성 지표(M23 등)도 목표값을 설정했다면 분모에 들어간다.
       */}
-      <p className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
-        <strong className="text-slate-700">통과율의 정의</strong> — 사용자가 합격 목표값을
-        설정한 시험항목 가운데 그 기준을 충족한 항목의 비율입니다. 목표값을 설정하지 않은
-        항목과 측정 불가 항목은 분모에서 제외됩니다. 데이터셋 특성 지표(예: 불균형 비율)에
-        목표값을 설정했다면 그 항목도 함께 집계되므로, 이 수치는 모델 성능만의 지표가
-        아닙니다. 통과율은 참고 수치이며 판정의 근거가 아닙니다. 판정 규칙은 6.1에 적었고,
-        항목별 값과 기준은 6절 표에서 확인할 수 있습니다.
-      </p>
+      {legacyLayout ? (
+        // 판 1 보관본은 발급 당시 문장 그대로 — 그 판의 6.1 에는 판정 규칙이 없다(showVerdictRule).
+        <p className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
+          <strong className="text-slate-700">종합 점수의 정의</strong> — 사용자가 합격 목표값을
+          설정한 시험항목 가운데 그 기준을 충족한 항목의 비율입니다. 목표값을 설정하지 않은
+          항목과 측정 불가 항목은 분모에서 제외됩니다. 데이터셋 특성 지표(예: 불균형 비율)에
+          목표값을 설정했다면 그 항목도 함께 집계되므로, 이 수치는 모델 성능만의 지표가
+          아닙니다. 항목별 값과 기준은 6절 표에서 확인할 수 있습니다.
+        </p>
+      ) : (
+        <p className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
+          <strong className="text-slate-700">통과율의 정의</strong> — 사용자가 합격 목표값을
+          설정한 시험항목 가운데 그 기준을 충족한 항목의 비율입니다. 목표값을 설정하지 않은
+          항목과 측정 불가 항목은 분모에서 제외됩니다. 데이터셋 특성 지표(예: 불균형 비율)에
+          목표값을 설정했다면 그 항목도 함께 집계되므로, 이 수치는 모델 성능만의 지표가
+          아닙니다. 통과율은 참고 수치이며 판정의 근거가 아닙니다. 판정 규칙은 6.1에 적었고,
+          항목별 값과 기준은 6절 표에서 확인할 수 있습니다.
+        </p>
+      )}
 
       {/* 8.1 도메인 성능 벤치마크 — 참조 범위를 숫자로 찍고(재료 목록 9절) 서술을 붙인다. */}
       {/* 판 3 은 표·고정 문구 16 을 소절 제목 아래에 둔다(옛 판은 발급 당시처럼 표가 제목 위). */}

@@ -39,8 +39,9 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         materialCheck={data.materialCheck}
         hasConfidenceIntervals={data.confidenceIntervalNote !== undefined}
         schema3={usesSchema3(data)}
+        legacyLayout={isLegacyLayout(data)}
       />
-      <EvalScopeSection meta={data.meta} evalScope={data.evalScope} schema3={usesSchema3(data)} />
+      <EvalScopeSection meta={data.meta} evalScope={data.evalScope} schema3={usesSchema3(data)} legacyLayout={isLegacyLayout(data)} />
       <DatasetSection
         datasetInfo={data.datasetInfo}
         datasetSamples={data.datasetSamples}
@@ -48,6 +49,7 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         trainingDatasetInfo={data.trainingDatasetInfo}
         materials={data.materials}
         schema3={usesSchema3(data)}
+        legacyLayout={isLegacyLayout(data)}
       />
       <EvalEnvSection meta={data.meta} evalScope={data.evalScope} evalEnv={data.evalEnv} materials={data.materials} schema3={usesSchema3(data)} />
       <MetricListSection metricList={data.metricList} metricFormulas={data.metricFormulas} taskTypeLabel={data.meta.taskTypeLabel} materials={data.materials} schema3={usesSchema3(data)} />
@@ -101,6 +103,7 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         kpiResults={data.kpiResults}
         targetDigits={data.targetDigits}
         judgedValueDigits={data.judgedValueDigits}
+        legacyLayout={isLegacyLayout(data)}
       />
       <RecommendSection
         recommendations={data.recommendations}

@@ -41,8 +41,9 @@ export function ReportPrint() {
           materialCheck={data.materialCheck}
           hasConfidenceIntervals={data.confidenceIntervalNote !== undefined}
           schema3={usesSchema3(data)}
+          legacyLayout={isLegacyLayout(data)}
         />
-        <EvalScopeSection meta={data.meta} evalScope={data.evalScope} schema3={usesSchema3(data)} />
+        <EvalScopeSection meta={data.meta} evalScope={data.evalScope} schema3={usesSchema3(data)} legacyLayout={isLegacyLayout(data)} />
         <PageBreak>
           <DatasetSection
             datasetInfo={data.datasetInfo}
@@ -51,6 +52,7 @@ export function ReportPrint() {
             trainingDatasetInfo={data.trainingDatasetInfo}
             materials={data.materials}
             schema3={usesSchema3(data)}
+            legacyLayout={isLegacyLayout(data)}
           />
           <EvalEnvSection meta={data.meta} evalScope={data.evalScope} evalEnv={data.evalEnv} materials={data.materials} schema3={usesSchema3(data)} />
         </PageBreak>
@@ -112,6 +114,7 @@ export function ReportPrint() {
             kpiResults={data.kpiResults}
             targetDigits={data.targetDigits}
             judgedValueDigits={data.judgedValueDigits}
+            legacyLayout={isLegacyLayout(data)}
           />
           <RecommendSection
             recommendations={data.recommendations}

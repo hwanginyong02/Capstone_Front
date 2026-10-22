@@ -49,6 +49,13 @@ export const REPORT_PURPOSE_LABEL: Record<ReportPurposeKey, string> = {
   project: "과제 산출물",
 };
 
+/** 판 1 보관본(운영 main 이 발급)의 용도 이름 — 발급 당시 모양 그대로 찍는다(`isLegacyLayout`). */
+export const LEGACY_REPORT_PURPOSE_LABEL: Record<ReportPurposeKey, string> = {
+  internal: "내부 검증용",
+  external: "외부 제출용",
+  project: "프로젝트 산출물",
+};
+
 export const REPORT_PURPOSE_OVERVIEW: Record<ReportPurposeKey, string> = {
   internal: "조직 내부 QA 및 모델 모니터링 목적으로 활용",
   external: "외부 제출 및 인증/심사기관 검토 목적으로 활용",

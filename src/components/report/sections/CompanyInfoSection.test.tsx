@@ -270,3 +270,72 @@ describe("1.2 평가 의뢰일 이름표 (B1③)", () => {
     expect(screen.queryByText("계약일자")).not.toBeInTheDocument();
   });
 });
+
+/**
+ * 판 1 보관본(운영 main 이 발급, `legacyLayout`)은 발급 당시 1절 모양 그대로 — 판 3 은 새 모양.
+ * 정답 글은 main 코드가 그린 것(`src/test/archive/main_d38890d/`)과 같다.
+ */
+describe("1절 — 판 1 보관본은 운영 main 모양, 판 3 은 새 모양", () => {
+  function renderLegacyOr3(legacyLayout: boolean, over: { applicant?: Partial<ApplicantInfo>; evalScope?: Partial<EvalScope> } = {}) {
+    render(
+      <CompanyInfoSection
+        applicant={{ ...applicant, ...over.applicant }}
+        performer={performer}
+        evalScope={{ ...scope, ...over.evalScope }}
+        meta={{ ...meta, contractDate: "2026-10-01" }}
+        schema3={!legacyLayout}
+        legacyLayout={legacyLayout}
+      />,
+    );
+  }
+  const project = {
+    reportPurposeKey: "project" as const,
+    projectInfo: { name: "AI 과제", agency: "정보통신기획평가원", projectNumber: "2026-0001" },
+  };
+
+  it("판 1 — '계약일자'·'외부 제출용', 빈 FAX·홈페이지 줄도 찍는다", () => {
+    renderLegacyOr3(true, { applicant: { fax: "", homepage: "" } });
+    expect(rowValue("계약일자")).toBe("2026-10-01");
+    expect(rowValue("평가 의뢰일")).toBeNull();
+    expect(rowValue("용도")).toBe("외부 제출용");
+    expect(rowValue("FAX번호")).toBe("");
+    expect(rowValue("홈페이지")).toBe("");
+  });
+
+  it("판 3 — '평가 의뢰일'·'외부 제출', 빈 FAX·홈페이지 줄은 뺀다", () => {
+    renderLegacyOr3(false, { applicant: { fax: "", homepage: "" } });
+    expect(rowValue("평가 의뢰일")).toBe("2026-10-01");
+    expect(rowValue("계약일자")).toBeNull();
+    expect(rowValue("용도")).toBe("외부 제출");
+    expect(rowValue("FAX번호")).toBeNull();
+    expect(rowValue("홈페이지")).toBeNull();
+  });
+
+  it("판 1 — 과제 칸은 '프로젝트 산출물'·'프로젝트명'·'주관기관'·'과제번호'", () => {
+    renderLegacyOr3(true, { evalScope: project });
+    expect(rowValue("용도")).toBe("프로젝트 산출물");
+    expect(rowValue("프로젝트명")).toBe("AI 과제");
+    expect(rowValue("주관기관")).toBe("정보통신기획평가원");
+    expect(rowValue("과제번호")).toBe("2026-0001");
+    expect(rowValue("과제명")).toBeNull();
+  });
+
+  it("판 3 — 과제 칸은 '과제 산출물'·'과제명'·'과제 기관'·'과제 번호'", () => {
+    renderLegacyOr3(false, { evalScope: project });
+    expect(rowValue("용도")).toBe("과제 산출물");
+    expect(rowValue("과제명")).toBe("AI 과제");
+    expect(rowValue("과제 기관")).toBe("정보통신기획평가원");
+    expect(rowValue("과제 번호")).toBe("2026-0001");
+    expect(rowValue("프로젝트명")).toBeNull();
+  });
+
+  it("1.4 — 판 1 은 문장을 번호 옆 한 덩이(span)로, 판 3 은 문단(p)으로", () => {
+    const { unmount } = render(
+      <CompanyInfoSection applicant={applicant} performer={performer} evalScope={scope} meta={meta} legacyLayout />,
+    );
+    expect(screen.getByText("데이터 기반 평가의 국한성:").parentElement!.tagName).toBe("SPAN");
+    unmount();
+    renderLegacyOr3(false);
+    expect(screen.getByText("데이터 기반 평가의 국한성:").parentElement!.tagName).toBe("P");
+  });
+});

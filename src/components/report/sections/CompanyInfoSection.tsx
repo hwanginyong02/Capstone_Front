@@ -5,7 +5,12 @@ import type {
   MaterialCheckResult,
   PerformerInfo,
 } from "../../../types/finalReport.types";
-import { REPORT_PURPOSE_LABEL, REPORT_PURPOSE_OVERVIEW, constraintsFor } from "../../../lib/report/reportConstants";
+import {
+  LEGACY_REPORT_PURPOSE_LABEL,
+  REPORT_PURPOSE_LABEL,
+  REPORT_PURPOSE_OVERVIEW,
+  constraintsFor,
+} from "../../../lib/report/reportConstants";
 import { SectionTitle } from "../shared/SectionTitle";
 import { TwoColTable } from "../shared/TwoColTable";
 import { SubsectionTitle } from "../shared/SubsectionTitle";
@@ -21,6 +26,11 @@ interface CompanyInfoSectionProps {
   hasConfidenceIntervals?: boolean;
   /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
   schema3?: boolean;
+  /**
+   * 판 1 보관본인가(`isLegacyLayout`) — 운영 main 이 발급하던 모양 그대로 그린다: 빈 FAX·홈페이지 줄도 찍고,
+   * '계약일자'·옛 용도 이름('외부 제출용' …)·옛 과제 칸 이름, 1.4 번호와 문장을 한 줄로.
+   */
+  legacyLayout?: boolean;
 }
 
 export function CompanyInfoSection({
@@ -31,8 +41,19 @@ export function CompanyInfoSection({
   materialCheck,
   hasConfidenceIntervals = false,
   schema3,
+  legacyLayout = false,
 }: CompanyInfoSectionProps) {
   const projectNumber = evalScope.projectNumber ?? evalScope.projectInfo?.projectNumber;
+  // 판 1 의 1.3 과제 칸 — 과제 번호는 projectInfo 안에만 있었다(운영 main 의 칸 이름).
+  const legacyProjectRows = evalScope.projectInfo
+    ? [
+        { label: "프로젝트명", value: evalScope.projectInfo.name },
+        { label: "주관기관", value: evalScope.projectInfo.agency },
+        ...(evalScope.projectInfo.projectNumber
+          ? [{ label: "과제번호", value: evalScope.projectInfo.projectNumber }]
+          : []),
+      ]
+    : [];
   return (
     <section className="space-y-8 border-t border-slate-200 py-10">
       <SectionTitle number={1} title="개요" />
@@ -68,11 +89,15 @@ export function CompanyInfoSection({
                 { label: "전화번호",       value: applicant.contact },
                 // 선택 항목은 값이 있을 때만 줄을 만든다(재료 목록 1절). 이전 보관본의 "—" 는
                 // 값으로 보고 발급 당시처럼 찍는다.
-                ...(applicant.fax ? [{ label: "FAX번호", value: applicant.fax }] : []),
-                ...(applicant.homepage ? [{ label: "홈페이지", value: applicant.homepage }] : []),
+                // 판 1 은 빈 값이어도 줄을 찍었다.
+                ...(applicant.fax || legacyLayout ? [{ label: "FAX번호", value: applicant.fax }] : []),
+                ...(applicant.homepage || legacyLayout ? [{ label: "홈페이지", value: applicant.homepage }] : []),
                 { label: "주소",           value: applicant.address },
                 // 화면 칸 이름과 같은 '평가 의뢰일'(B1③). 저장 키 contractDate 는 발급본과 묶여 그대로 둔다.
-                ...(meta.contractDate ? [{ label: "평가 의뢰일", value: meta.contractDate }] : []),
+                // 판 1 은 발급 당시 이름 '계약일자'.
+                ...(meta.contractDate
+                  ? [{ label: legacyLayout ? "계약일자" : "평가 의뢰일", value: meta.contractDate }]
+                  : []),
               ]}
             />
           </div>
@@ -93,7 +118,11 @@ export function CompanyInfoSection({
       <div className="space-y-2">
         <SubsectionTitle number="1.3" schema3={schema3} className="text-sm font-semibold text-slate-700">시험결과서 용도</SubsectionTitle>
         <TwoColTable
-          rows={[
+          rows={legacyLayout ? [
+            { label: "용도", value: LEGACY_REPORT_PURPOSE_LABEL[evalScope.reportPurposeKey] },
+            { label: "개요", value: evalScope.purpose || REPORT_PURPOSE_OVERVIEW[evalScope.reportPurposeKey] },
+            ...legacyProjectRows,
+          ] : [
             { label: "용도", value: REPORT_PURPOSE_LABEL[evalScope.reportPurposeKey] },
             {
               label: "개요",
@@ -124,18 +153,25 @@ export function CompanyInfoSection({
           {constraintsFor(materialCheck, hasConfidenceIntervals, schema3).map((c, i) => (
             <li key={i} className="flex gap-3 text-sm">
               <span className="shrink-0 font-semibold text-slate-700">{i + 1}.</span>
-              <div className="space-y-1.5 text-slate-600 leading-relaxed">
-                <p>
+              {/* 판 1 은 문장을 인라인으로 붙였다(세부 줄이 없던 판). */}
+              {legacyLayout ? (
+                <span className="text-slate-600 leading-relaxed">
                   <strong className="text-slate-700">{c.title}:</strong> {c.body}
-                </p>
-                {c.details && c.details.length > 0 && (
-                  <ul aria-label={`${c.title} 세부`} className="list-disc space-y-1 pl-5">
-                    {c.details.map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+                </span>
+              ) : (
+                <div className="space-y-1.5 text-slate-600 leading-relaxed">
+                  <p>
+                    <strong className="text-slate-700">{c.title}:</strong> {c.body}
+                  </p>
+                  {c.details && c.details.length > 0 && (
+                    <ul aria-label={`${c.title} 세부`} className="list-disc space-y-1 pl-5">
+                      {c.details.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ol>

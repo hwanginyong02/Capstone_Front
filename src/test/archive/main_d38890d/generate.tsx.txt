@@ -1,0 +1,304 @@
+/**
+ * 판 1 보관본 픽스처 생성 + 정답 텍스트 — 운영 main(d38890d) 코드로.
+ * 1) useReportData(실제 훅)에 백엔드 골든 evaluate 응답·서술 응답을 fetch 가짜로 넣어 발급 직전 data(= 발급 content)를 얻는다.
+ * 2) 그 content 를 main 의 ReportSections·ReportPrint·ReportByNumber 로 그려 블록 텍스트를 저장한다(세 경로 글이 같았다 →
+ *    `<name>.draft.txt` 로 옮긴다). 발급 기록을 덧입힌 글은 `<name>.issued.txt`.
+ * 이 저장소의 테스트가 아니다(확장자 .txt) — 운영 main 사본(`git archive d38890d`, node_modules 링크)의 `src/` 에
+ * `gen_schema1.test.tsx` 로 두고 `GOLDEN=<Capstone_Back/tests/golden> ISSUANCE=<src/test/archive/schema1_issuance.json>
+ * OUT=<출력 폴더> npx vitest run src/gen_schema1.test.tsx` 로 돌린다. 출력의 json 은 `src/test/archive/` 로,
+ * `*.sections.txt`·`*.issued.txt` 는 `main_d38890d/*.draft.txt`·`*.issued.txt` 로 옮긴다.
+ */
+import { render, renderHook, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync, writeFileSync, existsSync } from "fs";
+
+const getReportContent = vi.fn();
+vi.mock("./lib/report/issuanceApi", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./lib/report/issuanceApi")>();
+  return { ...actual, getReportContent: (...a: unknown[]) => getReportContent(...a), getIssuance: vi.fn(async () => null) };
+});
+
+import { useReportData } from "./hooks/useReportData";
+import { useWorkflowStore } from "./utils/stores/useWorkflowStore";
+import { useWorkspaceStore } from "./utils/stores/useWorkspaceStore";
+import { ReportSections } from "./components/report/ReportSections";
+import { ReportPrint } from "./pages/report/ReportPrint";
+import { ReportByNumber } from "./pages/report/ReportByNumber";
+import { formatKstDate, formatKstDateTime } from "./lib/report/issuanceApi";
+
+const ISSUANCE = JSON.parse(readFileSync(process.env.ISSUANCE!, "utf8"));
+/** main 의 useIssuance.applyIssuance 와 같은 몸(그 파일 안 비공개 함수라 옮겨 적음). 발급 뒤 Report·인쇄 화면이 그리던 데이터. */
+function applyIssuance(report: any, r: any) {
+  return {
+    ...report,
+    meta: { ...report.meta, reportId: r.reportNo, issuedAt: formatKstDateTime(r.issuedAt) },
+    performer: {
+      orgName: r.organization.orgName || report.performer.orgName,
+      evaluator: r.organization.evaluator ?? report.performer.evaluator,
+      contact: r.organization.contact ?? report.performer.contact,
+    },
+    signature: {
+      issuer: r.issuer,
+      signedAt: formatKstDate(r.issuedAt),
+      history: r.history.map((h: any) => ({ version: h.version, issuedAt: formatKstDate(h.issuedAt), note: h.note ?? "" })),
+    },
+  };
+}
+
+(globalThis as any).ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+
+const OUT = process.env.OUT!;
+const GOLDEN = process.env.GOLDEN!;
+const ENV = {
+  evaluated_at: "2026-10-01T02:00:00+00:00",
+  libraries: { python: "3.11.9", "scikit-learn": "1.4.0", pandas: "2.2.0", numpy: "1.26.0" },
+};
+
+function golden(name: string) {
+  return JSON.parse(readFileSync(`${GOLDEN}/${name}.json`, "utf8"));
+}
+
+const row = (originalName: string, confirmedRole: string, sampleValues: string[] = []) => ({
+  originalName, sampleValues, inferredRole: confirmedRole, confirmedRole, modified: false, warnings: [],
+});
+const detail = (id: string, targetValue = "", positiveClass = "") => ({
+  id, name: id, description: "", targetValue, beta: id === "M5" ? "1" : "", positiveClass, completed: true,
+});
+
+const BASIC = {
+  companyName: "보관본 주식회사", representative: "", businessNumber: "", website: "", phone: "", fax: "", address: "",
+  contractDate: "2026-10-01", reportPurpose: "external", projectName: "", projectAgency: "", projectNumber: "",
+  versionName: "v1.0.0", modelName: "ArchiveModel", modelPurpose: "생산 라인 2 의 불량 검출", modelCategory: "",
+  envOS: "", envCPU: "", envGPU: "", envMemory: "", envSoftware: "",
+};
+const DATASET = (dist: string) => ({
+  trainingSampleCount: "", validationSampleCount: "200", trainingDatasetName: "", trainingDataFormat: "",
+  trainingClassDistribution: dist, trainingDataDescription: "",
+});
+
+interface Spec {
+  name: string;
+  basic?: Record<string, string>;
+  dataset?: Record<string, string>;
+  validate?: string;
+  trainingExampleFiles?: unknown[];
+  narrativeSource?: "llm" | "fallback";
+  narrativeFails?: boolean;
+  extraResponse?: Record<string, unknown>;
+  failed?: Record<string, string>;
+  evaluate: string;
+  narrative: string;
+  taskType: "binary" | "multiclass" | "multilabel";
+  metrics: string[];
+  targets: Record<string, string>;
+  columnMapping: ReturnType<typeof row>[];
+  metadata: Record<string, unknown>;
+  classLabelDescriptions: Record<string, string>;
+  trainingDist: string;
+  extraSuccess?: Record<string, unknown>;
+}
+
+const SPECS: Spec[] = [
+  {
+    name: "schema1_binary",
+    evaluate: "evaluate_binary_csv",
+    narrative: "narrative_legacy_main_fallback",
+    basic: {
+      representative: "홍길동", businessNumber: "123-45-67890", website: "https://archive.example", phone: "02-000-0000",
+      fax: "02-000-0001", address: "서울특별시 노원구 공릉로 232", modelCategory: "XGBoost",
+      envOS: "Ubuntu 22.04", envCPU: "8 vCPU", envGPU: "없음", envMemory: "32GB", envSoftware: "Python 3.11",
+    },
+    dataset: { trainingSampleCount: "800", trainingDatasetName: "학습셋 A", trainingDataFormat: "CSV", trainingDataDescription: "2026년 상반기 라인 2 검사 이미지에서 뽑은 특징" },
+    validate: "validate_binary_clean",
+    trainingExampleFiles: [{ name: "good_example.png", size: "12 KB", type: "image/png" }],
+    extraResponse: { warnings: ["확률 컬럼 prob 에서 결정 임계값 0.5 로 예측을 파생했습니다."] },
+    taskType: "binary",
+    metrics: ["M1", "M2", "M3", "M4", "M5", "M9", "M20", "M21", "M22", "M23"],
+    targets: { M1: "0.51", M4: "0.5", M5: "0.5" },
+    columnMapping: [row("id", "id", ["1", "2"]), row("label", "y_true", ["0", "1"]), row("prob", "score", ["0.12", "0.87"])],
+    metadata: { positive_class: "1", detected_classes: ["0", "1"], class_distribution: { "0": 105, "1": 95 }, column_unique_values: { label: ["0", "1"] } },
+    classLabelDescriptions: { "0": "정상", "1": "불량" },
+    trainingDist: "0 600 / 1 400",
+    // 확률만 올린 이진 — 백엔드가 파생 예측 사실을 함께 내려보낸다(ISSUES.md A-01).
+    extraSuccess: {
+      derived_prediction: { method: "threshold", threshold: 0.5, source_columns: ["prob"], target_role: "y_pred" },
+      latency_stats: { mean: 12.3, min: 4.1, p50: 11.8, p95: 20.4, p99: 25.9, max: 31.2, unit: "ms" },
+    },
+  },
+  {
+    // 서술 호출이 실패한 채 발급된 판 1(main 의 fetchNarrative 가 빈 서술·source "error" 를 돌려준다).
+    name: "schema1_binary_nonarrative",
+    evaluate: "evaluate_binary_csv",
+    narrative: "narrative_legacy_main_fallback",
+    narrativeFails: true,
+    taskType: "binary",
+    metrics: ["M1", "M4", "M7", "M20"],
+    targets: { M1: "0.5", M7: "0.6" },
+    columnMapping: [row("id", "id", ["1"]), row("label", "y_true", ["0", "1"]), row("pred", "y_pred", ["0", "1"])],
+    metadata: { positive_class: "1", detected_classes: ["0", "1"], class_distribution: { "0": 105, "1": 95 } },
+    classLabelDescriptions: {},
+    trainingDist: "",
+  },
+  {
+    name: "schema1_multiclass",
+    evaluate: "evaluate_multiclass_csv",
+    narrative: "narrative_job_fallback_multiclass",
+    narrativeSource: "llm",
+    basic: { reportPurpose: "internal", modelPurpose: "" },
+    validate: "validate_multiclass_errors",
+    failed: { M6: "예측 분포에 0 인 클래스가 있어 계산할 수 없습니다." },
+    taskType: "multiclass",
+    metrics: ["M1", "M2", "M3", "M4", "M6", "M11", "M21", "M22", "M23"],
+    targets: { M1: "0.4", M4: "0.3" },
+    columnMapping: [row("id", "id", ["1"]), row("label", "y_true", ["bird", "cat", "dog"]), row("pred", "y_pred", ["cat", "dog"])],
+    metadata: { detected_classes: ["bird", "cat", "dog"], class_distribution: { bird: 69, cat: 57, dog: 74 }, column_unique_values: { label: ["bird", "cat", "dog"] } },
+    classLabelDescriptions: { bird: "새", cat: "고양이", dog: "개" },
+    trainingDist: "bird 20% / cat 60% / dog 20%",
+  },
+  {
+    name: "schema1_multilabel",
+    evaluate: "evaluate_multilabel_csv",
+    narrative: "narrative_job_fallback_multilabel",
+    basic: { reportPurpose: "project", projectName: "AI 품질 검증 과제", projectAgency: "정보통신기획평가원", projectNumber: "2026-0001", modelCategory: "BERT" },
+    validate: "validate_multilabel_clean",
+    taskType: "multilabel",
+    metrics: ["M2", "M3", "M4", "M15", "M16", "M17", "M21", "M22", "M23"],
+    targets: { M4: "0.5", M15: "0.6" },
+    columnMapping: [row("id", "id", ["1"]), row("labels", "y_true", ["news|tech", "finance"]), row("pred", "y_pred", ["news", "sports|tech"])],
+    metadata: { detected_labels: ["finance", "news", "sports", "tech"], class_distribution: { finance: 107, news: 102, sports: 97, tech: 102 } },
+    classLabelDescriptions: {},
+    trainingDist: "",
+  },
+];
+
+const BLOCK = new Set(["H1", "H2", "H3", "H4", "H5", "P", "LI", "TR", "BLOCKQUOTE", "DT", "DD", "SECTION", "DIV", "TH", "TD"]);
+function blockText(nodes: Node[], options: { dropPrintHidden?: boolean } = {}): string {
+  const lines: string[] = [];
+  let current = "";
+  const flush = () => { const l = current.replace(/\s+/g, " ").trim(); if (l) lines.push(l); current = ""; };
+  const walk = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) { current += node.textContent ?? ""; return; }
+    if (!(node instanceof Element)) return;
+    if (node.tagName === "STYLE" || node.tagName === "SCRIPT") return;
+    if (options.dropPrintHidden && node.classList.contains("print:hidden")) return;
+    const block = BLOCK.has(node.tagName);
+    if (block) flush();
+    if (node.tagName === "TD" || node.tagName === "TH") { current += " | "; node.childNodes.forEach(walk); return; }
+    node.childNodes.forEach(walk);
+    if (block) flush();
+  };
+  nodes.forEach(walk);
+  flush();
+  return `${lines.join("\n")}\n`;
+}
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-01T02:00:00Z") });
+});
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
+
+describe.each(SPECS)("$name", (spec) => {
+  it("생성 + 세 경로", async () => {
+    const ev = golden(spec.evaluate);
+    ev.environment = ENV;
+    Object.assign(ev.results.success_metrics, spec.extraSuccess ?? {});
+    Object.assign(ev, spec.extraResponse ?? {});
+    for (const id of Object.keys(spec.failed ?? {})) delete ev.results.success_metrics[id];
+    Object.assign(ev.results.failed_metrics, spec.failed ?? {});
+    const ng = golden(spec.narrative);
+    const narrative = structuredClone(ng.response ?? ng);
+    if (spec.narrativeSource) narrative.meta.source = spec.narrativeSource;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (spec.narrativeFails && url.includes("/api/generate-narrative")) return new Response("{}", { status: 502 });
+      const body = url.includes("/api/evaluate") ? ev : url.includes("/api/generate-narrative") ? narrative : null;
+      if (!body) throw new Error(`unexpected ${url}`);
+      return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+    const metricDetails = Object.fromEntries(
+      spec.metrics.map((id) => [id, detail(id, spec.targets[id] ?? "", spec.metadata.positive_class as string ?? "")]),
+    );
+    const snapshot = {
+      basicInfo: { ...BASIC, ...spec.basic, taskType: spec.taskType },
+      datasetInfo: { ...DATASET(spec.trainingDist), ...spec.dataset },
+      taskType: spec.taskType,
+      selectedMetricIds: spec.metrics,
+      metricDetails,
+      uploadedFile: { name: "data.csv", size: "12 KB", type: "text/csv" },
+      trainingExampleFiles: spec.trainingExampleFiles ?? [],
+      trainingUnsuitableExampleFiles: [],
+      columnMapping: spec.columnMapping,
+      classLabelDescriptions: spec.classLabelDescriptions,
+      metadata: spec.metadata,
+    } as any;
+    const validationResult = spec.validate ? golden(spec.validate) : null;
+    useWorkflowStore.setState({ ...snapshot, rawFile: new File(["x"], "data.csv"), decisionThreshold: null, validationResult });
+    useWorkspaceStore.setState({
+      workspaces: [], activeWorkspaceId: null,
+      evaluationRuns: [{ id: "run-1", workspaceId: "ws", modelName: "ArchiveModel", versionName: "v1.0.0", reportId: "", workflowSnapshot: snapshot, reportData: undefined as any, createdAt: "2026-10-01T00:00:00Z" }],
+    });
+    const hook = renderHook(() => useReportData("run-1"));
+    await waitFor(() => expect((hook.result.current.data as any)?.isEvaluated).toBe(true), { timeout: 5000 });
+    // 발급 content = Report 화면의 data(useIssuance 가 그대로 보낸다).
+    const content = structuredClone(hook.result.current.data);
+    hook.unmount();
+    writeFileSync(`${OUT}/${spec.name}.json`, `${JSON.stringify(content, null, 2)}\n`);
+
+    // 화면 본문
+    const v = render(<MemoryRouter><ReportSections data={structuredClone(content) as any} /></MemoryRouter>);
+    writeFileSync(`${OUT}/${spec.name}.sections.txt`, blockText([v.container]));
+    v.unmount();
+
+    // 인쇄 — 저장된 완성본(isEvaluated)을 run 에 두고 /report/:id/print
+    vi.stubGlobal("print", vi.fn());
+    useWorkflowStore.setState({ rawFile: null });
+    useWorkspaceStore.setState({
+      evaluationRuns: [{ id: "run-1", workspaceId: "ws", modelName: "ArchiveModel", versionName: "v1.0.0", reportId: "", workflowSnapshot: undefined as any, reportData: structuredClone(content) as any, createdAt: "2026-10-01T00:00:00Z" }],
+    });
+    const p = render(
+      <MemoryRouter initialEntries={["/report/run-1/print"]}>
+        <Routes><Route path="/report/:id/print" element={<ReportPrint />} /></Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(p.container.querySelector("[data-pdf-ready]")).not.toBeNull());
+    writeFileSync(`${OUT}/${spec.name}.print.txt`, blockText([p.container.querySelector("[data-pdf-ready]")!], { dropPrintHidden: true }));
+    p.unmount();
+
+    // 번호로 연 보관본
+    getReportContent.mockResolvedValue({ reportNo: "RPT-2026-0001", version: "v1.0", issuedAt: "2026-10-01T03:00:00+00:00", contentHash: "a".repeat(64), content: structuredClone(content) });
+    const b = render(
+      <MemoryRouter initialEntries={["/report/no/RPT-2026-0001"]}>
+        <Routes><Route path="/report/no/:reportNo" element={<ReportByNumber />} /></Routes>
+      </MemoryRouter>,
+    );
+    const cover = await screen.findByRole("heading", { level: 1 });
+    let start: Element = cover;
+    const root = cover.closest(".max-w-\\[900px\\]")!;
+    while (start.parentElement && start.parentElement !== root) start = start.parentElement;
+    const nodes: Node[] = [];
+    for (let el: Element | null = start; el; el = el.nextElementSibling) nodes.push(el);
+    writeFileSync(`${OUT}/${spec.name}.byNumber.txt`, blockText(nodes));
+    b.unmount();
+    // 발급 뒤 — main 의 Report 화면(ReportSections)과 인쇄가 그리던 발급본.
+    const issued = applyIssuance(structuredClone(content), ISSUANCE);
+    const iv = render(<MemoryRouter><ReportSections data={structuredClone(issued) as any} /></MemoryRouter>);
+    writeFileSync(`${OUT}/${spec.name}.issued.txt`, blockText([iv.container]));
+    iv.unmount();
+    useWorkspaceStore.setState({
+      evaluationRuns: [{ id: "run-1", workspaceId: "ws", modelName: "ArchiveModel", versionName: "v1.0.0", reportId: issued.meta.reportId, workflowSnapshot: undefined as any, reportData: structuredClone(issued) as any, createdAt: "2026-10-01T00:00:00Z" }],
+    });
+    const ip = render(
+      <MemoryRouter initialEntries={["/report/run-1/print"]}>
+        <Routes><Route path="/report/:id/print" element={<ReportPrint />} /></Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(ip.container.querySelector("[data-pdf-ready]")).not.toBeNull());
+    writeFileSync(`${OUT}/${spec.name}.issued.print.txt`, blockText([ip.container.querySelector("[data-pdf-ready]")!], { dropPrintHidden: true }));
+    ip.unmount();
+    expect(existsSync(`${OUT}/${spec.name}.json`)).toBe(true);
+  });
+});
