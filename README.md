@@ -2,7 +2,7 @@
 
 ML 모델 성능 평가 보고서("시험성적서")를 **KS X ISO/IEC TS 4213:2022** 표준에 따라 자동 생성하는 웹 애플리케이션의 프론트엔드입니다.
 
-> 이 README는 **디자인 시스템·컴포넌트 패턴** 위주입니다. 코드 구조/아키텍처는 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)와 [`docs/FRONTEND_DEVELOPMENT_GUIDELINE.md`](docs/FRONTEND_DEVELOPMENT_GUIDELINE.md)를, 지표·컬럼·검증 규칙은 [`SPEC.md`](SPEC.md)(프론트/백 공통 단일 진실 문서)를, 프로젝트 전체(프론트+백)는 상위 `../PROJECT_OVERVIEW.md`를 참고하세요.
+> 이 README는 **디자인 시스템·컴포넌트 패턴** 위주입니다. 코드 구조/아키텍처는 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)와 [`docs/FRONTEND_DEVELOPMENT_GUIDELINE.md`](docs/FRONTEND_DEVELOPMENT_GUIDELINE.md)를, 지표·컬럼·검증 규칙은 [`SPEC.md`](SPEC.md)(프론트/백 공통 단일 진실 문서)를, 프로젝트 전체(프론트+백)는 백엔드 저장소(`Capstone_Back`)의 `docs/PROJECT_OVERVIEW.md`를 참고하세요. 성적서 서술·판(contentSchema)은 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §6.
 
 ## 프로젝트 구조 (요약)
 
@@ -30,7 +30,7 @@ src/
 4. **데이터 업로드** — 평가 데이터(CSV/JSON) + 학습 데이터셋 정보
 5. **컬럼 매핑** — AI 자동 매핑 검토, positive_class 설정(조건부)
 6. **데이터 검증** — 백엔드 전처리 검증 결과 확인
-7. **결과 미리보기(성적서)** — 지표 대시보드, 혼동 행렬, 차트, LLM 서술
+7. **결과 미리보기(성적서)** — 지표 대시보드, 혼동 행렬, 차트, LLM 서술 *(지금: 서술은 백엔드 작업 경로 — `POST /api/narrative/jobs` 로 작업 번호를 받고 조회해 기다린다. 모델은 Claude Sonnet 5.5, 키가 없거나 실패한 칸은 규칙 문장. 서술이 끝나야 인쇄·PDF·발급이 열린다 — docs/ARCHITECTURE.md §6)*
 
 ## 디자인 시스템
 
@@ -108,6 +108,8 @@ pnpm test             # 단위 테스트 (vitest)
 pnpm build            # 프로덕션 빌드
 ```
 `VITE_API_BASE_URL` 미설정 시 API 호출은 상대경로 → Vite 프록시로 전달됩니다.
+
+테스트 관례: 옆 저장소(`../Capstone_Back`)를 읽는 테스트는 `it.skipIf(!existsSync(…))` 로 둔다 — CI 는 이 저장소만 받는다. 판 1 보관본의 정답은 운영 main 이 그린 글(`src/test/archive/main_d38890d/`)이고 새 코드로 다시 뜨지 않는다(판 1·2 스냅샷이 바뀌면 그 판 분기를 고친다).
 
 ## 중요 규칙
 

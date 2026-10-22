@@ -103,3 +103,94 @@ Capstone_Front/
 1. **`SPEC.md` 정독 필수**: "데이터 컬럼 매핑 규칙"과 "계산 가능한 테스트 케이스 결정 로직"이 이 문서에 있습니다.
 2. **`FRONTEND_DEVELOPMENT_GUIDELINE.md` 확인**: 페이지=조립자, 레이아웃 오케스트레이션, UI/도메인 분리, utils/lib 계층화 등 반드시 지켜야 할 규칙이 정리되어 있습니다.
 3. **컴포넌트 추적 방법**: 특정 단계를 수정하려면 `src/routes.ts` 에서 경로(예: `/app/data-upload → DataUpload`)를 확인하고, 해당 `src/pages/*.tsx` 페이지가 주입하는 `src/components/<도메인>/` 컴포넌트를 찾으세요.
+
+## 6. 성적서 서술과 판(contentSchema)
+
+> 2026-10, AI 서술 설계 구현 라운드. 백엔드 쪽(작업 번호·장별 생성·칸별 검사·규칙 문장·결정 번호 Dnn 의 뜻)은 백엔드 저장소 `docs/ARCHITECTURE.md` §10, 평가 응답과 클래스 표기는 같은 문서 §9 에 있다. 여기서는 프론트가 하는 일만 적는다.
+
+한 줄 요약: **평가는 한 번, 서술은 작업 번호로 기다린다.** 서술이 끝나야(done) 완성본이 되고, 그 전에는 인쇄·PDF·발급이 잠긴다. 성적서 데이터에는 판 번호(`contentSchema`)가 찍혀 있어, 이미 발급한 옛 판은 발급 당시 모양 그대로 그린다.
+
+### 6.1 흐름 — run 을 만들 때부터 완성본까지
+
+1. **평가 요청 스냅샷**(`lib/report/evaluationRequest.ts`): 검증 화면에서 "다음"을 눌러 run 을 만들 때 평가 요청 본문·조립 입력·모델 정보와 **파일 지문**(이름·바이트·마지막 수정 시각)을 run 에 얼린다. 성적서 화면은 지금 입력이 아니라 이 스냅샷으로만 평가한다. 가진 파일의 지문이 다르거나 파일이 없으면 "이 평가의 파일을 다시 올려 주세요", 스냅샷이 없는 옛 run 은 "다시 평가", 없는 id 는 "찾을 수 없음". 판 번호(`REPORT_CONTENT_SCHEMA`)도 이때 성적서 데이터에 찍힌다(`mapWorkflowToFinalReport`).
+2. **성적서 화면 `/report/:id`**(`hooks/useReportData.ts`) — 효과가 둘이다.
+   - **평가 효과**: 의존성은 run id·서술 상태·평가할 파일뿐이다(run 객체를 넣으면 저장할 때마다 평가와 유료 서술 작업이 되풀이된다). 서술을 아직 시작하지 않은 run 만 `POST /api/evaluate` → 조립(6.2) → `POST /api/narrative/jobs` 를 부르고, 1단계 성적서(지표·차트·8.1 표, 서술 없음)와 서술 상태 pending(작업 번호·다시 만들기용 요청)을 **한 번에** 저장한다. 같은 run 의 평가는 **모듈 단위로 한 번만** 돈다(`evaluationsInFlight`) — `main.tsx` 가 `React.StrictMode` 라 개발 중에는 효과가 두 번 돌고, 인쇄 탭·두 화면이 같은 run 을 열 수도 있기 때문이다.
+   - **서술 효과**: pending 이고 작업 번호가 있으면 `GET /api/narrative/jobs/{id}` 로 조회만 한다(`lib/report/narrativeJobApi.ts`). 진행 단계(대기·생성 중·검사 중·다시 만드는 중)는 컴포넌트 상태에만 두고, **저장소에는 끝 상태(pending/done/failed)만** 쓴다.
+3. **done 이어야 완성본**: done 이면 서술을 1단계 성적서에 합쳐 `isEvaluated: true` 로 저장한다. 판정·점수는 프론트 규칙(`computeVerdict`) 값 그대로이고 서술만 합친다.
+4. **잠금**: 완성본이 아니면 PDF·발급·정정 발급이 잠긴다(버튼과 함수 양쪽, 이유 표시). 인쇄 화면은 저장된 완성본만 읽는다(`useStoredReport` — 평가·작업을 시작하지 않는다). 완성본이 아니면 "서술이 끝나지 않아 인쇄할 수 없습니다"이고 `usePrintOnReady` 가 인쇄를 부르지 않는다. 저장에 실패해도 PDF 를 잠근다.
+5. **실패와 다시 하기**(`components/report/ReportStateNotices.tsx`):
+   - 서버가 실패를 알리면(시간 초과·유실·오류·결과 글 만료) "서술 다시 만들기" — run 에 저장해 둔 서술 요청(40만 자 상한, 넘으면 평가부터 다시)으로 새 작업을 만든다.
+   - 조회가 60초 동안 닿지 않았거나(unreachable) 12분을 기다리다 포기했으면(gave_up) 버튼은 "서술 진행 다시 확인" — 새 유료 작업을 만들지 않고 **원래 작업 번호부터** 다시 조회한다.
+   - 413·422(rejected)는 같은 요청을 다시 보내도 같으므로 다시 만들기 버튼이 없다.
+6. **새로고침**하면 저장된 작업 번호로 이어 조회한다(평가를 다시 하지 않는다).
+7. **결과 글은 24시간**: 백엔드는 끝난 작업의 결과 글을 24시간 뒤 지운다(`NARRATIVE_RESULT_TTL_HOURS`). 그 뒤에 조회하면 실패(expired)이고, 다시 만들기로 푼다. 완성본은 이미 run 에 저장돼 있어 영향이 없다.
+
+### 6.2 사실 시트 — AI 에 보내는 값을 만드는 곳
+
+평가 응답을 받은 뒤 서술 요청을 만드는 순서다. 모두 `lib/report/` 에 있다.
+
+1. `assembleEvaluatedReport` — 평가 응답으로 1단계 성적서와 사실 시트를 조립한다(서술과 무관한 결정론적 부분). 7~9절 고정 문장 목록(`facts.fixed_sentences`)도 여기서 만든다.
+2. `buildFactSheet` + `narrativeFacts` — `narrativeFacts.ts` 는 **서술용 파생값을 계산하는 한 곳**이다(최약 클래스·작은 표본, 최다 오분류 쌍, 예측 편향, 마진·판정 사유 등). 9절 문제 목록과 7.1 아래 D6 표도 같은 값을 읽는다. 엔진이 계산한 값(FP/FN·신뢰구간·불균형 영향 등)은 다시 세지 않는다.
+3. `factSheetFit` — 백엔드와 **같은 상한**(`factSheetLimits.ts`)으로 미리 자른다. 상위 N개만 남기고 뺀 수는 `facts.omitted` 에 적는다. 요청 본문이 1.8MB 를 넘으면 클래스 단위 칸을 비운다(413 으로 서술을 잃지 않게).
+4. `buildClientInputs`(`reportMaterials.ts`) — 의뢰자가 준 입력(평가 관점·데이터 설명·모델 이름과 버전·실행 환경 등). **회사·과제 정보는 보내지 않는다.**
+
+- **계약 사본**: 사실 시트 모양은 `src/test/contract/`(계약 + 예시 요청 + 백엔드 골든 평가 응답 사본)에 있고, 백엔드 저장소 `tests/contract/` 와 같아야 한다. `factSheetContract.test.ts` 가 실제 조립 결과를 예시와 대조하고, 옆 저장소가 있을 때만 두 사본이 같은지 본다. 예시를 다시 만들려면 `UPDATE_CONTRACT=1 npx vitest run src/lib/report/factSheetContract.test.ts` — 백엔드 사본도 함께 고친다.
+
+### 6.3 판(contentSchema) — 발급한 성적서는 발급 당시 모양으로
+
+발급한 성적서는 데이터를 통째로 서버에 보관하고, 번호로 열 때 지금 코드로 다시 그린다. 그래서 그리는 코드가 바뀌어도 옛 성적서 모양이 바뀌지 않게 판 번호로 가른다(`lib/report/normalizeReportContent.ts`).
+
+| 판 | 언제 | 그리는 모양 |
+|---|---|---|
+| 1 | 판 표시가 없는 데이터(운영 main `d38890d` 이 발급한 것) | 발급 당시 그대로. 파생 예측 문장은 6.0 일러두기 자리, 목표값 없음은 `threshold: 0` 으로 적혀 있어 그릴 때만 `null` 로 읽는다 |
+| 2 | 목표값 없음을 `null` 로 적기 시작한 판(서술 라운드 앞의 dev — 운영 main 에는 배포되지 않았다) | 판 1 과 같은 1.4·서명란·장 단위 배지. 파생 예측 문장은 7.1 앞. 칸별 출처는 있지만 판 3 의 새 모양은 없음 |
+| 3 | 지금(`REPORT_CONTENT_SCHEMA = 3`) | 아래 목록 |
+
+- **판 술어**: `isLegacyLayout` = 판 1(`< 2`), `usesSchema3` = 판 3 이상. 판 비교는 지금 상수가 아니라 **그 뜻이 생긴 판 번호**에 박는다 — 상수를 올릴 때 옛 분기가 따라 움직이지 않게. 판 2 보관본에도 `narrativeSections` 가 있으므로 키가 있는지가 아니라 판으로 가른다. 섹션 부품은 모두 `schema3` prop 을 받는다(화면·인쇄 양쪽).
+- **판 3 에서 생긴 것**:
+  - 소절 번호(1.1 ~ 9.2, `SubsectionTitle`)와 7.3 추가 관찰(빈 글이면 고정 문구 15 "해당 없음").
+  - 7절 제목 바로 아래 ※ 한 줄 "소견은 정량 지표를 바탕으로 작성된 참고 의견이며, 시험 결과에 해당하지 않습니다." 그 대신 1.4 의 "LLM 생성 소견에 대한 면책" 항목이 빠진다.
+  - 본문에 AI·LLM 표현이 없다 — 표지 "{기관명} 평가 플랫폼", 4절 "분류 성능 평가 시스템", 서명란 "자동화 평가 시스템". 기관 이름 자리표시자는 "리트머스"(`reportConstants.DEFAULT_PERFORMER`).
+  - 칸별 "규칙 기반 문장" 배지(`SectionSourceBadge` — 규칙 문장으로 대체된 칸에만, 화면에만 `print:hidden`, 서술 대기·실패 중엔 없음). 판 1·2 의 장 단위 배지는 판 3 에 없다.
+  - 화면 전용 **"작성 기록"** 상자(`NarrativeRecordPanel`): 칸마다 AI 작성(모델 이름)·규칙 기반 문장·고정 문구. `/report/:id` 와 `/report/no/:번호` 화면에만 있고, 인쇄 경로·본문에는 넣지 않으며 `print:hidden` 이다. 재료는 성적서 데이터의 `narrativeSections`·`narrativeModels`(발급 보관본에도 저장된다).
+  - 고정 문구 7·16·6, 9 의 조사(숫자를 읽는 소리로 을/를), 15·17·18 을 코드가 찍는다(6.4 표).
+  - 7.1 아래 D6 표(`NarrativeFactTables` — 최약 클래스, 최다 오분류 쌍(다중), 예측 편향. 비율은 %).
+  - 3절 불균형 진단 세 갈래(D20 — 기준 이내 / 왜곡 관찰 / 왜곡 미관찰, `buildDatasetDiagnosis`). '와/과'는 다수 클래스 이름의 끝소리로 고른다. 조립 때 문장을 저장하므로 새 run 에만 나온다.
+  - 8.1 표의 모델 값·목표값은 6.1 과 같은 판정 자릿수(`formatBenchmarkValue` — 참조 범위 위치와 같은 쪽으로 읽히게 자릿수를 늘린다).
+- **판 1 은 운영 main(`d38890d`)이 그리던 글 그대로다.** 정답은 `src/test/archive/main_d38890d/`(main 코드가 같은 픽스처를 그린 글)이고, `archiveLayout.test.tsx` 가 지금 코드로 그린 글이 이 파일과 한 글자도 다르지 않은지 `toBe` 로 단정한다. **이 정답 파일과 판 1 스냅샷은 새 코드로 다시 뜨지 않는다** — 다르면 판 1 분기를 고친다. 만드는 법은 `main_d38890d/generate.tsx.txt` 머리말에 있다.
+- **판 2 스냅샷(`src/test/archive/__snapshots__/schema2_*`)도 바뀌면 안 된다.** 바뀌었다면 판 3 변경이 옛 판에 샌 것이다.
+- **워크스페이스 저장소 판 사슬**(`utils/stores/useWorkspaceStore.ts` `migrateWorkspaceState`, 지금 3): 판마다 차례로 지난다(v1 → v2 → v3). v1 → v2 는 문자열 interpretation 을 두 칸으로, v2 → v3 은 서술이 빈 완성본 가운데 발급 안 된 것은 완성본 표시를 거둬 다시 평가하게, 발급된 것은 그대로 두고 안내(`issued_empty_narrative`)한다. 이 저장소 판은 성적서 판(contentSchema)과 다른 번호다.
+
+### 6.4 고정 문구 번호 표
+
+AI·규칙 문장이 아니라 코드가 찍는 문장이다. 7~9절 문장은 사실 시트의 `facts.fixed_sentences`(번호·소절·원문)에도 실어, 백엔드가 같은 말을 되풀이하지 않게 한다.
+
+| 번호 | 위치 | 코드 |
+|---|---|---|
+| 1 | 원래 필요 없는 칸의 "해당 없음"(재료 표) | `reportMaterials.NOT_APPLICABLE` |
+| 2.1 · 2.2 · 2.3 | 빠진 보고 항목 — 그 자리에서 보기(예: 6.4 응답시간 자리의 "제공되지 않음") · 빠졌을 때 판단할 수 없는 것 · 표지 | `LatencySection` 등 · `materialCheck.REPORTING_ITEMS` 의 `impact` · `ReportCoverSection` |
+| 3 | 1.4 신뢰구간(신뢰구간을 찍은 성적서만) | `reportConstants.CONFIDENCE_INTERVAL_PREMISE` |
+| 4 | 5절 다중 클래스 평균 방식 | `reportMaterials` `averagingSentence` |
+| 6 | 9절 — 문제가 0개일 때(판 3 은 이 문장만) | `reportConstants.NO_PROBLEM_SENTENCE` |
+| 7 | 7.2 앞 — 다중 레이블 불균형 비율 정의(판 3) | `narrativeSectionText.MULTILABEL_IMBALANCE_DEFINITION` |
+| 9 | 7.1 앞 — 예측을 확률에서 파생했다는 사실 | `derivationText.derivationStatement`(판 3 은 숫자 읽는 소리로 을/를, `koreanJosa`) |
+| 10 | 6.1 판정 규칙(+ 아슬아슬 표시 문장) | `reportConstants.verdictRuleText` · `NEAR_TARGET_SENTENCE` |
+| 11a · 11b | 8.2 — 평가 데이터가 학습과 같은 / 다른 출처 | `dataCautionPhrases.SAME_SOURCE_SENTENCE` · `DIFFERENT_SOURCE_SENTENCE`(`sourceRelationSentence`) |
+| 12 | 7.2 — 정답 라벨 주의 | `dataCautionPhrases.labelCautionSentence` |
+| 13 | 1.4 — 의뢰자 제공 정보 전제 | `reportConstants.CLIENT_PROVIDED_PREMISE` |
+| 14 | 2절 목적별 점검 미충족 줄(1.4 에도) | `materialCheck` · `reportConstants.constraintsFor` |
+| 15 | 7.3 — 추가 관찰 없음 "해당 없음"(판 3) | `narrativeSectionText.NO_ADDITIONAL_OBSERVATION_TEXT` |
+| 16 | 8.1 표 아래 — 기준표에 없는 서술 지표(판 3, 전부 없으면 8.1 은 표·16 만) | `benchmarkBaselines.noBenchmarkSentence`(기준표 지표 이름 사본 `BENCHMARK_METRIC_NAMES`) |
+| 17 | 7.1 — 오류 비율 숫자 문장 | `errorRatios.errorRatioSentence` |
+| 18 | 8.3 — 목표값에 아슬아슬한 지표 | `nearTarget.nearTargetNote` |
+| ※ | 7절 제목 아래 한 줄(판 3) | `narrativeSectionText.SECTION7_OPINION_NOTE` |
+
+번호 5·8 은 지금 코드에 없다. 판 3 전용 문장(16·7)은 판 3 바탕일 때만 사실 시트에 싣고, 9 는 그 판 화면과 같은 조사로 싣는다 — 옛 판 화면이 찍지 않는 문장을 실으면 AI 가 "성적서가 따로 찍는다"고 믿고 빼 버려 그 판 성적서에서 말이 빠진다.
+
+### 6.5 입력 쪽 — 덧붙이는 글과 셈 규칙
+
+- **덧붙이는 글**: 선택지 아래 500자 글 칸. `data/reportComposer.ts` 에서 `allowsNote` 인 칸은 13개다(서술 칸 11개 + 성적서 용도·학습과 같은 전처리). 그중 `noteNeedsChoice` 인 4칸(중요 오류 유형·클래스 중요도·사용 방식·GPU 사용 여부)은 글만으로는 답이 아니고 선택지를 골라야 한다. 칸 목록은 `docs/COMPOSER_COMPONENTS.md` "덧붙이는 글" 절.
+- **셈 규칙 한 곳**(`utils/domain/composerFieldGate.ts`): `noteAnswers` — 글이 선택지 대신 답이 되는가(글 칸이고 선택 필수가 아니고 글이 있음). `chosenText` — 고른 선택값(모름이거나 글만 쓴 답이면 null). 진행 점검·성적서·재료 선택 점검·AI 고객 입력이 이 둘을 같이 쓴다.
+- **"모름 + 글"은 제공이 아니다.** 그 보고 항목은 "제공되지 않음"으로 세고, 글은 버리지 않고 "제공되지 않음 (의뢰자 제공: …)"으로 성적서에 찍고 AI 에도 보낸다(`reportMaterials.materialRowText`). 백엔드는 "제공되지 않음"으로 **시작**하는 값을 제공 아님으로 읽는다.
+- **점검 표 2.0**(`materialCheck.MATERIAL_CHECK_VERSION`): 이 셈 규칙과 칸 이름 변경(불균형 보정 → 편향 감소 노력)이 들어간 판. 1.0 으로 점검한 진행 중 run 에는 "다시 확인" 안내가 뜬다.
+- **셈 규칙 표 테스트** `lib/report/noteCountingRules.test.ts`: 경우마다 진행 점검(답함)·2층 제공·성적서 인쇄 글·AI 글 네 자리를 한 줄로 단정한다. 한 자리만 바뀌면 어긋나므로 규칙을 바꾸면 이 표부터 고친다.
