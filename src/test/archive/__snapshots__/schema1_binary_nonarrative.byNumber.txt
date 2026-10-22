@@ -218,29 +218,7 @@ M4 — F1 Score
 | 0.512
 | 합격
 시각화 자료
-Confusion Matrix
-Actual versus predicted class counts
-Correct Misclassified
-Predicted: 0
-Predicted: 1
-Actual: 0
-4924.5%
-5628.0%
-Actual: 1
-4321.5%
-5226.0%
-Summary
-Total samples200
-Misclassified99
-• False positives: 56
-• False negatives: 43
-Error rate49.5%
-ROC Curve
-Y: true positive rate / X: false positive rate
-AUROC: 0.511
-Precision-Recall Curve
-Y: precision / X: recall
-AUPRC: 0.494
+시각화할 차트가 없습니다. (혼동 행렬은 M21, ROC/PR 곡선은 binary 평가에서 AUROC/AUPRC 선택 시 표시됩니다.)
 응답시간 지표
 지연시간(latency) 컬럼이 매핑되지 않아 측정되지 않았습니다. 컬럼 매핑 단계에서 응답시간 컬럼을 latency 역할로 지정하면 통계가 표시됩니다.
 Section 07

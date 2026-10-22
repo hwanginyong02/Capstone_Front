@@ -236,6 +236,7 @@ Section 06
 | 없음
 성능 평가 산출 기준
 본 성적서의 모든 성능 산출 결과 및 기준 수치는 원본 데이터에서 소수점 셋째 자리로 반올림 표기되었습니다.
+본 평가의 예측 레이블은 모델이 직접 출력한 값이 아니라 확률·점수에서 파생한 값입니다. 점수 컬럼 [prob_finance, prob_news, prob_sports, prob_tech] 에 레이블별 결정 임계값을 적용했습니다(prob_finance ≥ 0.5, prob_news ≥ 0.4, prob_sports ≥ 0.5, prob_tech ≥ 0.6).
 종합 핵심 성능 (Key Performance Indicators)
 | Metric ID
 | 시험항목

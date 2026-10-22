@@ -9,7 +9,23 @@
     },
     "taskType": "multilabel",
     "taskTypeLabel": "Multi-label",
-    "contractDate": "2026-10-01"
+    "contractDate": "2026-10-01",
+    "derivedPrediction": {
+      "method": "threshold_per_label",
+      "threshold": {
+        "prob_finance": 0.5,
+        "prob_news": 0.4,
+        "prob_sports": 0.5,
+        "prob_tech": 0.6
+      },
+      "source_columns": [
+        "prob_finance",
+        "prob_news",
+        "prob_sports",
+        "prob_tech"
+      ],
+      "target_role": "pred_labels"
+    }
   },
   "applicant": {
     "companyName": "보관본 주식회사",

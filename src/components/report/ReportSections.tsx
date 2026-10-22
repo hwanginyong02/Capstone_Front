@@ -76,7 +76,7 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         coreMetricsSource={data.coreMetricsSource}
         schema3={usesSchema3(data)}
       />
-      <ChartSection charts={data.charts} schema3={usesSchema3(data)} />
+      <ChartSection charts={data.charts} schema3={usesSchema3(data)} legacyLayout={isLegacyLayout(data)} />
       <LatencySection latency={data.latency} materialCheck={data.materialCheck} schema3={usesSchema3(data)} />
       <InterpretSection
         interpretation={data.interpretation}

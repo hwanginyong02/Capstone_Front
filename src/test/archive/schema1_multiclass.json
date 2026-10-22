@@ -9,7 +9,17 @@
     },
     "taskType": "multiclass",
     "taskTypeLabel": "Multi-class",
-    "contractDate": "2026-10-01"
+    "contractDate": "2026-10-01",
+    "derivedPrediction": {
+      "method": "argmax",
+      "threshold": null,
+      "source_columns": [
+        "prob_bird",
+        "prob_cat",
+        "prob_dog"
+      ],
+      "target_role": "y_pred"
+    }
   },
   "applicant": {
     "companyName": "보관본 주식회사",

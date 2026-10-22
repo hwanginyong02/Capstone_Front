@@ -247,6 +247,7 @@ Section 06
 | lion
 성능 평가 산출 기준
 본 성적서의 모든 성능 산출 결과 및 기준 수치는 원본 데이터에서 소수점 셋째 자리로 반올림 표기되었습니다.
+본 평가의 예측 레이블은 모델이 직접 출력한 값이 아니라 확률·점수에서 파생한 값입니다. 확률 컬럼 [prob_bird, prob_cat, prob_dog] 중 가장 큰 값의 클래스를 예측으로 삼았습니다(argmax, 임계값 없음).
 KL Divergence(M6) 지표는 예측 확률(Probability) 분포가 아닌, 정답 레이블과 모델이 예측한 클래스 레이블 간의 분포 차이(Target Drift)를 기반으로 산출되었습니다.
 종합 핵심 성능 (Key Performance Indicators)
 | Metric ID

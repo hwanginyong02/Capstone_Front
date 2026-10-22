@@ -131,7 +131,7 @@ describe("화면 ↔ 인쇄본 배선", () => {
   });
 
   it("판 1 보관본 표시(legacyLayout)를 옛 모양 갈래가 있는 섹션에 넘긴다 — 화면과 인쇄 양쪽", () => {
-    for (const section of ["CompanyInfoSection", "EvalScopeSection", "DatasetSection", "ConclusionSection"]) {
+    for (const section of ["CompanyInfoSection", "EvalScopeSection", "DatasetSection", "ChartSection", "ConclusionSection"]) {
       expect(propsPassedTo(section, SCREEN)).toContain("legacyLayout");
       expect(propsPassedTo(section, PRINT)).toContain("legacyLayout");
     }

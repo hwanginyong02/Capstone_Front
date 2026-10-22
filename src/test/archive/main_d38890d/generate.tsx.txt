@@ -87,6 +87,7 @@ interface Spec {
   narrativeFails?: boolean;
   extraResponse?: Record<string, unknown>;
   failed?: Record<string, string>;
+  dropSuccess?: string[];
   evaluate: string;
   narrative: string;
   taskType: "binary" | "multiclass" | "multilabel";
@@ -132,6 +133,8 @@ const SPECS: Spec[] = [
     evaluate: "evaluate_binary_csv",
     narrative: "narrative_legacy_main_fallback",
     narrativeFails: true,
+    // 예측값만 올리고 혼동 행렬(M21)을 고르지 않은 평가 — 6.3 에 그릴 차트가 없다.
+    dropSuccess: ["M21", "roc_curve", "pr_curve"],
     taskType: "binary",
     metrics: ["M1", "M4", "M7", "M20"],
     targets: { M1: "0.5", M7: "0.6" },
@@ -155,6 +158,7 @@ const SPECS: Spec[] = [
     metadata: { detected_classes: ["bird", "cat", "dog"], class_distribution: { bird: 69, cat: 57, dog: 74 }, column_unique_values: { label: ["bird", "cat", "dog"] } },
     classLabelDescriptions: { bird: "새", cat: "고양이", dog: "개" },
     trainingDist: "bird 20% / cat 60% / dog 20%",
+    extraSuccess: { derived_prediction: { method: "argmax", threshold: null, source_columns: ["prob_bird", "prob_cat", "prob_dog"], target_role: "y_pred" } },
   },
   {
     name: "schema1_multilabel",
@@ -169,6 +173,14 @@ const SPECS: Spec[] = [
     metadata: { detected_labels: ["finance", "news", "sports", "tech"], class_distribution: { finance: 107, news: 102, sports: 97, tech: 102 } },
     classLabelDescriptions: {},
     trainingDist: "",
+    extraSuccess: {
+      derived_prediction: {
+        method: "threshold_per_label",
+        threshold: { prob_finance: 0.5, prob_news: 0.4, prob_sports: 0.5, prob_tech: 0.6 },
+        source_columns: ["prob_finance", "prob_news", "prob_sports", "prob_tech"],
+        target_role: "pred_labels",
+      },
+    },
   },
 ];
 
@@ -207,7 +219,7 @@ describe.each(SPECS)("$name", (spec) => {
     ev.environment = ENV;
     Object.assign(ev.results.success_metrics, spec.extraSuccess ?? {});
     Object.assign(ev, spec.extraResponse ?? {});
-    for (const id of Object.keys(spec.failed ?? {})) delete ev.results.success_metrics[id];
+    for (const id of [...Object.keys(spec.failed ?? {}), ...(spec.dropSuccess ?? [])]) delete ev.results.success_metrics[id];
     Object.assign(ev.results.failed_metrics, spec.failed ?? {});
     const ng = golden(spec.narrative);
     const narrative = structuredClone(ng.response ?? ng);

@@ -85,7 +85,7 @@ export function ReportPrint() {
           />
         </PageBreak>
         <PageBreak>
-          <ChartSection charts={data.charts} schema3={usesSchema3(data)} />
+          <ChartSection charts={data.charts} schema3={usesSchema3(data)} legacyLayout={isLegacyLayout(data)} />
           <LatencySection latency={data.latency} materialCheck={data.materialCheck} schema3={usesSchema3(data)} />
         </PageBreak>
         <PageBreak>
