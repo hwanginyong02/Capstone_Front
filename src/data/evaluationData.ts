@@ -243,11 +243,12 @@ export const PROBABILITY_COLUMN_PREFIXES = ["prob_", "probability_", "score_", "
 export function probabilityColumnNameRule(taskType: TaskType): string | null {
   if (taskType === "binary") return null;
   const kind = taskType === "multiclass" ? "클래스" : "레이블";
+  const kindObject = taskType === "multiclass" ? "클래스를" : "레이블을"; // 조사를 받침에 맞춘다(종전 '레이블를')
   const example = taskType === "multiclass" ? "prob_cat, prob_dog" : "score_sports, score_news";
   const prefixes = PROBABILITY_COLUMN_PREFIXES.join(" · ");
   return (
     `확률 컬럼 이름은 접두어(${prefixes}) 뒤에 데이터의 ${kind} 이름을 그대로 붙입니다. 예: ${example}. ` +
-    `예측 컬럼 없이 확률만 매핑하면 이 이름으로 ${kind}를 찾으므로, 이름이 맞지 않으면 검증 화면에서 막힙니다.`
+    `예측 컬럼 없이 확률만 매핑하면 이 이름으로 ${kindObject} 찾으므로, 이름이 맞지 않으면 검증 화면에서 막힙니다.`
   );
 }
 

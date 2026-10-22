@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { cleanNumber, difference, factText, formatJudgedValue, judgedText, meetsTarget, percentText } from "./judgedNumber";
+import {
+  cleanNumber,
+  difference,
+  factText,
+  formatBenchmarkValue,
+  formatJudgedValue,
+  judgedText,
+  meetsTarget,
+  percentText,
+} from "./judgedNumber";
+import type { BenchmarkPosition } from "./judgedNumber";
 import { evaluateStatus } from "./evaluateStatus";
 import { computeMargin, isNearTarget } from "./computeVerdict";
 import type { KpiResult } from "../../types/finalReport.types";
@@ -147,4 +157,35 @@ describe("percentText — 소수 문자열을 %로(글자 옮기기)", () => {
   it("숫자 꼴이 아니면 그대로", () => {
     expect(percentText("—")).toBe("—");
   });
+});
+
+/**
+ * 8.1 모델 값 대조 표(판 3 만 — 판 1·2 표는 종전 toFixed(3)) — 백엔드 range_value_text 와 같은 규칙:
+ * 최대 여섯째 자리, 여섯째로도 위치와 반대면 위치 쪽으로 자르고, 판정 대상이면 같은 자릿수에서 목표 판정도 맞아야 한다.
+ * 둘 다 맞는 자릿수가 없을 때만 목표 판정 우선(formatJudgedValue).
+ */
+describe("formatBenchmarkValue — 8.1 모델 값(위치·목표 판정과 같은 쪽으로)", () => {
+  type Judged = { target: number; higherIsBetter: boolean; pass: boolean };
+  it.each([
+    // [값, low, high, 위치, 판정, 기대]
+    [0.79996, 0.8, 0.92, "below", undefined, "0.79996"],
+    [0.8497, 0.85, 0.92, "below", undefined, "0.8497"],
+    [0.92049, 0.85, 0.92, "above", undefined, "0.9205"],
+    [0.04996, 0.05, 0.1, "below", undefined, "0.04996"], // 낮을수록 좋은 지표 — 위치는 단순 수치 위치
+    [0.10004, 0.05, 0.1, "above", undefined, "0.10004"],
+    [0.7999612, 0.8, 0.92, "below", undefined, "0.79996"], // 다섯째 자리에서 이미 below — 최소 자릿수
+    [0.84999996, 0.85, 0.92, "below", undefined, "0.849999"], // 여섯째 "0.850000" 은 범위 안 → 위치 쪽으로 자름
+    [0.849961, 0.85, 0.92, "below", { target: 0.85, higherIsBetter: true, pass: false }, "0.84996"],
+    // 판정 대상 + 여섯째로도 안 맞음: 위치 쪽으로 자른 값이 목표 판정도 맞으면 그 값('0.850 | 미흡' 으로 돌아가지 않는다)
+    [0.8499999, 0.85, 0.92, "below", { target: 0.8, higherIsBetter: true, pass: true }, "0.849999"],
+    [0.84999996, 0.85, 0.92, "below", { target: 0.85, higherIsBetter: true, pass: false }, "0.849999"],
+    [0.92000004, 0.85, 0.92, "above", { target: 0.95, higherIsBetter: true, pass: false }, "0.920001"],
+    // 둘 다 맞는 자릿수가 없으면 목표 판정 우선(formatJudgedValue) — 값이 이미 범위 끝으로 반올림돼 온 경우
+    [0.85, 0.85, 0.92, "below", { target: 0.8, higherIsBetter: true, pass: true }, "0.850"],
+  ] as [number, number, number, BenchmarkPosition, Judged | undefined, string][])(
+    "%s (%s~%s, %s, 판정 %o) → %s",
+    (value, low, high, position, judged, expected) => {
+      expect(formatBenchmarkValue(value, low, high, position, judged)).toBe(expected);
+    },
+  );
 });

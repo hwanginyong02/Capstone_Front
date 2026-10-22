@@ -3,25 +3,16 @@
  * 예: "대화형(실시간)"으로 / "샘플 단위로 중요"로 / 12.30으로 / 9.51로.
  */
 
-/** 끝 글자의 받침. 숫자는 읽는 소리로(0 영·3 삼·6 육 = 받침, 1 일·7 칠·8 팔 = ㄹ). 모르면 null. */
-function finalConsonant(word: string): "none" | "rieul" | "other" | null {
-  const last = [...word].reverse().find((ch) => (ch >= "가" && ch <= "힣") || (ch >= "0" && ch <= "9"));
-  if (!last) return null;
-  if (last >= "0" && last <= "9") return "036".includes(last) ? "other" : "178".includes(last) ? "rieul" : "none";
-  const code = (last.charCodeAt(0) - 0xac00) % 28;
-  return code === 0 ? "none" : code === 8 ? "rieul" : "other";
-}
-
 /** "으로/로" — 받침이 있으면(ㄹ 제외) "으로". */
 export function josaEuroRo(word: string): string {
-  return finalConsonant(word) === "other" ? "으로" : "로";
+  return nameFinalSound(word) === "other" ? "으로" : "로";
 }
 
-/** "은/는" — 한글 끝 글자의 받침으로. 한글이 없으면 "은(는)". */
+/** "은/는" — 이름의 끝소리(`nameFinalSound`)로. 받침(ㄹ 포함)이 있으면 "은". 읽는 소리를 모르면 "은(는)". */
 export function josaEunNeun(word: string): string {
-  const hangul = [...word].reverse().find((ch) => ch >= "가" && ch <= "힣");
-  if (!hangul) return "은(는)";
-  return (hangul.charCodeAt(0) - 0xac00) % 28 === 0 ? "는" : "은";
+  const sound = nameFinalSound(word);
+  if (sound === null) return "은(는)";
+  return sound === "none" ? "는" : "은";
 }
 
 /**
@@ -72,35 +63,66 @@ export function josaWaGwaNumber(value: number | string): string {
   return sound === null || sound === "none" ? "와" : "과";
 }
 
-/** 대문자 약어 끝 글자의 이름 중 받침이 있는 것 — L 엘·M 엠·N 엔·R 알(백엔드 wording `_UPPER_FINAL` 과 같다). */
-const UPPER_WITH_FINAL = "LMNR";
-/** 영문 낱말 끝 글자 중 받침 소리로 읽는 것 — -n·-m·-l·-t(캣)·-ng(롱)·-ck(블랙). 그 밖(모음·r·s·x·f·k·p·g·d·b …)은 '…으/…스' 소리. */
-const LOWER_WITH_FINAL = ["ng", "ck", "n", "m", "l", "t"];
+/** 대문자 약어 끝 글자의 이름 중 받침이 있는 것 — L 엘·M 엠·N 엔·R 알(R·L 은 ㄹ). */
+const UPPER_FINAL: Record<string, "rieul" | "other"> = { L: "rieul", M: "other", N: "other", R: "rieul" };
+const VOWELS = "aeiou";
+
+/**
+ * 끼워 넣는 이름의 끝소리 — 받침 없음 "none" · ㄹ 받침 "rieul" · 그 밖의 받침 "other" · 모르면 null.
+ * 두 저장소 공통 조사 규칙(서술 라운드 세션 C 마지막 검토 — 백엔드 wording `_final` 과 같은 표를 양쪽 테스트에 둔다):
+ * 1. 끝의 따옴표·공백은 건너뛴다.
+ * 2. "이름(설명)" 꼴이면 괄호 앞 이름의 끝소리로 고른다(괄호 안은 읽지 않는 것으로 보고 앞말에 맞추는 표기 관례).
+ *    괄호 앞이 비어 있으면("(설명)") 괄호 안 말로.
+ * 3. 한글 끝 글자는 받침 유무(ㄹ 받침은 "rieul").
+ * 4. 숫자로 끝나면 읽는 소리(`numberFinalSound` — 소수는 끝 숫자 한 자, 정수는 끝 0 개수로 십·백·천·만…).
+ * 5. 영문 대문자로 끝나면(약어) 알파벳 이름: L 엘·M 엠·N 엔·R 알 만 받침(R·L 은 ㄹ).
+ * 6. 영문 소문자로 끝나면: -ng·-m·-n·-ck 받침, -l 받침(ㄹ), -t 는 바로 앞 글자가 모음일 때만 받침(cat 캣·set 셋),
+ *    그 밖(-nt·-st·-s·-r·-k·-d·-g·-e …)은 '…트·…스' 소리라 받침 없음(malignant 멀리그넌트).
+ * 7. %(퍼센트)는 받침 없음. 그 밖의 기호만 남으면 null.
+ */
+function nameFinalSound(word: string): "none" | "rieul" | "other" | null {
+  let text = (word ?? "").replace(/['"‘’“”」』\s]+$/, "");
+  if (text.endsWith(")")) {
+    let depth = 0;
+    for (let i = text.length - 1; i >= 0; i -= 1) {
+      if (text[i] === ")") depth += 1;
+      else if (text[i] === "(") {
+        depth -= 1;
+        if (depth === 0) {
+          const before = text.slice(0, i);
+          if (before.trim()) return nameFinalSound(before);
+          text = text.slice(i + 1, -1);
+          break;
+        }
+      }
+    }
+    text = text.replace(/['"‘’“”」』\s]+$/, "");
+  }
+  const last = text[text.length - 1];
+  if (!last) return null;
+  if (last >= "가" && last <= "힣") {
+    const code = (last.charCodeAt(0) - 0xac00) % 28;
+    return code === 0 ? "none" : code === 8 ? "rieul" : "other";
+  }
+  if (last >= "0" && last <= "9") return numberFinalSound(/\d+(\.\d+)?$/.exec(text)![0]);
+  if (last === "%") return "none";
+  if (last >= "A" && last <= "Z") return UPPER_FINAL[last] ?? "none";
+  if (last >= "a" && last <= "z") {
+    if (text.endsWith("ng") || text.endsWith("ck") || last === "m" || last === "n") return "other";
+    if (last === "l") return "rieul";
+    if (last === "t" && VOWELS.includes(text[text.length - 2] ?? "")) return "other";
+    return "none";
+  }
+  return null;
+}
 
 /**
  * 이름 뒤 "과/와" — 3절 D20 '다수 클래스 {A}와/과 소수 클래스'(서술 라운드 세션 C). 받침(ㄹ 포함)이 있으면 "과".
- * - 실제로 찍히는 마지막 글자를 본다: '이름(설명)' 꼴이면 괄호 안 설명의 끝("0(정상)과"), 끝 따옴표는 건너뛴다.
- * - 한글은 받침, 숫자는 읽는 소리(`numberFinalSound` — 0 영·2 이·10 십, "Class12" 는 끝 숫자 12 = 십이).
- * - 영문은 대략의 읽는 소리: 대문자 약어 끝은 글자 이름(L·M·N·R 만 받침), 소문자 낱말 끝은 n·m·l·t·ng·ck 만 받침.
+ * 끝소리는 `nameFinalSound`(공통 조사 규칙) — '이름(설명)' 꼴은 괄호 앞 이름으로("2(정상)와", "0(정상)과").
  * 읽는 소리를 모르면(기호·빈 말) "와(과)".
  */
 export function josaWaGwa(word: string): string {
-  let text = word.trim().replace(/['"‘’“”」』\s]+$/, "");
-  if (text.endsWith(")")) text = text.slice(0, -1).trimEnd();
-  const last = text[text.length - 1];
-  if (!last) return "와(과)";
-  let hasFinal: boolean | null = null;
-  if (last >= "가" && last <= "힣") hasFinal = (last.charCodeAt(0) - 0xac00) % 28 !== 0;
-  else if (last >= "0" && last <= "9") {
-    const sound = numberFinalSound(/\d+(\.\d+)?$/.exec(text)![0]);
-    hasFinal = sound !== null && sound !== "none";
-  } else if (last >= "A" && last <= "Z") {
-    // 끝이 대문자면 약어("SVM")로 보고 글자 이름으로 읽는다. 끝이 소문자면("Cat") 아래 낱말 규칙.
-    const before = text[text.length - 2];
-    hasFinal = UPPER_WITH_FINAL.includes(last) && !(before >= "a" && before <= "z");
-  } else if (last >= "a" && last <= "z") {
-    hasFinal = LOWER_WITH_FINAL.some((tail) => text.endsWith(tail));
-  }
-  if (hasFinal === null) return "와(과)";
-  return hasFinal ? "과" : "와";
+  const sound = nameFinalSound(word);
+  if (sound === null) return "와(과)";
+  return sound === "none" ? "와" : "과";
 }

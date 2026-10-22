@@ -107,7 +107,7 @@ function imbalanceEffectSentence(
     const parsed = Number(text);
     return Number.isFinite(parsed) ? parsed >= IMBALANCE_F1_GAP : value >= IMBALANCE_F1_GAP;
   };
-  // 승인 문구 그대로, '와/과' 만 다수 이름(찍히는 마지막 글자)의 끝소리로 고른다(세션 C — 'benign'와·'0'와 로 찍혔다).
+  // 승인 문구 그대로, '와/과' 만 다수 이름의 끝소리로 고른다(세션 C — 'benign'와·'0'와 로 찍혔다). '이름(설명)' 꼴은 괄호 앞 이름.
   const majorityName = className(effect.majority_class, descriptions);
   const pair = `다수 ${unit} '${majorityName}'${josaWaGwa(majorityName)} 소수 ${unit} '${className(effect.minority_class, descriptions)}'의 F1 차이`;
 

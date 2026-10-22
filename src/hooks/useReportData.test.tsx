@@ -73,7 +73,7 @@ describe("성공 — 평가 1회·작업 1회, 단계는 화면에만", () => {
     renderReportPage();
 
     // 작업이 생기면 8.1 표가 서술보다 먼저 보인다(작업 생성 응답의 benchmark_refs).
-    await screen.findByText(/AI 정성 서술\(7·8·9절\)을 만드는 중입니다/);
+    await screen.findByText(/^정성 서술\(7·8·9절\)을 만드는 중입니다/);
     // 빈 서술 칸 여덟(7.1·7.2·7.3·8.1·8.2·8.3·9.1·9.2 — 판 3 run 이라 7.3 칸이 있다) 모두가 '만드는 중'이다 — 한 칸이라도
     // 옛 '연동 예정'이나 7.3 의 '해당 없음'이면 개수가 준다.
     expect(screen.getAllByText(NARRATIVE_PENDING_TEXT)).toHaveLength(8);

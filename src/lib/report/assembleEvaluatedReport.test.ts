@@ -245,6 +245,20 @@ describe("3절 진단 — 엔진 판정(imbalance_effect)이 조립을 거쳐 3�
     expect(text).toContain("다수 클래스 '0(정상)'과 소수 클래스 '1'의 F1 차이가 0.2로 0.10 이상이어서");
   });
 
+  it("다수 이름 뒤 과/와 는 괄호 앞 이름의 끝소리로 고른다(공통 조사 규칙 — '0(고양이)'과, 설명 끝 '이' 가 아니라 '영')", () => {
+    const copy = structuredClone(GOLDEN_BINARY);
+    copy.results.success_metrics.imbalance_effect = {
+      ...copy.results.success_metrics.imbalance_effect,
+      level: "affected",
+      imbalance_ratio: 1.6,
+      majority_minus_minority_f1: 0.2,
+    };
+    const base = baseReport();
+    base.datasetInfo = { ...base.datasetInfo, classLabelDescriptions: [{ label: "0", description: "고양이" }] };
+    const text = assembleEvaluatedReport(base, copy, inputs()).stage1Report.datasetDiagnosis;
+    expect(text).toContain("다수 클래스 '0(고양이)'과 소수 클래스 '1'의 F1 차이가 0.2로 0.10 이상이어서");
+  });
+
   it("M23(1.4)과 판정(affected, 1.6)이 다르면 판정을 따른다", () => {
     const text = withImbalance(1.4, "affected", 1.6);
     expect(text).toContain("1.60으로");

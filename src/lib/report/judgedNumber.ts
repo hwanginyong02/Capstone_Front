@@ -76,12 +76,13 @@ export function positionOfQuality(quality: string, lowerIsBetter: boolean): Benc
  * 셋째 자리(`toFixed(3)`)로 찍되, 찍힌 숫자를 참조 범위(low·high)와 비교한 위치가 서버 위치(`position`, 반올림 전
  * 값으로 판정)와 다르면 같아질 때까지 한 자리씩 늘린다(최대 여섯째 자리, 끝의 0 은 그대로 둔다). 판정 대상
  * 지표(`judged`)면 각 자릿수에서 목표 판정(`meetsTarget`)도 함께 맞아야 한다.
- * 여섯째 자리로도 안 맞으면: 판정 대상이면 `formatJudgedValue`(목표 판정 우선), 아니면 위치 쪽으로 자른 값
- * (below 는 내림, above 는 올림)이 위치와 맞을 때만 그 값, 그래도 안 맞으면(값 자체가 이미 반올림돼 와 범위 끝과
- * 같을 때) 숫자를 지어내지 않고 셋째 자리.
+ * 여섯째 자리로도 안 맞으면 위치 쪽으로 자른 값(below 는 내림, above 는 올림)이 위치와(판정 대상이면 목표 판정도)
+ * 맞을 때 그 값. 그래도 안 맞으면(값 자체가 이미 반올림돼 와 범위 끝과 같을 때) 판정 대상이면 `formatJudgedValue`
+ * (목표 판정 우선), 아니면 숫자를 지어내지 않고 셋째 자리. 백엔드 `range_value_text` 와 같은 규칙(최대 여섯째 자리).
  *
  * - 0.8497 · 범위 0.85~0.92 · below → "0.8497" (셋째 자리 "0.850" 은 범위 안으로 읽힌다)
  * - 0.92049 · 범위 0.85~0.92 · above → "0.9205" · 0.79996 · 범위 0.8~0.92 · below → "0.79996"
+ * - 0.8499999 · 범위 0.85~0.92 · below · 목표 0.8 합격 → "0.849999" (종전에는 "0.850 | 미흡" 으로 돌아갔다)
  */
 export function formatBenchmarkValue(
   value: number,
@@ -96,10 +97,13 @@ export function formatBenchmarkValue(
     const targetOk = !judged || meetsTarget(n, judged.target, judged.higherIsBetter) === judged.pass;
     if (targetOk && benchmarkPosition(n, low, high) === position) return printed;
   }
-  if (judged) return formatJudgedValue(value, judged.target, judged.higherIsBetter, judged.pass);
   const scale = 10 ** MAX_VALUE_DIGITS;
   const cut = position === "below" ? Math.floor(value * scale) / scale : position === "above" ? Math.ceil(value * scale) / scale : value;
-  return benchmarkPosition(cut, low, high) === position ? cut.toFixed(MAX_VALUE_DIGITS) : value.toFixed(VALUE_DIGITS);
+  const cutTargetOk = !judged || meetsTarget(cut, judged.target, judged.higherIsBetter) === judged.pass;
+  if (cutTargetOk && benchmarkPosition(cut, low, high) === position) return cut.toFixed(MAX_VALUE_DIGITS);
+  // 위치와 목표 판정을 함께 맞추는 표기가 없으면 목표 판정 우선(판정 대상), 아니면 숫자를 지어내지 않고 셋째 자리.
+  if (judged) return formatJudgedValue(value, judged.target, judged.higherIsBetter, judged.pass);
+  return value.toFixed(VALUE_DIGITS);
 }
 
 /** 사실 시트 파생값의 평소 자릿수 — 엔진이 싣는 값(round(x, 4))과 같다. */

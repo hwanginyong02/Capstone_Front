@@ -159,7 +159,7 @@ export function NarrativeStatusBanner({
       >
         <Loader2 className="size-4 animate-spin" />
         <span>
-          AI 정성 서술(7·8·9절)을 만드는 중입니다 — <strong>{NARRATIVE_STAGE_LABEL[stage ?? "queued"]}</strong>. 아래
+          정성 서술(7·8·9절)을 만드는 중입니다 — <strong>{NARRATIVE_STAGE_LABEL[stage ?? "queued"]}</strong>. 아래
           지표·차트는 이미 확정된 결과이며, 서술은 끝나는 대로 채워집니다. 그동안 인쇄·발급은 잠깁니다.
         </span>
       </div>

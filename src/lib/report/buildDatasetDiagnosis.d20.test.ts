@@ -184,7 +184,7 @@ describe("기준(0.10) 이상 판단과 숫자 출처", () => {
       A: "정상",
       B: "",
     });
-    expect(text).toContain("다수 클래스 'A(정상)'과 소수 클래스 'B'의 F1 차이 0.03");
+    expect(text).toContain("다수 클래스 'A(정상)'와 소수 클래스 'B'의 F1 차이 0.03");
   });
 });
 
@@ -241,7 +241,7 @@ describe("변이 시험 구멍 — 숫자 출처·한쪽만 있는 새 칸·설�
 });
 
 describe("다수 이름 뒤 과/와 — 이름의 끝소리(서술 라운드 세션 C, 승인 문구는 그대로 조사만)", () => {
-  // 종전에는 '와' 가 고정이라 'benign'와·'0'와 로 찍혔다. 이름(설명이 있으면 괄호 안 설명)의 끝소리로 고른다.
+  // 종전에는 '와' 가 고정이라 'benign'와·'0'와 로 찍혔다. 이름의 끝소리로 고른다 — '이름(설명)' 꼴은 괄호 앞 이름(공통 조사 규칙).
   const pairOf = (majority: string, descriptions?: Record<string, string>) => {
     const ie = effect("no_distortion", { task: "binary", accGap: "0.05", classGap: "0.03", withNew: true });
     ie.majority_class = majority;
@@ -252,7 +252,7 @@ describe("다수 이름 뒤 과/와 — 이름의 끝소리(서술 라운드 세
 
   it.each([
     ["benign", undefined, "'benign'과"],
-    ["malignant", undefined, "'malignant'과"],
+    ["malignant", undefined, "'malignant'와"], // 멀리그넌트
     ["cat", undefined, "'cat'과"],
     ["dog", undefined, "'dog'와"],
     ["Class12", undefined, "'Class12'와"], // 십이
@@ -260,9 +260,11 @@ describe("다수 이름 뒤 과/와 — 이름의 끝소리(서술 라운드 세
     ["2", undefined, "'2'와"], // 이
     ["정상", undefined, "'정상'과"],
     ["세포 운명", undefined, "'세포 운명'과"],
-    ["2", { "2": "정상" }, "'2(정상)'과"], // 찍히는 마지막 글자(설명) 기준
+    ["2", { "2": "정상" }, "'2(정상)'와"], // 괄호 앞 이름(이) 기준
+    ["A", { A: "정상" }, "'A(정상)'와"], // 에이
+    ["0", { "0": "정상" }, "'0(정상)'과"], // 영
     ["benign", { benign: "양성" }, "'benign(양성)'과"],
-    ["0", { "0": "고양이" }, "'0(고양이)'와"],
+    ["0", { "0": "고양이" }, "'0(고양이)'과"], // 영
   ] as const)("%s (설명 %o) → %s", (majority, descriptions, expected) => {
     expect(pairOf(majority, descriptions as Record<string, string> | undefined)).toBe(expected);
   });
