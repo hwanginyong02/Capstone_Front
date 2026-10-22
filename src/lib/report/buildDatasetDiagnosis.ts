@@ -136,16 +136,18 @@ function imbalanceEffectSentence(
     );
   }
 
-  // no_distortion
+  // no_distortion — 다수 F1 − 소수 F1 이 음수면(다수 쪽이 더 못함, 예: −0.8333) '0.10 미만'이 큰 차이를 작다고 말하는 것처럼
+  // 읽힌다. 승인 문장은 그대로 두고 그 사실을 한 문장 덧붙인다(사용자 결정 2026-10-22, 세션 C 브라우저 스모크).
+  const negative = effect.majority_minus_minority_f1 < 0 ? ` 다수 ${unit}의 F1이 소수 ${unit}보다 낮다(차이가 음수).` : "";
   if (accuracyGap === null) {
     return (
       `${head} 허용 기준(1.50 미만)을 벗어나나, 다수·소수 ${unit} F1의 차이가 0.10 미만이라 ` +
-      `불균형에 따른 성능 왜곡은 관찰되지 않았다(${pair} ${classGap}).`
+      `불균형에 따른 성능 왜곡은 관찰되지 않았다(${pair} ${classGap}).${negative}`
     );
   }
   return (
     `${head} 허용 기준(1.50 미만)을 벗어나나, 정확도와 매크로 F1, 다수·소수 ${unit} F1의 차이가 모두 0.10 미만이라 ` +
-    `불균형에 따른 성능 왜곡은 관찰되지 않았다(정확도와 매크로 F1의 차이 ${accuracyGap}, ${pair} ${classGap}).`
+    `불균형에 따른 성능 왜곡은 관찰되지 않았다(정확도와 매크로 F1의 차이 ${accuracyGap}, ${pair} ${classGap}).${negative}`
   );
 }
 

@@ -145,6 +145,28 @@ describe("세 갈래 × 유형 × 새 칸 — 정확한 문장", () => {
   });
 });
 
+describe("no_distortion — 다수 F1 이 더 낮아 차이가 음수(사용자 결정 2026-10-22)", () => {
+  it.each(["binary", "multiclass"] as Task[])("%s: 승인 문장 뒤에 '다수 클래스의 F1이 소수 클래스보다 낮다(차이가 음수).'", (task) => {
+    expect(diagnose(task, effect("no_distortion", { task, accGap: "0.05", classGap: "-0.8333", withNew: true }))).toBe(
+      `${PREFIX}${IR_HEAD} 허용 기준(1.50 미만)을 벗어나나, 정확도와 매크로 F1, 다수·소수 클래스 F1의 차이가 모두 0.10 미만이라 ` +
+        "불균형에 따른 성능 왜곡은 관찰되지 않았다(정확도와 매크로 F1의 차이 0.05, 다수 클래스 'A'와 소수 클래스 'B'의 F1 차이 -0.8333). " +
+        "다수 클래스의 F1이 소수 클래스보다 낮다(차이가 음수).",
+    );
+  });
+
+  it("멀티레이블은 '레이블'", () => {
+    expect(diagnose("multilabel", effect("no_distortion", { task: "multilabel", accGap: "", classGap: "-0.2", withNew: true }))).toMatch(
+      /F1 차이 -0\.2\)\. 다수 레이블의 F1이 소수 레이블보다 낮다\(차이가 음수\)\.$/,
+    );
+  });
+
+  it("0 이상이면 덧붙이지 않는다", () => {
+    for (const classGap of ["0", "0.03"]) {
+      expect(diagnose("binary", effect("no_distortion", { task: "binary", accGap: "0.05", classGap, withNew: true }))).not.toContain("차이가 음수");
+    }
+  });
+});
+
 describe("기준(0.10) 이상 판단과 숫자 출처", () => {
   it("표시값이 기준 미만(0.09996)이면 4자리 숫자 칸이 0.1 이어도 그 조건을 쓰지 않는다", () => {
     const ie = effect("affected", { task: "binary", accGap: "0.15", classGap: "0.09996", withNew: false });
