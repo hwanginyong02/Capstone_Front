@@ -147,7 +147,7 @@ Capstone_Front/
 | 3 | 지금(`REPORT_CONTENT_SCHEMA = 3`) | 아래 목록 |
 
 - **판 술어**: `isLegacyLayout` = 판 1(`< 2`), `usesSchema3` = 판 3 이상. 판 비교는 지금 상수가 아니라 **그 뜻이 생긴 판 번호**에 박는다 — 상수를 올릴 때 옛 분기가 따라 움직이지 않게. 판 2 보관본에도 `narrativeSections` 가 있으므로 키가 있는지가 아니라 판으로 가른다. 섹션 부품은 모두 `schema3` prop 을 받는다(화면·인쇄 양쪽).
-- **`legacyLayout` prop** — 판 1 전용 운영 main 모양(`isLegacyLayout`, `ReportSections` 가 넘긴다). 받는 섹션: `CompanyInfoSection`(1.1 빈 FAX·홈페이지 줄과 '계약일자', 1.3 옛 용도 이름, 1.4 인라인 문장·세부 줄 없음), `EvalScopeSection`(2절 시험 대상 모델 표 없음), `DatasetSection`(학습 샘플 수 0개도 찍음, 예시 표 '정상/불량 데이터'), `ChartSection`(차트 없음 안내 옛 문장), `ConclusionSection`(8절 '종합 점수'와 그 정의). 섹션을 고칠 때 이 분기도 함께 본다.
+- **`legacyLayout` prop** — 판 1 전용 운영 main 모양(`isLegacyLayout`, 화면 `ReportSections`·인쇄 `ReportPrint` 가 넘긴다). 받는 섹션: `CompanyInfoSection`(1.1 빈 FAX·홈페이지 줄과 '계약일자', 1.3 옛 용도 이름, 1.4 인라인 문장·세부 줄 없음), `EvalScopeSection`(2절 시험 대상 모델 표 없음), `DatasetSection`(학습 샘플 수 0개도 찍음, 예시 표 '정상/불량 데이터'), `ChartSection`(차트 없음 안내 옛 문장), `ConclusionSection`(8절 '종합 점수'와 그 정의). 섹션을 고칠 때 이 분기도 함께 본다.
 - **판 3 에서 생긴 것**:
   - 소절 번호(1.1 ~ 9.2, `SubsectionTitle`)와 7.3 추가 관찰(빈 글이면 고정 문구 15 "해당 없음").
   - 7절 제목 바로 아래 ※ 한 줄 "소견은 정량 지표를 바탕으로 작성된 참고 의견이며, 시험 결과에 해당하지 않습니다." 그 대신 1.4 의 "LLM 생성 소견에 대한 면책" 항목이 빠진다.
@@ -156,7 +156,7 @@ Capstone_Front/
   - 화면 전용 **"작성 기록"** 상자(`NarrativeRecordPanel`): 칸마다 AI 작성(모델 이름)·규칙 기반 문장·고정 문구. `/report/:id` 와 `/report/no/:번호` 화면에만 있고, 인쇄 경로·본문에는 넣지 않으며 `print:hidden` 이다. 재료는 성적서 데이터의 `narrativeSections`·`narrativeModels`(발급 보관본에도 저장된다).
   - 고정 문구 7·16·6, 9 의 조사(숫자를 읽는 소리로 을/를), 15·17·18 을 코드가 찍는다(6.4 표).
   - 7.1 아래 D6 표(`NarrativeFactTables` — 최약 클래스, 최다 오분류 쌍(다중), 예측 편향. 비율은 %).
-  - 3절 불균형 진단 세 갈래(D20 — 기준 이내 / 왜곡 관찰 / 왜곡 미관찰, `buildDatasetDiagnosis`). '와/과'는 다수 클래스 이름의 끝소리로 고른다 — '이름(설명)' 꼴은 괄호 앞 이름으로("'2(정상)'와", "'0(정상)'과", 괄호 안은 읽지 않는 것으로 보고 앞말에 맞추는 표기 관례). 영문은 대략의 읽는 소리(대문자 약어 끝은 글자 이름 — L·M·N·R 만 받침, 소문자 끝은 -ng·-m·-n·-l·-ck 와 모음 뒤 -t 만 받침 — 'cat'과·'malignant'와). 이 규칙(`koreanJosa.nameFinalSound`)은 백엔드 `wording._final` 과 같고 같은 대조 표를 두 저장소 테스트에 둔다. 조립 때 문장을 저장하므로 새 run 에만 나온다 — 판 1·2 보관본의 3절 글은 저장된 글 그대로다.
+  - 3절 불균형 진단 세 갈래(D20 — 기준 이내 / 왜곡 관찰 / 왜곡 미관찰, `buildDatasetDiagnosis`). '와/과'는 다수 클래스 이름의 끝소리로 고른다 — '이름(설명)' 꼴은 괄호 앞 이름으로("'2(정상)'와", "'0(정상)'과", 괄호 안은 읽지 않는 것으로 보고 앞말에 맞추는 표기 관례). 영문은 대략의 읽는 소리(대문자 약어 끝은 앞 글자와 상관없이 글자 이름 — L·M·N·R 만 받침, '%' 는 받침 없음, 소문자 끝은 -ng·-m·-n·-l·-ck 와 모음 뒤 -t 만 받침 — 'cat'과·'malignant'와). 이 규칙(`koreanJosa.nameFinalSound`)은 백엔드 `wording._final` 과 같고 같은 대조 표를 두 저장소 테스트에 둔다. 조립 때 문장을 저장하므로 새 run 에만 나온다 — 판 1·2 보관본의 3절 글은 저장된 글 그대로다.
   - 8.1 표의 모델 값·목표값은 6.1 과 같은 판정 자릿수(`formatBenchmarkValue` — 참조 범위 위치와 같은 쪽으로 읽히게 최대 여섯째 자리까지 늘리고, 그래도 반대면 위치 쪽으로 자른다. 판정 대상 지표는 같은 자릿수에서 목표 판정도 맞아야 하고, 둘 다 맞는 표기가 없을 때만 목표 판정 우선. 백엔드 8.1 서술 `range_value_text` 와 같은 규칙).
 - **판 1 은 운영 main(`d38890d`)이 그리던 글 그대로다.** 번호로 연 화면은 main 의 발급본 글과 같다 — main 이 찍던 '(미발급)' 표시 오류(번호로 연 화면의 표지·서명란)만 고쳤다(`14f4754`). 정답은 `src/test/archive/main_d38890d/`(main 코드가 같은 픽스처를 그린 글)이고, `archiveLayout.test.tsx` 가 지금 코드로 그린 글이 이 파일과 한 글자도 다르지 않은지 `toBe` 로 단정한다. **이 정답 파일과 판 1 스냅샷은 새 코드로 다시 뜨지 않는다** — 다르면 판 1 분기를 고친다. 만드는 법은 `main_d38890d/generate.tsx.txt` 머리말에 있다.
 - **판 2 스냅샷(`src/test/archive/__snapshots__/schema2_*`)도 바뀌면 안 된다.** 바뀌었다면 판 3 변경이 옛 판에 샌 것이다.

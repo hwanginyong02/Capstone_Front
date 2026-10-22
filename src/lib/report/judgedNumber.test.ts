@@ -182,6 +182,8 @@ describe("formatBenchmarkValue — 8.1 모델 값(위치·목표 판정과 같�
     [0.92000004, 0.85, 0.92, "above", { target: 0.95, higherIsBetter: true, pass: false }, "0.920001"],
     // 둘 다 맞는 자릿수가 없으면 목표 판정 우선(formatJudgedValue) — 값이 이미 범위 끝으로 반올림돼 온 경우
     [0.85, 0.85, 0.92, "below", { target: 0.8, higherIsBetter: true, pass: true }, "0.850"],
+    // 위치 쪽으로 자른 값(0.849999)이 위치는 맞지만 목표(0.8499995) 판정과 반대 — 자른 값을 쓰지 않고 목표 판정 우선
+    [0.84999996, 0.85, 0.92, "below", { target: 0.8499995, higherIsBetter: true, pass: true }, "0.850"],
   ] as [number, number, number, BenchmarkPosition, Judged | undefined, string][])(
     "%s (%s~%s, %s, 판정 %o) → %s",
     (value, low, high, position, judged, expected) => {
