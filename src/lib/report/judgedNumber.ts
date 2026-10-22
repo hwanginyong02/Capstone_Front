@@ -55,6 +55,53 @@ export function formatJudgedValue(
   return cut.toFixed(MAX_VALUE_DIGITS);
 }
 
+/** 참조 범위 대비 단순 수치 위치 — 백엔드 `baselines.benchmark_position` 과 같다(끝은 범위 안). */
+export type BenchmarkPosition = "below" | "within" | "above";
+
+export function benchmarkPosition(value: number, low: number, high: number): BenchmarkPosition {
+  if (value < low) return "below";
+  if (value > high) return "above";
+  return "within";
+}
+
+/** 방향을 반영한 품질(better·within·worse)을 단순 수치 위치로 되돌린다. 모르는 품질이면 null. */
+export function positionOfQuality(quality: string, lowerIsBetter: boolean): BenchmarkPosition | null {
+  if (quality === "within") return "within";
+  if (quality !== "better" && quality !== "worse") return null;
+  return (quality === "better") === lowerIsBetter ? "below" : "above";
+}
+
+/**
+ * 8.1 벤치마크 모델 값의 표시 문자열(서술 라운드 세션 C) — `formatJudgedValue` 와 같은 원칙.
+ * 셋째 자리(`toFixed(3)`)로 찍되, 찍힌 숫자를 참조 범위(low·high)와 비교한 위치가 서버 위치(`position`, 반올림 전
+ * 값으로 판정)와 다르면 같아질 때까지 한 자리씩 늘린다(최대 여섯째 자리, 끝의 0 은 그대로 둔다). 판정 대상
+ * 지표(`judged`)면 각 자릿수에서 목표 판정(`meetsTarget`)도 함께 맞아야 한다.
+ * 여섯째 자리로도 안 맞으면: 판정 대상이면 `formatJudgedValue`(목표 판정 우선), 아니면 위치 쪽으로 자른 값
+ * (below 는 내림, above 는 올림)이 위치와 맞을 때만 그 값, 그래도 안 맞으면(값 자체가 이미 반올림돼 와 범위 끝과
+ * 같을 때) 숫자를 지어내지 않고 셋째 자리.
+ *
+ * - 0.8497 · 범위 0.85~0.92 · below → "0.8497" (셋째 자리 "0.850" 은 범위 안으로 읽힌다)
+ * - 0.92049 · 범위 0.85~0.92 · above → "0.9205" · 0.79996 · 범위 0.8~0.92 · below → "0.79996"
+ */
+export function formatBenchmarkValue(
+  value: number,
+  low: number,
+  high: number,
+  position: BenchmarkPosition,
+  judged?: { target: number; higherIsBetter: boolean; pass: boolean },
+): string {
+  for (let digits = VALUE_DIGITS; digits <= MAX_VALUE_DIGITS; digits += 1) {
+    const printed = value.toFixed(digits);
+    const n = Number(printed);
+    const targetOk = !judged || meetsTarget(n, judged.target, judged.higherIsBetter) === judged.pass;
+    if (targetOk && benchmarkPosition(n, low, high) === position) return printed;
+  }
+  if (judged) return formatJudgedValue(value, judged.target, judged.higherIsBetter, judged.pass);
+  const scale = 10 ** MAX_VALUE_DIGITS;
+  const cut = position === "below" ? Math.floor(value * scale) / scale : position === "above" ? Math.ceil(value * scale) / scale : value;
+  return benchmarkPosition(cut, low, high) === position ? cut.toFixed(MAX_VALUE_DIGITS) : value.toFixed(VALUE_DIGITS);
+}
+
 /** 사실 시트 파생값의 평소 자릿수 — 엔진이 싣는 값(round(x, 4))과 같다. */
 export const FACT_DIGITS = 4;
 /** 이 자릿수까지 늘린다 — 엔진 `metrics/display.MAX_DIGITS` 와 같다. */

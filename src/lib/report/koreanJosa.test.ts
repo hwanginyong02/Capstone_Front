@@ -1,7 +1,7 @@
 /** 고정 문구 조사 — 끼워 넣는 말의 받침에 맞춘다. */
 import { describe, expect, it } from "vitest";
 
-import { josaEulReul, josaEunNeun, josaEuroRo, josaEuroRoNumber, josaWaGwaNumber } from "./koreanJosa";
+import { josaEulReul, josaEunNeun, josaEuroRo, josaEuroRoNumber, josaWaGwa, josaWaGwaNumber } from "./koreanJosa";
 
 describe("으로/로", () => {
   it.each([
@@ -131,3 +131,57 @@ describe("소수의 끝 0 — 자리 이름이 아니라 끝 숫자로 읽는다
   });
 });
 
+
+describe("이름 뒤 과/와 — josaWaGwa(3절 D20 '다수 클래스 {A}와/과 소수 클래스')", () => {
+  it.each([
+    // 영문 소문자 끝: n·m·l·t·ng·ck 는 받침 소리 → 과, 그 밖(모음·r·s·x·f·k·p·g·d·b …)은 → 와
+    ["benign", "과"], // 비나인
+    ["malignant", "과"], // 멀리그넌트 — t 를 받침(ㅅ)으로
+    ["cat", "과"], // 캣
+    ["dog", "와"], // 도그
+    ["spam", "과"],
+    ["normal", "과"],
+    ["long", "과"], // ng
+    ["black", "과"], // ck
+    ["book", "와"], // k 만은 …크
+    ["ham", "과"],
+    ["other", "와"],
+    ["virus", "와"],
+    ["box", "와"],
+    ["Cat", "과"], // 끝이 소문자면 낱말로 읽는다
+    // 대문자 약어 끝은 글자 이름: L 엘·M 엠·N 엔·R 알 → 과, 그 밖 → 와
+    ["A", "와"],
+    ["B", "와"],
+    ["CAT", "와"], // 티
+    ["SVM", "과"], // 엠
+    ["R", "과"], // 알
+    // 숫자는 읽는 소리(numberFinalSound)
+    ["0", "과"], // 영
+    ["2", "와"], // 이
+    ["1", "과"], // 일 — ㄹ 도 받침
+    ["10", "과"], // 십
+    ["Class12", "와"], // 끝 숫자 12 = 십이
+    ["Class13", "과"], // 십삼
+    // 한글은 받침(ㄹ 포함)
+    ["정상", "과"],
+    ["세포 운명", "과"],
+    ["불량", "과"],
+    ["고양이", "와"],
+    ["물", "과"], // ㄹ
+    // '이름(설명)' 꼴은 실제로 찍히는 마지막 글자(괄호 안 설명)로
+    ["0(정상)", "과"],
+    ["2(정상)", "과"],
+    ["0(고양이)", "와"],
+    ["benign(양성 종양)", "과"], // 양(ㅇ)
+    ["cat(개)", "와"], // 영문 cat(과)이 아니라 개
+    ["A(정상)", "과"], // A 에이가 아니라 상
+  ] as const)("%s → %s", (word, expected) => {
+    expect(josaWaGwa(word)).toBe(expected);
+  });
+
+  it("읽는 소리를 모르면 '와(과)'", () => {
+    expect(josaWaGwa("—")).toBe("와(과)");
+    expect(josaWaGwa("")).toBe("와(과)");
+    expect(josaWaGwa("()")).toBe("와(과)");
+  });
+});

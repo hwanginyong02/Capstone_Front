@@ -1,5 +1,5 @@
 import type { ImbalanceEffect } from "../../types/finalReport.types";
-import { josaEuroRoNumber, josaWaGwaNumber } from "./koreanJosa";
+import { josaEuroRoNumber, josaWaGwa, josaWaGwaNumber } from "./koreanJosa";
 
 /**
  * 데이터셋 분포 사전 진단 문구 생성 (3절).
@@ -107,7 +107,9 @@ function imbalanceEffectSentence(
     const parsed = Number(text);
     return Number.isFinite(parsed) ? parsed >= IMBALANCE_F1_GAP : value >= IMBALANCE_F1_GAP;
   };
-  const pair = `다수 ${unit} '${className(effect.majority_class, descriptions)}'와 소수 ${unit} '${className(effect.minority_class, descriptions)}'의 F1 차이`;
+  // 승인 문구 그대로, '와/과' 만 다수 이름(찍히는 마지막 글자)의 끝소리로 고른다(세션 C — 'benign'와·'0'와 로 찍혔다).
+  const majorityName = className(effect.majority_class, descriptions);
+  const pair = `다수 ${unit} '${majorityName}'${josaWaGwa(majorityName)} 소수 ${unit} '${className(effect.minority_class, descriptions)}'의 F1 차이`;
 
   if (effect.level === "affected") {
     const conditions: string[] = [];

@@ -11,7 +11,7 @@ import { NarrativeSourceBadge } from "../shared/NarrativeSourceBadge";
 import { draftPlaceholder, narrativePlaceholder } from "../shared/narrativePlaceholder";
 import { cn } from "../../../utils/styling/styles";
 import { formatMetricValue, LEGACY_TARGET_DIGITS } from "../../../lib/report/metricValueFormat";
-import { formatJudgedValue } from "../../../lib/report/judgedNumber";
+import { formatBenchmarkValue, formatJudgedValue, positionOfQuality } from "../../../lib/report/judgedNumber";
 import { SubsectionTitle } from "../shared/SubsectionTitle";
 import { SectionSourceBadge, sectionBadgeKind } from "../shared/SectionSourceBadge";
 
@@ -265,16 +265,25 @@ interface BenchmarkValueFormat {
 /**
  * 8.1 모델 값 한 칸. 판 3 은 6.1 과 같은 표기(같은 이름의 지표 결과를 `MetricRow` 규칙으로 — 판정 대상이면 판정
  * 자릿수, 아니면 셋째 자리). 서버의 `model_value` 는 넷째 자리로 반올림돼 와 다시 셈하면 정밀도를 잃으므로 지표
- * 결과의 값을 쓴다. 같은 이름의 결과가 없거나 옛 판(`format` 없음)이면 종전 `toFixed(3)`.
+ * 결과의 값을 쓴다(같은 이름의 결과가 없으면 서버 값). 판정 자릿수를 쓰는 성적서(`judgedValueDigits`)는 위치
+ * (우수·범위 내·미흡)와도 같은 쪽으로 읽히게 참조 범위 끝 근처에서 자릿수를 늘린다(`formatBenchmarkValue`,
+ * 세션 C — 0.8497 이 "0.850 | 0.85 ~ 0.92 | 미흡" 으로 찍혔다). 옛 판(`format` 없음)은 종전 `toFixed(3)`.
  */
 export function benchmarkModelValueText(ref: BenchmarkRef, format: BenchmarkValueFormat | undefined): string {
   const kpi = format?.kpiResults?.find((k) => k.name === ref.metric && k.status !== "unavailable");
-  if (!format || !kpi) return ref.modelValue.toFixed(3);
-  const judged = kpi.threshold !== null && (kpi.status === "pass" || kpi.status === "fail");
-  if (format.judgedValueDigits && judged && kpi.threshold !== null) {
-    return formatJudgedValue(kpi.value, kpi.threshold, kpi.higherIsBetter !== false, kpi.status === "pass");
+  if (!format) return ref.modelValue.toFixed(3);
+  const judged = kpi && kpi.threshold !== null && (kpi.status === "pass" || kpi.status === "fail")
+    ? { target: kpi.threshold, higherIsBetter: kpi.higherIsBetter !== false, pass: kpi.status === "pass" }
+    : undefined;
+  const value = kpi ? kpi.value : ref.modelValue;
+  const position = positionOfQuality(ref.quality, ref.direction === "lower");
+  if (format.judgedValueDigits && position) {
+    return formatBenchmarkValue(value, ref.refLow, ref.refHigh, position, judged);
   }
-  return kpi.value.toFixed(3);
+  if (format.judgedValueDigits && judged) {
+    return formatJudgedValue(value, judged.target, judged.higherIsBetter, judged.pass);
+  }
+  return value.toFixed(3);
 }
 
 /** 8.1 목표값 한 칸 — 판 3 은 6.1 과 같은 목표값 자릿수(`targetDigits`, 없으면 종전 2), 옛 판은 종전 셋째 자리. */
