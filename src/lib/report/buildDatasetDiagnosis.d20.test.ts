@@ -184,7 +184,7 @@ describe("기준(0.10) 이상 판단과 숫자 출처", () => {
       A: "정상",
       B: "",
     });
-    expect(text).toContain("다수 클래스 'A(정상)'와 소수 클래스 'B'의 F1 차이 0.03");
+    expect(text).toContain("다수 클래스 'A(정상)'과 소수 클래스 'B'의 F1 차이 0.03");
   });
 });
 
@@ -237,6 +237,42 @@ describe("변이 시험 구멍 — 숫자 출처·한쪽만 있는 새 칸·설�
     });
     expect(text).toContain("다수 클래스 'A'와 소수 클래스 'B'의 F1 차이 0.03");
     expect(text).not.toContain("'A(");
+  });
+});
+
+describe("다수 이름 뒤 과/와 — 이름의 끝소리(서술 라운드 세션 C, 승인 문구는 그대로 조사만)", () => {
+  // 종전에는 '와' 가 고정이라 'benign'와·'0'와 로 찍혔다. 이름(설명이 있으면 괄호 안 설명)의 끝소리로 고른다.
+  const pairOf = (majority: string, descriptions?: Record<string, string>) => {
+    const ie = effect("no_distortion", { task: "binary", accGap: "0.05", classGap: "0.03", withNew: true });
+    ie.majority_class = majority;
+    const text = buildDatasetDiagnosis({ class_distribution: { [majority]: 70, B: 30 } }, ie.imbalance_ratio, 0, 100, "binary", ie, descriptions);
+    const match = /다수 클래스 '(.*?)'(와|과|와\(과\)) 소수 클래스 'B'의 F1 차이 0\.03\)/.exec(text);
+    return match ? `'${match[1]}'${match[2]}` : text;
+  };
+
+  it.each([
+    ["benign", undefined, "'benign'과"],
+    ["malignant", undefined, "'malignant'과"],
+    ["cat", undefined, "'cat'과"],
+    ["dog", undefined, "'dog'와"],
+    ["Class12", undefined, "'Class12'와"], // 십이
+    ["0", undefined, "'0'과"], // 영
+    ["2", undefined, "'2'와"], // 이
+    ["정상", undefined, "'정상'과"],
+    ["세포 운명", undefined, "'세포 운명'과"],
+    ["2", { "2": "정상" }, "'2(정상)'과"], // 찍히는 마지막 글자(설명) 기준
+    ["benign", { benign: "양성" }, "'benign(양성)'과"],
+    ["0", { "0": "고양이" }, "'0(고양이)'와"],
+  ] as const)("%s (설명 %o) → %s", (majority, descriptions, expected) => {
+    expect(pairOf(majority, descriptions as Record<string, string> | undefined)).toBe(expected);
+  });
+
+  it("affected 조건 문장에도 같은 조사 — 'benign'과 소수 클래스", () => {
+    const ie = effect("affected", { task: "binary", accGap: "0.15", classGap: "0.2833", withNew: true });
+    ie.majority_class = "benign";
+    ie.minority_class = "malignant";
+    const text = buildDatasetDiagnosis({ class_distribution: { benign: 70, malignant: 30 } }, ie.imbalance_ratio, 0, 100, "binary", ie);
+    expect(text).toContain("다수 클래스 'benign'과 소수 클래스 'malignant'의 F1 차이가 0.2833으로 0.10 이상이어서 ");
   });
 });
 
