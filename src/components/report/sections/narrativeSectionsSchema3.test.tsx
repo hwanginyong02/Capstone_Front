@@ -472,6 +472,72 @@ describe("8.1 표 값 표기 — 판 3 은 6.1 과 같은 판정 자릿수", () 
     expect(benchmarkModelValueText(benchmarkRef({}), undefined)).toBe("0.800");
   });
 
+  describe("참조 범위 위치와 같은 쪽으로 — 범위 끝 근처는 자릿수를 늘린다(세션 C)", () => {
+    // 위치(우수·범위 내·미흡)는 서버가 반올림 전 값으로 정한다. 셋째 자리로 범위 끝과 같아 보이면(0.8497 → "0.850",
+    // 범위 0.85~0.92 인데 '미흡') 위치와 같은 쪽으로 읽힐 때까지 늘린다(최대 여섯째 자리).
+    const on = (metric: string, value: number, extra: Partial<KpiResult> = {}) => ({
+      kpiResults: [kpi({ name: metric, value, threshold: null, status: "pass", ...extra })],
+      judgedValueDigits: true,
+    });
+
+    it.each([
+      // [지표, 값, 범위 낮음, 높음, 품질, 방향, 찍힐 값]
+      ["Precision", 0.79996, 0.8, 0.92, "worse", "higher", "0.79996"], // 셋째·넷째 자리 0.800·0.8000 은 범위 안으로 읽힌다
+      ["Accuracy", 0.8497, 0.85, 0.92, "worse", "higher", "0.8497"], // 셋째 자리 0.850
+      ["F1", 0.92049, 0.85, 0.92, "better", "higher", "0.9205"], // 셋째 자리 0.920
+      ["ECE", 0.04996, 0.05, 0.1, "better", "lower", "0.04996"], // 낮을수록 좋음 — 범위보다 낮아 우수
+      ["Log Loss", 0.10004, 0.05, 0.1, "worse", "lower", "0.10004"], // 범위보다 높아 미흡
+      ["Recall", 0.8, 0.8, 0.92, "within", "higher", "0.800"], // 범위 끝과 꼭 같으면 범위 내 — 셋째 자리 그대로
+      ["Recall", 0.8504, 0.8, 0.92, "within", "higher", "0.850"], // 범위 안은 평소대로
+      ["Recall", 0.7, 0.8, 0.92, "worse", "higher", "0.700"], // 멀리 떨어지면 평소대로
+    ] as const)("%s %s (범위 %s~%s, %s·%s) → %s", (metric, value, refLow, refHigh, quality, direction, expected) => {
+      const ref = benchmarkRef({ metric, modelValue: Number(value.toFixed(4)), refLow, refHigh, quality, direction, targetValue: null });
+      expect(benchmarkModelValueText(ref, on(metric, value, { higherIsBetter: direction === "higher" }))).toBe(expected);
+    });
+
+    it("판정 대상 지표는 목표 판정과 위치를 함께 맞춘다 — 0.92049·목표 0.9 합격·범위 0.85~0.92 우수 → 0.9205", () => {
+      const ref = benchmarkRef({ metric: "Accuracy", modelValue: 0.9205, quality: "better", targetValue: 0.9 });
+      const format = { kpiResults: [kpi({ value: 0.92049, threshold: 0.9, status: "pass" })], judgedValueDigits: true };
+      expect(benchmarkModelValueText(ref, format)).toBe("0.9205");
+    });
+
+    it("판정 대상 지표의 목표 판정 자릿수는 그대로 — 0.84996·목표 0.85 미달·범위 0.85~0.92 미흡 → 0.84996", () => {
+      const ref = benchmarkRef({ metric: "Accuracy", modelValue: 0.85, quality: "worse", targetValue: 0.85 });
+      const format = { kpiResults: [kpi({ value: 0.84996, threshold: 0.85, status: "fail" })], judgedValueDigits: true };
+      expect(benchmarkModelValueText(ref, format)).toBe("0.84996");
+    });
+
+    it("같은 이름의 지표 결과가 없으면 서버 값(넷째 자리)으로 같은 규칙 — 0.8497 → 0.8497", () => {
+      const ref = benchmarkRef({ metric: "MCC", modelValue: 0.8497, quality: "worse" });
+      expect(benchmarkModelValueText(ref, { kpiResults: [], judgedValueDigits: true })).toBe("0.8497");
+    });
+
+    it("서버 값이 이미 범위 끝으로 반올림돼 위치 쪽으로 읽을 수 없으면 숫자를 지어내지 않고 셋째 자리", () => {
+      // 반올림 전 0.79996 이 서버에서 0.8 로 와 '미흡'인데, 이 값으로는 범위 아래로 읽히는 자릿수가 없다.
+      const ref = benchmarkRef({ metric: "MCC", modelValue: 0.8, refLow: 0.8, quality: "worse" });
+      expect(benchmarkModelValueText(ref, { kpiResults: [], judgedValueDigits: true })).toBe("0.800");
+    });
+
+    it("자릿수 키가 없는 판 3 발급본·옛 판은 발급 당시처럼 셋째 자리", () => {
+      const ref = benchmarkRef({ metric: "Accuracy", modelValue: 0.8497, quality: "worse", targetValue: null });
+      const kpis = [kpi({ value: 0.8497, threshold: null, status: "pass" })];
+      expect(benchmarkModelValueText(ref, { kpiResults: kpis })).toBe("0.850");
+      expect(benchmarkModelValueText(ref, undefined)).toBe("0.850");
+    });
+
+    it("판 3 표에 찍힌다 — '0.8497 | 0.85 ~ 0.92 | 미흡' (옛 판 표는 '0.850' 그대로)", () => {
+      const refs = [benchmarkRef({ modelValue: 0.8497, quality: "worse", targetValue: null })];
+      const kpis = [kpi({ value: 0.8497, threshold: null, status: "pass" })];
+      const { unmount } = render(
+        <ConclusionSection conclusion={{ ...conclusion, benchmarkRefs: refs }} schema3 kpiResults={kpis} judgedValueDigits />,
+      );
+      expect(cells()[0].slice(0, 3)).toEqual(["Accuracy", "0.8497", "0.85 ~ 0.92"]);
+      unmount();
+      render(<ConclusionSection conclusion={{ ...conclusion, benchmarkRefs: refs }} kpiResults={kpis} judgedValueDigits />);
+      expect(cells()[0][1]).toBe("0.850");
+    });
+  });
+
   it("목표값 함수 — 판 3 은 targetDigits(없으면 2), 목표값 없음은 —, 옛 판은 셋째 자리", () => {
     expect(benchmarkTargetText(benchmarkRef({ targetValue: 0.855 }), { targetDigits: 3 })).toBe("0.855");
     expect(benchmarkTargetText(benchmarkRef({ targetValue: 0.855 }), {})).toBe("0.85");
