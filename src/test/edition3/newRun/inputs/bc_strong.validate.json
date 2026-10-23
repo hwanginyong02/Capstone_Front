@@ -1,0 +1,111 @@
+{
+ "task_type": "binary",
+ "selected_metric_ids": [
+  "M1",
+  "M2",
+  "M3",
+  "M4",
+  "M9",
+  "M10",
+  "M19",
+  "M23"
+ ],
+ "execution_summary": [
+  {
+   "label": "Total validated rows",
+   "value": "171 rows",
+   "note": "업로드된 파일의 전체 행 수"
+  },
+  {
+   "label": "Valid prediction rows",
+   "value": "171 rows",
+   "note": "결측치 제거 후 평가에 사용될 행 수"
+  },
+  {
+   "label": "Excluded samples",
+   "value": "0 rows",
+   "note": "결측치·오류로 인해 제외된 행 수"
+  },
+  {
+   "label": "Selected metric count",
+   "value": "8 items",
+   "note": "선택된 메트릭: M1, M2, M3, M4, M9, M10, M19, M23"
+  },
+  {
+   "label": "Validation result",
+   "value": "Errors 0 / Warnings 0",
+   "note": "아래 상세 테이블 참조"
+  }
+ ],
+ "validation_details": [
+  {
+   "name": "Empty dataset (no data rows)",
+   "result": "171 rows",
+   "handling": "Stop evaluation",
+   "status": "pass",
+   "group": "common"
+  },
+  {
+   "name": "Missing required column",
+   "result": "None",
+   "handling": "Stop evaluation",
+   "status": "pass",
+   "group": "common"
+  },
+  {
+   "name": "Missing value",
+   "result": "None",
+   "handling": "Rows with missing values are excluded from evaluation",
+   "status": "pass",
+   "group": "common"
+  },
+  {
+   "name": "Duplicate ID",
+   "result": "None",
+   "handling": "Reported only — duplicate rows are still evaluated",
+   "status": "pass",
+   "group": "common"
+  },
+  {
+   "name": "Class mismatch",
+   "result": "N/A",
+   "handling": "Counted as a misclassification of the true class (rows are kept)",
+   "status": "pass",
+   "group": "common"
+  },
+  {
+   "name": "Label notation",
+   "result": "None",
+   "handling": "같은 클래스로 계산(행은 그대로)",
+   "status": "pass",
+   "group": "common"
+  },
+  {
+   "name": "Excluded samples",
+   "result": "0 rows",
+   "handling": "Exclude only rows with missing or invalid values",
+   "status": "pass",
+   "group": "common"
+  },
+  {
+   "name": "Score range error",
+   "result": "0 rows",
+   "handling": "All score values within [0.0, 1.0]",
+   "status": "pass",
+   "group": "binary"
+  },
+  {
+   "name": "Binary class system error",
+   "result": "None",
+   "handling": "Exactly 2 classes required",
+   "status": "pass",
+   "group": "binary"
+  }
+ ],
+ "error_count": 0,
+ "warning_count": 0,
+ "class_distribution": {
+  "benign": 107,
+  "malignant": 64
+ }
+}

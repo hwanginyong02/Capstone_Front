@@ -1,0 +1,204 @@
+{
+ "$provenance": "benchmark_refs = RPT-2026-0003 발급본 conclusion.benchmarkRefs(snake_case 로 되돌림). 서술 글은 센티널.",
+ "created": {
+  "job_id": "job-s0b-digits_strong",
+  "status": "running",
+  "stage": "queued",
+  "benchmark_refs": [
+   {
+    "metric": "Accuracy",
+    "model_value": 0.9889,
+    "ref_low": 0.8,
+    "ref_high": 0.9,
+    "direction": "higher",
+    "quality": "better",
+    "target_value": 0.98,
+    "target_position": "above",
+    "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+   },
+   {
+    "metric": "Precision",
+    "model_value": 0.9889,
+    "ref_low": 0.78,
+    "ref_high": 0.89,
+    "direction": "higher",
+    "quality": "better",
+    "target_value": null,
+    "target_position": null,
+    "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+   },
+   {
+    "metric": "Recall",
+    "model_value": 0.989,
+    "ref_low": 0.78,
+    "ref_high": 0.89,
+    "direction": "higher",
+    "quality": "better",
+    "target_value": null,
+    "target_position": null,
+    "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+   },
+   {
+    "metric": "F1 Score",
+    "model_value": 0.9889,
+    "ref_low": 0.78,
+    "ref_high": 0.89,
+    "direction": "higher",
+    "quality": "better",
+    "target_value": 0.98,
+    "target_position": "above",
+    "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+   }
+  ],
+  "result": null
+ },
+ "running": {
+  "job_id": "job-s0b-digits_strong",
+  "status": "running",
+  "stage": "generating",
+  "failure": null,
+  "benchmark_refs": [
+   {
+    "metric": "Accuracy",
+    "model_value": 0.9889,
+    "ref_low": 0.8,
+    "ref_high": 0.9,
+    "direction": "higher",
+    "quality": "better",
+    "target_value": 0.98,
+    "target_position": "above",
+    "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+   },
+   {
+    "metric": "Precision",
+    "model_value": 0.9889,
+    "ref_low": 0.78,
+    "ref_high": 0.89,
+    "direction": "higher",
+    "quality": "better",
+    "target_value": null,
+    "target_position": null,
+    "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+   },
+   {
+    "metric": "Recall",
+    "model_value": 0.989,
+    "ref_low": 0.78,
+    "ref_high": 0.89,
+    "direction": "higher",
+    "quality": "better",
+    "target_value": null,
+    "target_position": null,
+    "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+   },
+   {
+    "metric": "F1 Score",
+    "model_value": 0.9889,
+    "ref_low": 0.78,
+    "ref_high": 0.89,
+    "direction": "higher",
+    "quality": "better",
+    "target_value": 0.98,
+    "target_position": "above",
+    "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+   }
+  ],
+  "result": null
+ },
+ "done": {
+  "job_id": "job-s0b-digits_strong",
+  "status": "done",
+  "stage": "done",
+  "failure": null,
+  "benchmark_refs": [
+   {
+    "metric": "Accuracy",
+    "model_value": 0.9889,
+    "ref_low": 0.8,
+    "ref_high": 0.9,
+    "direction": "higher",
+    "quality": "better",
+    "target_value": 0.98,
+    "target_position": "above",
+    "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+   },
+   {
+    "metric": "Precision",
+    "model_value": 0.9889,
+    "ref_low": 0.78,
+    "ref_high": 0.89,
+    "direction": "higher",
+    "quality": "better",
+    "target_value": null,
+    "target_position": null,
+    "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+   },
+   {
+    "metric": "Recall",
+    "model_value": 0.989,
+    "ref_low": 0.78,
+    "ref_high": 0.89,
+    "direction": "higher",
+    "quality": "better",
+    "target_value": null,
+    "target_position": null,
+    "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+   },
+   {
+    "metric": "F1 Score",
+    "model_value": 0.9889,
+    "ref_low": 0.78,
+    "ref_high": 0.89,
+    "direction": "higher",
+    "quality": "better",
+    "target_value": 0.98,
+    "target_position": "above",
+    "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+   }
+  ],
+  "result": {
+   "interpretation": {
+    "confusion_analysis": "[S0 센티널 digits_strong 7.1]",
+    "distribution_analysis": "[S0 센티널 digits_strong 7.2]",
+    "additional_observations": "[S0 센티널 digits_strong 7.3]"
+   },
+   "conclusion": {
+    "verdict": "PASS",
+    "benchmark": "[S0 센티널 digits_strong 8.1]",
+    "narrative": "[S0 센티널 digits_strong 8.2]",
+    "risks": "[S0 센티널 digits_strong 8.3]"
+   },
+   "recommendation_narrative": {
+    "data_quality": "[S0 센티널 digits_strong 9 데이터]",
+    "model_ops": "[S0 센티널 digits_strong 9 운영]"
+   },
+   "recommendations": [
+    {
+     "priority": "MEDIUM",
+     "category": "[S0 센티널 digits_strong 권고 분류]",
+     "action": "[S0 센티널 digits_strong 권고 조치]",
+     "expected_impact": "[S0 센티널 digits_strong 기대 효과]",
+     "problem_id": "P1"
+    }
+   ],
+   "section_sources": {
+    "7.1": "llm",
+    "7.2": "llm",
+    "7.3": "llm",
+    "8.1": "llm",
+    "8.2": "llm",
+    "8.3": "llm",
+    "9": "llm"
+   },
+   "section_models": {
+    "7.1": "claude-sonnet-5-5",
+    "7.2": "claude-sonnet-5-5",
+    "7.3": "claude-sonnet-5-5",
+    "8.1": "claude-sonnet-5-5",
+    "8.2": "claude-sonnet-5-5",
+    "8.3": "claude-sonnet-5-5",
+    "9": "claude-sonnet-5-5"
+   }
+  }
+ }
+}

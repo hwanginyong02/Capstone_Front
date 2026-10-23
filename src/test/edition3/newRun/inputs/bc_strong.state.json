@@ -1,0 +1,306 @@
+{
+ "$provenance": "FIXTURES[bc_strong] (c_build_requests.test.ts / c_view_fixtures.json) + bc_strong.payload.json + RPT-2026 발급본 신청인·의뢰일",
+ "file": {
+  "name": "bc_strong.csv",
+  "bytes": 3727,
+  "type": "text/csv",
+  "lastModified": 1792662000000
+ },
+ "workflow": {
+  "basicInfo": {
+   "companyName": "(주)시연고객",
+   "representative": "김시연",
+   "businessNumber": "123-45-67890",
+   "website": "",
+   "phone": "02-123-4567",
+   "fax": "",
+   "address": "서울특별시 노원구 공릉로 232",
+   "contractDate": "2026-10-22",
+   "reportPurpose": "external",
+   "reportPurposeNote": "의료기기 소프트웨어 사전 상담 자료로 제출",
+   "projectName": "",
+   "projectAgency": "",
+   "projectNumber": "",
+   "versionName": "v2.1",
+   "modelName": "BreastScreen-LR",
+   "modelPurpose": "유방 종괴 세침흡인(FNA) 영상에서 뽑은 세포핵 특징으로 악성 여부를 가려, 판독 대기열의 우선순위를 정하는 데 쓴다.",
+   "modelCategory": "의료 영상 보조 분류",
+   "taskType": "binary",
+   "envOS": "Ubuntu 22.04",
+   "envCPU": "Intel Xeon 8핵",
+   "envGPU": "",
+   "envMemory": "32GB",
+   "envSoftware": "Python 3.11, scikit-learn 1.5"
+  },
+  "taskType": "binary",
+  "selectedMetricIds": [
+   "M1",
+   "M2",
+   "M3",
+   "M4",
+   "M9",
+   "M10",
+   "M19",
+   "M23"
+  ],
+  "metricDetails": {
+   "M1": {
+    "id": "M1",
+    "name": "M1",
+    "description": "",
+    "targetValue": "0.95",
+    "beta": "",
+    "positiveClass": "",
+    "completed": true
+   },
+   "M3": {
+    "id": "M3",
+    "name": "M3",
+    "description": "",
+    "targetValue": "0.97",
+    "beta": "",
+    "positiveClass": "",
+    "completed": true
+   },
+   "M4": {
+    "id": "M4",
+    "name": "M4",
+    "description": "",
+    "targetValue": "0.95",
+    "beta": "",
+    "positiveClass": "",
+    "completed": true
+   },
+   "M9": {
+    "id": "M9",
+    "name": "M9",
+    "description": "",
+    "targetValue": "0.98",
+    "beta": "",
+    "positiveClass": "",
+    "completed": true
+   },
+   "M19": {
+    "id": "M19",
+    "name": "M19",
+    "description": "",
+    "targetValue": "0.1",
+    "beta": "",
+    "positiveClass": "",
+    "completed": true
+   }
+  },
+  "columnMapping": [
+   {
+    "originalName": "sample_id",
+    "sampleValues": [
+     "BC0000",
+     "BC0001",
+     "BC0002"
+    ],
+    "inferredRole": "id",
+    "confirmedRole": "id",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "diagnosis",
+    "sampleValues": [
+     "benign",
+     "benign",
+     "benign"
+    ],
+    "inferredRole": "y_true",
+    "confirmedRole": "y_true",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "score_malignant",
+    "sampleValues": [
+     "0.0087",
+     "0.0007",
+     "0.0109"
+    ],
+    "inferredRole": "score",
+    "confirmedRole": "score",
+    "modified": false,
+    "warnings": []
+   }
+  ],
+  "metadata": {
+   "positive_class": "malignant",
+   "negative_class": "benign",
+   "positive_class_ambiguous": false,
+   "detected_classes": [
+    "benign",
+    "malignant"
+   ],
+   "detected_labels": [],
+   "class_distribution": {
+    "benign": 107,
+    "malignant": 64
+   }
+  },
+  "decisionThreshold": 0.5,
+  "classLabelDescriptions": {
+   "malignant": "악성 종양",
+   "benign": "양성 종양"
+  },
+  "trainingExampleFiles": [],
+  "trainingUnsuitableExampleFiles": [],
+  "composerCards": {
+   "trainingData": true,
+   "testData": true,
+   "groundTruth": true,
+   "modelEnv": true
+  },
+  "composerMetrics": {
+   "coreMetrics": {
+    "choices": [
+     "M3"
+    ]
+   }
+  },
+  "composerPerspective": {
+   "criticalErrorType": {
+    "text": "Missed (FN)",
+    "note": "악성을 놓치면 추가 검사와 치료가 늦어진다. 잘못 잡은 경우는 재판독으로 걸러진다."
+   },
+   "usageMode": {
+    "text": "Batch",
+    "note": "하루 판독분을 밤에 한 번에 돌린다."
+   }
+  },
+  "composerTrainingData": {
+   "trainingDatasetName": {
+    "text": "Wisconsin Diagnostic Breast Cancer(WDBC) 학습 분할"
+   },
+   "trainingDataSource": {
+    "text": "위스콘신 대학 병원 FNA 판독 기록(공개 데이터)"
+   },
+   "trainingVolume": {
+    "entries": [
+     {
+      "key": "Training",
+      "value": "398"
+     },
+     {
+      "key": "Validation",
+      "value": "0"
+     }
+    ]
+   },
+   "trainingClassVolume": {
+    "entries": [
+     {
+      "key": "malignant",
+      "value": "148"
+     },
+     {
+      "key": "benign",
+      "value": "250"
+     }
+    ]
+   },
+   "channelEffects": {
+    "choices": [
+     "None known"
+    ]
+   },
+   "imbalanceHandling": {
+    "choices": [
+     "Did nothing"
+    ],
+    "note": "클래스 비율(약 4:6)이 크게 기울지 않아 따로 맞추지 않았다."
+   },
+   "preprocessingMatch": {
+    "text": "Same"
+   }
+  },
+  "composerTestData": {
+   "testDataSource": {
+    "text": "같은 데이터의 30% 층화 분할(학습에 쓰지 않음)"
+   },
+   "testSourceRelation": {
+    "text": "Same source",
+    "note": "같은 병원·같은 장비에서 나온 기록이다."
+   }
+  },
+  "composerGroundTruth": {
+   "labelAuthor": {
+    "text": "Domain experts",
+    "note": "조직검사로 확진한 병리 진단 결과"
+   },
+   "labelReview": {
+    "text": "Several reviewers"
+   },
+   "labelReviewerCount": {
+    "text": "2"
+   },
+   "labelAgreementKind": {
+    "text": "Cohen's kappa"
+   },
+   "labelAgreementValue": {
+    "text": "0.92"
+   }
+  },
+  "composerModelEnv": {
+   "algorithm": {
+    "text": "로지스틱 회귀(입력 표준화)"
+   },
+   "hyperparameters": {
+    "entries": [
+     {
+      "key": "C",
+      "value": "0.5"
+     },
+     {
+      "key": "max_iter",
+      "value": "2000"
+     },
+     {
+      "key": "solver",
+      "value": "lbfgs"
+     }
+    ]
+   },
+   "runtimeEnv": {
+    "entries": [
+     {
+      "key": "Operating system",
+      "value": "Ubuntu 22.04"
+     },
+     {
+      "key": "CPU",
+      "value": "Intel Xeon 8핵"
+     },
+     {
+      "key": "GPU",
+      "value": "없음"
+     },
+     {
+      "key": "Memory",
+      "value": "32GB"
+     },
+     {
+      "key": "Software",
+      "value": "Python 3.11, scikit-learn 1.5"
+     }
+    ]
+   },
+   "gpuUsage": {
+    "entries": [
+     {
+      "key": "Training",
+      "value": "No"
+     },
+     {
+      "key": "Inference",
+      "value": "No"
+     }
+    ]
+   }
+  }
+ }
+}

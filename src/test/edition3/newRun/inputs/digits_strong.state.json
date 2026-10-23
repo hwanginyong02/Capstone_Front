@@ -1,0 +1,447 @@
+{
+ "$provenance": "FIXTURES[digits_strong] (c_build_requests.test.ts / c_view_fixtures.json) + digits_strong.payload.json + RPT-2026 발급본 신청인·의뢰일",
+ "file": {
+  "name": "digits_strong.csv",
+  "bytes": 43332,
+  "type": "text/csv",
+  "lastModified": 1792662000000
+ },
+ "workflow": {
+  "basicInfo": {
+   "companyName": "(주)시연고객",
+   "representative": "김시연",
+   "businessNumber": "123-45-67890",
+   "website": "",
+   "phone": "02-123-4567",
+   "fax": "",
+   "address": "서울특별시 노원구 공릉로 232",
+   "contractDate": "2026-10-22",
+   "reportPurpose": "project",
+   "reportPurposeNote": "",
+   "projectName": "",
+   "projectAgency": "",
+   "projectNumber": "",
+   "versionName": "v1.4.0",
+   "modelName": "DigitReader-SVC",
+   "modelPurpose": "우편물 봉투의 손글씨 우편번호 숫자 한 자리씩을 읽어 자동 분류기에 넘긴다.",
+   "modelCategory": "필기 숫자 인식",
+   "taskType": "multiclass",
+   "envOS": "",
+   "envCPU": "",
+   "envGPU": "",
+   "envMemory": "",
+   "envSoftware": ""
+  },
+  "taskType": "multiclass",
+  "selectedMetricIds": [
+   "M1",
+   "M2",
+   "M3",
+   "M4",
+   "M6",
+   "M11",
+   "M12",
+   "M23"
+  ],
+  "metricDetails": {
+   "M1": {
+    "id": "M1",
+    "name": "M1",
+    "description": "",
+    "targetValue": "0.98",
+    "beta": "",
+    "positiveClass": "",
+    "completed": true
+   },
+   "M4": {
+    "id": "M4",
+    "name": "M4",
+    "description": "",
+    "targetValue": "0.98",
+    "beta": "",
+    "positiveClass": "",
+    "completed": true
+   },
+   "M6": {
+    "id": "M6",
+    "name": "M6",
+    "description": "",
+    "targetValue": "0.05",
+    "beta": "",
+    "positiveClass": "",
+    "completed": true
+   }
+  },
+  "columnMapping": [
+   {
+    "originalName": "sample_id",
+    "sampleValues": [
+     "DG0000",
+     "DG0001",
+     "DG0002"
+    ],
+    "inferredRole": "id",
+    "confirmedRole": "id",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "label",
+    "sampleValues": [
+     "0",
+     "6",
+     "1"
+    ],
+    "inferredRole": "y_true",
+    "confirmedRole": "y_true",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "pred",
+    "sampleValues": [
+     "0",
+     "6",
+     "1"
+    ],
+    "inferredRole": "y_pred",
+    "confirmedRole": "y_pred",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "prob_0",
+    "sampleValues": [
+     "0.9555",
+     "0.0014",
+     "0.0015"
+    ],
+    "inferredRole": "prob_class_*",
+    "confirmedRole": "prob_class_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "prob_1",
+    "sampleValues": [
+     "0.0012",
+     "0.0047",
+     "0.9117"
+    ],
+    "inferredRole": "prob_class_*",
+    "confirmedRole": "prob_class_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "prob_2",
+    "sampleValues": [
+     "0.0022",
+     "0.0031",
+     "0.0338"
+    ],
+    "inferredRole": "prob_class_*",
+    "confirmedRole": "prob_class_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "prob_3",
+    "sampleValues": [
+     "0.0032",
+     "0.0026",
+     "0.0061"
+    ],
+    "inferredRole": "prob_class_*",
+    "confirmedRole": "prob_class_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "prob_4",
+    "sampleValues": [
+     "0.007",
+     "0.0021",
+     "0.003"
+    ],
+    "inferredRole": "prob_class_*",
+    "confirmedRole": "prob_class_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "prob_5",
+    "sampleValues": [
+     "0.0102",
+     "0.0013",
+     "0.0064"
+    ],
+    "inferredRole": "prob_class_*",
+    "confirmedRole": "prob_class_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "prob_6",
+    "sampleValues": [
+     "0.0079",
+     "0.968",
+     "0.0084"
+    ],
+    "inferredRole": "prob_class_*",
+    "confirmedRole": "prob_class_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "prob_7",
+    "sampleValues": [
+     "0.0032",
+     "0.001",
+     "0.0011"
+    ],
+    "inferredRole": "prob_class_*",
+    "confirmedRole": "prob_class_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "prob_8",
+    "sampleValues": [
+     "0.0046",
+     "0.0134",
+     "0.0234"
+    ],
+    "inferredRole": "prob_class_*",
+    "confirmedRole": "prob_class_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "prob_9",
+    "sampleValues": [
+     "0.0049",
+     "0.0024",
+     "0.0047"
+    ],
+    "inferredRole": "prob_class_*",
+    "confirmedRole": "prob_class_*",
+    "modified": false,
+    "warnings": []
+   }
+  ],
+  "metadata": {
+   "positive_class": null,
+   "negative_class": null,
+   "positive_class_ambiguous": false,
+   "detected_classes": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9"
+   ],
+   "detected_labels": [],
+   "class_distribution": {
+    "0": 54,
+    "1": 55,
+    "2": 53,
+    "3": 55,
+    "4": 54,
+    "5": 55,
+    "6": 54,
+    "7": 54,
+    "8": 52,
+    "9": 54
+   }
+  },
+  "decisionThreshold": null,
+  "classLabelDescriptions": {
+   "0": "숫자 0",
+   "1": "숫자 1",
+   "7": "숫자 7(가로줄 없는 필체 포함)"
+  },
+  "trainingExampleFiles": [],
+  "trainingUnsuitableExampleFiles": [],
+  "composerCards": {
+   "trainingData": true,
+   "testData": true,
+   "groundTruth": true,
+   "modelEnv": true
+  },
+  "composerMetrics": {
+   "coreMetrics": {
+    "choices": [
+     "M1",
+     "M4"
+    ]
+   }
+  },
+  "composerPerspective": {
+   "classPriority": {
+    "text": "All equal",
+    "note": "어느 숫자를 틀려도 오배송 한 건이다."
+   },
+   "usageMode": {
+    "text": "Real-time"
+   }
+  },
+  "composerTrainingData": {
+   "trainingDatasetName": {
+    "text": "UCI 손글씨 숫자(8×8) 학습 분할"
+   },
+   "trainingDataSource": {
+    "text": "UCI 기계학습 저장소"
+   },
+   "trainingVolume": {
+    "entries": [
+     {
+      "key": "Training",
+      "value": "1257"
+     },
+     {
+      "key": "Validation",
+      "value": "0"
+     }
+    ]
+   },
+   "trainingClassVolume": {
+    "entries": [
+     {
+      "key": "0",
+      "value": "124"
+     },
+     {
+      "key": "1",
+      "value": "127"
+     },
+     {
+      "key": "2",
+      "value": "124"
+     },
+     {
+      "key": "3",
+      "value": "128"
+     },
+     {
+      "key": "4",
+      "value": "127"
+     },
+     {
+      "key": "5",
+      "value": "127"
+     },
+     {
+      "key": "6",
+      "value": "127"
+     },
+     {
+      "key": "7",
+      "value": "125"
+     },
+     {
+      "key": "8",
+      "value": "122"
+     },
+     {
+      "key": "9",
+      "value": "126"
+     }
+    ]
+   },
+   "channelEffects": {
+    "choices": [
+     "Different collectors"
+    ],
+    "note": "필기자 43명 중 학습·평가에 같은 사람이 섞여 있다."
+   },
+   "imbalanceHandling": {
+    "choices": [
+     "Balanced the counts"
+    ]
+   },
+   "preprocessingMatch": {
+    "text": "Same"
+   }
+  },
+  "composerTestData": {
+   "testDataSource": {
+    "text": "같은 데이터의 30% 층화 분할"
+   },
+   "testSourceRelation": {
+    "text": "Same source"
+   }
+  },
+  "composerGroundTruth": {
+   "labelAuthor": {
+    "text": "Recorded outcomes",
+    "note": "필기자에게 적게 한 숫자를 그대로 정답으로 씀"
+   },
+   "labelReview": {
+    "text": "One reviewer"
+   }
+  },
+  "composerModelEnv": {
+   "algorithm": {
+    "text": "서포트 벡터 머신(RBF 커널)"
+   },
+   "hyperparameters": {
+    "entries": [
+     {
+      "key": "C",
+      "value": "3"
+     },
+     {
+      "key": "kernel",
+      "value": "rbf"
+     },
+     {
+      "key": "gamma",
+      "value": "scale"
+     }
+    ]
+   },
+   "runtimeEnv": {
+    "entries": [
+     {
+      "key": "Operating system",
+      "value": "macOS 15"
+     },
+     {
+      "key": "CPU",
+      "value": "Apple M3"
+     },
+     {
+      "key": "GPU",
+      "value": "없음"
+     },
+     {
+      "key": "Memory",
+      "value": "16GB"
+     },
+     {
+      "key": "Software",
+      "value": "Python 3.12"
+     }
+    ]
+   },
+   "gpuUsage": {
+    "entries": [
+     {
+      "key": "Training",
+      "value": "No"
+     },
+     {
+      "key": "Inference",
+      "value": "No"
+     }
+    ]
+   }
+  }
+ }
+}

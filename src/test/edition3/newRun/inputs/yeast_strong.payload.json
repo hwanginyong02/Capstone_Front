@@ -1,0 +1,184 @@
+{
+ "task_type": "multilabel",
+ "column_mappings": [
+  {
+   "column": "gene_id",
+   "role": "sample_id",
+   "sample_values": [
+    "YG0000",
+    "YG0001",
+    "YG0002"
+   ]
+  },
+  {
+   "column": "true_labels",
+   "role": "true_labels",
+   "sample_values": [
+    "Class7|Class8|Class12|Class13",
+    "Class3|Class4",
+    "Class2|Class3|Class12|Class13"
+   ]
+  },
+  {
+   "column": "score_Class1",
+   "role": "score_per_label",
+   "sample_values": [
+    "0.3653",
+    "0.0251",
+    "0.3896"
+   ]
+  },
+  {
+   "column": "score_Class2",
+   "role": "score_per_label",
+   "sample_values": [
+    "0.2834",
+    "0.2161",
+    "0.515"
+   ]
+  },
+  {
+   "column": "score_Class3",
+   "role": "score_per_label",
+   "sample_values": [
+    "0.0936",
+    "0.8314",
+    "0.2243"
+   ]
+  },
+  {
+   "column": "score_Class4",
+   "role": "score_per_label",
+   "sample_values": [
+    "0.3823",
+    "0.7494",
+    "0.1686"
+   ]
+  },
+  {
+   "column": "score_Class5",
+   "role": "score_per_label",
+   "sample_values": [
+    "0.6505",
+    "0.1395",
+    "0.57"
+   ]
+  },
+  {
+   "column": "score_Class6",
+   "role": "score_per_label",
+   "sample_values": [
+    "0.3255",
+    "0.0388",
+    "0.4115"
+   ]
+  },
+  {
+   "column": "score_Class7",
+   "role": "score_per_label",
+   "sample_values": [
+    "0.28",
+    "0.0599",
+    "0.0741"
+   ]
+  },
+  {
+   "column": "score_Class8",
+   "role": "score_per_label",
+   "sample_values": [
+    "0.3221",
+    "0.1674",
+    "0.1611"
+   ]
+  },
+  {
+   "column": "score_Class9",
+   "role": "score_per_label",
+   "sample_values": [
+    "0.0422",
+    "0.2592",
+    "0.2613"
+   ]
+  },
+  {
+   "column": "score_Class10",
+   "role": "score_per_label",
+   "sample_values": [
+    "0.0059",
+    "0.2165",
+    "0.2193"
+   ]
+  },
+  {
+   "column": "score_Class11",
+   "role": "score_per_label",
+   "sample_values": [
+    "0.0194",
+    "0.1634",
+    "0.3343"
+   ]
+  },
+  {
+   "column": "score_Class12",
+   "role": "score_per_label",
+   "sample_values": [
+    "0.9044",
+    "0.4849",
+    "0.6499"
+   ]
+  },
+  {
+   "column": "score_Class13",
+   "role": "score_per_label",
+   "sample_values": [
+    "0.8958",
+    "0.4593",
+    "0.5948"
+   ]
+  },
+  {
+   "column": "score_Class14",
+   "role": "score_per_label",
+   "sample_values": [
+    "0.0018",
+    "0.0015",
+    "0.0002"
+   ]
+  }
+ ],
+ "selected_metric_ids": [
+  "M2",
+  "M3",
+  "M4",
+  "M15",
+  "M16",
+  "M17",
+  "M18",
+  "M23"
+ ],
+ "metadata": {
+  "positive_class": null,
+  "negative_class": null,
+  "positive_class_ambiguous": false,
+  "detected_classes": [],
+  "detected_labels": [
+   "Class1",
+   "Class2",
+   "Class3",
+   "Class4",
+   "Class5",
+   "Class6",
+   "Class7",
+   "Class8",
+   "Class9",
+   "Class10",
+   "Class11",
+   "Class12",
+   "Class13",
+   "Class14"
+  ],
+  "class_distribution": {}
+ },
+ "beta": 1,
+ "decision_threshold": 0.5
+}

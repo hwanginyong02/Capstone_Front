@@ -1,0 +1,1180 @@
+{
+ "applicant": {
+  "address": "서울특별시 노원구 공릉로 232",
+  "businessNumber": "123-45-67890",
+  "companyName": "(주)시연고객",
+  "contact": "02-123-4567",
+  "fax": "",
+  "homepage": "",
+  "representative": "김시연"
+ },
+ "charts": {
+  "confusionMatrix": null,
+  "prCurve": null,
+  "rocCurve": null
+ },
+ "classReport": null,
+ "conclusion": {
+  "benchmark": "[S0 센티널 digits_strong 8.1]",
+  "benchmarkRefs": [
+   {
+    "direction": "higher",
+    "metric": "Accuracy",
+    "modelValue": 0.9889,
+    "quality": "better",
+    "refHigh": 0.9,
+    "refLow": 0.8,
+    "sourceNote": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)",
+    "targetPosition": "above",
+    "targetValue": 0.98
+   },
+   {
+    "direction": "higher",
+    "metric": "Precision",
+    "modelValue": 0.9889,
+    "quality": "better",
+    "refHigh": 0.89,
+    "refLow": 0.78,
+    "sourceNote": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)",
+    "targetPosition": null,
+    "targetValue": null
+   },
+   {
+    "direction": "higher",
+    "metric": "Recall",
+    "modelValue": 0.989,
+    "quality": "better",
+    "refHigh": 0.89,
+    "refLow": 0.78,
+    "sourceNote": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)",
+    "targetPosition": null,
+    "targetValue": null
+   },
+   {
+    "direction": "higher",
+    "metric": "F1 Score",
+    "modelValue": 0.9889,
+    "quality": "better",
+    "refHigh": 0.89,
+    "refLow": 0.78,
+    "sourceNote": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)",
+    "targetPosition": "above",
+    "targetValue": 0.98
+   }
+  ],
+  "judgedCount": 3,
+  "narrative": "[S0 센티널 digits_strong 8.2]",
+  "risks": "[S0 센티널 digits_strong 8.3]",
+  "score": 100,
+  "verdict": "PASS"
+ },
+ "confidenceIntervalNote": "판정 대상 지표의 95% 신뢰구간은 Wilson 점수 구간(M1), 다항 재표집 부트스트랩(2,000회, 시드 4213, 백분위 구간; M4, M6)으로 산출하였습니다.",
+ "confusionCounts": {
+  "kind": "perClass",
+  "rows": [
+   {
+    "fn": 0,
+    "fp": 0,
+    "label": "0",
+    "tn": 486,
+    "tp": 54
+   },
+   {
+    "fn": 0,
+    "fp": 1,
+    "label": "1",
+    "tn": 484,
+    "tp": 55
+   },
+   {
+    "fn": 0,
+    "fp": 1,
+    "label": "2",
+    "tn": 486,
+    "tp": 53
+   },
+   {
+    "fn": 0,
+    "fp": 0,
+    "label": "3",
+    "tn": 485,
+    "tp": 55
+   },
+   {
+    "fn": 0,
+    "fp": 0,
+    "label": "4",
+    "tn": 486,
+    "tp": 54
+   },
+   {
+    "fn": 2,
+    "fp": 1,
+    "label": "5",
+    "tn": 484,
+    "tp": 53
+   },
+   {
+    "fn": 1,
+    "fp": 1,
+    "label": "6",
+    "tn": 485,
+    "tp": 53
+   },
+   {
+    "fn": 1,
+    "fp": 0,
+    "label": "7",
+    "tn": 486,
+    "tp": 53
+   },
+   {
+    "fn": 0,
+    "fp": 1,
+    "label": "8",
+    "tn": 487,
+    "tp": 52
+   },
+   {
+    "fn": 2,
+    "fp": 1,
+    "label": "9",
+    "tn": 485,
+    "tp": 52
+   }
+  ]
+ },
+ "contentSchema": 3,
+ "coreMetricsSource": "client",
+ "dataValidation": [
+  {
+   "checkName": "빈 데이터(행 없음)",
+   "detail": "540 건",
+   "group": "common",
+   "status": "pass"
+  },
+  {
+   "checkName": "필수 컬럼 누락",
+   "detail": "없음",
+   "group": "common",
+   "status": "pass"
+  },
+  {
+   "checkName": "누락값(NaN)",
+   "detail": "없음",
+   "group": "common",
+   "status": "pass"
+  },
+  {
+   "checkName": "중복 ID",
+   "detail": "없음",
+   "group": "common",
+   "status": "pass"
+  },
+  {
+   "checkName": "클래스 불일치",
+   "detail": "없음",
+   "group": "common",
+   "status": "pass"
+  },
+  {
+   "checkName": "라벨 표기 맞춤",
+   "detail": "없음",
+   "group": "common",
+   "status": "pass"
+  },
+  {
+   "checkName": "제외된 샘플 수",
+   "detail": "0 건",
+   "group": "common",
+   "status": "pass"
+  },
+  {
+   "checkName": "확률값 범위 오류",
+   "detail": "0 건",
+   "group": "multiclass",
+   "status": "pass"
+  },
+  {
+   "checkName": "확률합 오류",
+   "detail": "0 건",
+   "group": "multiclass",
+   "status": "pass"
+  },
+  {
+   "checkName": "Argmax–y_pred 불일치",
+   "detail": "0 건",
+   "group": "multiclass",
+   "status": "pass"
+  },
+  {
+   "checkName": "미확인 클래스 감지",
+   "detail": "없음",
+   "group": "multiclass",
+   "status": "pass"
+  }
+ ],
+ "datasetDiagnosis": "평가 데이터셋은 총 540건이며, 클래스(레이블)별 분포는 0 54건(10.0%), 1 55건(10.2%), 2 53건(9.8%), 3 55건(10.2%), 4 54건(10.0%), 5 55건(10.2%), 6 54건(10.0%), 7 54건(10.0%), 8 52건(9.6%), 9 54건(10.0%)이다. 클래스 불균형 비율(Imbalance Ratio)은 1.0577로, 허용 기준(1.50 미만) 이내이다.",
+ "datasetInfo": {
+  "classCount": 10,
+  "classLabelDescriptions": [
+   {
+    "description": "숫자 0",
+    "label": "0"
+   },
+   {
+    "description": "숫자 1",
+    "label": "1"
+   },
+   {
+    "description": "숫자 7(가로줄 없는 필체 포함)",
+    "label": "7"
+   }
+  ],
+  "classLabels": [
+   "0",
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "6",
+   "7",
+   "8",
+   "9"
+  ],
+  "fileName": "digits_strong.csv",
+  "format": "정형 데이터 (CSV)",
+  "inputColumns": [
+   "sample_id",
+   "label",
+   "pred",
+   "prob_0",
+   "prob_1",
+   "prob_2",
+   "prob_3",
+   "prob_4",
+   "prob_5",
+   "prob_6",
+   "prob_7",
+   "prob_8",
+   "prob_9"
+  ],
+  "sampleCount": 540,
+  "taskTypeLabel": "다중 클래스 분류"
+ },
+ "datasetSamples": [],
+ "errorRatioSentence": "확률이 있는 오분류 6건 중 경계 오류(예측·정답 클래스 확률 차가 0.1 미만)는 2건(33.3%), 확신 오류(예측 클래스 확률 0.9 이상)는 0건(0.0%)이다.",
+ "errorRatios": {
+  "boundary": {
+   "count": 2,
+   "ratio": 0.3333
+  },
+  "boundary_margin": 0.1,
+  "boundary_note": null,
+  "confident": {
+   "count": 0,
+   "ratio": 0
+  },
+  "confident_level": 0.9,
+  "misclassified": 6,
+  "threshold": null,
+  "unit": "sample"
+ },
+ "evalEnv": {
+  "environment": {
+   "evaluated_at": "2026-10-22T16:23:39+09:00",
+   "libraries": {
+    "numpy": "2.5.1",
+    "pandas": "2.2.3",
+    "python": "3.12.7",
+    "scikit-learn": "1.9.0"
+   }
+  },
+  "method": "서버 사이드 자동 연산 (Python 기반 metric 산출)",
+  "outputFormat": "성능 지표 수치 및 합격/불합격 판정 성적서 (PDF)",
+  "systemSpec": {
+   "cpu": "Apple M3",
+   "gpu": "없음",
+   "memory": "16GB",
+   "os": "macOS 15",
+   "software": "Python 3.12"
+  },
+  "tools": [
+   "Python 3.11",
+   "scikit-learn 1.4.0",
+   "pandas 2.2.0",
+   "numpy 1.26.0"
+  ]
+ },
+ "evalScope": {
+  "modelCategory": "필기 숫자 인식",
+  "modelPurpose": "우편물 봉투의 손글씨 우편번호 숫자 한 자리씩을 읽어 자동 분류기에 넘긴다.",
+  "purpose": "정부 또는 기관 과제의 산출물 증빙 목적으로 활용",
+  "reportPurposeKey": "project",
+  "scope": "의뢰자가 제출한 평가 데이터셋을 기반으로 선택된 시험항목에 대해 정량적 성능 지표를 산출하고 합격 기준 충족 여부를 판정한다.",
+  "targetModel": "DigitReader-SVC",
+  "version": "v1.4.0"
+ },
+ "evaluationWarnings": [],
+ "interpretation": {
+  "additionalObservations": "[S0 센티널 digits_strong 7.3]",
+  "confusionAnalysis": "[S0 센티널 digits_strong 7.1]",
+  "distributionAnalysis": "[S0 센티널 digits_strong 7.2]"
+ },
+ "isEvaluated": true,
+ "judgedValueDigits": true,
+ "kpiResults": [
+  {
+   "ci": {
+    "high": 0.9949,
+    "low": 0.976,
+    "method": "wilson"
+   },
+   "higherIsBetter": true,
+   "isCore": true,
+   "margin": 0.0088888889,
+   "metricId": "M1",
+   "name": "Accuracy",
+   "nearTarget": true,
+   "status": "pass",
+   "threshold": 0.98,
+   "value": 0.9888888888888889
+  },
+  {
+   "higherIsBetter": true,
+   "isCore": false,
+   "metricId": "M2",
+   "name": "Precision",
+   "status": "pass",
+   "threshold": null,
+   "value": 0.9888851452530698
+  },
+  {
+   "higherIsBetter": true,
+   "isCore": false,
+   "metricId": "M3",
+   "name": "Recall",
+   "status": "pass",
+   "threshold": null,
+   "value": 0.988956228956229
+  },
+  {
+   "ci": {
+    "high": 0.9965,
+    "low": 0.9796,
+    "method": "bootstrap_multinomial"
+   },
+   "higherIsBetter": true,
+   "isCore": true,
+   "margin": 0.0088696755,
+   "metricId": "M4",
+   "name": "F1 Score",
+   "nearTarget": true,
+   "status": "pass",
+   "threshold": 0.98,
+   "value": 0.9888696755206228
+  },
+  {
+   "ci": {
+    "high": 0.0009,
+    "low": 0,
+    "method": "bootstrap_multinomial"
+   },
+   "higherIsBetter": false,
+   "isCore": false,
+   "margin": 0.0498967667,
+   "metricId": "M6",
+   "name": "KL Divergence",
+   "nearTarget": false,
+   "status": "pass",
+   "threshold": 0.05,
+   "value": 0.00010323333573290837
+  },
+  {
+   "higherIsBetter": true,
+   "isCore": false,
+   "metricId": "M11",
+   "name": "Macro Average",
+   "status": "pass",
+   "subMetrics": {
+    "f1Score": 0.9888696755206228,
+    "precision": 0.9888851452530698,
+    "recall": 0.988956228956229
+   },
+   "threshold": null,
+   "value": 0.9888696755206228
+  },
+  {
+   "higherIsBetter": true,
+   "isCore": false,
+   "metricId": "M12",
+   "name": "Micro Average",
+   "status": "pass",
+   "subMetrics": {
+    "f1Score": 0.9888888888888889,
+    "precision": 0.9888888888888889,
+    "recall": 0.9888888888888889
+   },
+   "threshold": null,
+   "value": 0.9888888888888889
+  },
+  {
+   "higherIsBetter": false,
+   "isCore": false,
+   "metricId": "M23",
+   "name": "Imbalance Ratio",
+   "status": "pass",
+   "threshold": null,
+   "value": 1.0576923076923077
+  }
+ ],
+ "labelCautionSentence": "정답 라벨의 구축 방법이 운영 로그로, 정답 자체의 오류가 성능 수치에 반영되었을 수 있다. 수치 해석 시 이를 고려해야 한다.",
+ "latency": null,
+ "materialCheck": {
+  "acknowledgement": {
+   "at": "2026-10-22T09:45:00.000Z",
+   "version": "2.0"
+  },
+  "distributionSource": "validation",
+  "imbalanceRatio": 1.0576923076923077,
+  "printed": {
+   "cover": "ISO/IEC TS 4213:2022에 따라 평가. 일부 보고 항목 미제공(1.4 참조)",
+   "impacts": [
+    "추론 효율성(지연시간): 응답 속도가 용도에 맞는지 판단할 수 없다."
+   ],
+   "notProvided": "ISO/IEC TS 4213이 보고를 요구하는 항목 중 추론 효율성(지연시간)은 의뢰자로부터 제공받지 못해 기재하지 않았다. 따라서 본 결과서는 이 항목들에 대해 TS 4213의 보고 요구를 충족하지 않는다.",
+   "purposeShortfalls": [
+    "의뢰자가 사용 방식을 \"대화형(실시간)\"으로 밝혔으나 응답시간(latency) 자료가 제공되지 않아, 응답 속도가 용도에 맞는지 판단할 수 없다."
+   ],
+   "summary": [
+    {
+     "label": "보고 항목 제공",
+     "note": "빠진 항목: 추론 효율성(지연시간) (1.4 참조)",
+     "value": "11개 중 10개"
+    },
+    {
+     "label": "목적별 점검",
+     "note": "미충족: 사용 방식 → 지연시간 (1.4 참조)",
+     "value": "2줄 중 1줄 충족"
+    },
+    {
+     "label": "생성 전 안내 확인",
+     "note": "점검 표 2.0",
+     "value": "확인 후 진행 (2026-10-22 18:45)"
+    }
+   ]
+  },
+  "purpose": {
+   "applicable": 2,
+   "lines": [
+    {
+     "declared": "대화형(실시간)",
+     "id": "latency",
+     "met": false,
+     "recommended": [],
+     "shortfall": "의뢰자가 사용 방식을 \"대화형(실시간)\"으로 밝혔으나 응답시간(latency) 자료가 제공되지 않아, 응답 속도가 용도에 맞는지 판단할 수 없다.",
+     "title": "사용 방식 → 지연시간"
+    },
+    {
+     "declared": "모든 클래스가 동등",
+     "id": "averaging",
+     "met": true,
+     "recommended": [
+      "M11"
+     ],
+     "shortfall": "의뢰자가 클래스 중요도를 \"모든 클래스가 동등\"으로 밝혔으나, 이에 맞는 매크로 평균 지표가 시험 항목에 없다.",
+     "title": "클래스 중요도 → 평균 방식"
+    }
+   ],
+   "met": 1
+  },
+  "reporting": {
+   "items": [
+    {
+     "impact": "평가 결과를 학습 데이터와 견주어 해석할 수 있는지",
+     "item": 1,
+     "missing": [],
+     "name": "학습 데이터의 출처·크기·구성",
+     "provided": true
+    },
+    {
+     "impact": "평가 데이터가 용도를 대표하는지",
+     "item": 2,
+     "missing": [],
+     "name": "평가 데이터 출처",
+     "provided": true
+    },
+    {
+     "impact": "데이터 편향을 분석하고 줄였는지",
+     "item": 3,
+     "missing": [],
+     "name": "편향 감소 노력",
+     "provided": true
+    },
+    {
+     "impact": "정답 라벨을 얼마나 믿을 수 있는지",
+     "item": 4,
+     "missing": [],
+     "name": "정답 라벨 구축 방법",
+     "provided": true
+    },
+    {
+     "impact": "정답 라벨의 오류가 성능 수치에 얼마나 섞였는지",
+     "item": 5,
+     "missing": [],
+     "name": "정답 라벨 신뢰성",
+     "provided": true
+    },
+    {
+     "impact": "오류 건수를 확인할 수 있는지",
+     "item": 6,
+     "missing": [],
+     "name": "대표 작동 지점의 TP·FP 건수",
+     "provided": true
+    },
+    {
+     "impact": "결과가 어떤 하드웨어·소프트웨어에서 나왔는지",
+     "item": 7,
+     "missing": [],
+     "name": "추론 환경",
+     "provided": true
+    },
+    {
+     "impact": "응답 속도가 용도에 맞는지",
+     "item": 8,
+     "missing": [
+      "지연시간 컬럼"
+     ],
+     "name": "추론 효율성(지연시간)",
+     "provided": false
+    },
+    {
+     "impact": "모델이 내용 대신 수집 방식을 배웠는지",
+     "item": 9,
+     "missing": [],
+     "name": "학습 데이터의 채널 효과",
+     "provided": true
+    },
+    {
+     "impact": "같은 조건으로 모델을 다시 만들거나 공정하게 비교할 수 있는지",
+     "item": 10,
+     "missing": [],
+     "name": "하이퍼파라미터",
+     "provided": true
+    },
+    {
+     "impact": "응답 시간이 어떤 조건에서 나온 값인지",
+     "item": 11,
+     "missing": [],
+     "name": "가속 사용",
+     "provided": true
+    }
+   ],
+   "provided": 10,
+   "total": 11
+  },
+  "version": "2.0",
+  "warningIds": [
+   "reporting:8",
+   "purpose:latency"
+  ]
+ },
+ "materials": {
+  "averagingSentence": "다중 클래스 지표의 평균 방식은 매크로 평균을 기준으로 한다. 의뢰자가 클래스 중요도를 \"모든 클래스가 동등\"으로 밝혔기 때문이다.",
+  "declarations": [
+   {
+    "label": "클래스 중요도",
+    "value": "모든 클래스가 동등 (의뢰자 제공: 어느 숫자를 틀려도 오배송 한 건이다.)"
+   },
+   {
+    "label": "사용 방식",
+    "value": "대화형(실시간)"
+   }
+  ],
+  "environment": [
+   {
+    "item": 11,
+    "label": "학습 가속",
+    "value": "아니오"
+   },
+   {
+    "item": 11,
+    "label": "추론 가속",
+    "value": "아니오"
+   }
+  ],
+  "groundTruth": [
+   {
+    "item": 4,
+    "label": "정답 라벨 구축 방법",
+    "value": "운영 로그 (의뢰자 제공: 필기자에게 적게 한 숫자를 그대로 정답으로 씀)"
+   },
+   {
+    "item": 5,
+    "label": "정답 라벨 신뢰성",
+    "value": "단일 라벨러"
+   },
+   {
+    "item": 5,
+    "label": "라벨러 수",
+    "notApplicable": true,
+    "value": "해당 없음"
+   },
+   {
+    "item": 5,
+    "label": "라벨 일치도",
+    "notApplicable": true,
+    "value": "해당 없음"
+   }
+  ],
+  "hyperparameters": {
+   "algorithm": "서포트 벡터 머신(RBF 커널)",
+   "rows": [
+    {
+     "name": "C",
+     "value": "3"
+    },
+    {
+     "name": "kernel",
+     "value": "rbf"
+    },
+    {
+     "name": "gamma",
+     "value": "scale"
+    }
+   ]
+  },
+  "test": [
+   {
+    "item": 2,
+    "label": "평가 데이터 출처",
+    "value": "같은 데이터의 30% 층화 분할"
+   },
+   {
+    "item": 2,
+    "label": "학습 데이터와의 관계",
+    "value": "같은 출처"
+   }
+  ],
+  "training": [
+   {
+    "item": 1,
+    "label": "학습 데이터셋명",
+    "value": "UCI 손글씨 숫자(8×8) 학습 분할"
+   },
+   {
+    "item": 1,
+    "label": "학습 데이터 출처",
+    "value": "UCI 기계학습 저장소"
+   },
+   {
+    "item": 1,
+    "label": "학습 샘플 수",
+    "value": "1,257개"
+   },
+   {
+    "item": 1,
+    "label": "검증 샘플 수",
+    "value": "0개"
+   },
+   {
+    "item": 1,
+    "label": "학습 클래스 분포",
+    "value": "0 124 / 1 127 / 2 124 / 3 128 / 4 127 / 5 127 / 6 127 / 7 125 / 8 122 / 9 126"
+   },
+   {
+    "item": 9,
+    "label": "채널 효과",
+    "value": "수집자 차이 (의뢰자 제공: 필기자 43명 중 학습·평가에 같은 사람이 섞여 있다.)"
+   },
+   {
+    "item": 3,
+    "label": "편향 감소 노력",
+    "value": "클래스 균형 조정"
+   },
+   {
+    "label": "학습·평가 전처리 일치",
+    "value": "같음"
+   }
+  ]
+ },
+ "meta": {
+  "contractDate": "2026-10-22",
+  "evaluationPeriod": {
+   "from": "2026-10-22",
+   "to": "2026-10-22"
+  },
+  "issuedAt": "",
+  "reportId": "",
+  "taskType": "multiclass",
+  "taskTypeLabel": "다중 클래스 분류",
+  "title": "기계학습 분류 성능 시험결과서"
+ },
+ "metricFormulas": [
+  {
+   "description": "모델이 맞게 예측한 비율입니다.",
+   "formula": "(TP + TN) / Total",
+   "isCommon": true,
+   "metricId": "M1",
+   "name": "Accuracy"
+  },
+  {
+   "description": "양성으로 예측한 것 중 실제 양성인 비율입니다.",
+   "formula": "binary: TP/(TP+FP) · 그 외: 클래스별 TP/(TP+FP) 의 macro 평균",
+   "isCommon": true,
+   "metricId": "M2",
+   "name": "Precision"
+  },
+  {
+   "description": "실제 양성 중 모델이 찾아낸 비율입니다.",
+   "formula": "binary: TP/(TP+FN) · 그 외: 클래스별 TP/(TP+FN) 의 macro 평균",
+   "isCommon": true,
+   "metricId": "M3",
+   "name": "Recall"
+  },
+  {
+   "description": "정밀도와 재현율을 하나로 묶어 균형을 봅니다.",
+   "formula": "binary: 2PR/(P+R) · 그 외: 클래스별 F1 의 macro 평균(macro-P·macro-R 의 조화평균이 아님)",
+   "isCommon": true,
+   "metricId": "M4",
+   "name": "F1 Score"
+  },
+  {
+   "description": "정답 레이블의 분포와 모델이 예측한 클래스 레이블의 분포 간의 차이(Target Drift)를 계산합니다.",
+   "formula": "∑ P(x) * log(P(x) / Q(x))",
+   "isCommon": true,
+   "metricId": "M6",
+   "name": "KL Divergence"
+  },
+  {
+   "description": "클래스별 지표를 같은 비중으로 평균합니다.",
+   "formula": "클래스별 P·R·F1 의 macro 평균 — (Class1 + … + ClassN) / N",
+   "isCommon": false,
+   "metricId": "M11",
+   "name": "Macro Average"
+  },
+  {
+   "description": "모든 표본을 한데 모아 지표를 계산합니다.",
+   "formula": "micro 평균 — 전 클래스의 TP·FP·FN 을 합산해 P·R·F1 을 계산",
+   "isCommon": false,
+   "metricId": "M12",
+   "name": "Micro Average"
+  },
+  {
+   "description": "평가 데이터 자체의 클래스 균형을 봅니다.",
+   "formula": "max(class count) / min(class count)",
+   "isCommon": true,
+   "metricId": "M23",
+   "name": "Imbalance Ratio"
+  }
+ ],
+ "metricList": [
+  {
+   "metricId": "M1",
+   "name": "Accuracy",
+   "passCriteria": "≥ 0.980",
+   "threshold": 0.98
+  },
+  {
+   "metricId": "M2",
+   "name": "Precision",
+   "passCriteria": "정보 제공",
+   "threshold": null
+  },
+  {
+   "metricId": "M3",
+   "name": "Recall",
+   "passCriteria": "정보 제공",
+   "threshold": null
+  },
+  {
+   "metricId": "M4",
+   "name": "F1 Score",
+   "passCriteria": "≥ 0.980",
+   "threshold": 0.98
+  },
+  {
+   "metricId": "M6",
+   "name": "KL Divergence",
+   "passCriteria": "≤ 0.050",
+   "threshold": 0.05
+  },
+  {
+   "metricId": "M11",
+   "name": "Macro Average",
+   "passCriteria": "정보 제공",
+   "threshold": null
+  },
+  {
+   "metricId": "M12",
+   "name": "Micro Average",
+   "passCriteria": "정보 제공",
+   "threshold": null
+  },
+  {
+   "metricId": "M23",
+   "name": "Imbalance Ratio",
+   "passCriteria": "정보 제공",
+   "threshold": null
+  }
+ ],
+ "narrativeFacts": {
+  "average_gap": {
+   "difference": -0.000015071,
+   "difference_text": "0",
+   "kind": "macro_vs_weighted",
+   "macro_f1": 0.9888696755206228,
+   "other_f1": 0.9888546041662736,
+   "reference_class": {
+    "f1": 0.990990990990991,
+    "label": "1",
+    "support": 55
+   }
+  },
+  "ci_available": true,
+  "ci_skipped": [],
+  "class_share_basis": "samples",
+  "contract": "facts-1",
+  "core_metrics_source": "client",
+  "declarations": {
+   "class_priority": "all_equal",
+   "risk_direction": null,
+   "usage_mode": "realtime"
+  },
+  "declared_average": null,
+  "declared_risk_errors": null,
+  "distribution_shift": [
+   {
+    "difference": -0.001352426,
+    "difference_text": "-0.0014",
+    "evaluation_ratio": 0.1,
+    "flagged": false,
+    "label": "0",
+    "training_ratio": 0.098647574
+   },
+   {
+    "difference": -0.000817643,
+    "difference_text": "-0.0008",
+    "evaluation_ratio": 0.101851852,
+    "flagged": false,
+    "label": "1",
+    "training_ratio": 0.101034208
+   },
+   {
+    "difference": 0.000499425,
+    "difference_text": "0.0005",
+    "evaluation_ratio": 0.098148148,
+    "flagged": false,
+    "label": "2",
+    "training_ratio": 0.098647574
+   },
+   {
+    "difference": -0.000022098,
+    "difference_text": "0",
+    "evaluation_ratio": 0.101851852,
+    "flagged": false,
+    "label": "3",
+    "training_ratio": 0.101829753
+   },
+   {
+    "difference": 0.001034208,
+    "difference_text": "0.001",
+    "evaluation_ratio": 0.1,
+    "flagged": false,
+    "label": "4",
+    "training_ratio": 0.101034208
+   },
+   {
+    "difference": -0.000817643,
+    "difference_text": "-0.0008",
+    "evaluation_ratio": 0.101851852,
+    "flagged": false,
+    "label": "5",
+    "training_ratio": 0.101034208
+   },
+   {
+    "difference": 0.001034208,
+    "difference_text": "0.001",
+    "evaluation_ratio": 0.1,
+    "flagged": false,
+    "label": "6",
+    "training_ratio": 0.101034208
+   },
+   {
+    "difference": -0.000556882,
+    "difference_text": "-0.0006",
+    "evaluation_ratio": 0.1,
+    "flagged": false,
+    "label": "7",
+    "training_ratio": 0.099443119
+   },
+   {
+    "difference": 0.000760187,
+    "difference_text": "0.0008",
+    "evaluation_ratio": 0.096296296,
+    "flagged": false,
+    "label": "8",
+    "training_ratio": 0.097056484
+   },
+   {
+    "difference": 0.000238663,
+    "difference_text": "0.0002",
+    "evaluation_ratio": 0.1,
+    "flagged": false,
+    "label": "9",
+    "training_ratio": 0.100238663
+   }
+  ],
+  "distribution_shift_status": "compared",
+  "error_totals": {
+   "misclassified": 6,
+   "total": 540,
+   "unit": "sample"
+  },
+  "fixed_sentences": [
+   {
+    "id": "17",
+    "section": "7.1",
+    "text": "확률이 있는 오분류 6건 중 경계 오류(예측·정답 클래스 확률 차가 0.1 미만)는 2건(33.3%), 확신 오류(예측 클래스 확률 0.9 이상)는 0건(0.0%)이다."
+   },
+   {
+    "id": "12",
+    "section": "7.2",
+    "text": "정답 라벨의 구축 방법이 운영 로그로, 정답 자체의 오류가 성능 수치에 반영되었을 수 있다. 수치 해석 시 이를 고려해야 한다."
+   },
+   {
+    "id": "16",
+    "section": "8.1",
+    "text": "다음 지표는 내부 참조 기준치가 없어 벤치마크 비교를 하지 않았다: KL Divergence, Macro Average, Micro Average, Imbalance Ratio."
+   },
+   {
+    "id": "11a",
+    "section": "8.2",
+    "text": "평가 데이터는 학습 데이터와 동일한 출처에서 수집되었다. 본 결과는 동일 분포 내 성능을 나타내며, 다른 운영 환경에서의 일반화 성능을 보증하지 않는다."
+   },
+   {
+    "id": "18",
+    "section": "8.3",
+    "text": "목표값과의 차이가 목표값의 3% 미만인 지표(근소 차이): Accuracy(M1) 0.989(목표 0.980 이상, 충족), F1 Score(M4) 0.989(목표 0.980 이상, 충족)."
+   }
+  ],
+  "low_support_classes": [],
+  "n_classes": 10,
+  "omitted": {},
+  "positive_class": null,
+  "precision_recall_gap": null,
+  "prediction_bias": {
+   "rows": [
+    {
+     "actual": 54,
+     "difference": 0,
+     "label": "0",
+     "predicted": 54
+    },
+    {
+     "actual": 55,
+     "difference": 1,
+     "label": "1",
+     "predicted": 56
+    },
+    {
+     "actual": 53,
+     "difference": 1,
+     "label": "2",
+     "predicted": 54
+    },
+    {
+     "actual": 55,
+     "difference": 0,
+     "label": "3",
+     "predicted": 55
+    },
+    {
+     "actual": 54,
+     "difference": 0,
+     "label": "4",
+     "predicted": 54
+    },
+    {
+     "actual": 55,
+     "difference": -1,
+     "label": "5",
+     "predicted": 54
+    },
+    {
+     "actual": 54,
+     "difference": 0,
+     "label": "6",
+     "predicted": 54
+    },
+    {
+     "actual": 54,
+     "difference": -1,
+     "label": "7",
+     "predicted": 53
+    },
+    {
+     "actual": 52,
+     "difference": 1,
+     "label": "8",
+     "predicted": 53
+    },
+    {
+     "actual": 54,
+     "difference": -1,
+     "label": "9",
+     "predicted": 53
+    }
+   ],
+   "unit": "per_class"
+  },
+  "report_purpose_label": "과제 산출물",
+  "selected_metrics": [
+   "M1",
+   "M2",
+   "M3",
+   "M4",
+   "M6",
+   "M11",
+   "M12",
+   "M23"
+  ],
+  "top_confusion_pairs": [
+   {
+    "actual": "5",
+    "count": 1,
+    "predicted": "6",
+    "share_of_errors": 0.166666667
+   },
+   {
+    "actual": "5",
+    "count": 1,
+    "predicted": "9",
+    "share_of_errors": 0.166666667
+   },
+   {
+    "actual": "6",
+    "count": 1,
+    "predicted": "1",
+    "share_of_errors": 0.166666667
+   }
+  ],
+  "verdict_detail": {
+   "failed_core": [],
+   "failed_noncore": [],
+   "inconclusive_cause": null,
+   "inconclusive_metrics": [],
+   "judged_count": 3,
+   "passed_count": 3,
+   "unavailable_core": [],
+   "verdict": "PASS"
+  },
+  "weakest_class": {
+   "f1": 0.9719626168224299,
+   "far_below_macro": false,
+   "gap_from_macro": 0.016907059,
+   "gap_text": "0.0169",
+   "label": "9",
+   "low_support": false,
+   "macro_f1": 0.9888696755206228,
+   "share": 0.1,
+   "share_text": "0.1",
+   "support": 54
+  }
+ },
+ "narrativeModels": {
+  "9": "claude-sonnet-5-5",
+  "7.1": "claude-sonnet-5-5",
+  "7.2": "claude-sonnet-5-5",
+  "7.3": "claude-sonnet-5-5",
+  "8.1": "claude-sonnet-5-5",
+  "8.2": "claude-sonnet-5-5",
+  "8.3": "claude-sonnet-5-5"
+ },
+ "narrativeSections": {
+  "9": "llm",
+  "7.1": "llm",
+  "7.2": "llm",
+  "7.3": "llm",
+  "8.1": "llm",
+  "8.2": "llm",
+  "8.3": "llm"
+ },
+ "narrativeSource": "llm",
+ "nearTargetNote": "목표값과의 차이가 목표값의 3% 미만인 지표(근소 차이): Accuracy(M1) 0.989(목표 0.980 이상, 충족), F1 Score(M4) 0.989(목표 0.980 이상, 충족).",
+ "noBenchmarkSentence": "다음 지표는 내부 참조 기준치가 없어 벤치마크 비교를 하지 않았다: KL Divergence, Macro Average, Micro Average, Imbalance Ratio.",
+ "performer": {
+  "contact": "—",
+  "evaluator": "자동 평가 엔진",
+  "orgName": "리트머스"
+ },
+ "problems": [
+  {
+   "evidence": {
+    "Accuracy": {
+     "margin": 0.0089,
+     "target": 0.98,
+     "value": 0.9888888888888889
+    },
+    "F1 Score": {
+     "margin": 0.0089,
+     "target": 0.98,
+     "value": 0.9888696755206228
+    }
+   },
+   "id": "P1",
+   "kind": "core_near_target",
+   "note": null,
+   "priority": "MEDIUM",
+   "recommend_section": "9.2",
+   "source_section": "8.3",
+   "title": "핵심 지표 아슬아슬 합격 (Accuracy, F1 Score)"
+  },
+  {
+   "evidence": {
+    "정답 라벨 구축 방법": "운영 로그"
+   },
+   "id": "P2",
+   "kind": "label_caution",
+   "note": null,
+   "priority": "LOW",
+   "recommend_section": "9.1",
+   "source_section": "7.2",
+   "title": "정답 라벨 주의 (구축 방법 운영 로그)"
+  }
+ ],
+ "recommendationNarrative": {
+  "dataQuality": "[S0 센티널 digits_strong 9 데이터]",
+  "modelOps": "[S0 센티널 digits_strong 9 운영]"
+ },
+ "recommendations": [
+  {
+   "action": "[S0 센티널 digits_strong 권고 조치]",
+   "category": "[S0 센티널 digits_strong 권고 분류]",
+   "expectedImpact": "[S0 센티널 digits_strong 기대 효과]",
+   "priority": "MEDIUM",
+   "problemId": "P1"
+  }
+ ],
+ "signature": {
+  "history": [],
+  "issuer": "",
+  "signedAt": ""
+ },
+ "sourceRelationSentence": "평가 데이터는 학습 데이터와 동일한 출처에서 수집되었다. 본 결과는 동일 분포 내 성능을 나타내며, 다른 운영 환경에서의 일반화 성능을 보증하지 않는다.",
+ "targetDigits": 3,
+ "trainingDatasetInfo": {
+  "classDistribution": "0 124 / 1 127 / 2 124 / 3 128 / 4 127 / 5 127 / 6 127 / 7 125 / 8 122 / 9 126",
+  "edgeExamples": [],
+  "name": "UCI 손글씨 숫자(8×8) 학습 분할",
+  "trainingSampleCount": 1257,
+  "validExamples": [],
+  "validationSampleCount": 0
+ },
+ "validationSummary": {
+  "excludedRows": 0,
+  "totalRows": 540,
+  "validRows": 540
+ }
+}
