@@ -383,7 +383,9 @@ export function buildProblemList(input: ProblemListInput): Problem[] {
     };
   }
 
-  if (edition4 && isSameSourceRelation(composer)) {
+  // 판 3 에 나오지 않게 하는 곳은 종류 표 하나다(판 3 표 KINDS 에 same_source 가 없다) — 여기서 판을 다시 보지 않는다
+  // (두 겹으로 막으면 한쪽이 틀려도 시험이 초록이다).
+  if (isSameSourceRelation(composer)) {
     found.same_source = {
       evidence: { [SAME_SOURCE_EVIDENCE_KEY]: choiceLabel("testData", "testSourceRelation", "Same source") },
     };
