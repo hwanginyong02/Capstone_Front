@@ -10,80 +10,68 @@ ML 모델 성능 평가 보고서("시험성적서")를 **KS X ISO/IEC TS 4213:2
 
 ```
 src/
-├── App.tsx / main.tsx / routes.ts   # 라우팅 진입 (워크플로우는 /app/*)
+├── App.tsx / main.tsx / routes.ts   # 라우팅 진입 (워크플로우는 /app/*, 성적서는 /report/*)
 ├── pages/          # 라우트 단위 얇은 조립자 (+ report/, workspaces/)
-├── components/     # 도메인별 UI (basic-info … report, workspaces, landing, ui)
+├── components/     # 도메인별 UI (material-picker, composer-input … report, workspaces, landing, ui)
 ├── layout/         # WorkflowShell(워크플로우 셸) · AppShell(비-워크플로우 셸)
 ├── hooks/          # 데이터 페칭·부수효과 훅
-├── lib/            # apiBase · mapping(role 변환) · report(API·성적서 로직)
-├── utils/          # styling · format · domain · stores(Zustand)
+├── lib/            # apiBase · mapping(role 변환) · report(API·성적서 로직) · upload(업로드 한도)
+├── utils/          # styling · format · domain · stores(Zustand) · image(예시 이미지 미리보기)
 └── data/ · types/ · styles/ · test/
 ```
 
-## 7단계 워크플로우
+## 평가 흐름
 
-> **MATERIAL_PICKER.md로 대체됨** (§1·§3) — 흐름은 작업 유형 → 재료 고르기 → 의뢰자 정보 → 평가 대상 모델 → [모델 설정과 실행 환경] → 평가 데이터 → 컬럼 매핑 → [데이터 정보] → 평가 관점 → 지표와 합격 기준 → 검증 → 확인과 생성이다. 대괄호 단계는 재료 고르기에서 그 카드를 넣었을 때만 나온다. *(MATERIAL_PICKER.md §11로 대체됨 — 순서는 재료 고르기 다이어그램에서 사용자가 정한다. 데이터 정보는 학습 데이터·테스트 데이터·정답 라벨 단계로 나뉘어 최소 8단계·전체 12단계다)* *(MATERIAL_PICKER.md §12로 대체됨 — 재료 고르기는 **평가 흐름 만들기**가 됐다. 빈 흐름에서 왼쪽 트리의 항목을 단계에 넣어 블록을 만들고, 필수 항목을 모두 넣어야 "다음"으로 간다. 화면 용어는 단계 > 블록 > 항목이고 입력 화면 하나하나는 '화면'이다)* 아래는 종전 기록.
+작업 유형(`/app`) → 평가 흐름 만들기(`/app/composer`) → 입력 화면들 → 검증(`/app/data-validation`) → 확인과 생성(`/report/:id`)
 
-1. **기본 정보** — 회사/모델 정보, 평가 유형(binary/multiclass/multilabel) 선택
-2. **시험항목** — 지표(Metric, M1~M23) 선택
-3. **지표 상세** — 지표별 목표값·추가 입력(M5 선택 시 β값 등)
-4. **데이터 업로드** — 평가 데이터(CSV/JSON) + 학습 데이터셋 정보
-5. **컬럼 매핑** — AI 자동 매핑 검토, positive_class 설정(조건부)
-6. **데이터 검증** — 백엔드 전처리 검증 결과 확인
-7. **결과 미리보기(성적서)** — 지표 대시보드, 혼동 행렬, 차트, LLM 서술 *(지금: 서술은 백엔드 작업 경로 — `POST /api/narrative/jobs` 로 작업 번호를 받고 조회해 기다린다. 모델은 Claude Sonnet 5.5, 키가 없거나 실패한 칸은 규칙 문장. 서술이 끝나야 인쇄·PDF·발급이 열린다 — docs/ARCHITECTURE.md §6)*
+- **작업 유형**: 이진 분류 / 다중 클래스 분류 / 다중 레이블 분류 중 하나를 고른다.
+- **평가 흐름 만들기**: 빈 흐름도에서 시작해, 왼쪽 트리의 항목을 단계(의뢰 정보 · 모델 · 데이터 · 평가 기준)에 넣어 블록을 만든다. 필수 항목을 모두 넣어야 "다음"으로 간다. 블록과 단계를 끌어 입력 순서를 정한다(`docs/MATERIAL_PICKER.md` §12).
+- **입력 화면**: 사용자가 정한 블록 순서대로 걷는다. 의뢰자 정보 · 평가 대상 모델 · 평가 데이터(업로드, 컬럼 매핑) · 평가 관점 · 지표와 합격 기준은 늘 있고, 모델 설정과 실행 환경 · 학습 데이터 · 테스트 데이터 · 정답 라벨은 넣었을 때만 나온다. 검증과 확인과 생성까지 합쳐 최소 8개, 전체 12개 화면이다(`src/utils/domain/workflowSteps.ts` 의 `buildStepList`).
+- **검증**: 백엔드 전처리 검증 결과와 생성 전 안내(빠진 항목)를 보여 주고 run 을 만든다.
+- **확인과 생성**: 평가를 실행하고 성적서를 그린다. AI 서술은 백엔드 작업 경로(`POST /api/narrative/jobs` 로 작업 번호를 받고 조회해 기다림)로 받고, 키가 없거나 실패한 칸은 규칙 문장으로 채운다. 서술이 끝나야 인쇄·PDF·발급이 열린다. 발급한 성적서는 번호로 다시 연다(`/report/no/:reportNo`). 자세히는 `docs/ARCHITECTURE.md` §6.
+
+입력 화면 오른쪽의 세로 단계 표시줄(`StepRail`)이 진행을 보여 준다.
 
 ## 디자인 시스템
 
-### 영감
+톤은 "인증 네이비"이고 강조색은 하나(#1d3b6e)다. 그림자 대신 테두리로 나누는 평평하고 정밀한 화면을 지향한다. 요약은 `docs/MATERIAL_PICKER.md` §10, 색 역할은 `docs/imports/colors.md`, 실제 값의 정본은 `src/styles/theme.css` 다.
 
-> **MATERIAL_PICKER.md로 대체됨** (§10) — 톤은 "인증 네이비"이고 단일 강조색은 #1d3b6e 다. 아래는 종전 기록.
-Linear, Vercel, Supabase 대시보드에서 영감을 받은 정밀하고 깔끔한 디자인:
-- 크리스프한 흰색 카드 + 밝은 중립 배경
-- 샤프한 타이포그래피 + 넉넉한 line-height
-- 플랫 서피스 (그림자 없이 border로 구분)
-- 단일 액센트 컬러 (Blue #2563EB)
+### 컬러
 
-### 컬러 시스템
-
-> **MATERIAL_PICKER.md로 대체됨** (§10) — 배경 #ffffff, 글자 #0d1420(제목)·#1f2a3a(본문)·#4a5568(보조), 강조 #1d3b6e, 오류 #aa0808. 토큰은 `docs/imports/colors.md`. 아래는 종전 기록.
-- **Neutrals**: #FAFAFA (background) → #FFFFFF (card) → #09090B (text)
-- **Primary**: #2563EB (액션 컬러)
-- **Status**: Green(success), Amber(warning), Red(danger)
+- **배경**: #ffffff (기본), #f4f5f7 (띠·회색 영역, `--muted`)
+- **글자**: #0d1420 (제목), #1f2a3a (본문), #4a5568 (보조), #667080 (비활성·placeholder)
+- **강조**: #1d3b6e (`--primary`), 강조 배경 #edf2f9 (`--primary-subtle`)
+- **선**: 구분선 #e6e8ec (`--border`), 카드 테두리 #c9ced6 (`--border-strong`)
+- **상태**: 오류 #aa0808 (`--destructive`, 실제 오류에만), 성공 초록 · 주의 호박색 (`--success`·`--warning`)
 
 ### 타이포그래피
 
-> **MATERIAL_PICKER.md로 대체됨** (§10) — 글꼴은 Pretendard Variable 이다(Inter 는 불러오지 않는다). 22px/500 제목, 16px/500 이름·버튼, 14px/400 설명. 아래는 종전 기록.
-- **Sans**: Pretendard Variable (한글), Inter (영문)
+- **Sans**: Pretendard Variable (`src/styles/fonts.css`)
 - **Mono**: JetBrains Mono (숫자, 코드, 지표 ID)
-- 모든 숫자에 `tabular-nums` 적용 필수
+- 22px/500 화면 제목, 16px/500 이름·버튼, 14px/400 설명. 자세히는 `docs/imports/typography.md`
+- 모든 숫자에 `tabular-nums` 적용
 
 ### 레이아웃
-- Full-width with inner cap (1280px centered, 32px side padding)
-- Sticky top navigation (App Header 56px + Step Tabs 48px) *(MATERIAL_PICKER.md로 대체됨, §9 — 단계 표시줄은 입력 화면 오른쪽의 세로 목록이다)*
-- Sticky bottom Action Bar (72px)
-- 카드 간격: 24px (기본), 40px (주요 섹션 구분)
+
+- 머리(App Header 56px) + 본문 + 오른쪽 세로 단계 표시줄(`StepRail`) + 아래 고정 Action Bar(72px)
+- 본문은 좌우 32px 여백, 안쪽 최대 폭 1344px 를 가운데에 둔다
+- 평가 흐름 만들기는 단계 표시줄 없이 왼쪽 항목 트리와 가운데 흐름도를 둔다
+- 자세히는 `docs/imports/Guidelines.md`
 
 ## 주요 컴포넌트 패턴
 
 ### Radio Card
-- 2~4개 상호 배타적 옵션 (평가 유형, 시험결과서 용도, positive class)
-- 선택: 2px border-primary + bg-primary-subtle
-- 상단 좌측에 작은 원형 인디케이터
+- 2~4개 상호 배타적 옵션 (작업 유형, 성적서 용도, 양성 클래스)
+- 선택: 강조색 테두리 + 강조 배경(`bg-primary-subtle`)
 
-### Selectable Card (지표 Selection)
-- 체크박스 + 지표 ID(mono) + 메트릭명 + 설명
-- 그리드: xl=4열, lg=3열, md=2열, sm=1열
-- M5 선택 시 하단에 β값 입력 카드 표시
-- 요구사항 Badge: "score 필요", "prob 필요", "β값 필요" *(MATERIAL_PICKER.md로 대체됨, §3 — 매핑한 컬럼으로 계산할 수 없는 지표는 비활성으로 두고 이유를 한 줄 붙인다)*
-
-### Metric Block
-- 대형 메트릭 표시 (성적서/결과)
-- 상단 라벨(mono uppercase) + 값(2rem mono) + 보조 텍스트
-- 수직 divider로 구분된 단일 카드
+### 지표 선택
+- 체크박스 + 지표 ID(mono) + 지표 이름 + 설명
+- 매핑한 컬럼으로 계산할 수 없는 지표는 비활성으로 두고 이유를 한 줄 붙인다(`docs/MATERIAL_PICKER.md` §3)
+- F-β 를 고르면 β 값 입력 칸이 나온다
 
 ### Data Table
 - shadcn Table 사용
-- 헤더: bg-muted/40, uppercase mono
+- 헤더: bg-muted/40
 - 숫자 컬럼: 우측 정렬 + tabular-nums
 - 행 hover: bg-muted/50
 
@@ -118,17 +106,18 @@ pnpm build            # 프로덕션 빌드
 - ✅ Card로 모든 그룹핑
 - ✅ 모든 숫자에 font-mono + tabular-nums
 - ❌ 그라디언트, 그림자, 장식 아이콘 금지
-- ❌ 8px 초과 border-radius 금지 (버튼·카드는 8px — MATERIAL_PICKER.md §10)
+- ❌ 8px 초과 border-radius 금지 (버튼·카드는 8px — `docs/MATERIAL_PICKER.md` §10)
 
 ### 데이터 처리 (자세한 규칙은 `SPEC.md`)
 - Binary: positive_class 필수, score 사용 시 threshold 필요
-- Multiclass: argmax 기본, prob_class_* 컬럼 수 = 클래스 수
+- Multiclass: argmax 기본. `prob_class_*` 컬럼과 클래스의 대응은 컬럼명으로 정한다(컬럼 수 검사는 하지 않는다 — SPEC.md §2)
 - Multilabel: 레이블별 독립 threshold
 
 ### 검증 규칙
 - y_true 필수
 - y_pred 또는 확률 컬럼(score/prob_class_*/prob_label_*) 중 하나 필수
-- ID 중복 금지, 확률값 0~1 범위, Multiclass prob 합 ≈ 1
+- 확률값은 0~1 범위(벗어나면 오류), Multiclass 확률 합 ≈ 1(경고)
+- ID 중복은 경고만 하고 행을 빼지 않는다(SPEC.md §4)
 
 ## 라이선스
 
