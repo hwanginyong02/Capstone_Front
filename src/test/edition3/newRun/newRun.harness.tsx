@@ -12,6 +12,9 @@
  * 돌려주는 것: 1단계 저장 데이터(서술 대기 중 `storedRun().reportData`), 서술 작업 요청 본문 원문, 서술 완료 뒤 저장 데이터.
  * 저장 데이터는 키를 정렬해 직렬화한다(`stableJson`) — 객체 키 순서가 아니라 값을 고정한다. 요청 본문은 앱이 보낸 글자 그대로다.
  *
+ * 1층 빈칸 검사(`layerOneGaps`)는 결과로 "다음"을 막지 않고 건너뛴다. 대신 건너뛰는 범위를 `KNOWN_LAYER_ONE_SKIP` 으로 못 박는다 —
+ * 아래 `assertKnownLayerOneSkip` 주석과 README "1층 빈칸 검사를 건너뛰는 범위".
+ *
  * 시각: 테스트 파일이 `vi.useFakeTimers({ toFake: ["Date"] })` 와 `setSystemTime(FROZEN_NOW())` 로 Date 만 멈춘다(조회 setTimeout 은
  * 진짜라 조회는 돈다). 시간대는 `TZ_PINNED` 로 고정한다 — 생성 전 안내 확인 기록(`acknowledgement.at`)이 ISO(UTC) 글이라 기계의
  * 시간대에 따라 달라진다(CI 는 UTC, 개발 기계는 KST).
@@ -25,6 +28,8 @@ import { fastPolling, renderReportPage, resetAll, storedRun } from "../../../hoo
 import { buildReportInput, mapWorkflowToFinalReport } from "../../../lib/report/mapWorkflowToFinalReport";
 import { buildEvaluationRequestSnapshot } from "../../../lib/report/evaluationRequest";
 import { toUploadedFileInfo } from "../../../components/data-upload/shared";
+import { layerOneGaps, screenRuleGaps } from "../../../utils/domain/layerOne";
+import { passCriteriaState } from "../../../utils/domain/passCriteria";
 import { ensureActiveWorkspace } from "../../../utils/domain/ensureActiveWorkspace";
 import { useWorkflowStore } from "../../../utils/stores/useWorkflowStore";
 import { useWorkspaceStore } from "../../../utils/stores/useWorkspaceStore";
@@ -118,11 +123,59 @@ function stubBackend(inputs: ReturnType<typeof readInputs>) {
   return { calls, release: () => (released = true) };
 }
 
-/** 검증 화면 "다음"과 같은 순서로 run 을 만든다(`pages/DataValidation.tsx handleNext`). */
-function createRunLikeValidationNext(validationData: unknown): string {
+/**
+ * 1층 빈칸 검사를 건너뛰는 범위 — 입력마다 알려진 결과.
+ *
+ * 왜 건너뛰나: 입력은 판 3 발급본 6건을 만든 픽스처(C 세션 FIXTURES) 그대로라 목표값을 비운 지표(정보 제공 지표)가 있다.
+ * 판 3 성적서는 그 지표를 "정보 제공"으로 싣는다(발급본 RPT-2026-0001·0003·0005 도 같은 모양). 그런데 지금 `layerOneGaps` 는
+ * 고른 지표 모두에 목표값을 요구하므로(`passCriteriaState().targetsValid`) "지표와 합격 기준"(stepId `metrics`) 한 칸을 낸다.
+ * 이 한 칸 때문에 검증 화면 "다음"을 그대로 따라 하면 run 이 만들어지지 않는다.
+ *
+ * 그래서 건너뛰되, 건너뛰는 것이 **이 한 이유뿐**임을 못 박는다.
+ * - 1층 결과의 단계 키 목록 = `["metrics"]`(의뢰자 정보·모델·평가 관점 빈칸은 없어야 한다), 그 칸에 계산 불가 지표 설명(details) 없음.
+ * - 그 칸이 생긴 이유 = 목표값이 빈 지표뿐: 빈 목표 지표 목록이 아래 `emptyTargets` 와 같고, 핵심 지표는 성립(coreValid),
+ *   Fβ 를 고르지 않음.
+ * - ⑥~⑨ 화면 규칙(`screenRuleGaps`)은 빈 결과 — 이것은 건너뛰지 않는다.
+ * 입력이 바뀌어 다른 빈칸이 생기면(예: 과제 용도인데 과제명이 빔) 정답을 뜨기 전에 여기서 실패한다.
+ */
+export const KNOWN_LAYER_ONE_SKIP: Record<Tag, { gapSteps: string[]; emptyTargets: string[] }> = {
+  bc_strong: { gapSteps: ["metrics"], emptyTargets: ["M2", "M10", "M23"] },
+  digits_strong: { gapSteps: ["metrics"], emptyTargets: ["M2", "M3", "M11", "M12", "M23"] },
+  yeast_strong: { gapSteps: ["metrics"], emptyTargets: ["M2", "M3", "M16", "M18", "M23"] },
+};
+
+/** 지금 스토어 상태의 1층·화면 규칙 결과가 `KNOWN_LAYER_ONE_SKIP[tag]` 와 같음을 단정한다(다르면 run 을 만들지 않는다). */
+export function assertKnownLayerOneSkip(tag: Tag) {
   const state = useWorkflowStore.getState();
-  // 1층 빈칸 검사(layerOneGaps)는 하지 않는다 — 입력은 판 3 발급본 6건을 만든 픽스처 그대로라 목표값 없는 지표(정보 제공,
-  // 예: M2·M10·M23)가 있고, 지금 지표 화면은 그 상태로 "다음"을 막는다. 발급본(RPT-2026-0001 등)도 같은 모양이다.
+  const gaps = layerOneGaps(state);
+  const criteria = passCriteriaState(state.taskType, state.selectedMetricIds, state.metricDetails, state.composerMetrics);
+  const observed = {
+    gapSteps: gaps.map((gap) => gap.stepId),
+    gapDetails: gaps.map((gap) => gap.details ?? null),
+    emptyTargets: criteria.targetMetrics
+      .filter((metric) => (state.metricDetails[metric.id]?.targetValue ?? "").trim() === "")
+      .map((metric) => metric.id),
+    coreValid: criteria.coreValid,
+    selectsFBeta: state.selectedMetricIds.includes("M5"),
+    screenRuleGaps: screenRuleGaps(state),
+  };
+  const known = KNOWN_LAYER_ONE_SKIP[tag];
+  expect(observed, `${tag}: 1층 빈칸 검사를 건너뛰는 범위가 알려진 것과 다르다`).toEqual({
+    gapSteps: known.gapSteps,
+    gapDetails: known.gapSteps.map(() => null),
+    emptyTargets: known.emptyTargets,
+    coreValid: true,
+    selectsFBeta: false,
+    screenRuleGaps: [],
+  });
+  return observed;
+}
+
+/** 검증 화면 "다음"과 같은 순서로 run 을 만든다(`pages/DataValidation.tsx handleNext`). */
+function createRunLikeValidationNext(tag: Tag, validationData: unknown): string {
+  const state = useWorkflowStore.getState();
+  // 1층 빈칸 검사(layerOneGaps)는 "다음"을 막는 데 쓰지 않고, 건너뛰는 범위만 단정한다(`assertKnownLayerOneSkip` 주석).
+  assertKnownLayerOneSkip(tag);
   const build = () => {
     const workflowSnapshot = buildReportInput(useWorkflowStore.getState());
     const reportData = mapWorkflowToFinalReport(workflowSnapshot, validationData as never);
@@ -179,7 +232,7 @@ export async function runNewReport(tag: Tag): Promise<NewRunCapture> {
       materialCheckAck: null,
       lastRunId: null,
     });
-    const runId = createRunLikeValidationNext(inputs.validate);
+    const runId = createRunLikeValidationNext(tag, inputs.validate);
 
     const backend = stubBackend(inputs);
     const view = renderReportPage(runId);

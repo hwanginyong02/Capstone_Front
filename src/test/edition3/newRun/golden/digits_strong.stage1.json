@@ -310,6 +310,10 @@
  "evalScope": {
   "modelCategory": "필기 숫자 인식",
   "modelPurpose": "우편물 봉투의 손글씨 우편번호 숫자 한 자리씩을 읽어 자동 분류기에 넘긴다.",
+  "projectInfo": {
+   "agency": "정보통신기획평가원",
+   "name": "우편물 자동 분류 고도화 과제"
+  },
   "purpose": "정부 또는 기관 과제의 산출물 증빙 목적으로 활용",
   "reportPurposeKey": "project",
   "scope": "의뢰자가 제출한 평가 데이터셋을 기반으로 선택된 시험항목에 대해 정량적 성능 지표를 산출하고 합격 기준 충족 여부를 판정한다.",

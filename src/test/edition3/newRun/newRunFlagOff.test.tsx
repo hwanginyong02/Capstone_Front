@@ -11,7 +11,18 @@ import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { FROZEN_NOW, GOLDEN_DIR, goldenNames, readInputs, runNewReport, TAGS, TZ_PINNED, type NewRunCapture, type Tag } from "./newRun.harness";
+import {
+  FROZEN_NOW,
+  GOLDEN_DIR,
+  goldenNames,
+  KNOWN_LAYER_ONE_SKIP,
+  readInputs,
+  runNewReport,
+  TAGS,
+  TZ_PINNED,
+  type NewRunCapture,
+  type Tag,
+} from "./newRun.harness";
 
 const originalTz = process.env.TZ;
 const golden = (name: string) => readFileSync(resolve(GOLDEN_DIR, name), "utf8");
@@ -66,6 +77,14 @@ describe.each(TAGS)("판 3 새 성적서(플래그 끔) — %s", (tag: Tag) => {
     expect(captured.storedInput).toEqual(JSON.parse(captured.request));
     expect(JSON.parse(captured.request)).not.toHaveProperty("report_edition");
     expect(JSON.parse(captured.stage1).contentSchema).toBe(3);
+  });
+});
+
+describe("1층 빈칸 검사를 건너뛰는 범위", () => {
+  // 실제 단정은 하네스가 run 을 만들기 전에 한다(`assertKnownLayerOneSkip`). 여기서는 알려진 목록 자체가 "지표와 합격 기준"
+  // 한 칸뿐인지 본다 — 목록에 다른 단계(의뢰자 정보 등)를 끼워 넣어 빈칸을 덮지 못하게.
+  it.each(TAGS)("%s: 건너뛰는 1층 칸은 metrics 하나뿐이다", (tag) => {
+    expect(KNOWN_LAYER_ONE_SKIP[tag].gapSteps).toEqual(["metrics"]);
   });
 });
 
