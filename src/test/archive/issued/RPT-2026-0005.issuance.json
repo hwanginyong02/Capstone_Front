@@ -1,0 +1,20 @@
+{
+  "reportNo": "RPT-2026-0005",
+  "version": "v1.0",
+  "issuer": "리트머스 평가부",
+  "issuedAt": "2026-10-22T09:57:40.316533+00:00",
+  "organization": {
+    "orgName": "리트머스",
+    "department": "평가부",
+    "evaluator": "자동 평가 엔진",
+    "contact": "—",
+    "address": null
+  },
+  "history": [
+    {
+      "version": "v1.0",
+      "issuedAt": "2026-10-22T09:57:40.316533+00:00",
+      "note": "최초 발급"
+    }
+  ]
+}

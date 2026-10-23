@@ -1,0 +1,44 @@
+{
+ "job_id": "670d06d7-5051-440b-a82e-369f0f6f209e",
+ "status": "running",
+ "stage": "queued",
+ "benchmark_refs": [
+  {
+   "metric": "F1 Score",
+   "model_value": 0.409,
+   "ref_low": 0.7,
+   "ref_high": 0.85,
+   "position": "below",
+   "direction": "higher",
+   "quality": "worse",
+   "target_value": 0.45,
+   "target_position": "below",
+   "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+  },
+  {
+   "metric": "Hamming Loss",
+   "model_value": 0.2223,
+   "ref_low": 0.05,
+   "ref_high": 0.2,
+   "position": "above",
+   "direction": "lower",
+   "quality": "worse",
+   "target_value": 0.22,
+   "target_position": "above",
+   "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+  },
+  {
+   "metric": "Jaccard Index",
+   "model_value": 0.4937,
+   "ref_low": 0.65,
+   "ref_high": 0.82,
+   "position": "below",
+   "direction": "higher",
+   "quality": "worse",
+   "target_value": 0.45,
+   "target_position": "below",
+   "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+  }
+ ],
+ "result": null
+}
