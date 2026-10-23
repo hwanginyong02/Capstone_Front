@@ -47,7 +47,7 @@ export const routes = [
   { path: "/app/composer", Component: MaterialPicker },
   { path: "/workspaces", Component: WorkspaceList },
   { path: "/workspaces/:workspaceId", Component: WorkspaceDetail },
-  // 모델 버전 비교는 폐지됐다(docs/WORKFLOW_REDESIGN.md §11). 저장된 링크가 죽지 않도록
+  // 모델 버전 비교는 폐지됐다(docs/MATERIAL_PICKER.md §1). 저장된 링크가 죽지 않도록
   // 그 워크스페이스로 보낸다.
   {
     path: "/workspaces/:workspaceId/models/:modelName",
@@ -74,7 +74,7 @@ export const routes = [
   { path: "/report/:id/issue-info", Component: redirectTo("/app/client-info") },
   { path: "/report/:id/data-info", Component: redirectTo("/app/data-info") },
   { path: "/report/:id/model-env", Component: redirectTo("/app/model-env") },
-  // 평가 결과 화면은 폐지됐다(docs/WORKFLOW_REDESIGN.md §11) — 같은 run 의 성적서로 보낸다.
+  // 평가 결과 화면은 폐지됐다(docs/MATERIAL_PICKER.md §1) — 같은 run 의 성적서로 보낸다.
   {
     path: "/report/:id/summary",
     Component: redirectWithParams(({ id }) => "/report/" + (id ?? "")),

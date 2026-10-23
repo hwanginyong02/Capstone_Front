@@ -239,7 +239,7 @@ export interface ComposerField {
   help?: string;
   /**
    * 재료 고르기 화면에서 이름 아래 회색으로 보이는 이 필드만의 짧은 설명.
-   * 문구는 초안이다 — 프로토타입 `data()` 의 desc 를 옮겼다(docs/MATERIAL_PICKER.md §8).
+   * 문구는 초안이다 — 초기 프로토타입의 설명 문구를 옮겼다(docs/MATERIAL_PICKER.md §8).
    */
   description?: string;
   /**

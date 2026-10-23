@@ -354,7 +354,7 @@ describe("persist 마이그레이션 v6 → v7 — 선택지가 영어가 됐다
 
 /**
  * v7 → v8 — 평가 결과 단계가 폐지되고 Details 가 선택 카드 단계 앞으로 왔다
- * (docs/WORKFLOW_REDESIGN.md §11).
+ * (docs/MATERIAL_PICKER.md §1).
  *
  * 남은 단계는 이름이 그대로라 손대지 않는다. 버리는 것은 진행 표시에 남은 `"summary"` 뿐이다.
  */

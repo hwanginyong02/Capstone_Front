@@ -185,7 +185,7 @@ function migrateComposerShapesV9(next: any): any {
 /**
  * v9 → v10 — Details 의 학습 데이터 폼(`datasetInfo`)을 ⑥ 카드로 합쳤다.
  *
- * 같은 값을 두 화면에서 받던 것을 하나로 줄였다(docs/WORKFLOW_REDESIGN.md §10.6). 폼에 적은
+ * 같은 값을 두 화면에서 받던 것을 하나로 줄였다. 폼에 적은
  * 값을 ⑥ 의 같은 칸으로 옮기고 `datasetInfo` 는 지운다. ⑥ 에 이미 값이 있으면 덮지 않는다 —
  * 카드 값이 나중에 생긴 쪽이다.
  *
@@ -571,7 +571,7 @@ function migrateUnknownPerEntryV15(next: any): any {
  * 모순이 생긴다. 네 입력 그룹을 비운다 — ⑤ 는 선택지가 이미 영어였으므로 남긴다.
  *
  * **v7 → v8**: 평가 결과(`"summary"`) 단계가 폐지되고 Details 가 선택 카드 단계 앞으로
- * 왔다(docs/WORKFLOW_REDESIGN.md §11). 완료 목록에서 `"summary"` 를 지우고, 현재 위치면
+ * 왔다(docs/MATERIAL_PICKER.md §1). 완료 목록에서 `"summary"` 를 지우고, 현재 위치면
  * 검증 다음 단계인 Details(`clientInfo`)로 옮긴다. 순서가 바뀐 나머지 단계는 이름이 그대로라
  * 손대지 않는다 — 진입 가드가 처음 미완료 단계로 보낸다.
  *
@@ -733,7 +733,7 @@ interface WorkflowState {
    *
    * 걸을 단계 목록은 `composerCards`·`cardOrder` 에서 계산되므로 번호의 뜻이 선택에 따라 달라진다.
    * 저장소를 왕복하는 값이 그런 번호면 카드를 토글할 때마다 진행 표시가 조용히 어긋난다
-   * (docs/WORKFLOW_REDESIGN.md §3.3 이 경고한 상황). 화면에 보일 번호는 목록 위치에서
+   * (docs/MATERIAL_PICKER.md §1). 화면에 보일 번호는 목록 위치에서
    * 그때그때 만든다(`stepNumberOf`).
    */
   currentStepId: StepId;

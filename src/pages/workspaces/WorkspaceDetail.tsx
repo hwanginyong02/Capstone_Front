@@ -76,7 +76,7 @@ export function WorkspaceDetail() {
       </section>
 
       {/* 모델별 카드와 버전 비교는 걷어냈다 — 고객(시험 기관)은 성적서를 내려고 평가하지,
-          같은 모델의 버전끼리 견주지 않는다(docs/WORKFLOW_REDESIGN.md §11). */}
+          같은 모델의 버전끼리 견주지 않는다(docs/MATERIAL_PICKER.md §1). */}
       <Card className="rounded-lg">
         <CardHeader>
           <CardTitle>평가 결과</CardTitle>

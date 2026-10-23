@@ -30,7 +30,7 @@ export function positiveClassNotice(taskType: string, positiveClass: string | nu
  *
  * ⑤ 의 답은 재료 선택 점검 3층의 기준점이다. 바로 다음 지표 화면이 이 답으로 "목적별 점검"을
  * 보여 주고 "추천 지표"를 고르며, 검증 화면의 생성 전 안내가 다시 알린다(`checkMaterialSelection`).
- * 종전에는 지표 화면 맨 위에 있었다(WORKFLOW_REDESIGN §10.1).
+ * 종전에는 지표 화면 맨 위에 있었다.
  */
 export function Perspective() {
   const store = useWorkflowStore();

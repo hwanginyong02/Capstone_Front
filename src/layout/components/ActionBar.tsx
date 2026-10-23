@@ -13,7 +13,7 @@ interface ActionBarProps {
   leftAction?: React.ReactNode;
   /**
    * 다음 버튼 **왼쪽**에 놓는 요소. 입력 화면의 "비어 있는 칸" 한 줄(`RemainingNotice`)이
-   * 여기 들어간다. 배치는 docs/COMPOSER_DESIGN.md "Action Bar" 를 따른다.
+   * 여기 들어간다. 배치는 docs/imports/Guidelines.md "Action Bar" 를 따른다.
    */
   rightAction?: React.ReactNode;
   /** 버튼 높이. 기본 36px, `lg` 는 40px. */
@@ -45,7 +45,7 @@ export function ActionBar({
           {leftAction}
         </div>
 
-        {/* 요약과 다음 버튼 사이 16px(docs/COMPOSER_DESIGN.md). 요약이 없으면 차이가 없다. */}
+        {/* 요약과 다음 버튼 사이 16px(docs/imports/Guidelines.md "Action Bar"). 요약이 없으면 차이가 없다. */}
         <div className="flex items-center gap-4">
           {rightAction}
           {showNext && (
