@@ -4,7 +4,7 @@ import { ReportSections } from "../report/ReportSections";
 /**
  * 랜딩의 최종 성적서 미리보기.
  *
- * **iframe 이 아니라 고정 예시를 직접 렌더한다**(ISSUES.md E-06).
+ * **iframe 이 아니라 고정 예시를 직접 렌더한다**(E-06).
  * 종전에는 `/report/preview` 를 iframe 으로 띄웠는데 그 URL 에 `?showcase=1` 이 없어
  * persist 우회가 발동하지 않았다 — iframe 이 방문자의 localStorage 를 정상 재수화해
  * **방문자의 실제 회사명·사업자등록번호·주소가 공개 랜딩 페이지에 렌더**됐다.

@@ -7,7 +7,7 @@ import { stepIdToPath } from "../utils/domain/workflowSteps";
 import { ensureActiveWorkspace } from "../utils/domain/ensureActiveWorkspace";
 
 /**
- * ISSUES.md E-02 · E-06 (2026-09-07 ★확정된 제품 결정 7).
+ * E-02 · E-06 (2026-09-07 ★확정된 제품 결정 7).
  *
  * `/report/preview` 는 라우트가 아니라 `/report/:id` 에 `id="preview"` 로 매칭되는
  * 문자열 리터럴 뭉치였다. 그 화면은 워크플로우 store 를 직접 읽어 성적서를 조립하므로

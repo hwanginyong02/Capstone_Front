@@ -1,7 +1,7 @@
 /**
  * Step 5 진행 판정 — 컬럼 매핑으로 '다음 단계'를 허용할지 결정한다.
  *
- * ISSUES.md E-13 — 종전 판정은 `missingRoles.length === 0 && duplicateCount === 0 &&
+ * E-13 — 종전 판정은 `missingRoles.length === 0 && duplicateCount === 0 &&
  * (resolvedTaskType !== "binary" || positiveClass !== "")` 였다. 여기엔 두 구멍이 있었고,
  * 둘이 겹치면 **매핑 행이 0개인데 '유효'** 가 된다.
  *

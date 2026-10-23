@@ -97,7 +97,7 @@ export function buildEvaluatePayload(state: EvaluationRequestSource): EvaluatePa
       class_distribution: state.metadata?.class_distribution || {},
     },
     beta: resolveBeta(state.metricDetails),
-    // 하드 예측이 없을 때 확률에서 예측을 파생하는 기준(ISSUES.md A-01). 성적서 합격 목표값과 다른 개념이다.
+    // 하드 예측이 없을 때 확률에서 예측을 파생하는 기준(A-01). 성적서 합격 목표값과 다른 개념이다.
     // 지금 매핑에서 쓰이는 값만(S2 P1) — 검증 요청과 같은 함수.
     decision_threshold: requestDecisionThreshold(taskType, state.columnMapping, state.decisionThreshold),
   };

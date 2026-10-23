@@ -135,7 +135,7 @@ const RECOMMENDED_METRICS: Record<TaskType, string[]> = {
  * **`id`(sample_id)는 여기 들어가지 않는다.** SPEC §0 이 '선택(권장)'으로 규정하고
  * 백엔드 요구표에도 sample_id 가 한 번도 없는데, 종전에는 43개 항목이 전부 "id" 로
  * 시작해 매핑 화면이 '다음'을 하드 차단했다 — id 컬럼이 없는 데이터셋은 백엔드까지
- * 가보지도 못했다(ISSUES.md A-13). id 는 여전히 매핑 **가능**하고 중복 검사에 쓰인다.
+ * 가보지도 못했다(A-13). id 는 여전히 매핑 **가능**하고 중복 검사에 쓰인다.
  */
 const REQUIRED_COLUMNS_BY_METRIC: Record<TaskType, Partial<Record<string, RequiredColumnCode[]>>> = {
   binary: {
@@ -256,7 +256,7 @@ export function probabilityColumnNameRule(taskType: TaskType): string | null {
  * 요구 역할 중 실제로 배정되지 않은 것.
  *
  * 예측 역할은 확률 역할이 배정돼 있으면 충족된 것으로 본다 — 백엔드가 확률에서
- * 예측을 파생하기 때문이다(ISSUES.md A-01·A-02). 종전에는 단순히 개수 0 만 봐서,
+ * 예측을 파생하기 때문이다(A-01·A-02). 종전에는 단순히 개수 0 만 봐서,
  * 확률만 가진 사용자가 '다음' 버튼이 눌리지 않아 백엔드까지 가보지도 못했다.
  */
 export function resolveMissingRoleCodes(

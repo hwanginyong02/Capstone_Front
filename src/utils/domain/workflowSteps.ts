@@ -55,12 +55,12 @@ export function prevStepId(id: StepId, steps: StepId[]): StepId | null {
 }
 
 /**
- * 진입 가능 여부 — 선행 단계를 마치지 않은 단계로 직접 들어오는 것을 막는다(ISSUES.md E-12).
+ * 진입 가능 여부 — 선행 단계를 마치지 않은 단계로 직접 들어오는 것을 막는다(E-12).
  *
  * 종전 `canEnterStep` 은 `step - 1` 을 선행 단계로 삼았다. 단계가 고정일 때만 성립하는
  * 산수다 — 카드를 끄면 번호가 당겨지므로 이제는 **계산된 목록에서의 직전 항목**을 본다.
  *
- * 이 가드는 persist 이후에야 성립한다(ISSUES.md E-01). 종전에는 새로고침마다 완료 표시가
+ * 이 가드는 persist 이후에야 성립한다(E-01). 종전에는 새로고침마다 완료 표시가
  * 비어서, 가드를 켜면 정상 사용자도 첫 단계로 튕겼다.
  */
 export function canEnterStepId(
@@ -109,7 +109,7 @@ export function composerNextStep(steps: StepId[], completed: StepId[], returnSte
  *
  * run 에 매인 단계는 run id 가 있어야 목적지를 만들 수 있다. 없으면 **워크스페이스 목록**으로
  * 보낸다 — 종전의 `/report/preview` 는 저장되지 않는 임시 성적서를 만들어 발급·재조회를
- * 불가능하게 했다(ISSUES.md E-02·E-06).
+ * 불가능하게 했다(E-02·E-06).
  */
 export function stepIdToPath(id: StepId, runId?: string | null): string {
   const step = getStepDefinition(id);

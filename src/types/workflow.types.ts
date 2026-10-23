@@ -34,7 +34,7 @@ export interface BasicInfoFormData {
   fax: string;
   address: string;
   /** ISO 날짜 문자열("YYYY-MM-DD"). 이 상태는 localStorage 를 왕복하므로
-   *  직렬화 가능한 형태가 참 타입이다(ISSUES.md E-09). UI 경계에서만 Date 로 변환한다. */
+   *  직렬화 가능한 형태가 참 타입이다(E-09). UI 경계에서만 Date 로 변환한다. */
   contractDate?: string;
   reportPurpose: string;
   /**

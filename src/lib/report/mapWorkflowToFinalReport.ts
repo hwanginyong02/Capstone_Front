@@ -8,7 +8,7 @@
  *
  * **fallback MOCK 은 존재하지 않는다.** 종전 이 주석은 `mockReport` 를 fallback 으로
  * 쓴다고 적었으나 그 심볼은 저장소에 없다 — 성적서에 가짜 수치가 남아 있다고 오인하게
- * 만드는 서술이었다(ISSUES.md H-11).
+ * 만드는 서술이었다(H-11).
  */
 import {
   METRICS,
@@ -381,7 +381,7 @@ function runMaterialCheck(
 
 function buildMeta(input: MapWorkflowToReportInput, taskType: TaskType): FinalReportMeta {
   const today = formatDate(new Date());
-  // contractDate 는 이미 "YYYY-MM-DD" 문자열이다(ISSUES.md E-09 — 직렬화 왕복 안전).
+  // contractDate 는 이미 "YYYY-MM-DD" 문자열이다(E-09 — 직렬화 왕복 안전).
   // 저장소에 남아 있는 구 형식(Date 의 toJSON 결과)도 정규화해 받는다.
   const contractDate = normalizeIsoDate(input.basicInfo.contractDate);
 

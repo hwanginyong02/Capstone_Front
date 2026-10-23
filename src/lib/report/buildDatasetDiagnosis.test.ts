@@ -3,7 +3,7 @@ import type { ImbalanceEffect } from "../../types/finalReport.types";
 import { buildDatasetDiagnosis, imbalanceRatioOf, printedImbalanceRatio } from "./buildDatasetDiagnosis";
 
 /**
- * ISSUES.md C-04 (2026-09-07 ★확정된 제품 결정 6-②).
+ * C-04 (2026-09-07 ★확정된 제품 결정 6-②).
  *
  * 정답 클래스가 1종이면 불균형비는 정의되지 않는다. 백엔드는 이제 M23 을 '측정 불가'로
  * 내려보내는데(`imbalanceRatio` 가 undefined 로 도착한다), 이 함수가 그때 **분포에서

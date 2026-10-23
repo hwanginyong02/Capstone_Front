@@ -122,14 +122,14 @@ export function ColumnMapping({
     const duplicateCount = countDuplicateRoles(roleCounts);
 
     // 예측 역할은 확률 역할이 배정돼 있으면 충족된 것으로 본다 — 백엔드가 확률에서
-    // 예측을 파생하기 때문이다(ISSUES.md A-01·A-02). 규칙은 evaluationData 의
+    // 예측을 파생하기 때문이다(A-01·A-02). 규칙은 evaluationData 의
     // PREDICTION_ROLE_ALTERNATIVES 한 곳에만 있다.
     const missingCodes = new Set(
       resolveMissingRoleCodes(resolvedTaskType, requiredRoles.map((r) => r.code), roleCounts),
     );
     const missingRoles = requiredRoles.filter((role) => missingCodes.has(role.code));
 
-    // 판정은 순수 함수에 위임한다(ISSUES.md E-13). 특히 taskType 은 **둔갑 전 원본**을 넘긴다 —
+    // 판정은 순수 함수에 위임한다(E-13). 특히 taskType 은 **둔갑 전 원본**을 넘긴다 —
     // resolvedTaskType 을 쓰면 빈 taskType 이 "multiclass" 로 둔갑해 binary 검사를 건너뛴다.
     const assignedRoleCount = rows.filter(
       (row) => row.confirmedRole && row.confirmedRole !== "ignore",
@@ -187,7 +187,7 @@ export function ColumnMapping({
         </Alert>
 
         {/* 왜 진행할 수 없는지 이 화면에서 알려준다 — 종전에는 버튼만 막히고, 실제 사유는
-            백엔드 왕복 뒤 raw alert 로만 드러났다(ISSUES.md E-13). */}
+            백엔드 왕복 뒤 raw alert 로만 드러났다(E-13). */}
         {mappingSummary.validityMessage && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />

@@ -1,7 +1,7 @@
 /**
  * 백엔드가 '사용자 안내용'으로 내려보내는 값들을 화면이 읽는 한 곳.
  *
- * ISSUES.md B-03 · B-04 · D-16 · A-12 — 백엔드는 세 종류의 안내를 명시적으로
+ * B-03 · B-04 · D-16 · A-12 — 백엔드는 세 종류의 안내를 명시적으로
  * 내려보내는데 프론트에 소비처가 **하나도 없었다**(`column_notes`·
  * `available_metric_ids`·`unavailable_metric_ids` grep 0건, evaluate 의
  * `warnings` 도 참조 0건). 값을 잘못 만드는 쪽이 아니라 **버리는 쪽**의 결함이다.
@@ -60,7 +60,7 @@ export function collectBackendNotices(notices: BackendNotices): BackendNotice[] 
 /*
  * `countComputableMetrics` 는 제거했다(2026-09-19).
  *
- * "계산 가능한 지표 N/M"(구 SPEC §6 · ISSUES.md A-12)을 만들던 함수다. 전부 계산
+ * "계산 가능한 지표 N/M"(구 SPEC §6 · A-12)을 만들던 함수다. 전부 계산
  * 가능할 때도 'N/N' 이 떠서 사용자가 읽고 할 일이 없는 문구였다.
  *
  * 지표 선택이 매핑보다 앞이던 때는 매핑 화면이 고른 지표의 필수 역할 누락을 직접 막았다

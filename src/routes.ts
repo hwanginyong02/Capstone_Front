@@ -81,7 +81,7 @@ export const routes = [
   },
   // 지표 상세(구 3단계)는 폐지됐다 — β 는 지표 선택으로, 목표값은 성적서 구간으로 갔다.
   { path: "/app/metric-detail", Component: redirectTo("/app/metrics") },
-  // 기본 정보는 더 이상 평가 구간의 단계가 아니다(ISSUES.md 없음 — 2026-09-19 재배치).
+  // 기본 정보는 더 이상 평가 구간의 단계가 아니다(2026-09-19 재배치 — 분류 유형은 작업 유형 화면에서, 회사·모델 정보는 의뢰자 정보·평가 대상 모델 화면에서 받는다).
   { path: "/app/basic-info", Component: redirectTo("/app") },
   // 레거시 /step/* 경로는 정식 /app/* 로 리다이렉트 (기존 북마크/링크 보존)
   { path: "/step/basic-info", Component: redirectTo("/app") },
@@ -91,16 +91,16 @@ export const routes = [
   { path: "/step/column-mapping", Component: redirectTo("/app/column-mapping") },
   { path: "/step/data-validation", Component: redirectTo("/app/data-validation") },
   // 폐지된 임시 성적서 경로. 옛 북마크가 `/report/:id` 에 id="preview" 로 매칭돼
-  // 빈 성적서를 렌더하지 않도록 명시적으로 앞에 둔다(ISSUES.md E-06).
+  // 빈 성적서를 렌더하지 않도록 명시적으로 앞에 둔다(E-06).
   { path: "/report/preview", Component: redirectTo("/workspaces") },
-  // 성적서 번호로 서버 보관본 복원(ISSUES.md F-04).
+  // 성적서 번호로 서버 보관본 복원(F-04).
   // react-router 는 정적 세그먼트("no")를 동적 세그먼트(":id")보다 높게 랭크하므로
   // 이 항목의 배열 위치와 무관하게 "/report/no/RPT-..." 가 이긴다
   // (ReportByNumber.test.tsx 의 '라우팅' 테스트가 그 전제를 고정한다).
   { path: "/report/no/:reportNo", Component: ReportByNumber },
   { path: "/report/:id", Component: Report },
   { path: "/report/:id/print", Component: ReportPrint },
-  // 미매칭 URL 은 백지 대신 안내 화면으로(ISSUES.md E-12).
+  // 미매칭 URL 은 백지 대신 안내 화면으로(E-12).
   // react-router 는 "*" 를 가장 낮게 랭크하므로 다른 라우트를 가리지 않는다.
   { path: "*", Component: NotFound },
 ] as const;

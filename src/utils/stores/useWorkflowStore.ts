@@ -4,7 +4,7 @@
  * 이 스토어는 전체 평가 워크플로우의 상태(각 스텝의 입력 데이터, 현재 단계, 완료 여부 등)를
  * 관리하며, 최종 평가 리포트 데이터를 생성하는 로직을 포함합니다.
  *
- * ISSUES.md E-01 — 종전에는 persist 가 없어 **새로고침 한 번으로 검증 앞 단계 입력이 전부
+ * E-01 — 종전에는 persist 가 없어 **새로고침 한 번으로 검증 앞 단계 입력이 전부
  * 사라졌다.** 수십 분간 입력한 기업정보·모델정보·지표·매핑이 날아가고, 그것을 알리는
  * 신호는 검증 단계의 "업로드된 파일이 없습니다" 문구뿐이었다.
  *
@@ -532,7 +532,7 @@ function migrateUnknownPerEntryV15(next: any): any {
 /**
  * 저장된 워크플로우 상태를 현재 규칙으로 옮긴다(순수 함수 — 테스트가 직접 호출한다).
  *
- * **v1 → v2**: multilabel 에서 M1·M11·M12·M13 이 제거됐다(ISSUES.md A-04, 결정 2).
+ * **v1 → v2**: multilabel 에서 M1·M11·M12·M13 이 제거됐다(A-04, 결정 2).
  * 저장된 `selectedMetricIds` 에서 현재 task_type 이 노출하지 않는 지표를 걸러낸다.
  * 지표 ID 를 하드코딩하지 않고 METRICS 에서 유도하므로 노출 목록이 또 바뀌어도 그대로 둔다.
  *
@@ -758,7 +758,7 @@ interface WorkflowState {
   trainingUnsuitableExampleFiles: UploadedFileInfo[];
 
   /**
-   * 결정 임계값 — 하드 예측이 없을 때 확률에서 예측을 파생하는 기준(ISSUES.md A-01).
+   * 결정 임계값 — 하드 예측이 없을 때 확률에서 예측을 파생하는 기준(A-01).
    *
    * **성적서 합격 목표값(`metricDetails[id].targetValue`)과 다른 개념이다.**
    * 백엔드 계약 필드명도 `decision_threshold` 로 분리돼 있다.
@@ -768,7 +768,7 @@ interface WorkflowState {
   decisionThreshold: number | Record<string, number> | null;
 
   /**
-   * 백엔드가 '사용자 안내용'으로 내려보낸 값들(ISSUES.md B-03·B-04·D-16·A-12).
+   * 백엔드가 '사용자 안내용'으로 내려보낸 값들(B-03·B-04·D-16·A-12).
    * 각각 평가 데이터·매핑 단계에서 도착하지만 **검증 단계 상단에 합쳐서** 보여준다 —
    * 매핑 단계는 안내가 도착하는 순간 이미 다음 화면으로 넘어가 있다.
    */
@@ -791,11 +791,11 @@ interface WorkflowState {
 
   /**
    * 저장소에서 재수화해, 입력은 있는데 원본 파일이 없는 상태.
-   * 파일은 어떤 경우에도 복원할 수 없으므로 재업로드를 유도해야 한다(ISSUES.md E-01).
+   * 파일은 어떤 경우에도 복원할 수 없으므로 재업로드를 유도해야 한다(E-01).
    */
   needsFileReupload: boolean;
 
-  /** 가장 최근에 만든 평가 run 의 id. 성적서로 되돌아가는 경로에 쓴다(ISSUES.md E-16). */
+  /** 가장 최근에 만든 평가 run 의 id. 성적서로 되돌아가는 경로에 쓴다(E-16). */
   lastRunId: string | null;
 
   /**
@@ -992,7 +992,7 @@ export const WORKFLOW_STORAGE_KEY = "ml-evaluation-workflow";
  * 시연 모드(?showcase=1) 여부.
  *
  * showcase 는 `seedShowcaseData` 로 **실제 store 에 가짜 기업정보·사업자등록번호를 주입**하고,
- * WorkflowShell 이 라우팅마다 그것을 다시 실행한다(ISSUES.md E-05). persist 를 그대로 붙이면
+ * WorkflowShell 이 라우팅마다 그것을 다시 실행한다(E-05). persist 를 그대로 붙이면
  * 그 가짜 데이터가 사용자의 실제 작업 위에 영속된다.
  * 그래서 시연 중에는 저장소를 **읽지도 쓰지도 않는다** — 시연이 실제 작업을 덮지 않고,
  * 실제 작업이 시연 화면에 새어 나오지도 않는다.
@@ -1041,7 +1041,7 @@ export const useWorkflowStore = create<WorkflowState>()(
           validationResult: null,
           // 작업 유형이 바뀌면 뒤 단계의 근거가 전부 사라진다. 완료 표시와 데이터셋 정보를
           // 남겨두면 (a) 빈 상태로 뒤 단계에 점프할 수 있고 (b) 이전 평가의 표본 수가 새
-          // 성적서에 인쇄된다(ISSUES.md E-08). persist 도입 전에는 새로고침이 사실상
+          // 성적서에 인쇄된다(E-08). persist 도입 전에는 새로고침이 사실상
           // 초기화 역할을 해서 세션 안에 갇혀 있던 오염이다. 학습 데이터 정보는 이제 ⑥ 카드
           // 값이라 아래 `EMPTY_COMPOSER_INPUTS` 가 함께 비운다.
           completedStepIds: [],
@@ -1177,7 +1177,7 @@ export const useWorkflowStore = create<WorkflowState>()(
       /**
        * 저장된 상태를 현재 규칙으로 옮긴다.
        *
-       * v1 → v2: multilabel 에서 M1·M11·M12·M13 이 제거됐다(ISSUES.md A-04, 결정 2).
+       * v1 → v2: multilabel 에서 M1·M11·M12·M13 이 제거됐다(A-04, 결정 2).
        * 걸러내지 않으면 기존 브라우저에 남은 선택 목록이 그대로 평가로 전송되고,
        * 백엔드가 `failed_metrics` 로 돌려준 것을 성적서 6절이 '측정 불가'로 인쇄한다.
        * (결정 4 '앞으로 것만 정정'은 **발급된 성적서**에 대한 결정이지 브라우저에
@@ -1193,7 +1193,7 @@ export const useWorkflowStore = create<WorkflowState>()(
             window.localStorage.setItem(name, value);
           } catch {
             // 용량 초과 등으로 저장에 실패해도 진행 중인 입력을 잃게 하지 않는다.
-            // (저장소가 가득 찬 상황의 안내는 검증 단계의 저장 경로가 담당한다 — ISSUES.md E-11)
+            // (저장소가 가득 찬 상황의 안내는 검증 단계의 저장 경로가 담당한다 — E-11)
           }
         },
         removeItem: (name) => window.localStorage.removeItem(name),
@@ -1203,7 +1203,7 @@ export const useWorkflowStore = create<WorkflowState>()(
        * - `rawFile` 제외: File 객체는 JSON 직렬화가 원리적으로 불가능하다. 대신
        *   `uploadedFile`(메타)은 저장해 "파일이 있었는데 지금은 없다"를 감지한다.
        * - `validationResult` 제외: 응답 전문이라 용량 기여가 크고 검증 단계 재진입 시
-       *   다시 받으면 된다(ISSUES.md E-11).
+       *   다시 받으면 된다(E-11).
        * - `metadata` 포함: 매핑 단계의 양성 클래스·감지 클래스·컬럼 고유값이 여기 있어,
        *   빼면 새로고침 후 매핑 화면이 무너져 persist 의 효용이 절반이 된다.
        *   백엔드가 컬럼당 고유값을 200개로 상한하므로 용량은 감당 가능하다.

@@ -2,7 +2,7 @@ import { useWorkspaceStore } from "../stores/useWorkspaceStore";
 import { toIsoDate } from "./isoDate";
 
 /**
- * 활성 워크스페이스를 보장한다 — 없으면 하나 만든다 (ISSUES.md E-02).
+ * 활성 워크스페이스를 보장한다 — 없으면 하나 만든다 (E-02).
  *
  * 종전에는 워크스페이스 없이 워크플로우를 완주할 수 있었고, 검증 단계에서 계산한 성적서를
  * **버린 채** `/report/preview` 로 갔다. 그 화면의 성적서는 어디에도 저장되지 않아

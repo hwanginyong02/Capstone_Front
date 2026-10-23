@@ -7,7 +7,7 @@ import { DEFAULT_EVAL_ENV_CONSTANTS } from "./reportConstants";
 const read = (p: string) => readFileSync(resolve(__dirname, "../..", p), "utf-8");
 
 /**
- * ISSUES.md F-08 · F-09 (2026-09-07 ★확정된 제품 결정 4 — 앞으로 것만 정정).
+ * F-08 · F-09 (2026-09-07 ★확정된 제품 결정 4 — 앞으로 것만 정정).
  */
 
 describe("F-09 — 평가 도구·일시는 서버 실측값을 쓴다", () => {

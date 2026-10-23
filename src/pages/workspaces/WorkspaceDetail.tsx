@@ -34,7 +34,7 @@ export function WorkspaceDetail() {
     );
 
   const handleStartEvaluation = () => {
-    // 워크플로우 상태가 이제 저장소에 남으므로(ISSUES.md E-01), 새 평가를 시작할 때
+    // 워크플로우 상태가 이제 저장소에 남으므로(E-01), 새 평가를 시작할 때
     // 명시적으로 초기화하지 않으면 **이전 평가의 입력이 새 성적서에 섞인다**.
     // 종전에는 새로고침이 사실상 초기화 역할을 해서 resetWorkflow 호출부가 0곳이었다(E-08).
     resetWorkflow();

@@ -6,7 +6,7 @@ import { BackendNoticePanel } from "./BackendNoticePanel";
 
 const read = (p: string) => readFileSync(resolve(__dirname, "../..", p), "utf-8");
 
-/** ISSUES.md B-03 · B-04 · D-16 · A-12 (★작은 판단 ①). */
+/** B-03 · B-04 · D-16 · A-12 (★작은 판단 ①). */
 describe("BackendNoticePanel", () => {
   it("안내가 없으면 아무것도 그리지 않는다(빈 배너 금지)", () => {
     const { container } = render(<BackendNoticePanel />);

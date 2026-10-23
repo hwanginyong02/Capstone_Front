@@ -1,7 +1,7 @@
 /**
  * 워크플로우 상태에 저장하는 날짜의 표현 — ISO 날짜 문자열("YYYY-MM-DD").
  *
- * ISSUES.md E-09(및 E-01 의 선결 조건) — 종전에는 `basicInfo.contractDate` 가 `Date` 였다.
+ * E-09(및 E-01 의 선결 조건) — 종전에는 `basicInfo.contractDate` 가 `Date` 였다.
  * 그런데 이 상태는 워크스페이스 스냅샷으로 localStorage 를 왕복하는 것이 **정상 동작**이고,
  * JSON 왕복 후에는 문자열이 되므로 `formatDate(d: Date)` 가
  * `TypeError: d.getFullYear is not a function` 을 던졌다.

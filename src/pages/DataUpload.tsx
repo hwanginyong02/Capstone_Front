@@ -69,7 +69,7 @@ export function DataUpload() {
             }
           : metadata,
       );
-      // 백엔드가 만든 컬럼 대조 안내를 검증 단계까지 나른다(ISSUES.md B-03).
+      // 백엔드가 만든 컬럼 대조 안내를 검증 단계까지 나른다(B-03).
       store.setColumnNotes(columnNotes);
 
       flow.goNext();

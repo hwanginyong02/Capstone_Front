@@ -65,7 +65,7 @@ export function DataValidation() {
 
   // 검증이 실패했거나 아예 수행되지 않은 경우(validationData === null)를 '오류 0건'으로
   // 읽지 않는다. 종전 판정 `(validationData?.error_count ?? 0) > 0` 은 그 둘을 `?? 0` 에
-  // 흡수시켜, 검증 절이 통째로 빈 성적서를 발급 가능 상태까지 통과시켰다(ISSUES.md E-04).
+  // 흡수시켜, 검증 절이 통째로 빈 성적서를 발급 가능 상태까지 통과시켰다(E-04).
   const gateReason = getValidationGateReason({ validationData, isLoading, error });
   const gateMessage = describeValidationGate(gateReason);
 
@@ -123,7 +123,7 @@ export function DataValidation() {
 
       const { workflowSnapshot, reportData } = buildEvaluationResult();
 
-      // 워크스페이스가 없으면 만든다(ISSUES.md E-02). 종전에는 없을 때 계산해 둔
+      // 워크스페이스가 없으면 만든다(E-02). 종전에는 없을 때 계산해 둔
       // reportData 를 **버리고** /report/preview 로 갔고, 그 성적서는 어디에도
       // 저장되지 않아 발급·재조회가 전부 불가능했다.
       const workspaceId = ensureActiveWorkspace(store.basicInfo.modelName ?? "");
@@ -141,7 +141,7 @@ export function DataValidation() {
       });
 
       // 저장에 성공한 뒤에만 단계를 넘긴다(실패 시 검증 화면에 머물러 재시도 가능).
-      // run id 를 남겨야 성적서를 벗어난 뒤 성적서 탭으로 돌아올 수 있다(ISSUES.md E-16).
+      // run id 를 남겨야 성적서를 벗어난 뒤 성적서 탭으로 돌아올 수 있다(E-16).
       store.setLastRunId(run.id);
       // 다음은 확인과 생성 — 검증은 모든 재료 입력 뒤, 성적서 바로 앞이다(docs/MATERIAL_PICKER.md
       // §3). 평가 API 는 성적서 화면에서 불린다. 단계 목록이 순서를 들고 있으므로 여기서 목적지를
@@ -223,7 +223,7 @@ export function DataValidation() {
             {materialCheck && (
               <MaterialCheckNotice check={materialCheck} onFix={handleFix} canFixInInput={canFixInInput} />
             )}
-            {/* 백엔드가 평가 데이터·매핑 단계에서 내려보낸 안내를 여기 합쳐 보여준다(ISSUES.md B-03·B-04·A-12).
+            {/* 백엔드가 평가 데이터·매핑 단계에서 내려보낸 안내를 여기 합쳐 보여준다(B-03·B-04·A-12).
                 그 화면들에서 띄우면 사용자는 이미 다음 단계로 넘어간 뒤라 읽지 못한다. */}
             <BackendNoticePanel
               columnNotes={store.columnNotes}
