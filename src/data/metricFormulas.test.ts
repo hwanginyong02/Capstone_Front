@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { METRICS, getAvailableMetrics, type TaskType } from "./evaluationData";
 
 /**
- * ISSUES.md C-05 — 성적서 5절 '시험방법 및 산정식' 칸에 인쇄되는 공식이 실제 산출값을
+ * C-05 — 성적서 5절 '시험방법 및 산정식' 칸에 인쇄되는 공식이 실제 산출값을
  * 만들지 못했다.
  *
  * 구현은 SPEC 과 맞다. **인쇄 문자열만 어긋났다.** 그래서 독자가 표에 적힌 식으로

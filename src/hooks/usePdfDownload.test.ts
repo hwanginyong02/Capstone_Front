@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { usePdfDownload } from "./usePdfDownload";
 
 /**
- * ISSUES.md E-07 — 존재하지 않는 엔드포인트를 await 한 뒤 catch 에서 새 탭을 열었다.
+ * E-07 — 존재하지 않는 엔드포인트를 await 한 뒤 catch 에서 새 탭을 열었다.
  * 서버 PDF 는 ★결정 8 로 이번 범위에서 제외됐으므로, 그 왕복은 **영원히 실패한다**.
  */
 describe("usePdfDownload", () => {

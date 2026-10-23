@@ -1,5 +1,5 @@
 /**
- * 자동 컬럼 분석 타임아웃·취소 — ISSUES.md E-18.
+ * 자동 컬럼 분석 타임아웃·취소 — E-18.
  *
  * 종전: fetch 에 signal 도 타임아웃도 없었다(src/ 전체에서 AbortController 는
  * fetchNarrative.ts 한 파일뿐이었다). 백엔드는 blanket 재시도 x SDK max_retries 로

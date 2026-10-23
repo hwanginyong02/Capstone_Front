@@ -192,7 +192,7 @@ describe("새 키가 있는 응답(백엔드 골든 이진) — 성적서 저장
     expect(factSheet.problems.length).toBeGreaterThan(0);
   });
 
-  it("평가 전처리 경고를 성적서 데이터로 나른다(ISSUES.md D-16)", () => {
+  it("평가 전처리 경고를 성적서 데이터로 나른다(D-16)", () => {
     const withWarnings = { ...GOLDEN_BINARY, warnings: ["2개 행이 제외되었습니다"] };
     const assembled = assembleEvaluatedReport(baseReport(), withWarnings, inputs());
     expect(assembled.stage1Report.evaluationWarnings).toEqual(["2개 행이 제외되었습니다"]);

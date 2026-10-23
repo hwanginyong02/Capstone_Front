@@ -45,7 +45,7 @@ export function ColumnMapping() {
         selectedMetricIds: [],
       });
 
-      // 경고와 가용 지표는 진행을 막지 않지만 **버려서도 안 된다**(ISSUES.md B-04·A-12).
+      // 경고와 가용 지표는 진행을 막지 않지만 **버려서도 안 된다**(B-04·A-12).
       // 검증 단계 상단에 합쳐 보여준다 — 여기서 띄우면 안내가 도착하는 순간 이미 다음
       // 화면으로 넘어가 있다.
       store.setMappingFeedback({

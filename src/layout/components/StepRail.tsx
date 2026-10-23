@@ -41,7 +41,7 @@ export function StepRail() {
     const store = useWorkflowStore.getState();
     store.setCurrentStepId(id);
     // run 에 매인 단계는 방금 만든 run 으로 간다. run 이 없으면 `stepIdToPath` 가 워크스페이스
-    // 목록을 돌려준다 — 종전에는 저장되지 않는 빈 성적서로 갔다(ISSUES.md E-16·E-06).
+    // 목록을 돌려준다 — 종전에는 저장되지 않는 빈 성적서로 갔다(E-16·E-06).
     navigate(stepIdToPath(id, lastRunId));
   };
 

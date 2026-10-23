@@ -82,7 +82,7 @@ export function useIssuance(
         // 비고는 선택이다. 비거나 공백뿐이면 보내지 않아 서버 기본값('최초 발급')을 쓴다.
         note: note?.trim() || undefined,
         // 발급 시점의 성적서 원본을 서버에 보관한다 — 이것이 없으면 번호로 문서를
-        // 복원할 수도, 인쇄물의 진위를 대조할 수도 없다(ISSUES.md F-01).
+        // 복원할 수도, 인쇄물의 진위를 대조할 수도 없다(F-01).
         content: data,
       });
       persist(applyIssuance(data, result));

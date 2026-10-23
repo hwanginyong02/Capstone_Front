@@ -76,7 +76,7 @@ export function Report() {
           평가를 마친 뒤(서술 진행·실패)에는 서술 띠가 상태를 말한다 — 미평가 안내는 평가 전 초안에만. */}
       <UnevaluatedDraftNotice isEvaluated={!!data.isEvaluated || narrative.phase !== "none"} />
 
-      {/* 평가 전처리 경고(ISSUES.md D-16). 이 값은 evaluate 응답에만 실려 오므로
+      {/* 평가 전처리 경고(D-16). 이 값은 evaluate 응답에만 실려 오므로
           검증 화면이 아니라 여기서 도착한다 — 도착하는 자리에서 보여준다. */}
       <BackendNoticePanel evaluationWarnings={data.evaluationWarnings} />
 

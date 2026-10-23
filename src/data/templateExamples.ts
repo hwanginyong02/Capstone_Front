@@ -1,8 +1,8 @@
 /**
  * 분류 유형별 평가 파일 예시.
  *
- * 예시는 `docs/COMPOSER_COMPONENTS.md` ① 평가 데이터의 것을 그대로 옮긴 것이고, 성적서 구성
- * 화면의 "예시 파일 보기"와 업로드 화면의 "Data template" 이 **같은 것을 쓴다.**
+ * 예시는 `docs/COMPOSER_COMPONENTS.md` ① 평가 데이터의 것을 그대로 옮긴 것이고, 평가 흐름
+ * 만들기의 결과 파일 설명 팝업과 업로드 화면의 "파일 예시"가 **같은 것을 쓴다.**
  *
  * 종전에는 두 벌이었다 — 업로드 화면은 `inference_time_ms`·`prob_class_*`·`y_true` 를,
  * 문서는 `latency_ms`·`prob_*`·`true_labels` 를 썼다. 둘 다 SPEC.md 가 허용하는 표기라

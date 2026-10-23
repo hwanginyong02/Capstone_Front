@@ -1,5 +1,5 @@
 /**
- * ISSUES.md E-12 — 렌더 중 예외 시 백지가 되던 문제 / 미매칭 URL 시 백지가 되던 문제.
+ * E-12 — 렌더 중 예외 시 백지가 되던 문제 / 미매칭 URL 시 백지가 되던 문제.
  */
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";

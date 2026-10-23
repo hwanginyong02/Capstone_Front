@@ -1,5 +1,5 @@
 /**
- * 랜딩의 성적서 미리보기에 쓰는 **고정 예시 데이터** (ISSUES.md E-06).
+ * 랜딩의 성적서 미리보기에 쓰는 **고정 예시 데이터** (E-06).
  *
  * 종전 랜딩은 `/report/preview` 를 iframe 으로 띄웠는데, 그 URL 에는 `?showcase=1` 이
  * 없어서 persist 우회가 발동하지 않았다. 결과적으로 iframe 이 방문자의 localStorage 를

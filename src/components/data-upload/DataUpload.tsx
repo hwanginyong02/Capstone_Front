@@ -47,7 +47,7 @@ interface DataUploadProps {
   onUploadedFileChange: (value: UploadedFileInfo | null, rawFile?: File) => void;
   /**
    * 파일 **메타**는 복원됐지만 원본(File 객체)이 없는 상태.
-   * 과거 평가를 편집하거나 새로고침한 뒤에 생긴다(ISSUES.md E-01·E-09).
+   * 과거 평가를 편집하거나 새로고침한 뒤에 생긴다(E-01·E-09).
    */
   needsReupload?: boolean;
   /** 평가 흐름에서 ① 평가 데이터에 넣은 항목. 없으면(평가 흐름 이전) 모든 컬럼을 안내한다. */
@@ -156,7 +156,7 @@ export function DataUpload({
       />
 
       {/* 메타는 있는데 원본이 없는 상태를 "업로드 완료"로 보여주면 안 된다 — 사용자는
-          파일이 있다고 믿고 '다음'을 눌렀다가 실패를 만난다(ISSUES.md E-01·E-09). */}
+          파일이 있다고 믿고 '다음'을 눌렀다가 실패를 만난다(E-01·E-09). */}
       {needsReupload && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />

@@ -94,7 +94,7 @@ export function assembleEvaluatedReport(
     .map((metricId) => {
       // **task 필터를 함께 본다.** 4절(metricList)·5절(metricFormulas)은
       // supportedTaskTypes 로 거르는데 여기만 걸러내지 않아, 그 task 가 노출하지
-      // 않는 지표가 6절 KPI 표에만 숫자로 찍혔다(ISSUES.md A-04 의 인쇄 결과).
+      // 않는 지표가 6절 KPI 표에만 숫자로 찍혔다(A-04 의 인쇄 결과).
       const metric = METRICS.find(
         (m) => m.id === metricId && m.supportedTaskTypes.includes(taskTypeForMetrics),
       );
@@ -242,7 +242,7 @@ export function assembleEvaluatedReport(
   // 혼동행렬의 totalSamples가 가장 정확한 평가 데이터의 row 수 (멀티레이블의 경우 200)
   // 서버가 확정한 표본 수를 최우선으로 쓴다. 종전에는 마지막 폴백으로 학습 데이터 폼의
   // 검증 샘플 수를 썼다 — 모델 학습용 검증 세트 크기라 평가 행 수와 무관하다
-  // (ISSUES.md B-02·E-17). 그 폼은 ⑥ 카드로 합쳐지며 없어졌다.
+  // (B-02·E-17). 그 폼은 ⑥ 카드로 합쳐지며 없어졌다.
   const datasetSize: number | undefined =
     result.n_samples || confusionMatrix?.totalSamples || undefined;
 
@@ -279,7 +279,7 @@ export function assembleEvaluatedReport(
   // TP·TN·FP·FN 건수 — M21 선택과 무관하게 백엔드가 늘 내린다(재료 목록 9절).
   const confusionCounts = parseConfusionCounts(success_metrics.confusion_counts);
   // 파생 예측 사실(SPEC §0 기재 의무) — 7.1 앞 고정 문구와 AI 사실 시트에 쓴다. 백엔드는 실제로
-  // 파생이 일어났을 때만 이 키를 내려보낸다(ISSUES.md A-01).
+  // 파생이 일어났을 때만 이 키를 내려보낸다(A-01).
   const derivedPrediction = success_metrics.derived_prediction ?? undefined;
   // 경계·확신 오류 비율(설계 D30) — 확률이 있는 평가에만 백엔드가 싣는다. 7.1 문장은 지금 만들어
   // 저장한다(발급본은 나중에 문안이 바뀌어도 그대로).
@@ -372,7 +372,7 @@ export function assembleEvaluatedReport(
       confusionMatrix: engineMatrix?.chart ?? null,
       classDistribution: resolvedClassDistribution,
       // 표본 수는 서버가 확정한 값을 그대로 쓴다. 분포 합계로 추측하면 멀티레이블에서
-      // 200행이 408 이 된다(ISSUES.md B-02).
+      // 200행이 408 이 된다(B-02).
       nSamples,
       imbalanceRatio,
       droppedRows: result.dropped_rows,
@@ -405,9 +405,9 @@ export function assembleEvaluatedReport(
     },
     meta: { ...baseReport.meta, derivedPrediction },
     // 평가를 실제로 수행한 환경(라이브러리 버전·수행 시각). 종전에는 프론트
-    // 상수를 인쇄해 실제와 무관한 값이 성적서에 남았다(ISSUES.md F-09).
+    // 상수를 인쇄해 실제와 무관한 값이 성적서에 남았다(F-09).
     evalEnv: { ...baseReport.evalEnv, environment: result.environment ?? undefined },
-    // 전처리 경고를 버리지 않는다(ISSUES.md D-16). 결측 제외·확률합 이상·파생 예측
+    // 전처리 경고를 버리지 않는다(D-16). 결측 제외·확률합 이상·파생 예측
     // 같은 사실이 여기에만 실려 온다.
     evaluationWarnings: Array.isArray(result.warnings) ? result.warnings : [],
     kpiResults: updatedKpiResults,

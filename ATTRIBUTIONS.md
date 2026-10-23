@@ -1,3 +1,3 @@
-This Figma Make file includes components from [shadcn/ui](https://ui.shadcn.com/) used under [MIT license](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md).
+# 출처 표시
 
-This Figma Make file includes photos from [Unsplash](https://unsplash.com) used under [license](https://unsplash.com/license).
+이 프로젝트는 [shadcn/ui](https://ui.shadcn.com/) 컴포넌트를 [MIT 라이선스](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md)로 가져와 `src/components/ui/` 에서 고쳐 쓴다.

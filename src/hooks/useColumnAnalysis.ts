@@ -5,7 +5,7 @@
  * 프론트 매핑 행(MappingRow)으로 변환해 반환한다. 역할 변환은 translateRoleToFrontend
  * 단일 출처를 사용한다. DataUpload 스텝에서 사용.
  *
- * 타임아웃·취소 (ISSUES.md E-18): 종전에는 signal 도 타임아웃도 없어, 백엔드가
+ * 타임아웃·취소 (E-18): 종전에는 signal 도 타임아웃도 없어, 백엔드가
  * 최악 약 270초까지 늘어지는 동안 화면은 'Analyzing...' 라벨만 띄운 채 뒤로 가기
  * 버튼까지 감췄다. 사용자가 취소도 후퇴도 할 수 없었다.
  */
@@ -19,7 +19,7 @@ import type { ColumnNote } from "../lib/report/backendNotices";
 interface ColumnAnalysisResult {
   rows: MappingRow[];
   metadata: any;
-  /** 백엔드가 만든 컬럼명 대조 안내(보정·미매칭·미매핑). 종전에는 버려졌다(ISSUES.md B-03). */
+  /** 백엔드가 만든 컬럼명 대조 안내(보정·미매칭·미매핑). 종전에는 버려졌다(B-03). */
   columnNotes: ColumnNote[];
 }
 
@@ -85,7 +85,7 @@ export function useColumnAnalysis() {
         };
       });
 
-      // 백엔드가 만든 컬럼 대조 안내를 버리지 않는다(ISSUES.md B-03).
+      // 백엔드가 만든 컬럼 대조 안내를 버리지 않는다(B-03).
       return { rows, metadata: result.metadata, columnNotes: result.column_notes ?? [] };
     } catch (err) {
       // abort 는 '왜 끊겼는지'를 구분해 전달한다 — 타임아웃과 사용자 취소는 다른 사건이다.

@@ -51,14 +51,14 @@ export interface IssuePayload {
   issuer?: string;
   /**
    * 발급 시점의 성적서 원본(FinalReportData). 서버가 그대로 보관해 번호로 복원하고
-   * 인쇄물 진위를 대조할 수 있게 한다(ISSUES.md F-01). 상한 1 MiB.
+   * 인쇄물 진위를 대조할 수 있게 한다(F-01). 상한 1 MiB.
    */
   content?: unknown;
 }
 
 export interface ReissueOptions {
   /**
-   * 발급 시 사용한 run 식별자 — **소지 증명**(ISSUES.md G-02).
+   * 발급 시 사용한 run 식별자 — **소지 증명**(G-02).
    * report_no 는 RPT-{연도}-{순번} 이라 전수 열거가 가능하지만 run_id 는
    * crypto.randomUUID 라 추측할 수 없다. 백엔드가 불일치 시 403 을 낸다.
    */
@@ -219,7 +219,7 @@ export interface ReportContent {
 }
 
 /**
- * 성적서 번호로 발급 시점 원본을 복원한다(ISSUES.md F-01·F-04).
+ * 성적서 번호로 발급 시점 원본을 복원한다(F-01·F-04).
  *
  * 브라우저 저장소를 지웠거나 다른 기기에서 접속해도 번호만 알면 문서를 되살릴 수 있다.
  * 내용 보관 도입(2026-09-05) 이전에 발급된 문서는 서버에 사본이 없어 null 이 된다 —

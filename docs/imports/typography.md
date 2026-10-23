@@ -8,25 +8,27 @@ Following **Linear/Vercel/Supabase** conventions: precise sans-serif for all UI,
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--font-sans` | `'Pretendard Variable', 'Pretendard', 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif` | All UI text *(MATERIAL_PICKER.md로 대체됨, §10 — 글꼴은 Pretendard Variable 이다. Inter 는 불러오지 않는다)* |
-| `--font-mono` | `'JetBrains Mono', 'D2Coding', 'SF Mono', Menlo, monospace` | 지표 IDs, metric values, code, filenames, tabular numbers |
+| `--font-sans` | `'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif` | All UI text |
+| `--font-mono` | `'JetBrains Mono', 'SF Mono', Menlo, monospace` | 지표 IDs, metric values, code, filenames, tabular numbers |
+
+값은 `src/styles/fonts.css` 그대로다. Pretendard Variable 과 JetBrains Mono 만 불러온다.
 
 Do NOT use a display/serif font anywhere. Do NOT use Geist (Vercel's font) — Pretendard is better for Korean.
 
 ## Font Weights
 
-> **MATERIAL_PICKER.md로 대체됨** (§10) — 굵기는 500(제목·이름·버튼)과 400(설명) 두 가지다. 아래는 종전 기록.
+굵기는 두 가지다(`docs/MATERIAL_PICKER.md` §10).
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--font-weight-regular` | `400` | Body text, helper text |
-| `--font-weight-medium` | `500` | Labels, active tab label, table headers |
-| `--font-weight-semibold` | `600` | Card titles, page subtitle, alert titles |
-| `--font-weight-bold` | `700` | Page title (H1), metric values |
+| `--font-weight-medium` | `500` | 화면 제목, 이름, 버튼, 라벨, 표 머리, 현재 단계 |
+| `--font-weight-normal` | `400` | 본문, 설명, 도움말 |
+
+`src/styles/theme.css` 에는 이 두 토큰만 있다(regular·semibold·bold 토큰은 없다). 옛 화면 일부에는 Tailwind 의 `font-semibold`(600)·`font-bold`(700)가 남아 있다.
 
 ## Type Scale
 
-> **MATERIAL_PICKER.md로 대체됨** (§10) — 제목 22px/500, 이름·버튼 16px/500, 설명 14px/400. `theme.css` 의 `--text-heading-large` 는 22px 로 바꿨다. 아래는 종전 기록.
+요약: 화면 제목 22px/500, 이름·버튼 16px/500, 설명 14px/400(`docs/MATERIAL_PICKER.md` §10). 아래 토큰 값은 `src/styles/theme.css` 의 `@theme` 블록 그대로다.
 
 Sizes use rem. Line-heights tuned for Korean readability.
 
@@ -34,9 +36,9 @@ Sizes use rem. Line-heights tuned for Korean readability.
 
 | Token | Size / Line-height | Weight | Usage |
 |-------|-------------------|--------|-------|
-| `--text-heading-large` | `1.5rem / 2rem` (24px/32px) | 700 | Page title (H1) — "기본 정보 입력", "시험항목 선택" |
-| `--text-heading-medium` | `1.125rem / 1.625rem` (18px/26px) | 600 | Card title, section header inside a card |
-| `--text-heading-small` | `1rem / 1.5rem` (16px/24px) | 600 | Subsection title, table group header, product name in app header |
+| `--text-heading-large` | `1.375rem / 1.875rem` (22px/30px) | 500 | Page title (H1) — "의뢰자 정보", "지표와 합격 기준" |
+| `--text-heading-medium` | `1.125rem / 1.625rem` (18px/26px) | 500 | Card title, section header inside a card |
+| `--text-heading-small` | `1rem / 1.5rem` (16px/24px) | 500 | Subsection title, table group header, product name in app header |
 
 ### Body
 
@@ -51,9 +53,9 @@ Sizes use rem. Line-heights tuned for Korean readability.
 
 | Token | Size / Line-height | Weight | Usage |
 |-------|-------------------|--------|-------|
-| `--text-metric-large` | `2rem / 2.5rem` (32px/40px) | 700 | Hero metric values on result preview ("0.8000") |
-| `--text-metric-medium` | `1.25rem / 1.75rem` (20px/28px) | 600 | Secondary metric values in compact dashboards |
 | `--text-mono-small` | `0.75rem / 1.125rem` (12px/18px) | 500 | 지표 IDs ("M1"), uppercase column labels, code snippets |
+
+`theme.css` 에 `--text-metric-large`·`--text-metric-medium` 토큰도 남아 있지만 지금 화면은 쓰지 않는다.
 
 ## Usage Rules
 
@@ -64,9 +66,9 @@ Inputs, labels, dropdown options, button labels — all use `--text-body-medium`
 ### Page Title Pattern
 
 ```jsx
-<h1 className="text-heading-large text-foreground">기본 정보 입력</h1>
-<p className="text-body-medium text-foreground-muted mt-2">
-  평가에 필요한 기본 정보를 입력해주세요.
+<h1 className="text-heading-large text-foreground">의뢰자 정보</h1>
+<p className="text-body-medium text-muted-foreground mt-2">
+  성적서를 받는 회사와 용도를 입력해주세요.
 </p>
 ```
 
@@ -79,7 +81,7 @@ The subtitle is always `text-body-medium` with muted color. Never use a heading 
   <Logo className="h-6 w-6" />
   <div className="flex flex-col">
     <span className="text-heading-small leading-none">ML 성능평가</span>
-    <span className="text-body-xs text-foreground-muted">ISO/IEC 4213 기반</span>
+    <span className="text-body-xs text-muted-foreground">ISO/IEC 4213 기반</span>
   </div>
 </div>
 ```
@@ -92,23 +94,7 @@ The subtitle is always `text-body-medium` with muted color. Never use a heading 
 </CardHeader>
 ```
 
-No icons in the CardTitle. If a section genuinely needs a category indicator, use a small uppercase label ABOVE the card (like `text-mono-small text-foreground-muted uppercase`).
-
-### Metric Display Pattern
-
-```jsx
-<div className="space-y-1">
-  <span className="text-mono-small text-foreground-muted uppercase tracking-wide">
-    ACCURACY (M1)
-  </span>
-  <div className="text-metric-large font-mono tabular-nums text-foreground">
-    0.8000
-  </div>
-  <span className="text-body-small text-foreground-muted">
-    전체 정확도 · 36/45
-  </span>
-</div>
-```
+No icons in the CardTitle. If a section genuinely needs a category indicator, use a small uppercase label ABOVE the card (like `text-mono-small text-muted-foreground uppercase`).
 
 Metric values ALWAYS use `font-mono` + `tabular-nums` to prevent visual jitter.
 
@@ -122,26 +108,11 @@ Metric values ALWAYS use `font-mono` + `tabular-nums` to prevent visual jitter.
 
 Never write 지표 IDs in the sans-serif default font.
 
-### Tab Label Pattern
-
-> **MATERIAL_PICKER.md로 대체됨** (§9) — 탭 대신 세로 단계 표시줄이다. 단계 이름은 16px, 현재 단계만 500이다. 아래는 종전 기록.
-
-```jsx
-{/* Active tab */}
-<span className="text-body-medium font-medium text-foreground">기본 정보</span>
-
-{/* Completed tab */}
-<span className="text-body-medium text-foreground">기본 정보</span>
-
-{/* Upcoming tab */}
-<span className="text-body-medium text-foreground-muted">기본 정보</span>
-```
-
 ## What Not to Do
 
 - ❌ Do NOT use `--text-body-xs` for interactive elements (buttons, links, inputs).
 - ❌ Do NOT apply `italic` anywhere.
 - ❌ Do NOT use `text-decoration: underline` except on actual hyperlinks.
 - ❌ Do NOT apply letter-spacing adjustments to Korean text. Only to uppercase mono labels (use `tracking-wide`).
-- ❌ Do NOT mix weight jumps larger than 200 on the same screen. (e.g., 400 next to 700 with nothing in between feels harsh — add a 500 or 600 intermediate layer.)
+- ❌ 새 화면에 500·400 밖의 굵기를 더하지 않는다. 옛 화면 일부(머리의 제품 이름, 일부 카드 제목 등)는 아직 `font-semibold`·`font-bold` 를 쓴다.
 - ❌ Do NOT use numeric characters without `tabular-nums` in tables or metric displays. They will jitter when values change.

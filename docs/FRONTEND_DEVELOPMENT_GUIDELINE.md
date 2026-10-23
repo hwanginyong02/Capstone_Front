@@ -21,7 +21,8 @@
 *   **규칙 1**: `src/components/` 하위의 화면 컴포넌트(`BasicInfo`, `TestItems`, `DataUpload` 등)는 오로지 **메인 컨텐츠 영역만 순수하게 렌더링(Pure Content Component)** 해야 합니다. 하단 다음/이전 버튼(`ActionBar`)을 컴포넌트 내부에 포함시키지 마세요.
 *   **규칙 2**: 모든 공통 레이아웃과 화면의 뼈대는 `src/layout/WorkflowShell.tsx`가 전담합니다.
 *   **규칙 3**: 하단 바의 다음 버튼 활성화 여부(`nextDisabled`)나 진행 이벤트(`onNext`)는 화면 컴포넌트 내부에 숨겨두지 말고, 상위 페이지(`pages/*.tsx`)로 상태를 끌어올린(Lifting State) 뒤 `WorkflowShell`의 Props로 전달해야 합니다.
-    *   *예시: 도메인 컴포넌트는 `onValidationChange={(isValid) => setIsValid(isValid)}` 형태의 콜백을 통해 페이지에 상태를 보고하고, 페이지는 `<WorkflowShell nextDisabled={!isValid}>`로 레이아웃을 제어합니다.* *(MATERIAL_PICKER.md로 대체됨, §7 — 재료 고르기의 다음은 막지 않고, 누르면 저장하지 않은 필수 카드를 알린다. 버튼은 페이지가 만들어 `WorkflowShell` 의 `aside` 로 넘긴다)* *(MATERIAL_PICKER.md §12.3 으로 대체됨 — 평가 흐름 만들기의 "다음"도 `nextDisabled` 를 쓰지 않는다. 눌리지만 필수 항목이 빠졌으면 넘어가지 않고, 다음 버튼 옆 `role=alert` 로 빠진 필수 항목 이름을 알린다. 판정은 `flowStatus` 한 번)*
+    *   *예시: 도메인 컴포넌트는 `onValidationChange={(isValid) => setIsValid(isValid)}` 형태의 콜백을 통해 페이지에 상태를 보고하고, 페이지는 `<WorkflowShell nextDisabled={!isValid}>`로 레이아웃을 제어합니다.*
+    *   *예외: 평가 흐름 만들기(`pages/MaterialPicker.tsx`)의 "다음"은 `nextDisabled` 를 쓰지 않습니다. 버튼은 늘 눌리지만 필수 항목이 빠졌으면 넘어가지 않고, 다음 버튼 옆 `role=alert` 로 빠진 필수 항목 이름을 알립니다. 판정은 페이지가 `flowStatus` 를 한 번 불러 정합니다(`docs/MATERIAL_PICKER.md` §12.2).*
 
 ---
 
@@ -30,7 +31,7 @@
 **`src/components/ui/` 폴더는 재사용 가능한 '원시(Primitive) 컴포넌트'의 성역입니다.**
 
 *   **규칙 1**: `button`, `input`, `card`, `badge` 등 애플리케이션 전반에서 공통으로 재사용되는 컴포넌트만 `components/ui/`에 위치할 수 있습니다.
-*   **규칙 2**: 특정 페이지나 화면(예: Metric Detail, Data Validation)에서만 단발성으로 쓰이는 컴포넌트들을 `ui/` 폴더에 몰아넣지 마세요. 이들은 반드시 `src/components/<해당도메인>/` 폴더 내부로 코로케이션(Colocation) 되어야 합니다.
+*   **규칙 2**: 특정 페이지나 화면(예: 컬럼 매핑, 검증)에서만 단발성으로 쓰이는 컴포넌트들을 `ui/` 폴더에 몰아넣지 마세요. 이들은 반드시 `src/components/<해당도메인>/` 폴더 내부로 코로케이션(Colocation) 되어야 합니다.
 
 ---
 
@@ -42,10 +43,11 @@
     *   `src/utils/styling/`: Tailwind CSS 병합 등 스타일링 유틸리티 (`styles.ts`)
     *   `src/utils/format/`: 데이터 포맷팅 유틸리티 (`format.ts`)
     *   `src/utils/domain/`: 비즈니스/도메인 로직 유틸리티 (`validation.ts`, `mappingHelpers.ts`)
-    *   `src/utils/stores/`: 전역 상태 관리 (`useWorkflowStore.ts`)
+    *   `src/utils/image/`: 이미지 처리 유틸리티 (`examplePreview.ts` — 예시 이미지 축소본)
+    *   `src/utils/stores/`: 전역 상태 관리 (`useWorkflowStore.ts`, `useWorkspaceStore.ts`)
 *   **규칙 2 (문서화)**: 모든 유틸리티 및 스토어 파일의 최상단에는 해당 모듈이 어떤 역할을 하는지, 주로 어디서 사용되는지를 설명하는 **한국어 JSDoc 주석**을 반드시 작성해야 합니다.
 *   **규칙 3 (형제 계층 구분)**: `src/utils/` 와 별개로 다음 최상위 계층을 인정하며, 목적에 맞게 배치합니다. (신규 코드는 성격에 맞는 계층을 선택하세요.)
-    *   `src/lib/`: **백엔드 계약·외부 연동(API)·리포트 도메인 로직** 계층. `fetch` 등 부수효과 코드와 snake_case↔camelCase 매핑, 성적서 조립 로직이 여기에 응집되며, 관련 단위 테스트를 코로케이션합니다. (`utils/domain/` 은 순수·동기 UI 헬퍼 전용이므로 대형 도메인/IO 로직을 여기에 섞지 마세요.)
+    *   `src/lib/`: **백엔드 계약·외부 연동(API)·리포트 도메인 로직** 계층. `fetch` 등 부수효과 코드와 snake_case↔camelCase 매핑, 성적서 조립 로직이 여기에 응집되며, 관련 단위 테스트를 코로케이션합니다. 하위 폴더는 `mapping/`(역할 변환), `report/`(성적서·평가 API와 조립), `upload/`(업로드 크기 한도)입니다. (`utils/domain/` 은 순수·동기 UI 헬퍼 전용이므로 대형 도메인/IO 로직을 여기에 섞지 마세요.)
     *   `src/hooks/`: React 런타임에 결합된 재사용 로직(데이터 페칭 훅 등). 각 파일 상단에 한국어 JSDoc 을 작성합니다.
     *   `src/data/`: 정적 도메인 데이터/카탈로그(지표 정의, 예시, showcase 목 데이터 등).
 

@@ -1,5 +1,5 @@
 /**
- * fact_sheet 표본 수 — ISSUES.md B-02.
+ * fact_sheet 표본 수 — B-02.
  *
  * 멀티레이블에서 `class_distribution` 은 '레이블 등장 횟수'다(한 샘플이 레이블 3개를
  * 가지면 3번 센다). 그런데 `buildFactSheet` 이 M21 미선택 시 혼동행렬이 없어서
@@ -76,7 +76,7 @@ describe("buildFactSheet 의 표본 수", () => {
 });
 
 
-describe("멀티레이블 혼동행렬 — 첫 레이블만 보내던 문제 (ISSUES.md C-08)", () => {
+describe("멀티레이블 혼동행렬 — 첫 레이블만 보내던 문제 (C-08)", () => {
   /**
    * 멀티레이블 혼동행렬은 레이블마다 2x2 가 하나씩 나온다. 종전에는 그중 **첫 번째
    * 레이블의 2x2 만** fact_sheet 에 실렸고, 라벨명은 `Negative (sports)` 처럼 그
