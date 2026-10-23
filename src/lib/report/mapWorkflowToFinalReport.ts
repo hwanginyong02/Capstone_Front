@@ -268,7 +268,7 @@ export function mapWorkflowToFinalReport(
   //
   // 표본 수 폴백은 0 이다. 종전에는 학습 데이터 폼의 **검증 샘플 수**를 폴백으로 썼다 —
   // 모델 학습 때 쓴 검증 세트 크기라 평가 파일의 행 수와 무관한데 평가 표본 수 칸에
-  // 인쇄됐다(docs/COMPOSER_COMPONENTS.md 구현 메모의 "평가 표본 수 칸에도 인쇄되는 버그").
+  // 인쇄되는 버그였다. 평가 표본 수는 검증 응답의 실제 행 수만 쓴다.
   const mappedValidation = validationResult
     ? mapValidationResultToReport(validationResult, 0)
     : null;
