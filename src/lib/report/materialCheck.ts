@@ -12,6 +12,10 @@
  * 버전 규칙: "주.부". 같은 입력의 판정이 바뀌면 주, 문구만 바뀌면 부를 올린다. 버전과 규칙 표는
  * `materialCheck.test.ts` 가 리터럴로 고정한다.
  *
+ * 판 4(`edition: 4`, 판 4 라운드 대응표 4): 판정·버전(2.0)은 그대로이고 성적서에 찍는 글만 판 4 글이다 — 표지 표준 문구·1.3
+ * "제공되지 않은 정보"·3.3 평균 방식 미충족 문장 셋과 표지 시험 결과 요약의 보고 항목·주요 제약 줄(`coverRows`, 고정 문구 21).
+ * 문구만 판에 따라 다르므로 점검 표 버전을 올리지 않는다(올리면 기존 확인 기록이 무효가 된다 — 계획 8절).
+ *
  * 2.0(서술 라운드 B): 덧붙이는 글의 셈 규칙이 바뀌었다 — 2층 열 칸이 글만으로도 제공이 되고(종전에는 글을
  * 받지 않아 제공되지 않음), "모름 + 글"은 제공되지 않음으로 남되 글을 싣고, 1층 선언은 선택지가 있어야 답이다.
  * 같은 입력의 판정이 바뀌므로 주 번호를 올렸다. 1.0 으로 확인한 진행 기록은 인정하지 않는다(`acknowledged`) —
@@ -108,6 +112,47 @@ export interface MaterialCheckInput {
   distributionSource: "validation" | "upload" | null;
   /** 생성 전 안내 확인 기록. */
   ack?: MaterialCheckAck | null;
+  /** 성적서 판. 4 면 찍는 글이 판 4 글이고 표지 요약 줄(`coverRows`)을 더 만든다. 없으면 3(지금 동작). */
+  edition?: 3 | 4;
+  /**
+   * 평가 데이터가 학습 데이터와 같은 출처라고 의뢰자가 답했는가(`problemList.isSameSourceRelation` — 고정 문구 11a 조건).
+   * 판 4 표지 주요 제약 줄만 읽는다.
+   */
+  sameSource?: boolean;
+}
+
+/** 판 4 표지 표준 문구 — 보고 항목이 빠졌을 때(고정 문구 2.3 판 4, 예시본 표지). 다 있으면 판 3 과 같은 "기준 표준: …". */
+export const COVER_STANDARD_ALL = "기준 표준: ISO/IEC TS 4213:2022";
+export const COVER_STANDARD_MISSING_ED4 = "ISO/IEC TS 4213:2022에 따라 평가. 일부 보고 항목 미제공(1.3 참조)";
+
+/** 판 4 표지 시험 결과 요약의 보고 항목·주요 제약 줄 이름(고정 문구 21). 종합 판정·핵심 지표 줄은 평가 뒤에 만든다. */
+export const COVER_ROW_REPORTING = "보고 항목";
+export const COVER_ROW_CONSTRAINT = "주요 제약";
+
+/**
+ * 판 4 표지 요약 두 줄(고정 문구 21 — 주요 제약 규칙은 예시본을 만들며 정한 초안, B4).
+ * - 보고 항목: "TS 4213 보고 항목 {N}개 중 {n}개 제공 (빠진 항목: {목록}, 1.3)", 모두 받았으면 "TS 4213 보고 항목 {N}개 모두 제공".
+ * - 주요 제약: 같은 출처면 "평가 데이터가 학습 데이터와 같은 출처 (5.1)", 목적별 점검 미충족이면 "목적별 점검 {K}개 중 {k}개 충족
+ *   (1.3)", 둘 다면 쉼표로 잇고(B4), 둘 다 아니면 "없음". 빠진 보고 항목은 바로 위 줄에 있으므로 되풀이하지 않는다.
+ */
+function coverRowsEd4(
+  total: number,
+  missingNames: string[],
+  purpose: { applicable: number; met: number },
+  sameSource: boolean,
+): Array<{ label: string; value: string }> {
+  const reporting =
+    missingNames.length === 0
+      ? `TS 4213 보고 항목 ${total}개 모두 제공`
+      : `TS 4213 보고 항목 ${total}개 중 ${total - missingNames.length}개 제공 (빠진 항목: ${missingNames.join(", ")}, 1.3)`;
+  const constraints = [
+    ...(sameSource ? ["평가 데이터가 학습 데이터와 같은 출처 (5.1)"] : []),
+    ...(purpose.met < purpose.applicable ? [`목적별 점검 ${purpose.applicable}개 중 ${purpose.met}개 충족 (1.3)`] : []),
+  ];
+  return [
+    { label: COVER_ROW_REPORTING, value: reporting },
+    { label: COVER_ROW_CONSTRAINT, value: constraints.length > 0 ? constraints.join(", ") : "없음" },
+  ];
 }
 
 function reportingItems(input: MaterialCheckInput): MaterialCheckItem[] {
@@ -259,6 +304,11 @@ export function checkMaterialSelection(input: MaterialCheckInput): MaterialCheck
   const names = missingItems.map((item) => item.name);
   const lastName = names[names.length - 1] ?? "";
 
+  const edition4 = input.edition === 4;
+  // 판 4 글(부록 A 치환 A1·A3·A4 — "시험성적서", "위 항목", "(1.3 참조)"). 3.3 평균 방식 문장은 안내문 자리라 합니다체(B7, A8).
+  const report = edition4 ? "본 시험성적서는 위 항목에" : "본 결과서는 이 항목들에";
+  const averagingRef = edition4 ? "없습니다(1.3 참조)" : "없다(1.4 참조)";
+
   const averagingLine = unmetLines.find((line) => line.id === "averaging");
   const averaging = averagingLine && input.taskType === "multiclass" ? AVERAGING_BY_PRIORITY[answerOf(input.perspective, "classPriority") ?? ""] : undefined;
 
@@ -273,13 +323,15 @@ export function checkMaterialSelection(input: MaterialCheckInput): MaterialCheck
     printed: {
       cover:
         missingItems.length === 0
-          ? "기준 표준: ISO/IEC TS 4213:2022"
-          : "ISO/IEC TS 4213:2022에 따라 평가. 일부 보고 항목 미제공(1.4 참조)",
+          ? COVER_STANDARD_ALL
+          : edition4
+            ? COVER_STANDARD_MISSING_ED4
+            : "ISO/IEC TS 4213:2022에 따라 평가. 일부 보고 항목 미제공(1.4 참조)",
       ...(missingItems.length > 0
         ? {
             notProvided:
               `ISO/IEC TS 4213이 보고를 요구하는 항목 중 ${names.join(", ")}${josaEunNeun(lastName)} 의뢰자로부터 ` +
-              "제공받지 못해 기재하지 않았다. 따라서 본 결과서는 이 항목들에 대해 TS 4213의 보고 요구를 충족하지 않는다.",
+              `제공받지 못해 기재하지 않았다. 따라서 ${report} 대해 TS 4213의 보고 요구를 충족하지 않는다.`,
           }
         : {}),
       impacts: missingItems.map((item) => `${item.name}: ${item.impact} 판단할 수 없다.`),
@@ -313,7 +365,17 @@ export function checkMaterialSelection(input: MaterialCheckInput): MaterialCheck
       ],
       ...(averaging
         ? {
-            averagingSentence: `의뢰자가 클래스 중요도를 "${averagingLine!.declared}"${josaEuroRo(averagingLine!.declared)} 밝혔으나, 이에 맞는 ${averaging} 지표는 시험 항목에 없다(1.4 참조).`,
+            averagingSentence: `의뢰자가 클래스 중요도를 "${averagingLine!.declared}"${josaEuroRo(averagingLine!.declared)} 밝혔으나, 이에 맞는 ${averaging} 지표는 시험 항목에 ${averagingRef}.`,
+          }
+        : {}),
+      ...(edition4
+        ? {
+            coverRows: coverRowsEd4(
+              items.length,
+              names,
+              { applicable: lines.length, met: lines.length - unmetLines.length },
+              input.sameSource === true,
+            ),
           }
         : {}),
     },

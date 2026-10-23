@@ -186,6 +186,20 @@ describe.each(TAGS)("판 4 run 을 플래그 3 상태에서 평가 — %s", (tag
         ["P2", "same_source", "LOW", "평가 데이터가 학습과 같은 출처", "8.2", "9.1"],
       ]);
     });
+
+    it("RPT-2026-0001 입력: 재료 점검 판 4 글이 예시본 표지·1.3 글과 같다(S3 ⑤)", () => {
+      const printed = stage1.materialCheck.printed;
+      expect(stage1.materialCheck.version).toBe("2.0");
+      expect(printed.cover).toBe("ISO/IEC TS 4213:2022에 따라 평가. 일부 보고 항목 미제공(1.3 참조)");
+      expect(printed.coverRows).toEqual([
+        { label: "보고 항목", value: "TS 4213 보고 항목 11개 중 10개 제공 (빠진 항목: 추론 효율성(지연시간), 1.3)" },
+        { label: "주요 제약", value: "평가 데이터가 학습 데이터와 같은 출처 (5.1)" },
+      ]);
+      expect(printed.notProvided).toBe(
+        "ISO/IEC TS 4213이 보고를 요구하는 항목 중 추론 효율성(지연시간)은 의뢰자로부터 제공받지 못해 기재하지 않았다. " +
+          "따라서 본 시험성적서는 위 항목에 대해 TS 4213의 보고 요구를 충족하지 않는다.",
+      );
+    });
   }
 
   it("입력 셋 모두 '같은 출처'라 같은 출처 문제가 LOW 맨 끝에 있다(S3 ④)", () => {

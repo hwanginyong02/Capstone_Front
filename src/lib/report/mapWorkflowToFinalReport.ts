@@ -43,6 +43,7 @@ import { newRunContentSchema } from "./reportEdition";
 import { resolveBeta, resolveTargetValue, TARGET_DIGITS } from "../../utils/domain/validation";
 import { formatTargetCriteria } from "./metricValueFormat";
 import { checkMaterialSelection } from "./materialCheck";
+import { isSameSourceRelation } from "./problemList";
 import { imbalanceRatioOf } from "./buildDatasetDiagnosis";
 import type {
   BasicInfoFormData,
@@ -369,7 +370,6 @@ function runMaterialCheck(
   evalEnv: EvalEnvironment,
   edition4 = false,
 ) {
-  void edition4; // 판 4 재료 점검 글(S3 ⑤)이 이 값을 받는다.
   const taskType: TaskType = resolveTaskType(input.taskType);
   const fromValidation = validationResult?.class_distribution;
   const fromUpload = input.metadata?.class_distribution;
@@ -390,6 +390,8 @@ function runMaterialCheck(
     imbalanceRatio: distribution ? imbalanceRatioOf(distribution) : null,
     distributionSource: distribution ? distributionSource : null,
     ack: input.materialCheckAck ?? null,
+    // 판 4 는 판 4 글과 표지 요약 줄. 주요 제약의 같은 출처는 판 4 문제 목록과 같은 판단 하나로.
+    ...(edition4 ? { edition: 4 as const, sameSource: isSameSourceRelation(input.composer) } : {}),
   });
 }
 

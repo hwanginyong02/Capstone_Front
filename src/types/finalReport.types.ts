@@ -662,8 +662,13 @@ export interface MaterialCheckResult {
     purposeShortfalls: string[];
     /** 6.0 세 줄. */
     summary: Array<{ label: string; value: string; note: string }>;
-    /** 5절 평균 방식 문장을 바꿔 찍을 때(3번 줄 미충족, 다중 클래스). */
+    /** 5절 평균 방식 문장을 바꿔 찍을 때(3번 줄 미충족, 다중 클래스). 판 4 는 3.3 에 합니다체로. */
     averagingSentence?: string;
+    /**
+     * 판 4 표지 시험 결과 요약의 보고 항목·주요 제약 두 줄(고정 문구 21). 판 4 run 에만 있다. 종합 판정·핵심 지표 줄은 평가 뒤에
+     * 만들어 따로 저장한다.
+     */
+    coverRows?: Array<{ label: string; value: string }>;
   };
 }
 
