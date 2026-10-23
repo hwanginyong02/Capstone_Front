@@ -149,4 +149,35 @@ describe.each(TAGS)("판 4 run 을 플래그 3 상태에서 평가 — %s", (tag
   it("표지 제목은 판 4 글", () => {
     expect(stage1.meta.title).toBe("기계학습 분류 성능 시험성적서");
   });
+
+  it("판정 대상 지표마다 판정 여유가 저장되고, 판정 대상이 아닌 지표에는 없다(S3 ③)", () => {
+    const kpis: Record<string, any>[] = stage1.kpiResults;
+    const judged = kpis.filter((r) => r.threshold !== null && r.status !== "unavailable");
+    expect(judged.length).toBeGreaterThan(0);
+    for (const r of judged) expect([r.metricId, ["small", "ample"].includes(r.judgmentMargin)]).toEqual([r.metricId, true]);
+    for (const r of kpis.filter((k) => !judged.includes(k))) expect(r).not.toHaveProperty("judgmentMargin");
+    // 구간이 붙은 지표는 새 응답의 반올림 전 경계를 함께 저장한다.
+    const withCi = judged.filter((r) => r.ci);
+    expect(withCi.length).toBeGreaterThan(0);
+    for (const r of withCi) expect(r.ciRaw).toEqual({ low: expect.any(Number), high: expect.any(Number) });
+  });
+
+  if (tag === "bc_strong") {
+    it("RPT-2026-0001 입력: Accuracy·Recall·F1 은 작음, AUROC·Log Loss 는 충분(계약 bc_strong 값)", () => {
+      const margin = Object.fromEntries((stage1.kpiResults as any[]).map((r) => [r.metricId, r.judgmentMargin ?? null]));
+      expect(margin).toEqual({
+        M1: "small",
+        M2: null,
+        M3: "small",
+        M4: "small",
+        M9: "ample",
+        M10: null,
+        M19: "ample",
+        M23: null,
+      });
+      const m1 = (stage1.kpiResults as any[]).find((r) => r.metricId === "M1");
+      expect(m1.ciRaw).toEqual({ low: 0.9496962348678732, high: 0.9940158635836336 });
+      expect(m1.ci.low).toBe(0.9497);
+    });
+  }
 });

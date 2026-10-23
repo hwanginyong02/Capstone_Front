@@ -349,6 +349,17 @@ export interface KpiResult {
    */
   margin?: number;
   nearTarget?: boolean;
+  /**
+   * 판정 여유(판 4 — 고정 문구 19, `edition4/judgmentMargin.ts`). 반올림 전 95% 신뢰구간이 목표값을 포함하면 "small"(작음),
+   * 구간이 없으면 목표값과의 차이가 목표값의 3% 미만일 때 "small", 그 밖은 "ample"(충분). 판 4 run 의 판정 대상 지표에만
+   * 붙는다(없으면 4.3 "—"). 판 3 의 `nearTarget` 과 뜻이 다르다 — 판 4 의 판정 여유 자리는 모두 이 칸 하나를 읽는다.
+   */
+  judgmentMargin?: "small" | "ample";
+  /**
+   * 신뢰구간의 반올림 전 경계(평가 응답 `low_raw`·`high_raw`). 판 4 run 에서 `ci` 가 붙은 지표에만, 응답에 값이 있을 때만
+   * 붙는다. `ci` 의 low·high 는 넷째 자리 그대로다.
+   */
+  ciRaw?: { low: number; high: number };
 }
 
 /** 지표 하나의 95% 신뢰구간. method 는 백엔드 표기 그대로(wilson·bootstrap_multinomial·bootstrap·delong·logit·normal). */

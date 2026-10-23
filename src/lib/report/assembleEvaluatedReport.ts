@@ -37,7 +37,8 @@ import type { MapWorkflowToReportInput } from "./mapWorkflowToFinalReport";
 import { attachNearTarget, nearTargetNote } from "./nearTarget";
 import { noBenchmarkSentence } from "./benchmarkBaselines";
 import { MULTILABEL_IMBALANCE_DEFINITION } from "./narrativeSectionText";
-import { usesSchema3 } from "./normalizeReportContent";
+import { usesSchema3, usesSchema4 } from "./normalizeReportContent";
+import { attachJudgmentMargin, parseRawIntervalBounds } from "./edition4/judgmentMargin";
 import { buildProblemList, parseF1ThresholdGain, parseImbalanceEffect } from "./problemList";
 
 /** 조립에 쓰는 워크플로우 값. 훅은 스토어와 `buildReportInput` 결과에서 그대로 꺼내 넘긴다. */
@@ -75,6 +76,8 @@ export function assembleEvaluatedReport(
   result: any,
   inputs: EvaluatedReportInputs,
 ): AssembledEvaluatedReport {
+  // 판은 run 에 찍힌 값 하나만 읽는다(맨 위에서 한 번 — 판 4 라운드 계획 2.2). 아래 판 4 갈래는 모두 이 값을 받는다.
+  const edition4 = usesSchema4(baseReport);
   const success_metrics = result.results.success_metrics || {};
   // 계산 실패 지표({metricId: 에러문자열}). value 0/fail 위장 대신 'unavailable' 처리(D4).
   const failed_metrics = result.results.failed_metrics || {};
@@ -163,9 +166,13 @@ export function assembleEvaluatedReport(
   const confidenceIntervals = parseConfidenceIntervals(success_metrics.confidence_intervals);
   // 아슬아슬(설계 D12) — 판정 대상 지표에 margin·nearTarget 을 붙인다(`computeVerdict.ts` 한 곳의 식).
   // 8.3 한 줄은 지금 만들어 저장한다. 아슬아슬 지표가 없으면 키를 두지 않는다.
-  const updatedKpiResults = attachNearTarget(
+  const withNearTarget = attachNearTarget(
     attachConfidenceIntervals(kpiResultsWithoutCi, confidenceIntervals),
   );
+  // 판 4 판정 여유(대응표 24) — 반올림 전 신뢰구간이 목표를 포함하는지(구간이 없으면 3%). 판 3 의 nearTarget 은 그대로 둔다.
+  const updatedKpiResults = edition4
+    ? attachJudgmentMargin(withNearTarget, parseRawIntervalBounds(success_metrics.confidence_intervals))
+    : withNearTarget;
   const ciNote = confidenceIntervalNote(updatedKpiResults, confidenceIntervals);
   const nearNote = nearTargetNote(updatedKpiResults);
 
