@@ -3,7 +3,8 @@
  *
  * - 판 3 run 을 플래그 4 상태에서 평가해도: 1단계 저장 데이터·서술 요청 원문·서술 완료 뒤 저장 데이터가 판 3 정답
  *   (`edition3/newRun/golden`, 고치지 않음)과 글자까지 같고, 요청에 `report_edition` 이 없다.
- * - 판 4 run 을 플래그 3 상태에서 평가해도: 판 4 로 조립된다(contentSchema 4, 판 4 제목, 판 4 생성값).
+ * - 판 4 run 을 플래그 3 상태에서 평가해도: 판 4 로 조립된다(contentSchema 4, 판 4 제목, 판 4 생성값), 서술 요청에 report_edition 4
+ *   가 실린다(요청의 판은 찍힌 판으로만 — S3 ⑦ `buildNarrativeRequest`).
  *
  * 하네스(`edition3/newRun/newRun.harness.tsx`)는 판 3 정답 폴더 안이라 고치지 않는다. run 을 만드는 순간만 플래그를 바꾸려고
  * 매퍼 모듈을 감싼다 — 감싼 매퍼는 `creationFlag` 로 플래그를 바꿔 **옵션 없이**(앱과 같은 기본값 경로로) 진짜 매퍼를 부르고,
@@ -131,12 +132,20 @@ describe.each(TAGS)("판 3 run 을 플래그 4 상태에서 평가 — %s", (tag
 describe.each(TAGS)("판 4 run 을 플래그 3 상태에서 평가 — %s", (tag: Tag) => {
   let stage1: Record<string, any>;
   let final: Record<string, any>;
+  let request: Record<string, any>;
 
   beforeAll(async () => {
     ctl.mapperSchemas = [];
     const captured = await capture(tag, "4", "3", true);
     stage1 = JSON.parse(captured.stage1);
     final = JSON.parse(captured.final);
+    request = JSON.parse(captured.request);
+  });
+
+  it("서술 요청에 report_edition 4 — 평가할 때 플래그가 3 이어도(S3 ⑦)", () => {
+    expect(request.report_edition).toBe(4);
+    expect(Object.keys(request).slice(0, 3)).toEqual(["task_type", "report_purpose", "report_edition"]);
+    expect(stage1.edition4Values).toBeDefined();
   });
 
   it("run 은 판 4 로 만들어졌고, 평가 뒤에도 판 4 다", () => {
