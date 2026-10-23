@@ -22,8 +22,8 @@ import type { ComposerValueMap } from "../../types/reportComposer.types";
 import { assembleEvaluatedReport } from "./assembleEvaluatedReport";
 import type { NarrativeRequestPayload } from "./buildFactSheet";
 import * as limits from "./factSheetLimits";
-import { fitNarrativePayload } from "./factSheetFit";
 import { mapWorkflowToFinalReport } from "./mapWorkflowToFinalReport";
+import { buildNarrativeRequest } from "./narrativeRequest";
 import * as facts from "./narrativeFacts";
 import { NEAR_TARGET_RATIO } from "./computeVerdict";
 import { BENCHMARK_METRIC_NAMES } from "./benchmarkBaselines";
@@ -148,11 +148,8 @@ function buildPayload(
     metadata: c.metadata,
     composer: c.composer,
   });
-  const payload = fitNarrativePayload({
-    task_type: c.taskType,
-    report_purpose: base.evalScope.reportPurposeKey,
-    fact_sheet: report.factSheet,
-  });
+  // 앱(`useReportData`)과 같은 조립 함수 — 판 신호·키 순서·미리 자르기가 실제 요청과 같다.
+  const payload = buildNarrativeRequest(base, { taskType: c.taskType, factSheet: report.factSheet });
   return { payload, report };
 }
 
