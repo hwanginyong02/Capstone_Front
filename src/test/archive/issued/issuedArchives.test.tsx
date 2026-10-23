@@ -71,7 +71,15 @@ const SYNTHETIC: Array<[name: string, end: "done" | "pending" | "failed"]> = [
   ["syn_multilabel_perlabel", "done"],
   ["syn_narrative_pending", "pending"],
   ["syn_narrative_failed", "failed"],
+  ["syn_binary_judged_digits", "done"],
 ];
+
+/**
+ * 서술 완료·미발급 상태로 /report/:id 페이지를 그리는 픽스처 — 머리 줄의 "초안 · 미발급 / 발급 / PDF 다운로드"가 켜진
+ * 모양(발급본 6건은 발급 뒤, 대기·실패는 잠긴 모양이라 이 갈래를 지나지 않는다). 손 픽스처는 서술 상태가 없어
+ * `{ status: "done", jobId: "job-<이름>" }` 으로 연다.
+ */
+const DRAFT_DONE_PAGES = ["syn_binary_shift_cm", "syn_binary_judged_digits", "schema2_binary"];
 
 const HAND = ["schema3_binary", "schema3_binary_pass", "schema2_binary", "schema2_multiclass_noproblems"];
 
@@ -105,12 +113,15 @@ function targets(): Target[] {
     });
   }
   for (const name of HAND) {
-    list.push({ name, content: readJson(resolve(HERE, `../${name}.json`)), issuance: null, stored: FAKE_STORED, page: null });
+    const content = readJson(resolve(HERE, `../${name}.json`)) as FinalReportData;
+    const page = DRAFT_DONE_PAGES.includes(name) ? { reportData: content, narrative: { status: "done" as const, jobId: `job-${name}` } } : null;
+    list.push({ name, content, issuance: null, stored: FAKE_STORED, page });
   }
   for (const [name, end] of SYNTHETIC) {
     const content = readJson(resolve(HERE, `${name}.json`)) as FinalReportData;
     const narrative = readJson(resolve(HERE, `${name}.narrative.json`)) as RunNarrativeState;
-    list.push({ name, content, issuance: null, stored: FAKE_STORED, page: end === "done" ? null : { reportData: content, narrative } });
+    const page = end !== "done" || DRAFT_DONE_PAGES.includes(name) ? { reportData: content, narrative } : null;
+    list.push({ name, content, issuance: null, stored: FAKE_STORED, page });
   }
   return list;
 }
@@ -331,6 +342,23 @@ describe("픽스처는 진짜다", () => {
     expect(readJson(resolve(HERE, "syn_narrative_failed.narrative.json")).status).toBe("failed");
     expect(syn("syn_narrative_pending").isEvaluated).toBe(false);
   });
+
+  it("판정 자릿수 픽스처가 judgedNumber 의 세 갈래를 지나는 값을 담고 있다", () => {
+    const d = readJson(resolve(HERE, "syn_binary_judged_digits.json"));
+    expect(d.judgedValueDigits).toBe(true);
+    const kpi = (id: string) => d.kpiResults.find((k: { metricId: string }) => k.metricId === id);
+    // (a) 셋째 자리 "0.970" 이 충족으로 읽히는 미달 → 넷째 자리
+    expect(kpi("M3")).toMatchObject({ value: 0.9696, threshold: 0.97, status: "fail", isCore: true });
+    // (b) "0.950"·"0.9500"·"0.95000" 이 모두 충족으로 읽히는 미달 → 여섯째 자리(MAX_VALUE_DIGITS)
+    expect(kpi("M4")).toMatchObject({ value: 0.949999, threshold: 0.95, status: "fail" });
+    // (c) 8.1 참조 범위 0.85~0.92 보다 낮은 0.8497 — 셋째 자리 "0.850" 은 범위 안으로 읽힌다
+    expect(kpi("M1")).toMatchObject({ value: 0.8497, threshold: 0.95, status: "fail" });
+    const acc = d.conclusion.benchmarkRefs.find((r: { metric: string }) => r.metric === "Accuracy");
+    expect(acc).toMatchObject({ refLow: 0.85, refHigh: 0.92, quality: "worse" });
+    // 그 결과가 정답 글에 실제로 찍혀 있다(6.1 표·8.1 표).
+    const text = golden("syn_binary_judged_digits", "sections");
+    for (const printed of ["| 0.9696", "| 0.949999", "| 0.8497"]) expect(text).toContain(printed);
+  });
 });
 
 describe("판 2·3 보관본은 운영 main 이 그리던 글과 한 글자도 다르지 않다", () => {
@@ -347,8 +375,20 @@ describe("판 2·3 보관본은 운영 main 이 그리던 글과 한 글자도 �
   });
 
   const PAGES = TARGETS.filter((t) => t.page).map((t) => [t.name, t] as const);
-  it("페이지 정답은 발급본 6건 + 서술 대기·실패 2건이다", () => {
-    expect(PAGES.map(([name]) => name)).toEqual([...ISSUED, "syn_narrative_pending", "syn_narrative_failed"]);
+  it("페이지 정답은 발급본 6건 + 서술 완료·미발급 3건 + 서술 대기·실패 2건이다", () => {
+    expect(PAGES.map(([name]) => name)).toEqual([
+      ...ISSUED,
+      "schema2_binary",
+      "syn_binary_shift_cm",
+      "syn_narrative_pending",
+      "syn_narrative_failed",
+      "syn_binary_judged_digits",
+    ]);
+    // 서술 완료·미발급 페이지는 머리 줄에 발급 버튼과 PDF 다운로드가 있다(잠금 문구 없이).
+    for (const name of DRAFT_DONE_PAGES) {
+      const head = golden(name, "page").split("\n").slice(0, 4).join("\n");
+      expect(head).toContain("초안 · 미발급발급PDF 다운로드\n");
+    }
   });
 
   it.each(PAGES)("%s — /report/:id 페이지(Report)", async (name, t) => {

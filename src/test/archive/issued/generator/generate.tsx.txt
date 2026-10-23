@@ -11,12 +11,15 @@
  * - S0_MODE=golden    픽스처마다 네 경로(화면 본문·인쇄·번호로 연 페이지 전체·/report/:id 페이지)를 그려 `<OUT>/*.txt`.
  *
  * 환경변수: WORK(백엔드 응답 폴더), ISSUED(src/test/archive/issued), ARCHIVE(src/test/archive), OUT.
+ * OUT 이 저장소의 정답 폴더(`issued/golden`)나 픽스처 폴더(`issued`)면 아무것도 쓰지 않고 멈춘다 — 정답은 늘 저장소 밖
+ * 작업 폴더에 뜨고, 바이트 비교 뒤 손으로 옮긴다(README "다시 만드는 법").
  */
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { resolve } from "node:path";
 
 const getReportContent = vi.fn();
 const getIssuance = vi.fn();
@@ -47,6 +50,17 @@ const WORK = process.env.WORK ?? "";
 const ISSUED = process.env.ISSUED ?? "";
 const ARCHIVE = process.env.ARCHIVE ?? "";
 const OUT = process.env.OUT ?? "";
+
+/** 정답·픽스처 폴더에 바로 쓰지 않는다(newRun 생성기의 `resolve(out) === GOLDEN_DIR` 와 같은 보호). */
+function guardOut(out: string) {
+  const target = resolve(out);
+  const issued = ISSUED ? resolve(ISSUED) : "";
+  const forbidden = issued ? [issued, resolve(issued, "golden")] : [];
+  if (forbidden.includes(target) || /[\\/]src[\\/]test[\\/]archive[\\/]issued(?:[\\/]golden)?[\\/]?$/.test(target)) {
+    throw new Error(`생성기: 정답·픽스처 폴더에 바로 쓰지 않는다 — OUT=${target}`);
+  }
+}
+if (MODE === "fixtures" || MODE === "golden") guardOut(OUT);
 
 /** 평가 시각 고정 — 실제 발급본 RPT-2026-0001 을 만든 때(2026-10-22 18:45 KST). */
 const NOW = new Date("2026-10-22T09:45:00Z");
@@ -298,6 +312,9 @@ const SYN: SynSpec[] = [
   { name: "syn_multilabel_perlabel", base: "yeast_strong", end: "done" },
   { name: "syn_narrative_pending", base: "bc_strong", end: "pending" },
   { name: "syn_narrative_failed", base: "digits_weak", end: "failed" },
+  // 판정 자릿수 갈래 — 평가 응답만 손으로 바꿨다(generator/edit_judged_digits.py.txt): M1 0.8497(8.1 범위 끝, 4자리),
+  // M3 0.9696(목표 0.97 미달, 4자리), M4 0.949999(목표 0.95 미달, 6자리 = MAX_VALUE_DIGITS).
+  { name: "syn_binary_judged_digits", base: "bc_strong", end: "done" },
 ];
 
 const BACK_TO_FRONT: Record<string, Record<string, string>> = {
@@ -478,6 +495,9 @@ interface Target {
   page: null | { reportData: any; narrative: any };
 }
 
+/** 서술 완료·미발급(머리 줄에 발급 버튼·PDF 가 켜진) /report/:id 페이지를 그리는 픽스처. */
+const DRAFT_DONE_PAGES = ["syn_binary_shift_cm", "syn_binary_judged_digits", "schema2_binary"];
+
 function targets(): Target[] {
   const list: Target[] = [];
   for (let n = 1; n <= 6; n += 1) {
@@ -493,14 +513,16 @@ function targets(): Target[] {
   }
   const fake = { reportNo: "RPT-2026-0001", version: "v1.0", issuedAt: "2026-10-01T03:00:00+00:00", contentHash: "a".repeat(64) };
   for (const name of ["schema3_binary", "schema3_binary_pass", "schema2_binary", "schema2_multiclass_noproblems"]) {
-    list.push({ name, content: readJson(`${ARCHIVE}/${name}.json`), issuance: null, stored: fake, page: null });
+    const content = readJson(`${ARCHIVE}/${name}.json`);
+    const page = DRAFT_DONE_PAGES.includes(name) ? { reportData: content, narrative: { status: "done", jobId: `job-${name}` } } : null;
+    list.push({ name, content, issuance: null, stored: fake, page });
   }
   for (const spec of SYN) {
     const content = readJson(`${ISSUED}/${spec.name}.json`);
     const narrative = readJson(`${ISSUED}/${spec.name}.narrative.json`);
     list.push({
       name: spec.name, content, issuance: null, stored: fake,
-      page: spec.end === "done" ? null : { reportData: content, narrative },
+      page: spec.end !== "done" || DRAFT_DONE_PAGES.includes(spec.name) ? { reportData: content, narrative } : null,
     });
   }
   return list;

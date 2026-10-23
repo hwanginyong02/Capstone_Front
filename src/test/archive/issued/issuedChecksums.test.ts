@@ -46,8 +46,8 @@ describe("정답 폴더의 지문", () => {
   it("목록과 실제 파일 집합이 같다", () => {
     const paths = listed().map(([path]) => path);
     expect([...paths].sort()).toEqual(expectedFiles());
-    // 정답 글은 56개(경로 3개 × 픽스처 16개 + 페이지 8개)다.
-    expect(paths.filter((p) => /^golden\/.+\.txt$/.test(p))).toHaveLength(56);
+    // 정답 글은 62개(경로 3개 × 픽스처 17개 + 페이지 11개)다.
+    expect(paths.filter((p) => /^golden\/.+\.txt$/.test(p))).toHaveLength(62);
   });
 
   it.each(listed())("%s", (path, expected) => {

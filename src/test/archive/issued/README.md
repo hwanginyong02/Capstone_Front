@@ -2,6 +2,8 @@
 
 **한 줄 요약**: 이 폴더의 정답 글은 지금 운영 중인 main 코드가 판 2·3 성적서를 그린 글이다. 판 4 작업이 판 2·3 화면을 한 글자라도 바꾸면 `issuedArchives.test.tsx` 가 실패한다.
 
+**한계**: 글자만 고정한다 — 태그·class·속성 변화(예: 버튼이 켜졌나 꺼졌나, 굵게·색)는 글자가 같으면 못 잡는다.
+
 > **정답을 다시 뜨는 것은 위험 신호다.** 이 테스트가 실패하면 코드를 고친다. 정답 파일이나 `golden/SHA256SUMS` 를 고쳐서 통과시키지 않는다. 정답 생성기는 운영 main 사본에서만 돌린다(아래). 이 저장소의 지금 코드로 정답을 뜨면 "지금 코드 = 정답"이 되어 아무것도 지키지 못한다.
 
 ## 무엇이 들어 있나
@@ -10,16 +12,16 @@
 |---|---|
 | `RPT-2026-000{1..6}.content.json` | 실제로 발급된 판 3 성적서 6건의 서버 보관본(`report_snapshot.content_json`) **바이트 그대로**. 줄바꿈도 붙이지 않았다. sha256 이 발급 때 서버가 적은 `content_hash` 와 같다(테스트가 단정). |
 | `RPT-2026-000{1..6}.issuance.json` | 같은 발급의 발급 기록. `issuance` 행과 발급 시점 기관 스냅샷(`org_snapshot_json`)을 앱이 `GET /api/reports/{번호}` 로 받는 모양(`IssuanceResult`)으로 옮겼다. 시각은 서버 직렬화와 같이 `+00:00` 이 붙은 ISO 다. |
-| `syn_*.json` | 실제 6건이 지나가지 않는 판 3 갈래를 담은 합성 픽스처(아래 표). 운영 main 코드의 `/report/:id` 흐름이 만든 run 저장 데이터(`reportData`)다. 손으로 고친 곳은 없다. |
-| `syn_*.narrative.json` | 같은 run 의 서술 상태(`run.narrative`). 서술 대기·실패 페이지를 그릴 때 쓴다. |
+| `syn_*.json` | 실제 6건이 지나가지 않는 판 3 갈래를 담은 합성 픽스처(아래 표). 운영 main 코드의 `/report/:id` 흐름이 만든 run 저장 데이터(`reportData`)다. 저장 데이터를 손으로 고친 곳은 없다(`syn_binary_judged_digits` 만 그 앞 단계인 백엔드 평가 응답의 값 세 개를 손으로 바꿨다 — 아래 표). |
+| `syn_*.narrative.json` | 같은 run 의 서술 상태(`run.narrative`). 페이지를 그릴 때 쓴다. |
 | `golden/<이름>.sections.txt` | 화면 본문(`ReportSections`). |
 | `golden/<이름>.print.txt` | 인쇄(`ReportPrint`, `print:hidden` 뺌). 발급본 6건은 발급 기록을 `applyIssuance` 로 덧입힌 데이터. |
 | `golden/<이름>.byNumber.txt` | 번호로 연 페이지(`ReportByNumber`) **전체** — 화면 전용 머리 상자(발급 차수·검증 코드)와 "작성 기록" 상자 포함. 발급본은 실제 발급 기록·실제 content_hash 로, 나머지는 발급 기록 없음(null)·가짜 해시로 연다. |
-| `golden/<이름>.page.txt` | `/report/:id` 페이지(`Report`) 전체. 발급본 6건은 발급 뒤 완료 상태, `syn_narrative_pending`·`syn_narrative_failed` 는 서술 대기(진행 단계 "생성 중")·실패 상태. |
+| `golden/<이름>.page.txt` | `/report/:id` 페이지(`Report`) 전체. 발급본 6건은 발급 뒤 완료 상태, `syn_narrative_pending`·`syn_narrative_failed` 는 서술 대기(진행 단계 "생성 중")·실패 상태, `syn_binary_shift_cm`·`syn_binary_judged_digits`·`schema2_binary` 는 서술 완료·미발급 상태(머리 줄 "초안 · 미발급 / 발급 / PDF 다운로드"). 손 픽스처는 서술 상태가 없어 `{ status: "done", jobId: "job-<이름>" }` 으로 연다. |
 | `golden/SHA256SUMS` | 이 폴더의 픽스처·정답·생성기 파일과 위 폴더의 손 픽스처 4개의 sha256. `issuedChecksums.test.ts` 가 다시 계산해 대조한다 — 정답을 몰래 다시 뜨면 이 목록도 바꿔야 해서 diff 에 드러난다. |
 | `generator/` | 정답과 합성 픽스처를 만든 생성기와 그 입력(아래). 테스트가 아니다(확장자 `.txt`). |
 
-정답이 있는 픽스처는 발급본 6건, 위 폴더의 손 픽스처 4개(`schema3_binary`, `schema3_binary_pass`, `schema2_binary`, `schema2_multiclass_noproblems`), 합성 6건이다. 경로마다 정답이 하나씩이고 페이지 정답은 8개다(모두 56개).
+정답이 있는 픽스처는 발급본 6건, 위 폴더의 손 픽스처 4개(`schema3_binary`, `schema3_binary_pass`, `schema2_binary`, `schema2_multiclass_noproblems`), 합성 7건이다. 경로마다 정답이 하나씩이고 페이지 정답은 11개다(모두 62개).
 
 글은 `archiveLayout.test.tsx` 와 같은 규칙으로 뜬다 — 블록 요소마다 한 줄, 칸 안의 공백은 하나로, 표 칸은 ` | ` 로 잇는다. 시각은 `Date` 만 2026-10-22 18:45 KST 로 고정한다. 정답은 시간대와 무관하다(생성 때 `TZ=UTC` 와 KST 결과가 같음을 확인했다).
 
@@ -33,8 +35,9 @@
 | `syn_multilabel_perlabel` | yeast_strong (멀티레이블, 점수만) | 결정 임계값을 레이블마다 다르게(0.3~0.6) | `derivedPrediction.method = threshold_per_label` + 레이블별 임계값 표기 |
 | `syn_narrative_pending` | bc_strong 그대로 | 서술 작업 조회가 계속 "생성 중" | 서술 대기 화면 |
 | `syn_narrative_failed` | digits_weak 그대로 | 서술 작업이 실패(`error`) | 서술 실패 화면 |
+| `syn_binary_judged_digits` | `syn_binary_shift_cm` 의 입력(bc_strong, M21·M22 추가) | **백엔드 평가 응답에서** 판정 대상 지표 값 세 개와 그 신뢰구간만 손으로 바꿈(`generator/edit_judged_digits.py.txt`): Accuracy 0.8497, Recall(핵심) 0.9696, F1 0.949999. 혼동 행렬·클래스 표(M21·M22)는 원래 응답 그대로라 숫자가 서로 맞지 않는다. 그 뒤(서술 요청 → 백엔드 서술 작업 → 저장 데이터 → 정답)는 다른 합성과 같은 실제 흐름 | 판정 자릿수(`lib/report/judgedNumber.ts`): (a) Recall 0.9696 · 목표 0.97 미달 → "0.970" 이 아닌 "0.9696", (b) F1 0.949999 · 목표 0.95 미달 → 여섯째 자리(`MAX_VALUE_DIGITS`) "0.949999", (c) 8.1 Accuracy 0.8497 · 참조 범위 0.85~0.92 미흡 → `formatBenchmarkValue` 가 "0.8497"(6.1 표는 "0.850") |
 
-완료(done) 합성 4건의 서술은 운영 main 백엔드를 AI 키 없이 돌려 받은 **규칙 문장(fallback)** 이다. 실제 발급본 6건은 모두 AI 서술(llm)이라, 두 출처의 표시가 다 정답에 들어간다.
+완료(done) 합성 5건의 서술은 운영 main 백엔드를 AI 키 없이 돌려 받은 **규칙 문장(fallback)** 이다. 실제 발급본 6건은 모두 AI 서술(llm)이라, 두 출처의 표시가 다 정답에 들어간다.
 
 `syn_narrative_pending` 과 같은 입력으로 프론트가 만든 서술 요청 본문은 지난 라운드가 실제 발급 때와 같음을 확인한 bc_strong 요청 본문과 한 글자도 다르지 않았다 — 생성기가 앱과 같은 흐름을 탄다는 증거다.
 
@@ -43,7 +46,7 @@
 정답과 합성 픽스처는 **운영 main** 코드로만 만든다. 이번에 쓴 것: 프론트 `origin/main` = 58d99ea, 백엔드 `origin/main` = a7d3168.
 
 ```sh
-# 0) 운영 main 사본 (작업 폴더 W 는 저장소 밖)
+# 0) 운영 main 사본 (작업 폴더 W 는 저장소 밖 — 생성기는 OUT 이 이 폴더나 golden/ 이면 아무것도 쓰지 않고 멈춘다)
 mkdir -p $W/main_src $W/be_main
 git -C <프론트 저장소> archive origin/main | tar -x -C $W/main_src
 ln -s <프론트 저장소>/node_modules $W/main_src/node_modules
@@ -52,9 +55,12 @@ cp generator/generate.tsx.txt $W/main_src/src/gen_s0.test.tsx
 
 # 1) (합성 픽스처를 다시 만들 때만) 백엔드 평가·검증 응답 — 입력 CSV 폴더는 지난 라운드의 c_데이터
 cd $W/be_main && <백엔드 venv>/bin/python -I generator/gen_eval.py.txt 의 사본 <c_데이터 폴더> $W/eval
+# 1b) 판정 자릿수 픽스처: syn_binary_shift_cm 응답에서 값만 바꿔 syn_binary_judged_digits.{csv,payload,validate,evaluate} 를 만든다
+python3 -I generator/edit_judged_digits.py.txt 의 사본 $W/eval
 # 2) 프론트 흐름으로 서술 요청 본문
 cd $W/main_src && S0_MODE=requests WORK=$W/eval npx vitest run src/gen_s0.test.tsx
-# 3) 백엔드 서술 작업(AI 키 환경변수 없이 → 규칙 문장)
+# 3) 백엔드 서술 작업(AI 키 환경변수 없이 → 규칙 문장). 폴더의 모든 *.narrative_request.json 을 돌리고 작업 번호가
+#    새로 나오므로, 한 픽스처만 더할 때는 그 요청 하나만 든 폴더에서 돌려 결과를 $W/eval 로 옮긴다.
 cd $W/be_main && env -u ANTHROPIC_API_KEY DATABASE_URL=sqlite:///$W/jobs.db <venv>/bin/python -I gen_jobs.py 사본 $W/eval
 # 4) 합성 픽스처
 cd $W/main_src && S0_MODE=fixtures WORK=$W/eval OUT=$W/fixtures npx vitest run src/gen_s0.test.tsx
