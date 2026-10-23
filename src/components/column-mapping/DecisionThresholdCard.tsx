@@ -41,6 +41,31 @@ export function thresholdApplies(taskType: TaskType, rows: MappingRow[]): boolea
 }
 
 /**
+ * 검증·평가 요청에 실을 결정 임계값(S2 P1, 점검 "결정 임계값 잔여값"). 지금 매핑에서 쓰이지 않으면 null 이고,
+ * 레이블별 값이면 지금 확률 역할에 매핑된 컬럼의 키만 남긴다.
+ *
+ * 종전에는 저장된 값을 그대로 보냈다. 칸에 0~1 밖 값을 적은 채 매핑을 바꿔(하드 예측을 매핑 등) 카드가
+ * 사라지면, 쓰이지도 않는 그 값 때문에 백엔드가 422 로 거절했고 고칠 칸이 화면에 없었다. 확정 검사와 같은
+ * 판정(`thresholdApplies`)을 쓴다.
+ */
+export function requestDecisionThreshold(
+  taskType: TaskType,
+  rows: MappingRow[],
+  value: number | Record<string, number> | null,
+): number | Record<string, number> | null {
+  if (value === null || !thresholdApplies(taskType, rows)) return null;
+  if (typeof value === "number") return value;
+  const { alternatives } = PREDICTION_ROLE_ALTERNATIVES[taskType];
+  const probabilityColumns = new Set(
+    rows
+      .filter((row) => row.confirmedRole !== null && (alternatives as string[]).includes(row.confirmedRole))
+      .map((row) => row.originalName),
+  );
+  const kept = Object.fromEntries(Object.entries(value).filter(([column]) => probabilityColumns.has(column)));
+  return Object.keys(kept).length > 0 ? kept : null;
+}
+
+/**
  * 칸에 적은 글 → 저장할 값(B4). 빈 칸은 `null`(저장하지 않음 = 기본값 0.5), 숫자가 아니면(입력 중인
  * "0." 같은 것) `undefined`(아무것도 바꾸지 않음). 종전에는 `Number("")` 가 0 이라, 칸을 지우면 0 이
  * 저장돼 모든 샘플을 양성으로 판정했다.

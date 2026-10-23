@@ -10,6 +10,7 @@ import type {
 import { SectionTitle } from "../shared/SectionTitle";
 import { TwoColTable } from "../shared/TwoColTable";
 import { toTableRows } from "../shared/materialRows";
+import { SubsectionTitle } from "../shared/SubsectionTitle";
 
 interface DatasetSectionProps {
   datasetInfo: DatasetInfo;
@@ -21,6 +22,13 @@ interface DatasetSectionProps {
    * 줄을 더한다. 2층 항목이 빠졌으면 "제공되지 않음"으로 적는다. 옛 성적서에는 없다.
    */
   materials?: ReportMaterials;
+  /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
+  schema3?: boolean;
+  /**
+   * 판 1 보관본인가(`isLegacyLayout`) — 운영 main 이 발급하던 모양 그대로: 학습 샘플 수 0 도 줄로 찍고,
+   * 예시 표는 '정상 데이터'·'불량 데이터', 파일명은 미리보기가 없을 때 칸 안에만.
+   */
+  legacyLayout?: boolean;
 }
 
 export function DatasetSection({
@@ -29,14 +37,16 @@ export function DatasetSection({
   datasetDiagnosis,
   trainingDatasetInfo,
   materials,
+  schema3,
+  legacyLayout = false,
 }: DatasetSectionProps) {
   const [activeImage, setActiveImage] = useState<{ url: string; title: string } | null>(null);
 
   const legacyTrainingRows = trainingDatasetInfo
     ? [
         { label: "학습 데이터셋명", value: trainingDatasetInfo.name },
-        // 건수는 ⑥ 에서 "모름"을 고를 수 있다 — 0개로 찍지 않고 줄을 뺀다.
-        ...(trainingDatasetInfo.trainingSampleCount > 0
+        // 건수는 ⑥ 에서 "모름"을 고를 수 있다 — 0개로 찍지 않고 줄을 뺀다. 판 1 은 0개도 찍었다.
+        ...(trainingDatasetInfo.trainingSampleCount > 0 || legacyLayout
           ? [{
               label: "학습 샘플 수",
               value: `${trainingDatasetInfo.trainingSampleCount.toLocaleString()}개`,
@@ -89,7 +99,7 @@ export function DatasetSection({
 
       {/* ===== 학습 데이터셋 ===== */}
       <div className="space-y-6">
-        <h3 className="text-base font-semibold text-slate-800">학습 데이터셋</h3>
+        <SubsectionTitle number="3.1" schema3={schema3} className="text-base font-semibold text-slate-800">학습 데이터셋</SubsectionTitle>
 
         {hasTrainingTable ? (
           <>
@@ -106,6 +116,7 @@ export function DatasetSection({
                 <TrainingDatasetExampleTable
                   validExamples={trainingDatasetInfo.validExamples}
                   edgeExamples={trainingDatasetInfo.edgeExamples}
+                  legacyLayout={legacyLayout}
                   onImageClick={(url, title) => setActiveImage({ url, title })}
                 />
               </div>
@@ -118,7 +129,7 @@ export function DatasetSection({
 
       {/* ===== 평가 데이터셋 ===== */}
       <div className="space-y-6">
-        <h3 className="text-base font-semibold text-slate-800">평가 데이터셋</h3>
+        <SubsectionTitle number="3.2" schema3={schema3} className="text-base font-semibold text-slate-800">평가 데이터셋</SubsectionTitle>
 
         {/* 평가 데이터 정보 */}
         <div className="space-y-3">
@@ -263,17 +274,23 @@ function TrainingDatasetExampleTable({
   validExamples,
   edgeExamples,
   onImageClick,
+  legacyLayout,
 }: {
   validExamples: UploadedFileInfo[];
   edgeExamples: UploadedFileInfo[];
   onImageClick?: (url: string, title: string) => void;
+  legacyLayout: boolean;
 }) {
+  // 판 1 보관본은 발급 당시 칸 이름(운영 main).
+  const validLabel = legacyLayout ? "정상 데이터" : "적합 예시";
+  const edgeLabel = legacyLayout ? "불량 데이터" : "부적합 예시";
+  const Cell = legacyLayout ? LegacyExampleImageCell : ExampleImageCell;
   return (
     <div className="overflow-hidden rounded-md border border-slate-300 bg-white">
       {/* 표 헤더 */}
       <div className="grid grid-cols-2 border-b border-slate-300 bg-slate-100 text-center text-xs font-bold text-slate-800 divide-x divide-slate-300">
-        <div className="py-2.5 px-3">적합 예시</div>
-        <div className="py-2.5 px-3">부적합 예시</div>
+        <div className="py-2.5 px-3">{validLabel}</div>
+        <div className="py-2.5 px-3">{edgeLabel}</div>
       </div>
 
       {/* 표 본문 (흰색 깔끔한 셀 2분할) */}
@@ -283,16 +300,16 @@ function TrainingDatasetExampleTable({
           {validExamples.length > 0 ? (
             <div className="w-full space-y-2">
               {validExamples.map((file, idx) => (
-                <ExampleImageCell
+                <Cell
                   key={`valid-${file.name}-${idx}`}
                   file={file}
-                  label="적합 예시"
+                  label={validLabel}
                   onImageClick={onImageClick}
                 />
               ))}
             </div>
           ) : (
-            <p className="text-xs text-slate-400 p-6">등록된 적합 예시 없음</p>
+            <p className="text-xs text-slate-400 p-6">등록된 {validLabel} 없음</p>
           )}
         </div>
 
@@ -301,16 +318,16 @@ function TrainingDatasetExampleTable({
           {edgeExamples.length > 0 ? (
             <div className="w-full space-y-2">
               {edgeExamples.map((file, idx) => (
-                <ExampleImageCell
+                <Cell
                   key={`edge-${file.name}-${idx}`}
                   file={file}
-                  label="부적합 예시"
+                  label={edgeLabel}
                   onImageClick={onImageClick}
                 />
               ))}
             </div>
           ) : (
-            <p className="text-xs text-slate-400 p-6">등록된 부적합 예시 없음</p>
+            <p className="text-xs text-slate-400 p-6">등록된 {edgeLabel} 없음</p>
           )}
         </div>
       </div>
@@ -360,5 +377,44 @@ function ExampleImageCell({
       </div>
       <figcaption className="text-center text-xs text-slate-600 break-all">{exampleFileCaption(file)}</figcaption>
     </figure>
+  );
+}
+
+/** 판 1 보관본의 예시 칸(운영 main 그대로) — 파일명은 미리보기가 없을 때만 칸 안에 적고 크기는 적지 않았다. */
+function LegacyExampleImageCell({
+  file,
+  label,
+  onImageClick,
+}: {
+  file: UploadedFileInfo;
+  label: string;
+  onImageClick?: (url: string, title: string) => void;
+}) {
+  const hasPreview = !!file.previewUrl;
+  return (
+    <div
+      className="group relative flex w-full items-center justify-center overflow-hidden cursor-pointer bg-white py-2"
+      onClick={() => hasPreview && onImageClick?.(file.previewUrl!, `${label} - ${file.name}`)}
+    >
+      {hasPreview ? (
+        <>
+          <img
+            src={file.previewUrl}
+            alt={file.name}
+            className="w-full max-h-[300px] object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+          />
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-semibold text-white shadow">
+              <ZoomIn className="size-4 text-teal-400" /> 클릭하여 확대
+            </span>
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-col items-center gap-2 text-slate-400 py-6">
+          <FileImage className="size-10 stroke-[1.5]" />
+          <span className="text-xs text-slate-600">{file.name}</span>
+        </div>
+      )}
+    </div>
   );
 }

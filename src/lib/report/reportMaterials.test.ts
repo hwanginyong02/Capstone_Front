@@ -17,6 +17,7 @@ import {
   buildClientInputs,
   buildReportMaterials,
   fitClientInputs,
+  materialRowText,
   type ReportComposerInput,
 } from "./reportMaterials";
 import type { MaterialRow } from "../../types/finalReport.types";
@@ -149,9 +150,26 @@ describe("⑧ 정답 라벨", () => {
     );
   });
 
-  it("복수 라벨러 합의가 아니면 라벨러 수·일치도 줄이 없다", () => {
-    const rows = groundTruth({ labelAuthor: { text: "Domain experts" }, labelReview: { text: "One reviewer" } });
-    expect(labelsOf(rows)).toEqual(["정답 라벨 구축 방법", "정답 라벨 신뢰성"]);
+  it("복수 라벨러 합의가 아니면 라벨러 수·일치도 줄은 '해당 없음'이다(서술 설계 D15 — 줄을 지우지 않는다)", () => {
+    for (const review of ["One reviewer", "No review"]) {
+      const rows = groundTruth({ labelAuthor: { text: "Domain experts" }, labelReview: { text: review } });
+      expect(rows.slice(2)).toEqual([
+        { label: "라벨러 수", value: "해당 없음", item: 5, notApplicable: true },
+        { label: "라벨 일치도", value: "해당 없음", item: 5, notApplicable: true },
+      ]);
+    }
+  });
+
+  it("신뢰성이 모름·글만·빈칸이거나 카드를 껐으면 두 줄을 만들지 않는다 — 필요한지 알 수 없다", () => {
+    const base = { labelAuthor: { text: "Domain experts" } };
+    for (const labelReview of [{ text: "One reviewer", unknown: true }, { note: "외주라 모름" }, {}]) {
+      expect(labelsOf(groundTruth({ ...base, labelReview }))).toEqual(["정답 라벨 구축 방법", "정답 라벨 신뢰성"]);
+    }
+    const off = buildReportMaterials(
+      composer({ cards: { ...ALL_ON, groundTruth: false }, groundTruth: { labelReview: { text: "One reviewer" } } }),
+      "binary",
+    ).groundTruth;
+    expect(labelsOf(off)).toEqual(["정답 라벨 구축 방법", "정답 라벨 신뢰성"]);
   });
 });
 
@@ -282,10 +300,10 @@ describe("AI 에 넘기는 고객 입력 (서술 설계 D25, D34)", () => {
     expect((inputs.training_data as Record<string, string>)["학습 데이터셋명"]).toBe(NOT_PROVIDED);
   });
 
-  it("3절에 찍는 전처리 일치 줄을 그대로 넘기고, 덧붙인 글은 의뢰자 덧붙임으로 표시한다", () => {
+  it("3절에 찍는 전처리 일치 줄을 그대로 넘기고, 덧붙인 글은 의뢰자 제공으로 표시한다", () => {
     // ⑥ 학습 데이터가 받는다(persist v13) — ⑦ 을 넣지 않아도 학습 데이터와 함께 간다.
     expect((inputs.training_data as Record<string, string>)["학습·평가 전처리 일치"]).toBe(
-      "다름 (의뢰자 덧붙임: Extra outlier filtering)",
+      "다름 (의뢰자 제공: Extra outlier filtering)",
     );
   });
 
@@ -454,7 +472,7 @@ describe("⑥ 학습·평가 전처리 일치 — 3절 학습 데이터 표에 �
     const rows = rowsWith({ text: "Different", note: "정규화 다름" });
     const labels = labelsOf(rows);
 
-    expect(valueOf(rows, "학습·평가 전처리 일치")).toBe("다름 (의뢰자 덧붙임: 정규화 다름)");
+    expect(valueOf(rows, "학습·평가 전처리 일치")).toBe("다름 (의뢰자 제공: 정규화 다름)");
     expect(labels.indexOf("학습·평가 전처리 일치")).toBe(labels.indexOf("수집 기간") + 1);
   });
 
@@ -523,3 +541,15 @@ describe("'기타'를 고르고 글을 비우면 답이 아니다 (검토 반영
     expect(valueOf(materials.training, "편향 감소 노력")).toBe("수행 안 함");
   });
 });
+
+describe("materialRowText — 줄 하나의 인쇄·AI 글", () => {
+  it.each([
+    [{ value: "X" }, "X"],
+    [{ value: "X", note: "n" }, "X (의뢰자 제공: n)"],
+    [{ value: null, note: "n" }, `${NOT_PROVIDED} (의뢰자 제공: n)`],
+    [{ value: null }, NOT_PROVIDED],
+  ])("%j → %s", (row, expected) => {
+    expect(materialRowText(row)).toBe(expected);
+  });
+});
+

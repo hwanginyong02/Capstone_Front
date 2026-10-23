@@ -3,6 +3,8 @@ import { WorkflowShell } from "../layout/WorkflowShell";
 import { ClientInfoForm, isClientInfoValid } from "../components/basic-info/BasicInfo";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { useStepFlow } from "../hooks/useStepFlow";
+import { RemainingNotice } from "../components/composer-input/RemainingNotice";
+import { basicInfoIssues, clientInfoGaps } from "../utils/domain/basicInfoValidity";
 
 /**
  * 의뢰자 정보 (`/app/client-info`) — 재료 고르기에서 정한 순서의 한 단계(docs/MATERIAL_PICKER.md §11).
@@ -28,6 +30,8 @@ export function ClientInfo() {
       onPrevious={() => flow.goPrevious()}
       onNext={() => flow.goNext()}
       nextDisabled={!isClientInfoValid(store.basicInfo)}
+      // 비활성 "다음" 옆에 무엇이 비었는지 말한다(작성 화면의 RemainingNotice 꼴, 점검 다-8).
+      rightAction={<RemainingNotice issues={basicInfoIssues("clientInfo", clientInfoGaps(store.basicInfo))} />}
       previousLabel="이전"
       nextLabel="다음"
     >

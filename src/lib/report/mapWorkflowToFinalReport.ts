@@ -286,6 +286,8 @@ export function mapWorkflowToFinalReport(
     contentSchema: REPORT_CONTENT_SCHEMA,
     // 목표값을 찍는 자릿수(B10). 이 키가 없는 성적서는 종전 둘째 자리로 그린다.
     targetDigits: TARGET_DIGITS,
+    // 판정과 어긋나 보이는 지표 값은 자릿수를 늘려 찍는다(S2). 이 키가 없는 성적서는 종전 셋째 자리로 그린다.
+    judgedValueDigits: true,
     meta: buildMeta(input, resolvedTaskType),
     applicant: buildApplicant(input.basicInfo),
     performer: DEFAULT_PERFORMER,

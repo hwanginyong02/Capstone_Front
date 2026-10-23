@@ -10,10 +10,11 @@
  * - 목록은 생성 때 한 번 만들어 성적서 데이터에 저장한다 — 발급본은 나중에 기준이 바뀌어도 그대로다.
  *
  * 최약 클래스·학습↔평가 분포 차이 두 종은 설계에 기준이 없어 새로 정했다(자체 설정, 설계 문서에 기록).
+ * 두 종의 값은 서술용 파생값(`narrativeFacts.ts`)이 계산한 것을 받아 쓴다 — 사실 시트·D6 표와 같은 값(S4a).
+ * 최약 클래스는 지표 선택과 무관하게 늘 본다(종전 "M22 를 골랐고" 조건 삭제 — 사용자 결정).
  */
 import type { TaskType } from "../../data/evaluationData";
 import type {
-  ClassReportTable,
   F1ThresholdGain,
   ImbalanceEffect,
   KpiResult,
@@ -21,6 +22,15 @@ import type {
   ProblemKind,
 } from "../../types/finalReport.types";
 import { computeMargin, computeVerdict, isJudged, isNearTarget } from "./computeVerdict";
+// 차이는 판정·마진과 같은 함수 하나로 잰다(끝자리 잡음을 걷음 — 0.85 − 0.75 가 "꼭 0.10 차이"로 남게).
+import { difference } from "./judgedNumber";
+import {
+  DISTRIBUTION_SHIFT_MIN,
+  LOW_SHARE_MIN,
+  LOW_SUPPORT_MIN,
+  WEAKEST_F1_GAP,
+  type NarrativeFacts,
+} from "./narrativeFacts";
 import { choiceLabel, type ReportComposerInput } from "./reportMaterials";
 
 /** 종류별 우선순위·기본 이름·원천 절 → 권고 절. 이 순서가 번호 순서다(우선순위 순). */
@@ -44,23 +54,11 @@ const KINDS: Array<{
 
 /** 임계값 조정 여지 — 최대 F1 과 실제 F1 의 차이가 이 값 이상이면 문제다(D40). */
 export const THRESHOLD_GAIN_MIN = 0.1;
-/** 최약 클래스 — 표본 수가 이 값 미만이면 표본 부족이다(자체 설정). */
-export const WEAKEST_SUPPORT_MIN = 30;
+/** 최약 클래스 — 표본 수가 이 값 미만이면 표본 부족이다(자체 설정, 값은 `narrativeFacts` 한 곳). */
+export const WEAKEST_SUPPORT_MIN = LOW_SUPPORT_MIN;
 /** 최약 클래스 — 전체 표본에서 차지하는 몫이 이 값 미만이면 표본 부족이다(자체 설정). */
-export const WEAKEST_SHARE_MIN = 0.05;
-/** 최약 클래스 — 매크로 F1 보다 이 값 이상 낮으면 문제다(자체 설정). */
-export const WEAKEST_F1_GAP = 0.1;
-/** 학습↔평가 분포 차이 — 어느 클래스든 비율 차가 이 값(10%p) 이상이면 문제다(자체 설정). */
-export const DISTRIBUTION_SHIFT_MIN = 0.1;
-
-/**
- * 두 값의 차를 비교하기 전에 부동소수 끝자리 잡음을 걷어 낸다. 0.85 − 0.75 는 0.0999999… 가 되어
- * "꼭 0.10 차이"가 기준(이상)에서 빠진다. 표의 값은 많아야 소수 4~6자리라 10자리 반올림은 판정을
- * 바꾸지 않는다.
- */
-function difference(a: number, b: number): number {
-  return Math.round((a - b) * 1e10) / 1e10;
-}
+export const WEAKEST_SHARE_MIN = LOW_SHARE_MIN;
+export { DISTRIBUTION_SHIFT_MIN, WEAKEST_F1_GAP };
 
 function round4(v: number): number {
   return Math.round(v * 1e4) / 1e4;
@@ -82,7 +80,11 @@ export function parseF1ThresholdGain(raw: unknown): F1ThresholdGain | null {
   const gain = finite(raw.gain);
   const best = finite(raw.best_threshold);
   if (maxF1 === null || currentF1 === null || gain === null || best === null || gain < 0) return null;
-  return { max_f1: maxF1, current_f1: currentF1, gain, best_threshold: best };
+  const parsed: F1ThresholdGain = { max_f1: maxF1, current_f1: currentF1, gain, best_threshold: best };
+  // 엔진 판정(S2) — 모양이 맞을 때만 싣는다. 없으면(옛 백엔드) 문제 목록이 4자리 gain 으로 판정한다.
+  if (typeof raw.notable === "boolean") parsed.notable = raw.notable;
+  if (typeof raw.gain_text === "string") parsed.gain_text = raw.gain_text;
+  return parsed;
 }
 
 const IMBALANCE_LEVELS: readonly ImbalanceEffect["level"][] = ["affected", "no_distortion", "mild"];
@@ -104,7 +106,7 @@ export function parseImbalanceEffect(raw: unknown): ImbalanceEffect | null {
   ) {
     return null;
   }
-  return {
+  const parsed: ImbalanceEffect = {
     level,
     imbalance_ratio: ratio,
     accuracy_minus_macro_f1: accuracyGap,
@@ -112,6 +114,37 @@ export function parseImbalanceEffect(raw: unknown): ImbalanceEffect | null {
     majority_class: raw.majority_class,
     minority_class: raw.minority_class,
   };
+  // 차이를 만든 값 넷(서술 라운드 세션 B 엔진부터) — 칸마다 모양이 맞을 때만 싣는다. 없거나 틀리면 그 칸만 없다
+  // (3절 문장이 차이만 찍는다). 멀티레이블은 정확도·매크로 F1 이 null 이라 싣지 않는다(정확도 갈래가 없다).
+  const accuracy = finite(raw.accuracy);
+  if (accuracy !== null) parsed.accuracy = accuracy;
+  const macroF1 = finite(raw.macro_f1);
+  if (macroF1 !== null) parsed.macro_f1 = macroF1;
+  const majorityF1 = finite(raw.majority_f1);
+  if (majorityF1 !== null) parsed.majority_f1 = majorityF1;
+  const minorityF1 = finite(raw.minority_f1);
+  if (minorityF1 !== null) parsed.minority_f1 = minorityF1;
+  const display = parseImbalanceDisplay(raw.display, accuracyGap === null);
+  if (display) parsed.display = display;
+  return parsed;
+}
+
+/** 불균형 영향의 표시 문자열(S2). 모양이 하나라도 틀리면 null — 숫자 칸만으로 그대로 간다. */
+function parseImbalanceDisplay(raw: unknown, noAccuracyGap: boolean): ImbalanceEffect["display"] | null {
+  if (!isRecord(raw)) return null;
+  const { imbalance_ratio: ir, accuracy_minus_macro_f1: acc, majority_minus_minority_f1: cls } = raw;
+  if (typeof ir !== "string" || typeof cls !== "string") return null;
+  if (noAccuracyGap ? acc !== null : typeof acc !== "string") return null;
+  const display: NonNullable<ImbalanceEffect["display"]> = {
+    imbalance_ratio: ir,
+    accuracy_minus_macro_f1: acc as string | null,
+    majority_minus_minority_f1: cls,
+  };
+  // 새 칸(세션 B 엔진부터)은 문자열일 때만 — 없거나 null 이면 그 칸만 없다.
+  for (const key of ["accuracy", "macro_f1", "majority_f1", "minority_f1"] as const) {
+    if (typeof raw[key] === "string") display[key] = raw[key] as string;
+  }
+  return display;
 }
 
 /** 정답 라벨 주의에 걸린 답 하나 — 무엇(구축 방법/신뢰성)이 어떤 값(성적서 이름)인지. */
@@ -150,33 +183,6 @@ function didNothingForImbalance(composer: ReportComposerInput | undefined): bool
   return !!value && !value.unknown && (value.choices ?? []).includes("Did nothing");
 }
 
-/**
- * 학습 클래스 분포(⑥ "클래스별 데이터 양")를 클래스 → 건수로 읽는다. 카드를 껐거나 "모름"이거나,
- * **한 칸이라도 비었거나 숫자가 아니면** null — 일부 클래스만으로 비율을 내면 그 클래스 몫이 부풀어
- * 차이가 거짓으로 커진다. 합이 0 이어도 null.
- */
-function trainingCounts(composer: ReportComposerInput | undefined): Record<string, number> | null {
-  if (!composer?.cards.trainingData) return null;
-  const value = composer.trainingData.trainingClassVolume;
-  if (!value || value.unknown) return null;
-  const entries = value.entries ?? [];
-  if (entries.length === 0) return null;
-  const counts: Record<string, number> = {};
-  for (const entry of entries) {
-    const raw = entry.value.trim();
-    const parsed = raw === "" ? NaN : Number(raw.replace(/[,\s]/g, ""));
-    if (!Number.isFinite(parsed) || parsed < 0) return null;
-    counts[entry.key] = parsed;
-  }
-  return Object.values(counts).reduce((a, b) => a + b, 0) > 0 ? counts : null;
-}
-
-/** 클래스 → 비율(그 클래스 수 ÷ 전체 합). */
-function ratios(counts: Record<string, number>): Record<string, number> {
-  const total = Object.values(counts).reduce((a, b) => a + b, 0);
-  return Object.fromEntries(Object.entries(counts).map(([k, v]) => [k, total > 0 ? v / total : 0]));
-}
-
 export interface ProblemListInput {
   /** 성적서의 지표 결과(`attachNearTarget` 을 거친 값). */
   kpiResults: KpiResult[];
@@ -187,10 +193,11 @@ export interface ProblemListInput {
   thresholdGain: F1ThresholdGain | null;
   /** 백엔드 imbalance_effect(`parseImbalanceEffect`). */
   imbalanceEffect: ImbalanceEffect | null;
-  /** 클래스별 표(M22). M22 를 골랐을 때만 있다. */
-  classReport: ClassReportTable | null | undefined;
-  /** 평가 데이터의 클래스 분포(3절과 같은 값). 멀티레이블은 레이블 등장 횟수다. */
-  evaluationDistribution: Record<string, number>;
+  /**
+   * 서술용 파생값 중 최약 클래스·학습↔평가 분포 차이(`buildNarrativeFacts`) — 사실 시트·D6 표와 같은 값.
+   * 최약 클래스는 지표 선택과 무관하게 엔진이 늘 계산하는 클래스별 표에서 나온다.
+   */
+  facts: Pick<NarrativeFacts, "weakest_class" | "distribution_shift">;
   /** 성적서 구성 카드의 값 — 학습 분포·편향 감소 노력·정답 라벨. 없으면 그 문제는 판단하지 않는다. */
   composer?: ReportComposerInput;
 }
@@ -216,64 +223,37 @@ const INCONCLUSIVE_CAUSE = {
   no_judged: "판정 대상 지표 없음",
 } as const;
 
-/** 최약 클래스 — M22 클래스 줄 중 F1 최저(같으면 표 순서 앞). 조건에 걸리지 않으면 null. */
-function weakestClass(table: ClassReportTable | null | undefined): Found | null {
-  if (!table) return null;
-  const rows = table.rows.filter((r) => r.f1 !== null);
-  if (rows.length === 0) return null;
-  const weakest = rows.reduce((min, r) => (r.f1! < min.f1! ? r : min));
-  const total = table.rows.reduce((sum, r) => sum + (r.support ?? 0), 0);
-  const support = weakest.support;
-  const share = support !== null && total > 0 ? support / total : null;
-  const lowSupport =
-    support !== null && (support < WEAKEST_SUPPORT_MIN || (share !== null && share < WEAKEST_SHARE_MIN));
-  const macro = table.averages.find((r) => r.label === "매크로 평균")?.f1 ?? null;
-  const gap = macro !== null ? difference(macro, weakest.f1!) : null;
-  const farBelow = gap !== null && gap >= WEAKEST_F1_GAP;
-  if (!lowSupport && !farBelow) return null;
+/** 최약 클래스 문제 — 표본이 작거나(30건·5% 미만) 매크로 F1 보다 0.10 이상 낮을 때만. 근거 키는 종전 그대로. */
+function weakestClassProblem(weakest: NarrativeFacts["weakest_class"]): Found | null {
+  if (!weakest || !(weakest.low_support || weakest.far_below_macro)) return null;
   return {
     title: weakest.label,
     evidence: {
       [weakest.label]: {
         f1: weakest.f1,
-        support,
-        share: share === null ? null : round4(share),
-        macro_f1: macro,
-        gap_from_macro: gap === null ? null : round4(gap),
-        low_support: lowSupport,
+        support: weakest.support,
+        share: weakest.share,
+        macro_f1: weakest.macro_f1,
+        gap_from_macro: weakest.gap_from_macro,
+        low_support: weakest.low_support,
       },
     },
   };
 }
 
-/** 학습↔평가 분포 차이 — 어느 클래스든 |학습 비율 − 평가 비율| ≥ 10%p. 걸린 클래스만 적는다. */
-function distributionShift(
-  composer: ReportComposerInput | undefined,
-  evaluation: Record<string, number>,
-): Found | null {
-  const training = trainingCounts(composer);
-  if (!training || Object.keys(evaluation).length === 0) return null;
-  // 평가 데이터의 클래스가 학습 분포에 하나라도 없으면 견주지 않는다(B5②) — 일부 클래스만 적은 학습
-  // 분포로 비율을 내면 적은 클래스 몫이 부풀어 차이가 거짓으로 커진다. 평가에 0건인 클래스는 보지 않는다.
-  const uncovered = Object.entries(evaluation).some(([name, count]) => count > 0 && !(name in training));
-  if (uncovered) return null;
-  const train = ratios(training);
-  const test = ratios(evaluation);
-  const classes = [...new Set([...Object.keys(train), ...Object.keys(test)])];
-  const shifted = classes.filter(
-    (c) => Math.abs(difference(train[c] ?? 0, test[c] ?? 0)) >= DISTRIBUTION_SHIFT_MIN,
-  );
-  if (shifted.length === 0) return null;
+/**
+ * 학습↔평가 분포 차이 문제 — 어느 클래스든 |학습 비율 − 평가 비율| ≥ 10%p(flagged). 걸린 클래스만 적는다.
+ * 차이의 절댓값 합은 2 를 넘지 못해 걸리는 클래스는 많아야 20개다 — 근거를 따로 자르지 않는다.
+ */
+function distributionShiftProblem(rows: NarrativeFacts["distribution_shift"]): Found | null {
+  const flagged = rows.filter((r) => r.flagged);
+  if (flagged.length === 0) return null;
   return {
-    title: shifted.join(", "),
+    title: flagged.map((r) => r.label).join(", "),
     evidence: Object.fromEntries(
-      shifted.map((c) => [
-        c,
-        {
-          training_ratio: round4(train[c] ?? 0),
-          evaluation_ratio: round4(test[c] ?? 0),
-          difference: round4((train[c] ?? 0) - (test[c] ?? 0)),
-        },
+      flagged.map((r) => [
+        r.label,
+        { training_ratio: r.training_ratio, evaluation_ratio: r.evaluation_ratio, difference: r.difference },
       ]),
     ),
   };
@@ -333,7 +313,8 @@ export function buildProblemList(input: ProblemListInput): Problem[] {
     };
   }
 
-  if (taskType === "binary" && thresholdGain && thresholdGain.gain >= THRESHOLD_GAIN_MIN) {
+  // 임계값 부적합은 엔진이 반올림 전 값으로 정한 notable 을 따른다(S2). 옛 응답(키 없음)만 4자리 gain 으로.
+  if (taskType === "binary" && thresholdGain && (thresholdGain.notable ?? thresholdGain.gain >= THRESHOLD_GAIN_MIN)) {
     found.threshold_tuning = { evidence: { ...thresholdGain } };
   }
 
@@ -347,10 +328,10 @@ export function buildProblemList(input: ProblemListInput): Problem[] {
     };
   }
 
-  const weakest = weakestClass(input.classReport);
+  const weakest = weakestClassProblem(input.facts.weakest_class);
   if (weakest) found.weakest_class = weakest;
 
-  const shift = distributionShift(composer, input.evaluationDistribution);
+  const shift = distributionShiftProblem(input.facts.distribution_shift);
   if (shift) found.distribution_shift = shift;
 
   const cautions = labelCautions(composer);

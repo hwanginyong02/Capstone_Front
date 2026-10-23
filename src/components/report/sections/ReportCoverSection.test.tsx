@@ -38,3 +38,17 @@ describe("표지 표준 문구", () => {
     expect(screen.getByText("기준 표준: ISO/IEC TS 4213:2022")).toBeInTheDocument();
   });
 });
+
+// 판 3 본문에는 AI 표현을 쓰지 않는다(서술 라운드 세션 B, 사용자 결정 2). 판 2 는 발급 당시 문구.
+describe("표지 발급 기관 문구 — 판 2 / 판 3", () => {
+  it("판 2: '{기관명} AI 평가 플랫폼'", () => {
+    render(<ReportCoverSection meta={meta} performer={performer} schema3={false} />);
+    expect(screen.getByText("발급 기관: 기관 AI 평가 플랫폼")).toBeInTheDocument();
+  });
+
+  it("판 3: '{기관명} 평가 플랫폼'(AI 없음)", () => {
+    render(<ReportCoverSection meta={meta} performer={performer} schema3 />);
+    expect(screen.getByText("발급 기관: 기관 평가 플랫폼")).toBeInTheDocument();
+    expect(screen.queryByText(/AI 평가 플랫폼/)).not.toBeInTheDocument();
+  });
+});

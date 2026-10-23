@@ -29,6 +29,9 @@ describe("확률 컬럼 이름 규칙 문장", () => {
     expect(multilabel).toContain("레이블 이름");
     expect(multilabel).toContain("score_sports");
     expect(multiclass).toContain("검증 화면에서 막힙니다");
+    // 조사는 받침에 맞춘다 — '레이블를' 이 찍혔다(세션 C 브라우저 스모크).
+    expect(multiclass).toContain("이 이름으로 클래스를 찾으므로");
+    expect(multilabel).toContain("이 이름으로 레이블을 찾으므로");
   });
 
   it("이진은 확률 컬럼이 하나라 이름을 보지 않는다 — 안내하지 않는다", () => {

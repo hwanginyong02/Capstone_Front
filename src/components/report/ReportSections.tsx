@@ -11,7 +11,7 @@
  * 대신 `DataValidationSection.test.tsx` 의 배선 계약 테스트가 두 경로의 prop 집합을 대조한다.
  */
 import type { FinalReportData } from "../../types/finalReport.types";
-import { isLegacyLayout } from "../../lib/report/normalizeReportContent";
+import { isLegacyLayout, usesSchema3 } from "../../lib/report/normalizeReportContent";
 import { ReportCoverSection } from "./sections/ReportCoverSection";
 import { CompanyInfoSection } from "./sections/CompanyInfoSection";
 import { EvalScopeSection } from "./sections/EvalScopeSection";
@@ -30,7 +30,7 @@ import { SignatureSection } from "./sections/SignatureSection";
 export function ReportSections({ data }: { data: FinalReportData }) {
   return (
     <>
-      <ReportCoverSection meta={data.meta} performer={data.performer} materialCheck={data.materialCheck} />
+      <ReportCoverSection meta={data.meta} performer={data.performer} materialCheck={data.materialCheck} schema3={usesSchema3(data)} />
       <CompanyInfoSection
         applicant={data.applicant}
         performer={data.performer}
@@ -38,17 +38,21 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         meta={data.meta}
         materialCheck={data.materialCheck}
         hasConfidenceIntervals={data.confidenceIntervalNote !== undefined}
+        schema3={usesSchema3(data)}
+        legacyLayout={isLegacyLayout(data)}
       />
-      <EvalScopeSection meta={data.meta} evalScope={data.evalScope} />
+      <EvalScopeSection meta={data.meta} evalScope={data.evalScope} schema3={usesSchema3(data)} legacyLayout={isLegacyLayout(data)} />
       <DatasetSection
         datasetInfo={data.datasetInfo}
         datasetSamples={data.datasetSamples}
         datasetDiagnosis={data.datasetDiagnosis}
         trainingDatasetInfo={data.trainingDatasetInfo}
         materials={data.materials}
+        schema3={usesSchema3(data)}
+        legacyLayout={isLegacyLayout(data)}
       />
-      <EvalEnvSection meta={data.meta} evalScope={data.evalScope} evalEnv={data.evalEnv} materials={data.materials} />
-      <MetricListSection metricList={data.metricList} metricFormulas={data.metricFormulas} taskTypeLabel={data.meta.taskTypeLabel} materials={data.materials} />
+      <EvalEnvSection meta={data.meta} evalScope={data.evalScope} evalEnv={data.evalEnv} materials={data.materials} schema3={usesSchema3(data)} />
+      <MetricListSection metricList={data.metricList} metricFormulas={data.metricFormulas} taskTypeLabel={data.meta.taskTypeLabel} materials={data.materials} schema3={usesSchema3(data)} />
       <DataValidationSection
         dataValidation={data.dataValidation}
         kpiResults={data.kpiResults}
@@ -56,6 +60,7 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         validationSummary={data.validationSummary}
         materialCheck={data.materialCheck}
         taskTypeLabel={data.meta.taskTypeLabel}
+        schema3={usesSchema3(data)}
       />
       <KpiResultSection
         kpiResults={data.kpiResults}
@@ -67,10 +72,12 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         showVerdictRule={data.conclusion.judgedCount !== undefined}
         confidenceIntervalNote={data.confidenceIntervalNote}
         targetDigits={data.targetDigits}
+        judgedValueDigits={data.judgedValueDigits}
         coreMetricsSource={data.coreMetricsSource}
+        schema3={usesSchema3(data)}
       />
-      <ChartSection charts={data.charts} />
-      <LatencySection latency={data.latency} materialCheck={data.materialCheck} />
+      <ChartSection charts={data.charts} schema3={usesSchema3(data)} legacyLayout={isLegacyLayout(data)} />
+      <LatencySection latency={data.latency} materialCheck={data.materialCheck} schema3={usesSchema3(data)} />
       <InterpretSection
         interpretation={data.interpretation}
         source={data.narrativeSource}
@@ -79,24 +86,39 @@ export function ReportSections({ data }: { data: FinalReportData }) {
         confusionCounts={data.confusionCounts}
         errorRatioSentence={data.errorRatioSentence}
         labelCautionSentence={data.labelCautionSentence}
+        schema3={usesSchema3(data)}
+        narrativeSections={data.narrativeSections}
+        taskType={data.meta.taskType}
+        narrativeFacts={data.narrativeFacts}
+        classLabelDescriptions={data.datasetInfo.classLabelDescriptions}
       />
       <ConclusionSection
         conclusion={data.conclusion}
         source={data.narrativeSource}
         nearTargetNote={data.nearTargetNote}
         sourceRelationSentence={data.sourceRelationSentence}
+        schema3={usesSchema3(data)}
+        narrativeSections={data.narrativeSections}
+        noBenchmarkSentence={data.noBenchmarkSentence}
+        kpiResults={data.kpiResults}
+        targetDigits={data.targetDigits}
+        judgedValueDigits={data.judgedValueDigits}
+        legacyLayout={isLegacyLayout(data)}
       />
       <RecommendSection
         recommendations={data.recommendations}
         narrative={data.recommendationNarrative}
         source={data.narrativeSource}
         problems={data.problems}
+        schema3={usesSchema3(data)}
+        narrativeSections={data.narrativeSections}
       />
       <SignatureSection
         signature={data.signature}
         meta={data.meta}
         evalScope={data.evalScope}
         performer={data.performer}
+        schema3={usesSchema3(data)}
       />
     </>
   );

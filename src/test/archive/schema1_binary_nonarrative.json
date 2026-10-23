@@ -1,0 +1,224 @@
+{
+  "meta": {
+    "reportId": "",
+    "title": "기계학습 분류 성능 시험결과서",
+    "issuedAt": "",
+    "evaluationPeriod": {
+      "from": "2026-10-01",
+      "to": "2026-10-01"
+    },
+    "taskType": "binary",
+    "taskTypeLabel": "Binary",
+    "contractDate": "2026-10-01",
+    "positiveClass": "1"
+  },
+  "applicant": {
+    "companyName": "보관본 주식회사",
+    "representative": "—",
+    "businessNumber": "—",
+    "contact": "—",
+    "fax": "—",
+    "homepage": "—",
+    "address": "—"
+  },
+  "performer": {
+    "orgName": "한국 AI 인증원",
+    "evaluator": "자동 평가 엔진",
+    "contact": "—"
+  },
+  "evalScope": {
+    "purpose": "외부 제출 및 인증/심사기관 검토 목적으로 활용",
+    "targetModel": "ArchiveModel",
+    "version": "v1.0.0",
+    "scope": "의뢰자가 제출한 평가 데이터셋을 기반으로 선택된 시험항목에 대해 정량적 성능 지표를 산출하고 합격 기준 충족 여부를 판정한다.",
+    "reportPurposeKey": "external",
+    "modelPurpose": "생산 라인 2 의 불량 검출"
+  },
+  "datasetInfo": {
+    "format": "정형 데이터 (CSV)",
+    "inputColumns": [
+      "id",
+      "label",
+      "pred"
+    ],
+    "sampleCount": 200,
+    "taskTypeLabel": "Binary",
+    "classCount": 2,
+    "classLabels": [
+      "0",
+      "1"
+    ],
+    "classLabelDescriptions": [
+      {
+        "label": "0",
+        "description": ""
+      },
+      {
+        "label": "1",
+        "description": ""
+      }
+    ],
+    "fileName": "data.csv"
+  },
+  "datasetSamples": [],
+  "datasetDiagnosis": "평가 데이터셋은 총 200건이며, 클래스(레이블)별 분포는 0 105건(52.5%), 1 95건(47.5%)이다. 클래스 불균형 비율(Imbalance Ratio)은 1.11로, 허용 기준(≤ 1.50) 이내의 균형 상태이다.",
+  "evalEnv": {
+    "method": "서버 사이드 자동 연산 (Python 기반 metric 산출)",
+    "outputFormat": "성능 지표 수치 및 합격/불합격 판정 성적서 (PDF)",
+    "tools": [
+      "Python 3.11",
+      "scikit-learn 1.4.0",
+      "pandas 2.2.0",
+      "numpy 1.26.0"
+    ],
+    "systemSpec": {
+      "os": "—",
+      "cpu": "—",
+      "gpu": "—",
+      "memory": "—",
+      "software": "—"
+    },
+    "environment": {
+      "evaluated_at": "2026-10-01T02:00:00+00:00",
+      "libraries": {
+        "python": "3.11.9",
+        "scikit-learn": "1.4.0",
+        "pandas": "2.2.0",
+        "numpy": "1.26.0"
+      }
+    }
+  },
+  "metricList": [
+    {
+      "metricId": "M1",
+      "name": "Accuracy",
+      "threshold": 0.5,
+      "passCriteria": "≥ 0.50"
+    },
+    {
+      "metricId": "M4",
+      "name": "F1 Score",
+      "threshold": 0,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M7",
+      "name": "Specificity",
+      "threshold": 0.6,
+      "passCriteria": "≥ 0.60"
+    },
+    {
+      "metricId": "M20",
+      "name": "MCC",
+      "threshold": 0,
+      "passCriteria": "정보 제공"
+    }
+  ],
+  "metricFormulas": [
+    {
+      "metricId": "M1",
+      "name": "Accuracy",
+      "formula": "(TP + TN) / Total",
+      "description": "Measures how often the classifier predicts the correct result.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M4",
+      "name": "F1 Score",
+      "formula": "binary: 2PR/(P+R) · 그 외: 클래스별 F1 의 macro 평균(macro-P·macro-R 의 조화평균이 아님)",
+      "description": "Balances precision and recall in a single metric.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M7",
+      "name": "Specificity",
+      "formula": "TN / (TN + FP)",
+      "description": "Measures how many true negatives are correctly predicted.",
+      "isCommon": false
+    },
+    {
+      "metricId": "M20",
+      "name": "MCC",
+      "formula": "(TP*TN - FP*FN) / √((TP+FP)(TP+FN)(TN+FP)(TN+FN))",
+      "description": "A robust binary metric that considers all confusion matrix cells.",
+      "isCommon": false
+    }
+  ],
+  "dataValidation": [],
+  "kpiResults": [
+    {
+      "metricId": "M1",
+      "name": "Accuracy",
+      "value": 0.505,
+      "threshold": 0.5,
+      "status": "pass",
+      "higherIsBetter": true
+    },
+    {
+      "metricId": "M4",
+      "name": "F1 Score",
+      "value": 0.5123152709359606,
+      "threshold": 0,
+      "status": "pass",
+      "higherIsBetter": true,
+      "perClass": [
+        {
+          "label": "0",
+          "value": 0.49746192893401014,
+          "status": "pass"
+        },
+        {
+          "label": "1",
+          "value": 0.5123152709359606,
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "metricId": "M7",
+      "name": "Specificity",
+      "value": 0.4666666666666667,
+      "threshold": 0.6,
+      "status": "fail",
+      "higherIsBetter": true
+    },
+    {
+      "metricId": "M20",
+      "name": "MCC",
+      "value": 0.014062605450317654,
+      "threshold": 0,
+      "status": "pass",
+      "higherIsBetter": true
+    }
+  ],
+  "charts": {
+    "confusionMatrix": null,
+    "rocCurve": null,
+    "prCurve": null
+  },
+  "latency": null,
+  "interpretation": {
+    "confusionAnalysis": "",
+    "distributionAnalysis": ""
+  },
+  "conclusion": {
+    "verdict": "CONDITIONAL_PASS",
+    "score": 50,
+    "benchmark": "",
+    "narrative": "",
+    "risks": ""
+  },
+  "recommendationNarrative": {
+    "dataQuality": "",
+    "modelOps": ""
+  },
+  "recommendations": [],
+  "signature": {
+    "issuer": "",
+    "signedAt": "",
+    "history": []
+  },
+  "evaluationWarnings": [],
+  "narrativeSource": "error",
+  "isEvaluated": true
+}

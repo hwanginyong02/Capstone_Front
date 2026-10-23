@@ -9,7 +9,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { CHECK_NAME_KO, checkNameKo, mapValidationResultToReport } from "./mapValidationResultToReport";
+import { CHECK_NAME_KO, checkNameKo, mapValidationResultToReport, summaryItemKo, validationResultText } from "./mapValidationResultToReport";
 import type { ValidateDataResponseData } from "../../types/validation.types";
 
 const response = (details: ValidateDataResponseData["validation_details"]): ValidateDataResponseData =>
@@ -53,6 +53,28 @@ describe("새 검증 항목의 한국어 이름", () => {
     expect(mapped.dataValidation[1].detail).toBe("3 건");
   });
 
+  it("라벨 표기 맞춤(S2)도 한국어 문구라 클래스 이름을 바꾸지 않는다", () => {
+    const result = "정답 ' rows' → 'rows'; 예측 'classes' · ' classes' → 'classes'";
+    const mapped = mapValidationResultToReport(
+      response([
+        { name: "Label notation", result, handling: "", status: "warning", group: "common" },
+      ] as ValidateDataResponseData["validation_details"]),
+      4,
+    );
+    expect(mapped.dataValidation[0].checkName).toBe("라벨 표기 맞춤");
+    expect(mapped.dataValidation[0].detail).toBe(result);
+  });
+
+  it("한국어 문구 항목도 통과(None)는 '없음'으로 찍는다", () => {
+    const mapped = mapValidationResultToReport(
+      response([
+        { name: "Label notation", result: "None", handling: "", status: "pass", group: "common" },
+      ] as ValidateDataResponseData["validation_details"]),
+      4,
+    );
+    expect(mapped.dataValidation[0].detail).toBe("없음");
+  });
+
   // 백엔드 저장소가 옆에 없으면(프론트만 받은 CI) 대조를 건너뛴다. 파일을 읽기 전에 확인한다.
   const backendChecks = resolve(__dirname, "../../../../Capstone_Back/app/analysis/validation_checks.py");
   it.skipIf(!existsSync(backendChecks))("백엔드가 내는 검증 항목 이름은 모두 한국어 이름이 있다", () => {
@@ -74,5 +96,32 @@ describe("새 검증 항목의 한국어 이름", () => {
     expect(names).toContain("Column mapped to multiple roles");
     const missing = [...names].filter((name) => !(name in CHECK_NAME_KO));
     expect(missing).toEqual([]);
+  });
+});
+
+describe("결과 칸 글 — 성적서와 검증 화면이 같은 함수(validationResultText)", () => {
+  it('"None"은 "없음" — 한국어 문구 항목도', () => {
+    expect(validationResultText({ name: "Duplicate ID", result: "None" })).toBe("없음");
+    expect(validationResultText({ name: "Label notation", result: "None" })).toBe("없음");
+    expect(validationResultText({ name: "Missing value", result: "" })).toBe("없음");
+  });
+
+  it("한국어 문구 항목은 낱말을 바꾸지 않고, 나머지는 바꾼다", () => {
+    expect(validationResultText({ name: "Label notation", result: "정답 ' rows' → 'rows'" })).toBe("정답 ' rows' → 'rows'");
+    expect(validationResultText({ name: "Missing value", result: "3 rows" })).toBe("3 건");
+  });
+});
+
+describe("실행 요약 한글화(검증 화면)", () => {
+  it("다섯 칸 이름과 값", () => {
+    expect(summaryItemKo({ label: "Total validated rows", value: "1,234 rows" })).toEqual({ label: "검증한 전체 행", value: "1,234건" });
+    expect(summaryItemKo({ label: "Valid prediction rows", value: "1 row" })).toEqual({ label: "평가에 쓸 행", value: "1건" });
+    expect(summaryItemKo({ label: "Excluded samples", value: "0 rows" })).toEqual({ label: "제외한 행", value: "0건" });
+    expect(summaryItemKo({ label: "Selected metric count", value: "3 items" })).toEqual({ label: "선택한 지표 수", value: "3개" });
+    expect(summaryItemKo({ label: "Validation result", value: "Errors 0 / Warnings 2" })).toEqual({ label: "검증 결과", value: "오류 0 / 경고 2" });
+  });
+
+  it("모르는 칸은 그대로", () => {
+    expect(summaryItemKo({ label: "New thing", value: "abc" })).toEqual({ label: "New thing", value: "abc" });
   });
 });

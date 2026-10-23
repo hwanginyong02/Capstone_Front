@@ -916,7 +916,11 @@ describe("재료 고르기 — 대분류와 필드 구분 (docs/MATERIAL_PICKER.
   });
 
   it("형식은 선택지의 화면 이름으로 만든다 — 저장값이 드러나지 않는다", () => {
-    expect(fieldFormat(fieldOf("perspective", "usageMode"))).toBe("하나 선택: 실시간 응답 / 일괄 처리");
+    expect(fieldFormat(fieldOf("perspective", "usageMode"))).toBe("하나 선택: 실시간 응답 / 일괄 처리. 덧붙이는 글 가능");
+    // 두 줄 입력(⑨ GPU)도 덧붙이는 글을 알린다.
+    expect(fieldFormat(fieldOf("modelEnv", "gpuUsage"))).toBe("학습 · 추론. 덧붙이는 글 가능");
+    // 글을 받지 않는 칸은 붙이지 않는다.
+    expect(fieldFormat(fieldOf("modelEnv", "runtimeEnv"))).not.toContain("덧붙이는 글");
     expect(fieldFormat(fieldOf("trainingData", "preprocessingMatch"))).toBe(
       "하나 선택: 같음 / 다름 / 모름. 덧붙이는 글 가능",
     );

@@ -1,3 +1,4 @@
+import type { NarrativeFacts } from "../lib/report/narrativeFacts";
 import type { TaskType } from "../data/evaluationData";
 import type { ConfusionMatrixData, ReportRecommendation } from "./report.types";
 import type { ValidationGroup } from "./validation.types";
@@ -197,6 +198,13 @@ export interface F1ThresholdGain {
   current_f1: number;
   gain: number;
   best_threshold: number;
+  /**
+   * 엔진이 반올림 전 gain 으로 정한 '임계값 부적합'(≥ 0.10, S2). 9절 문제가 이 값을 따른다 — 실제 0.09996 은
+   * 4자리로 0.1 이지만 부적합이 아니다. 이 키가 없는 응답(옛 백엔드)은 4자리 gain 으로 판정한다.
+   */
+  notable?: boolean;
+  /** gain 의 표시 문자열 — 판정과 같은 쪽으로 읽히게 자릿수를 늘림(S2). 옛 응답에는 없다. */
+  gain_text?: string;
 }
 
 /**
@@ -210,6 +218,27 @@ export interface ImbalanceEffect {
   majority_minus_minority_f1: number;
   majority_class: string;
   minority_class: string;
+  /**
+   * 차이를 만든 값 넷(서술 설계 D20 세 갈래 문장 — 서술 라운드 세션 B). 정확도·매크로 F1·다수·소수 클래스 F1.
+   * 멀티레이블은 정확도가 없어 null. 이 칸이 생기기 전 엔진 응답에는 없다 — 그때 3절 문장은 차이만 찍는다.
+   */
+  accuracy?: number | null;
+  macro_f1?: number;
+  majority_f1?: number;
+  minority_f1?: number;
+  /**
+   * 값들의 표시 문자열(S2) — 엔진이 판정과 같은 쪽으로 읽히게 자릿수를 늘렸다(IR 1.49996 은 넷째 자리로 1.5 지만
+   * '경미'라 "1.49996"). 사실 시트로 서술에 간다. 옛 응답에는 없다. 아래 넷(accuracy …)은 세션 B 엔진부터.
+   */
+  display?: {
+    imbalance_ratio: string;
+    accuracy_minus_macro_f1: string | null;
+    majority_minus_minority_f1: string;
+    accuracy?: string | null;
+    macro_f1?: string;
+    majority_f1?: string;
+    minority_f1?: string;
+  };
 }
 
 /** 문제 종류 9종(서술 설계 D22). 이 순서가 번호 순서다(우선순위 순, 같은 우선순위는 표 순서). */
@@ -370,8 +399,15 @@ export interface RecommendationNarrative {
   modelOps: string;
 }
 
-/** 서술 출처 — 추적성 배지용. llm: LLM 생성, fallback: 규칙 기반, error: 호출 실패(빈 서술). */
-export type NarrativeSource = "llm" | "fallback" | "error";
+/**
+ * 서술 출처 — 추적성 배지용. llm: LLM 생성, fallback: 규칙 기반, error: 호출 실패(빈 서술 — 옛 저장본에만 있다).
+ * pending·failed 는 **화면 전용**이다(서술 라운드 S3b): 서술을 기다리는 중·만들지 못함일 때 성적서 훅이 그리기 직전에
+ * 얹는 값으로, 저장하지 않는다. 섹션은 이 값으로 빈 서술 자리의 안내 문구를 고른다.
+ */
+export type NarrativeSource = "llm" | "fallback" | "error" | "pending" | "failed";
+
+/** 칸(소절 번호) 하나의 출처 — 서술 작업 응답의 section_sources. fixed 는 고정 문구. */
+export type NarrativeSectionSource = "llm" | "fallback" | "fixed";
 
 /** 7절 정밀 분석 서술 (LLM /api/generate-narrative 의 interpretation). */
 export interface InterpretationData {
@@ -379,6 +415,11 @@ export interface InterpretationData {
   confusionAnalysis: string;
   /** 데이터 분포 유의성 및 클래스 편향성 평가 */
   distributionAnalysis: string;
+  /**
+   * 7.3 추가 관찰(작업 응답 interpretation.additional_observations). AI 가 쓸 것이 없으면 빈 글 — 판 3 은 그때
+   * 고정 문구 15 "해당 없음"을 찍는다. 이 칸이 생기기 전 저장본에는 없다.
+   */
+  additionalObservations?: string;
 }
 
 export interface TrainingDatasetInfo {
@@ -403,6 +444,8 @@ export interface FinalReportData {
    * - 없음(1): 목표값 없음을 `threshold: 0` 으로 적었다. 파생 예측 사실을 6.0 일러두기에 찍었다.
    * - 2: 목표값 없음을 `threshold: null` 로 적는다. 파생 예측 사실은 7.1 앞에 찍는다(재료 목록
    *   4절 "결정 임계값 — 7.1 앞 고정 문구").
+   * - 3: 칸 뜻은 2 와 같다. 소절 번호(1.1~9.2)·칸별 "규칙 기반 문장" 배지(화면만)·7.3·고정 문구 16·
+   *   본문의 AI/LLM 표현 제거 같은 새 모양을 이 판에만 그린다(`usesSchema3`). 판은 run 을 만들 때 매퍼가 찍는다.
    */
   contentSchema?: number;
   /**
@@ -411,6 +454,12 @@ export interface FinalReportData {
    * 이 값을 읽는다. 이 키가 생기기 전 성적서에는 없고, 없으면 종전 둘째 자리(`LEGACY_TARGET_DIGITS`)다.
    */
   targetDigits?: number;
+  /**
+   * 판정 대상 지표 값을 판정과 같은 쪽으로 읽히게 찍는가(S2, 사용자 결정 "판정 자릿수"). 새 성적서는 true —
+   * 셋째 자리 반올림이 판정과 어긋나 보이면(실제 미달 0.7996 이 "0.800 / ≥ 0.800 / 불합격") 6.1·6.2 표가
+   * 자릿수를 늘려 찍는다(`judgedNumber.formatJudgedValue`). 이 키가 없는 옛 발급본은 발급 당시처럼 셋째 자리다.
+   */
+  judgedValueDigits?: boolean;
   /**
    * 핵심 지표를 의뢰자가 정했나(client), 유형별 기본값을 그대로 썼나(default) — W8, `coreMetricsSource`.
    * 6.1 판정 규칙 문장이 두 갈래로 읽는다. 이 키가 생기기 전 성적서에는 없고 종전 문장("의뢰자가 지정")이다.
@@ -456,6 +505,12 @@ export interface FinalReportData {
    */
   nearTargetNote?: string;
   /**
+   * 8.1 표 아래 고정 문구 16(서술 설계, 사용자 결정 5) — 고른 서술 지표 중 내부 참조 기준치가 없는 것.
+   * 조립 때 만들어 저장한다(`benchmarkBaselines.noBenchmarkSentence`). 모두 기준이 있거나 서술 지표가 없으면,
+   * 그리고 이 키가 생기기 전 성적서에는 없다.
+   */
+  noBenchmarkSentence?: string;
+  /**
    * 7.2 정답 라벨 주의 고정 문구 12(`dataCautionPhrases.ts`). 9절 문제 "정답 라벨 주의"와 같은 판정으로
    * 생성 때 만들어 저장한다. 걸리지 않았거나 이 키가 생기기 전 성적서에는 없다.
    */
@@ -471,6 +526,11 @@ export interface FinalReportData {
    * 성적서는 종전 표(우선순위·분류·권고 내용·기대 효과)다.
    */
   problems?: Problem[];
+  /**
+   * AI 에 보낸 서술용 파생값(S4a, 계약 facts-1 — `lib/report/narrativeFacts.ts`). 자른 뒤 값(보낸 것과 같음).
+   * S7 D6 표(최약 클래스·최다 오분류 쌍)와 /report/:id 가 이 값을 그린다. 이 키가 생기기 전 성적서에는 없다.
+   */
+  narrativeFacts?: NarrativeFacts;
   charts: {
     confusionMatrix: ConfusionMatrixData | null;
     rocCurve: { fpr: number[]; tpr: number[]; auroc?: number } | null;
@@ -484,6 +544,22 @@ export interface FinalReportData {
   recommendations: ReportRecommendation[];
   /** 7·8·9절 서술의 출처(추적성 배지). 미평가/미생성 시 undefined. */
   narrativeSource?: NarrativeSource;
+  /**
+   * 칸(소절 번호 7.1·7.2·8.1·8.2·8.3·9 …)마다 서술 출처(서술 라운드 S3b, 작업 응답 section_sources).
+   * 칸별 표시는 S7 에서 그린다. 이 칸이 생기기 전 저장본에는 없다.
+   */
+  narrativeSections?: Record<string, NarrativeSectionSource>;
+  /**
+   * 칸마다 서술을 쓴 모델 이름(작업 응답 section_models, 사용자 결정 4 — "작성 기록"). llm 칸만 이름이 있고
+   * 규칙 기반·고정 칸은 null. 서비스 화면(`/report/:id`·`/report/no/:번호`)에만 보이고 인쇄 본문에는 없다.
+   * 이 칸이 생기기 전 저장본과 모델을 알려 주지 않는 서버 응답에는 없다.
+   */
+  narrativeModels?: Record<string, string | null>;
+  /**
+   * 서술까지 끝난 완성본인가. 이것이 true 일 때만 발급·PDF·인쇄가 열린다(서술 라운드 S3b — 끝나지 않은 서술은
+   * 완성본이 아니다). 성적서 훅이 서술 작업이 끝났을(done) 때만 세운다.
+   */
+  isEvaluated?: boolean;
   /**
    * 평가 전처리가 만든 경고(백엔드 `EvaluateResponse.warnings`).
    * 종전에는 프론트에 소비처가 없어 그대로 버려졌다(ISSUES.md D-16).
@@ -593,6 +669,19 @@ export interface MaterialRow {
    * 선언 줄에는 없다. 이 키가 생기기 전 성적서에는 없다.
    */
   item?: number;
+  /**
+   * 값과 따로 찍는 의뢰자 글(서술 설계 D26). `value` 가 `null`(제공되지 않음)인데 의뢰자가 덧붙인 글이 있을
+   * 때만 있다 — "모름 + 글", 1층 선언의 글만 있는 답. 성적서와 AI 에는 "제공되지 않음 (의뢰자 제공: …)"으로
+   * 적고(`materialRowText`), 제공 여부는 `value` 로만 센다. 선택지와 함께 쓴 글은 `value` 안에 이미 있다.
+   * 이 키가 생기기 전 성적서에는 없다.
+   */
+  note?: string;
+  /**
+   * 원래 필요 없는 칸 — `value` 는 "해당 없음"이다(서술 설계 D15, 고정 문구 1). 정답 라벨 신뢰성이 복수
+   * 라벨러가 아니면 라벨러 수·일치도 줄. 성적서에는 찍고 AI 고객 입력에서는 뺀다. 이 키가 생기기 전 성적서에는
+   * 없다(그때는 그 줄을 만들지 않았다).
+   */
+  notApplicable?: true;
 }
 
 /** 고객 재료를 성적서 자리별로 모은 것. 같은 값을 AI 에도 넘긴다(서술 설계 D25). */
@@ -601,6 +690,8 @@ export interface ReportMaterials {
   declarations: MaterialRow[];
   /** 5절 선택 기준 문장. 멀티레이블에서만 있다(그 밖은 해당 없음). */
   metricRationale?: MaterialValue;
+  /** 지표 선택 이유가 제공되지 않았는데(모름) 의뢰자가 덧붙인 글(`MaterialRow.note` 와 같은 뜻). */
+  metricRationaleNote?: string;
   /**
    * 5절 평균 방식 문장(고정 문구 4, 서술 설계 D28). 다중 클래스에서 클래스 중요도를 답했을 때만
    * 있다. 이 키가 생기기 전 성적서에는 없다.

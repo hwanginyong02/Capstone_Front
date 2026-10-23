@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { REPORT_CONTENT_SCHEMA, isLegacyLayout, normalizeReportContent } from "./normalizeReportContent";
+import { REPORT_CONTENT_SCHEMA, isLegacyLayout, normalizeReportContent, usesSchema3 } from "./normalizeReportContent";
 import type { FinalReportData } from "../../types/finalReport.types";
 
 const legacy = {
@@ -33,9 +33,26 @@ describe("normalizeReportContent", () => {
     expect(legacy.kpiResults[1].threshold).toBe(0);
   });
 
-  it("지금 판은 그대로 둔다 — 0 은 목표값 0 이다", () => {
-    const current = { ...legacy, contentSchema: REPORT_CONTENT_SCHEMA };
-    expect(normalizeReportContent(current)).toBe(current);
-    expect(isLegacyLayout(current)).toBe(false);
+  it("판 2 는 그대로 둔다 — 0 은 목표값 0 이고 파생 예측은 7.1 앞, 판 3 모양은 아니다", () => {
+    const schema2 = { ...legacy, contentSchema: 2 };
+    expect(normalizeReportContent(schema2)).toBe(schema2);
+    expect(isLegacyLayout(schema2)).toBe(false);
+    expect(usesSchema3(schema2)).toBe(false);
+  });
+
+  it("판 3 은 그대로 둔다 — 판 3 모양으로 그린다", () => {
+    const schema3 = { ...legacy, contentSchema: 3 };
+    expect(normalizeReportContent(schema3)).toBe(schema3);
+    expect(isLegacyLayout(schema3)).toBe(false);
+    expect(usesSchema3(schema3)).toBe(true);
+  });
+
+  it("판 1(표시 없음)은 판 3 모양이 아니다", () => {
+    expect(usesSchema3(legacy)).toBe(false);
+    expect(usesSchema3({ contentSchema: 1 })).toBe(false);
+  });
+
+  it("지금 판(새 run 이 찍는 판)은 3 이다", () => {
+    expect(REPORT_CONTENT_SCHEMA).toBe(3);
   });
 });

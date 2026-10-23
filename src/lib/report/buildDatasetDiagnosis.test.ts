@@ -79,7 +79,7 @@ describe("3절 데이터셋 진단 — 불균형 경계 1.5 (D20)", () => {
   it("IR 이 꼭 1.5 면 불균형 쪽이다", () => {
     const text = buildDatasetDiagnosis({ class_distribution: { A: 60, B: 40 } }, 1.5, 0, 100, "binary");
 
-    expect(text).toContain("1.50로");
+    expect(text).toContain("1.50으로");
     expect(text).not.toContain("균형 상태");
     expect(text).toContain("주의가 필요하다");
   });
@@ -87,7 +87,7 @@ describe("3절 데이터셋 진단 — 불균형 경계 1.5 (D20)", () => {
   it("분포에서 계산한 IR 이 꼭 1.5 여도 불균형 쪽이다", () => {
     const text = buildDatasetDiagnosis({ class_distribution: { A: 60, B: 40 } }, undefined, 0, 100, "binary");
 
-    expect(text).toContain("1.50로");
+    expect(text).toContain("1.50으로");
     expect(text).not.toContain("균형 상태");
   });
 
@@ -102,7 +102,7 @@ describe("3절 데이터셋 진단 — 불균형 경계 1.5 (D20)", () => {
     const text = buildDatasetDiagnosis({ class_distribution: { A: 60, B: 40 } }, 1.497, 0, 100, "binary");
 
     expect(text).toContain("1.497로");
-    expect(text).not.toContain("1.50로");
+    expect(text).not.toContain("1.50으로");
     expect(text).toContain("허용 기준(< 1.50) 이내의 균형 상태이다.");
   });
 
@@ -110,7 +110,7 @@ describe("3절 데이터셋 진단 — 불균형 경계 1.5 (D20)", () => {
     const atBoundary = buildDatasetDiagnosis({ class_distribution: { A: 60, B: 40 } }, 1.5, 0, 100, "binary", null);
     const below = buildDatasetDiagnosis({ class_distribution: { A: 60, B: 40 } }, 1.497, 0, 100, "binary", null);
 
-    expect(atBoundary).toContain("1.50로");
+    expect(atBoundary).toContain("1.50으로");
     expect(atBoundary).toContain("허용 기준(1.50 미만)을 벗어나");
     expect(below).toContain("1.497로");
     expect(below).toContain("균형 상태이다.");
@@ -120,7 +120,7 @@ describe("3절 데이터셋 진단 — 불균형 경계 1.5 (D20)", () => {
     const fourth = buildDatasetDiagnosis({ class_distribution: { A: 60, B: 40 } }, 1.4996, 0, 100, "binary");
     const truncated = buildDatasetDiagnosis({ class_distribution: { A: 60, B: 40 } }, 1.49999, 0, 100, "binary");
 
-    expect(fourth).toContain("1.4996로");
+    expect(fourth).toContain("1.4996으로");
     expect(truncated).toContain("1.4999로");
     expect(truncated).toContain("균형 상태이다.");
   });
@@ -145,7 +145,7 @@ describe("3절 데이터셋 진단 — 백엔드 D20 판정을 따른다 (imbala
       { class_distribution: { A: 80, B: 50 } }, 1.6, 0, 130, "binary", effect("affected", 1.6),
     );
 
-    expect(text).toContain("1.60로");
+    expect(text).toContain("1.60으로");
     expect(text).toContain("허용 기준(1.50 미만)을 벗어나");
     expect(text).not.toContain("균형 상태");
   });
@@ -165,7 +165,7 @@ describe("3절 데이터셋 진단 — 백엔드 D20 판정을 따른다 (imbala
     );
 
     expect(text).toContain("1.497로");
-    expect(text).toContain("허용 기준(< 1.50) 이내의 균형 상태이다.");
+    expect(text).toContain("허용 기준(1.50 미만) 이내이다.");
   });
 
   it("백엔드 판정이 있으면 판정과 같은 출처의 IR 을 찍는다 — 숫자와 문장이 어긋나지 않는다", () => {
@@ -175,7 +175,7 @@ describe("3절 데이터셋 진단 — 백엔드 D20 판정을 따른다 (imbala
       { class_distribution: { A: 70, B: 50 } }, 1.4, 0, 120, "binary", effect("affected", 1.6),
     );
 
-    expect(text).toContain("1.60로");
+    expect(text).toContain("1.60으로");
     expect(text).not.toContain("1.40");
     expect(text).toContain("허용 기준(1.50 미만)을 벗어나");
   });
@@ -186,7 +186,7 @@ describe("3절 데이터셋 진단 — 백엔드 D20 판정을 따른다 (imbala
     );
 
     expect(text).toContain("1.497로");
-    expect(text).toContain("허용 기준(< 1.50) 이내의 균형 상태이다.");
+    expect(text).toContain("허용 기준(1.50 미만) 이내이다.");
   });
 
   it("불균형 판정인데 둘째 자리가 1.5 아래로 읽히면 값 그대로 찍는다", () => {
@@ -195,7 +195,7 @@ describe("3절 데이터셋 진단 — 백엔드 D20 판정을 따른다 (imbala
     const rounded = buildDatasetDiagnosis(
       { class_distribution: { A: 70, B: 50 } }, undefined, 0, 120, "binary", effect("affected", 1.49996),
     );
-    expect(rounded).toContain("1.50로");
+    expect(rounded).toContain("1.50으로");
 
     const twoDecimalsBelow = buildDatasetDiagnosis(
       { class_distribution: { A: 70, B: 50 } }, undefined, 0, 120, "binary", effect("affected", 1.4912),
@@ -212,14 +212,14 @@ describe("3절 데이터셋 진단 — 백엔드 D20 판정을 따른다 (imbala
 
   it("엔진이 반올림해 실은 IR 이 판정과 어긋나면(1.49995 이상 1.5 미만) 반올림 전 M23 을 찍는다", () => {
     // 37499 ÷ 25000 = 1.49996 — 엔진은 반올림 전 값으로 경미라 판정하고 IR 을 넷째 자리 1.5 로 싣는다.
-    // 실린 1.5 를 찍으면 "1.5000로, … 균형 상태"가 되어 숫자와 문장이 어긋난다.
+    // 실린 1.5 를 찍으면 "1.5000으로, … 이내"가 되어 숫자와 문장이 어긋난다.
     const text = buildDatasetDiagnosis(
       { class_distribution: { A: 37499, B: 25000 } }, 37499 / 25000, 0, 62499, "binary", effect("mild", 1.5),
     );
 
     expect(text).toContain("1.4999로");
     expect(text).not.toContain("1.5000");
-    expect(text).toContain("허용 기준(< 1.50) 이내의 균형 상태이다.");
+    expect(text).toContain("허용 기준(1.50 미만) 이내이다.");
   });
 
   it("M23 이 없어도 분포로 계산한 반올림 전 값으로 찍는다", () => {

@@ -21,6 +21,7 @@ import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { DATA_VALIDATION_SHOWCASE } from "../data/dataValidationShowcase";
 import { resolveBeta } from "../utils/domain/validation";
 import { resolveTaskType } from "../data/evaluationData";
+import { requestDecisionThreshold } from "../components/column-mapping/DecisionThresholdCard";
 
 interface EvaluationResult {
   workflowSnapshot: MapWorkflowToReportInput;
@@ -84,7 +85,10 @@ export function useDataValidation(): UseDataValidationResult {
           selected_metric_ids: store.selectedMetricIds,
           metadata: metadata,
           beta: beta,
-          decision_threshold: store.decisionThreshold,
+          // 지금 매핑에서 쓰이는 값만(S2 P1) — 안 쓰이는 옛 값이 범위 밖이면 422 로 막혔다.
+          decision_threshold: requestDecisionThreshold(
+            resolveTaskType(store.taskType), store.columnMapping, store.decisionThreshold,
+          ),
         };
 
         const formData = new FormData();

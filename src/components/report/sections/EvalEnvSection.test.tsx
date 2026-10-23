@@ -101,3 +101,18 @@ describe("4절 고객 재료", () => {
     expect(screen.queryByText("하이퍼파라미터")).not.toBeInTheDocument();
   });
 });
+
+// 판 3 본문에는 AI 표현을 쓰지 않는다(서술 라운드 세션 B, 사용자 결정 2). 판 2 는 발급 당시 문구.
+describe("4절 평가 플랫폼 이름 — 판 2 / 판 3", () => {
+  const platform = () => screen.getByText("평가 플랫폼").closest("tr")!.querySelectorAll("td")[1].textContent;
+
+  it("판 2: 'AI 분류 성능 평가 시스템'", () => {
+    render(<EvalEnvSection meta={meta} evalScope={evalScope} evalEnv={env(undefined)} schema3={false} />);
+    expect(platform()).toBe("AI 분류 성능 평가 시스템");
+  });
+
+  it("판 3: '분류 성능 평가 시스템'", () => {
+    render(<EvalEnvSection meta={meta} evalScope={evalScope} evalEnv={env(undefined)} schema3 />);
+    expect(platform()).toBe("분류 성능 평가 시스템");
+  });
+});

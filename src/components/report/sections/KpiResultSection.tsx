@@ -12,6 +12,7 @@ import { hasNearTargetMarks } from "../../../lib/report/nearTarget";
 import { describeDerivation } from "../../../lib/report/derivationText";
 
 import type { TaskType } from "../../../data/evaluationData";
+import { SubsectionTitle } from "../shared/SubsectionTitle";
 
 interface KpiResultSectionProps {
   kpiResults: KpiResult[];
@@ -39,8 +40,12 @@ interface KpiResultSectionProps {
   confidenceIntervalNote?: string;
   /** 목표값 자릿수(`FinalReportData.targetDigits`, B10). 없으면 종전 둘째 자리. */
   targetDigits?: number;
+  /** 판정과 어긋나 보이는 값의 자릿수를 늘릴지(`FinalReportData.judgedValueDigits`, S2). 없으면 종전 셋째 자리. */
+  judgedValueDigits?: boolean;
   /** 핵심 지표의 출처(W8). 판정 규칙 문장이 두 갈래로 읽는다. 없으면 종전 문장. */
   coreMetricsSource?: CoreMetricsSource;
+  /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
+  schema3?: boolean;
 }
 
 /**
@@ -63,7 +68,9 @@ export function KpiResultSection({
   showVerdictRule = false,
   confidenceIntervalNote,
   targetDigits,
+  judgedValueDigits,
   coreMetricsSource,
+  schema3,
 }: KpiResultSectionProps) {
   const showCi = confidenceIntervalNote !== undefined;
   // 6.1 은 고객이 정한 핵심 지표다(판정 규칙 D19 의 핵심 지표와 같다). 핵심 지표 표시가 없는 옛
@@ -80,7 +87,12 @@ export function KpiResultSection({
       <div className="bg-slate-50 border border-slate-200 rounded-md p-4 text-sm text-slate-700 space-y-2">
         <h4 className="font-semibold text-slate-800">성능 평가 산출 기준</h4>
         <ul className="list-disc list-inside space-y-1">
-          <li>본 성적서의 모든 성능 산출 결과 및 기준 수치는 원본 데이터에서 소수점 셋째 자리로 반올림 표기되었습니다.</li>
+          <li>
+            본 성적서의 모든 성능 산출 결과 및 기준 수치는 원본 데이터에서 소수점 셋째 자리로 반올림 표기되었습니다.
+            {/* S2 판정 자릿수 — 자릿수를 늘려 찍는 성적서에만. 옛 발급본은 발급 당시 문장 그대로다. */}
+            {judgedValueDigits &&
+              " 다만 판정 대상 지표 중 셋째 자리로 반올림하면 판정과 어긋나 보이는 값은 판정과 같게 읽히도록 자릿수를 늘려 표기하였습니다."}
+          </li>
           {taskType === "binary" && (
             <li>본 성적서의 이진 분류 평가 지표는 사용자가 매핑 단계에서 지정한 {meta?.positiveClass ? `[ ${meta.positiveClass} ]` : "Target"} 클래스 기준으로 산출되었습니다.</li>
           )}
@@ -99,7 +111,7 @@ export function KpiResultSection({
 
       {/* 6.1 종합 핵심 성능 */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-700">종합 핵심 성능 (Key Performance Indicators)</h3>
+        <SubsectionTitle number="6.1" schema3={schema3} className="text-sm font-semibold text-slate-700">종합 핵심 성능 (Key Performance Indicators)</SubsectionTitle>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b-2 border-slate-200">
@@ -125,6 +137,7 @@ export function KpiResultSection({
                 showCi={showCi}
                 ci={r.ci}
                 targetDigits={targetDigits}
+                judgedValueDigits={judgedValueDigits}
               />
             ))}
             {kpiCore.length === 0 && (
@@ -150,7 +163,7 @@ export function KpiResultSection({
 
       {/* 6.2 세부 시험항목별 결과 */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-700">세부 시험항목별 결과</h3>
+        <SubsectionTitle number="6.2" schema3={schema3} className="text-sm font-semibold text-slate-700">세부 시험항목별 결과</SubsectionTitle>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b-2 border-slate-200">
@@ -176,6 +189,7 @@ export function KpiResultSection({
                 showCi={showCi}
                 ci={r.ci}
                 targetDigits={targetDigits}
+                judgedValueDigits={judgedValueDigits}
               />
             ))}
           </tbody>

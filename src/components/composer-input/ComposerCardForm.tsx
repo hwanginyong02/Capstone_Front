@@ -8,6 +8,7 @@
  *
  * 넣지 않은 카드는 **아예 그리지 않는다** — 그 카드의 단계 자체가 생기지 않는다.
  */
+import type { ReactNode } from "react";
 import { Info } from "lucide-react";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { ComposerFieldInput } from "./ComposerFieldInput";
@@ -19,7 +20,7 @@ import type {
   ComposerValueMap,
   NumberRange,
 } from "../../types/reportComposer.types";
-import { isFieldVisible, rangeFor, type FieldIssue } from "../../utils/domain/composerFieldGate";
+import { isFieldVisible, labelAgreementNotice, rangeFor, type FieldIssue } from "../../utils/domain/composerFieldGate";
 
 /** 숫자 칸의 허용 범위를 문장으로. 무엇이 틀렸는지가 아니라 무엇을 넣으면 되는지를 말한다. */
 function describeRange(range: NumberRange): string {
@@ -45,6 +46,11 @@ interface ComposerCardFormProps {
   showErrors?: boolean;
   /** 재료 고르기에서 이 카드에 고른 항목. 없으면 모든 필드를 그린다. */
   picks?: readonly string[];
+  /**
+   * 필드 아래에 덧붙일 안내(키는 필드 id). 레지스트리는 흐름의 다른 값을 모르므로, 그 값을 아는 화면이
+   * 넘긴다 — ⑤ 중요 오류 유형 아래의 지금 양성 클래스(점검 나-15).
+   */
+  fieldNotes?: Partial<Record<string, ReactNode>>;
 }
 
 export function ComposerCardForm({
@@ -56,6 +62,7 @@ export function ComposerCardForm({
   classNames,
   showErrors = false,
   picks,
+  fieldNotes,
 }: ComposerCardFormProps) {
   // 받지 않기로 한 필드, 조건을 정하는 필드를 받지 않거나 조건이 성립하지 않은 조건부 필드, 전용
   // 화면이 받는 필드(⑥ 예시 파일)는 그리지 않는다.
@@ -94,6 +101,21 @@ export function ComposerCardForm({
                   (showErrors && Boolean(issue))
                 }
               />
+              {fieldNotes?.[field.id]}
+              {(() => {
+                const notice = labelAgreementNotice(field, values);
+                if (!notice) return null;
+                return (
+                  <>
+                    <p className="mt-1 text-body-small text-muted-foreground">단위: {notice.unit} (예: 82)</p>
+                    {notice.warning && (
+                      <p role="status" className="mt-1 text-body-small text-warning-strong">
+                        {notice.warning}
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
               {issue?.reason === "exclusive" && (
                 <p className="mt-1 text-body-small text-destructive">
                   다른 선택지와 함께 고를 수 없는 답입니다: {choiceLabel(field, field.exclusiveChoice ?? "")}

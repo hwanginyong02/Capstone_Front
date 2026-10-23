@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 
 import { ReportSections } from "../../components/report/ReportSections";
+import { NarrativeRecordPanel } from "../../components/report/NarrativeRecordPanel";
 import { ReportLoadingState } from "../../components/report/ReportLoadingState";
 import {
   applyIssuance,
@@ -120,6 +121,8 @@ export function ReportByNumber() {
           발급 시점에 서버가 보관한 원본입니다. 이 화면에서는 발급·정정을 할 수 없습니다.
         </p>
       </div>
+      {/* 작성 기록(판 3) — 머리 상자와 같이 화면에만. 본문(ReportSections)에는 없다(사용자 결정 4). */}
+      <NarrativeRecordPanel data={state.data} />
       <ReportSections data={state.data} />
     </div>
   );

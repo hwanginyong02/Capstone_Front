@@ -6,7 +6,7 @@
  * 어긋나지 않는다.
  *
  * "모름"을 고르면 컨트롤을 잠근다 — 값과 모름이 동시에 남아 어느 쪽이 참인지 모르게 되는
- * 상태를 만들지 않는다. 성적서에는 "제공되지 않음"으로 찍힌다. 칸이 정해진 글·숫자 묶음은 칸마다
+ * 상태를 만들지 않는다. 덧붙이는 글은 값이 아니라 사정 설명이라 잠그지 않는다. 성적서에는 "제공되지 않음"으로 찍힌다. 칸이 정해진 글·숫자 묶음은 칸마다
  * 모름을 고른다(W3, `unknownPerEntry`).
  */
 import { Plus, X } from "lucide-react";
@@ -115,7 +115,7 @@ export function ComposerFieldInput({
   const otherText = value?.otherText ?? "";
 
   return (
-    <div className={cn("space-y-2", unknown && "opacity-60")}>
+    <div className="space-y-2">
       <div className="flex items-center justify-between gap-4">
         <Label htmlFor={controlId} className="text-body-medium font-medium text-foreground">
           {field.label}
@@ -144,7 +144,7 @@ export function ComposerFieldInput({
       </div>
 
       {/* 묶음 입력은 래퍼에 id 를 둔다 — 라디오 하나가 아니라 질문 전체로 옮겨가야 한다. */}
-      <fieldset id={controlId + "-group"} disabled={unknown} className="space-y-2">
+      <fieldset id={controlId + "-group"} disabled={unknown} className={cn("space-y-2", unknown && "opacity-60")}>
         {field.input === "single" && (
           <RadioGroup
             value={value?.text ?? ""}
@@ -201,21 +201,6 @@ export function ComposerFieldInput({
           />
         )}
         {otherChosen && <CharCount length={otherText.length} max={OTHER_TEXT_MAX_LENGTH} />}
-
-        {/* 덧붙이는 글(서술 설계 D26). 맞는 선택지가 없으면 글만 써도 답한 것으로 센다. */}
-        {field.allowsNote && (
-          <textarea
-            id={controlId + "-note"}
-            className={TEXTAREA_CLASS}
-            rows={2}
-            aria-label={field.label + " 덧붙이는 글"}
-            placeholder="덧붙이는 글 (선택)"
-            maxLength={NOTE_MAX_LENGTH}
-            value={value?.note ?? ""}
-            onChange={(event) => onChange({ ...value, note: event.target.value, unknown: false })}
-          />
-        )}
-        {field.allowsNote && <CharCount length={(value?.note ?? "").length} max={NOTE_MAX_LENGTH} multiline />}
 
         {field.input === "monthRange" && (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -436,6 +421,25 @@ export function ComposerFieldInput({
           <CharCount length={(value?.text ?? "").length} max={field.maxLength} />
         )}
       </fieldset>
+
+      {/*
+        덧붙이는 글(서술 설계 D26) — 선택 컨트롤 **아래**(⑨ GPU 는 두 줄 아래)에, 잠금 밖에 둔다. "모름"을 골라도
+        사정을 적을 수 있다("모름 + 글"은 제공되지 않음으로 세지만 글은 "의뢰자 제공"으로 싣는다). 그래서 글을
+        써도 모름이 풀리지 않는다. 글만으로 답이 되는지는 `noteAnswers` 가 정한다(1층 선언·GPU 는 선택 필수).
+      */}
+      {field.allowsNote && (
+        <textarea
+          id={controlId + "-note"}
+          className={TEXTAREA_CLASS}
+          rows={2}
+          aria-label={field.label + " 덧붙이는 글"}
+          placeholder={field.noteNeedsChoice ? "덧붙이는 글 (선택 — 위에서 하나를 고르세요)" : "덧붙이는 글 (선택)"}
+          maxLength={NOTE_MAX_LENGTH}
+          value={value?.note ?? ""}
+          onChange={(event) => onChange({ ...value, note: event.target.value })}
+        />
+      )}
+      {field.allowsNote && <CharCount length={(value?.note ?? "").length} max={NOTE_MAX_LENGTH} multiline />}
 
       {field.help && <p className="text-body-small text-muted-foreground">{field.help}</p>}
     </div>

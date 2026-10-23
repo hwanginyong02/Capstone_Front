@@ -2,6 +2,8 @@ import { WorkflowShell } from "../layout/WorkflowShell";
 import { ModelInfoForm, isModelInfoValid } from "../components/basic-info/BasicInfo";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { useStepFlow } from "../hooks/useStepFlow";
+import { RemainingNotice } from "../components/composer-input/RemainingNotice";
+import { basicInfoIssues, modelInfoGaps } from "../utils/domain/basicInfoValidity";
 
 /**
  * 평가 대상 모델 (`/app/model`) — 의뢰자 정보 다음(docs/MATERIAL_PICKER.md §3).
@@ -22,6 +24,8 @@ export function ModelInfo() {
       onPrevious={() => flow.goPrevious()}
       onNext={() => flow.goNext()}
       nextDisabled={!isModelInfoValid(store.basicInfo)}
+      // 비활성 "다음" 옆에 무엇이 비었는지 말한다(작성 화면의 RemainingNotice 꼴, 점검 다-8).
+      rightAction={<RemainingNotice issues={basicInfoIssues("model", modelInfoGaps(store.basicInfo))} />}
       previousLabel="이전"
       nextLabel="다음"
     >

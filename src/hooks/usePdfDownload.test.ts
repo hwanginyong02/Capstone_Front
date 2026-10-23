@@ -39,4 +39,10 @@ describe("usePdfDownload", () => {
     expect(result).toBeUndefined();
     expect(openSpy).toHaveBeenCalledTimes(1);
   });
+
+  it("잠겨 있으면(서술이 끝나지 않음) 열지 않는다 — 서술 라운드 S3b", () => {
+    usePdfDownload("run-1", false).download();
+
+    expect(openSpy).not.toHaveBeenCalled();
+  });
 });

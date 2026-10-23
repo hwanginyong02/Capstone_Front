@@ -9,6 +9,7 @@ import type { ValidationGroup } from "../../../types/validation.types";
 import { SectionTitle } from "../shared/SectionTitle";
 import { cn } from "../../../utils/styling/styles";
 import { isLegacyTaskTypeLabel, TASK_TYPE_LABELS_KO } from "../../../data/evaluationData";
+import { SubsectionTitle } from "../shared/SubsectionTitle";
 
 const STATUS_CONFIG = {
   pass:    { icon: CheckCircle2,  color: "text-emerald-500", label: "통과" },
@@ -50,6 +51,8 @@ interface DataValidationSectionProps {
   materialCheck?: MaterialCheckResult;
   /** 저장된 유형 이름(`meta.taskTypeLabel`). 옛 영문 이름이면 묶음 이름을 그때 글자로 그린다(W9 발급본). */
   taskTypeLabel: string;
+  /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
+  schema3?: boolean;
 }
 
 function GroupBlock({ group, items, legacy }: { group: ValidationGroup; items: ValidationResult[]; legacy: boolean }) {
@@ -112,6 +115,7 @@ export function DataValidationSection({
   validationSummary,
   materialCheck,
   taskTypeLabel,
+  schema3,
 }: DataValidationSectionProps) {
   const legacyNames = isLegacyTaskTypeLabel(taskTypeLabel);
   const failCount    = dataValidation.filter((r) => r.status === "fail").length;
@@ -137,7 +141,7 @@ export function DataValidationSection({
 
       {/* 6.0 시험 수행 요약 */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-700">시험 수행 요약</h3>
+        <SubsectionTitle number="6.0" schema3={schema3} className="text-sm font-semibold text-slate-700">시험 수행 요약</SubsectionTitle>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b-2 border-slate-200">
@@ -198,7 +202,7 @@ export function DataValidationSection({
 
       {/* 6.0.1 데이터 검증 상세 */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-700">데이터 검증 상세 내역</h3>
+        <SubsectionTitle number="6.0.1" schema3={schema3} className="text-sm font-semibold text-slate-700">데이터 검증 상세 내역</SubsectionTitle>
         {hasValidation ? (
           <div className="space-y-3">
             {groupedSections.map(({ group, items }) => (

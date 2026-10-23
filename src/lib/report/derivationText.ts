@@ -8,16 +8,27 @@
  *   찍는다(재료 목록 4절 "결정 임계값 — 7.1 앞 고정 문구").
  */
 import type { DerivedPredictionFact } from "../../types/finalReport.types";
+import { josaEulReul } from "./koreanJosa";
 
-/** 고정 문구 9(멀티레이블 레이블별 임계값이면 그 뜻으로 바꾼 문장). */
-export function derivationStatement(fact: DerivedPredictionFact): string {
+/**
+ * 고정 문구 9(멀티레이블 레이블별 임계값이면 그 뜻으로 바꾼 문장).
+ *
+ * "결정 임계값 {t}를" 의 조사는 판 3 부터 숫자를 읽는 소리로 고른다(0.5를 · 0.3을, 서술 라운드 세션 B).
+ * 판 2 보관본은 발급 당시처럼 늘 "를" — 그 판을 그리는 곳만 `legacyParticle` 을 켠다. 사실 시트의 고정 문장
+ * 도 바탕 성적서의 판에 맞춰 부른다(판 3 이면 기본값, 옛 판 바탕이면 `legacyParticle`) — 화면과 같은 글.
+ */
+export function derivationStatement(
+  fact: DerivedPredictionFact,
+  options: { legacyParticle?: boolean } = {},
+): string {
   if (fact.method === "argmax") {
     return "본 평가의 예측값은 제출된 클래스별 확률값 중 가장 큰 값의 클래스를 택하여 산출하였다(결정 임계값 없음).";
   }
   if (fact.method === "threshold_per_label" && typeof fact.threshold === "object" && fact.threshold !== null) {
     return "본 평가의 예측값은 제출된 확률값에 레이블별 결정 임계값(아래 표)을 적용하여 산출하였다.";
   }
-  return `본 평가의 예측값은 제출된 확률값에 결정 임계값 ${fact.threshold}를 적용하여 산출하였다.`;
+  const particle = options.legacyParticle ? "를" : josaEulReul(String(fact.threshold));
+  return `본 평가의 예측값은 제출된 확률값에 결정 임계값 ${fact.threshold}${particle} 적용하여 산출하였다.`;
 }
 
 /** 멀티레이블 레이블별 임계값 — [점수 컬럼, 임계값]. 레이블마다 다르지 않으면 빈 배열. */

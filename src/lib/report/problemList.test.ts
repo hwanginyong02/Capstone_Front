@@ -9,6 +9,7 @@ import {
   type ProblemListInput,
 } from "./problemList";
 import type { ReportComposerInput } from "./reportMaterials";
+import { distributionShift, weakestClass } from "./narrativeFacts";
 import type {
   ClassReportRow,
   ClassReportTable,
@@ -27,8 +28,18 @@ function kpi(p: Partial<KpiResult>): KpiResult {
   return { metricId: "M1", name: "Accuracy", value: 0.9, threshold: 0.8, status: "pass", ...p };
 }
 
+/**
+ * 테스트 입력 — 클래스별 표·평가 분포를 주면 실제 경로대로 서술용 파생값(`narrativeFacts`)을 거쳐 문제 목록의
+ * `facts` 로 만든다. 최약 클래스·분포 차의 계산은 narrativeFacts 한 곳이고, 문제 목록은 그 값을 읽기만 한다(S4a).
+ */
+type TestInput = Omit<ProblemListInput, "facts"> & {
+  classReport?: ClassReportTable | null;
+  evaluationDistribution?: Record<string, number>;
+};
+
 /** 문제가 하나도 없는 기본 입력 — 핵심 M1·M4 합격(여유 있음), 비핵심 없음. */
-function input(overrides: Partial<ProblemListInput> = {}): ProblemListInput {
+function input(overrides: Partial<TestInput> = {}): ProblemListInput {
+  const { classReport = null, evaluationDistribution = {}, ...rest } = overrides;
   return {
     kpiResults: [
       kpi({ metricId: "M1", name: "Accuracy", value: 0.9, threshold: 0.8 }),
@@ -38,9 +49,11 @@ function input(overrides: Partial<ProblemListInput> = {}): ProblemListInput {
     coreMetricIds: ["M1", "M4"],
     thresholdGain: null,
     imbalanceEffect: null,
-    classReport: null,
-    evaluationDistribution: {},
-    ...overrides,
+    ...rest,
+    facts: {
+      weakest_class: weakestClass(classReport),
+      distribution_shift: distributionShift(rest.composer, evaluationDistribution).rows,
+    },
   };
 }
 
@@ -181,6 +194,11 @@ describe("임계값 부적합 — gain ≥ 0.10 (이진)", () => {
     expect(kinds(input({ thresholdGain: gain(0.0999) }))).toEqual([]);
   });
 
+  it("엔진 notable 이 있으면 그것을 따른다(S2) — 실제 0.09996 은 4자리로 0.1 이지만 부적합이 아니다", () => {
+    expect(kinds(input({ thresholdGain: { ...gain(0.1), notable: false, gain_text: "0.09996" } }))).toEqual([]);
+    expect(kinds(input({ thresholdGain: { ...gain(0.0999), notable: true } }))).toEqual(["threshold_tuning"]);
+  });
+
   it("근거는 응답 값 그대로, 이진이 아니면 보지 않는다", () => {
     const [p] = buildProblemList(input({ thresholdGain: gain(0.2) }));
     expect(p).toMatchObject({ title: "임계값 부적합", priority: "MEDIUM", source_section: "8.3" });
@@ -218,10 +236,13 @@ describe("불균형 영향 있음 — level affected", () => {
     expect(buildProblemList(input({ imbalanceEffect: effect("affected"), composer: balanced }))[0].note).toBeNull();
     const unknown = composer({ trainingData: { imbalanceHandling: { choices: ["Did nothing"], unknown: true } } });
     expect(buildProblemList(input({ imbalanceEffect: effect("affected"), composer: unknown }))[0].note).toBeNull();
+    // 글만 쓴 답은 선택값이 없다 — "수행 안 함"으로 읽지 않는다(서술 라운드 B 셈 규칙).
+    const noteOnly = composer({ trainingData: { imbalanceHandling: { note: "아무것도 안 한 듯" } } });
+    expect(buildProblemList(input({ imbalanceEffect: effect("affected"), composer: noteOnly }))[0].note).toBeNull();
   });
 });
 
-describe("최약 클래스 — M22, F1 최저 클래스가 표본 부족(30건·5% 미만)이거나 매크로보다 0.10 이상 낮음", () => {
+describe("최약 클래스 — 늘 계산하는 클래스별 표, F1 최저 클래스가 표본 부족(30건·5% 미만)이거나 매크로보다 0.10 이상 낮음", () => {
   const row = (label: string, f1: number, support: number): ClassReportRow => ({
     label, precision: f1, recall: f1, f1, support,
   });
@@ -272,7 +293,7 @@ describe("최약 클래스 — M22, F1 최저 클래스가 표본 부족(30건·
     expect(p.evidence).toMatchObject({ x: { f1: 0.6, support: 20 } });
   });
 
-  it("M22 표가 없으면 보지 않는다", () => {
+  it("클래스별 표가 없으면 보지 않는다(엔진이 class_report 를 늘 내므로 옛 응답·M22 없는 옛 응답에서만)", () => {
     expect(weakestOf(null)).toEqual([]);
   });
 });
@@ -369,7 +390,7 @@ describe("정답 라벨 주의 — 신뢰성 '검토 없음' 또는 구축 방�
 
 describe("번호 — 우선순위 순, 같은 우선순위는 표 순서, P1… 연속", () => {
   it("9종이 모두 걸리면 P1~P9 가 표 순서다", () => {
-    const all = buildProblemList({
+    const all = buildProblemList(input({
       kpiResults: [
         kpi({ metricId: "M1", name: "Accuracy", value: 0.7, status: "fail" }), // 핵심 미달
         kpi({ metricId: "M4", name: "F1 Score", value: 102, threshold: 100 }), // 핵심 아슬아슬 합격
@@ -394,7 +415,7 @@ describe("번호 — 우선순위 순, 같은 우선순위는 표 순서, P1… 
         trainingData: { trainingClassVolume: { entries: [{ key: "a", value: "50" }, { key: "b", value: "50" }] } },
         groundTruth: { labelReview: { text: "No review" } },
       }),
-    });
+    }));
     // FAIL 이라 판정 불가는 나오지 않는다 — 나머지 8종의 순서를 본다.
     expect(all.map((p) => `${p.id}:${p.kind}:${p.priority}`)).toEqual([
       "P1:core_fail:HIGH",
@@ -446,6 +467,10 @@ describe("파서 — 모양이 틀리면 null", () => {
     expect(parseF1ThresholdGain({ ...ok, gain: "0.2" })).toBeNull();
     expect(parseF1ThresholdGain({ ...ok, gain: -0.1 })).toBeNull();
     expect(parseF1ThresholdGain({ ...ok, best_threshold: null })).toBeNull();
+    // 엔진 판정·표시 문자열(S2)은 모양이 맞을 때만 싣는다.
+    const withNotable = { ...ok, notable: true, gain_text: "0.1409" };
+    expect(parseF1ThresholdGain(withNotable)).toEqual(withNotable);
+    expect(parseF1ThresholdGain({ ...ok, notable: "yes", gain_text: 0.14 })).toEqual(ok);
   });
 
   it("imbalance_effect", () => {
@@ -465,5 +490,24 @@ describe("파서 — 모양이 틀리면 null", () => {
     expect(parseImbalanceEffect({ ...ok, accuracy_minus_macro_f1: "x" })).toBeNull();
     expect(parseImbalanceEffect({ ...ok, minority_class: 1 })).toBeNull();
     expect(parseImbalanceEffect(null)).toBeNull();
+  });
+
+  it("imbalance_effect.display(S2) — 표시 문자열은 모양이 맞을 때만 싣고, 틀려도 숫자 칸은 산다", () => {
+    const base = {
+      level: "mild",
+      imbalance_ratio: 1.5,
+      accuracy_minus_macro_f1: 0.0,
+      majority_minus_minority_f1: -0.0213,
+      majority_class: "neg",
+      minority_class: "pos",
+    };
+    const display = { imbalance_ratio: "1.49996", accuracy_minus_macro_f1: "0", majority_minus_minority_f1: "-0.0213" };
+    expect(parseImbalanceEffect({ ...base, display })).toEqual({ ...base, display });
+    expect(parseImbalanceEffect({ ...base, display: { ...display, imbalance_ratio: 1.49996 } })).toEqual(base);
+    // 멀티레이블은 정확도 차이 표시가 null 이어야 한다.
+    const ml = { ...base, accuracy_minus_macro_f1: null };
+    const mlDisplay = { ...display, accuracy_minus_macro_f1: null };
+    expect(parseImbalanceEffect({ ...ml, display: mlDisplay })).toEqual({ ...ml, display: mlDisplay });
+    expect(parseImbalanceEffect({ ...ml, display })).toEqual(ml);
   });
 });

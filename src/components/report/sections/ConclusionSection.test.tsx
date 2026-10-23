@@ -224,3 +224,27 @@ describe("8.2 일반화 고정 문구", () => {
     expect(screen.queryByText(/출처에서 수집되었다/)).not.toBeInTheDocument();
   });
 });
+
+/**
+ * 판 1 보관본(운영 main 발급, `legacyLayout`)은 '종합 점수'와 그때의 정의 문장 그대로. 판 1 의 6.1 에는 판정 규칙이
+ * 없어서(`showVerdictRule` 은 judgedCount 가 있을 때만) "판정 규칙은 6.1에 적었고"를 붙이면 없는 곳을 가리킨다.
+ */
+describe("8절 점수 라벨·정의 — 판 1 보관본은 운영 main 모양, 판 3 은 새 모양", () => {
+  it("판 1 — '종합 점수'와 옛 정의, 판정 규칙·참고 수치 문장은 없다", () => {
+    render(<ConclusionSection conclusion={conclusion} legacyLayout />);
+    expect(screen.getByText("종합 점수")).toBeInTheDocument();
+    expect(screen.queryByText("통과율 (참고)")).not.toBeInTheDocument();
+    const definition = screen.getByText("종합 점수의 정의").closest("p")!;
+    expect(definition.textContent!.replace(/\s+/g, " ")).toMatch(
+      /이 수치는 모델 성능만의 지표가 아닙니다\. 항목별 값과 기준은 6절 표에서 확인할 수 있습니다\.$/,
+    );
+    expect(definition.textContent).not.toMatch(/판정 규칙|참고 수치/);
+  });
+
+  it("판 3 — '통과율 (참고)'와 판정 규칙을 가리키는 정의", () => {
+    render(<ConclusionSection conclusion={{ ...conclusion, judgedCount: 3 }} schema3 legacyLayout={false} />);
+    expect(screen.getByText("통과율 (참고)")).toBeInTheDocument();
+    expect(screen.queryByText("종합 점수")).not.toBeInTheDocument();
+    expect(screen.getByText(/통과율의 정의/).closest("p")!.textContent).toMatch(/판정 규칙은 6\.1에 적었고/);
+  });
+});

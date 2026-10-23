@@ -10,9 +10,11 @@ interface SignatureSectionProps {
   meta: FinalReportMeta;
   evalScope: EvalScope;
   performer: PerformerInfo;
+  /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
+  schema3?: boolean;
 }
 
-export function SignatureSection({ signature, meta, evalScope, performer }: SignatureSectionProps) {
+export function SignatureSection({ signature, meta, evalScope, performer, schema3 }: SignatureSectionProps) {
   // 문서 번호가 없으면 미발급(초안) — 발급 전에는 서명/이력 대신 안내를 표시한다(설계 §6·§10).
   const issued = !!meta.reportId;
   if (!issued) {
@@ -40,7 +42,8 @@ export function SignatureSection({ signature, meta, evalScope, performer }: Sign
     <section className="space-y-6 border-t border-slate-200 py-10">
       <p className="text-center text-sm font-semibold text-slate-700">[ 발급 완료 ]</p>
       <p className="text-center text-xs text-slate-500">
-        본 시험결과서는 AI 자동화 평가 시스템에 의해 생성되었으며, 의뢰자의 최종 확인을 거쳐 정식 발급된 문서입니다.
+        {/* 판 3 본문에는 AI 표현을 쓰지 않는다(서술 라운드 세션 B, 사용자 결정 2). 판 1·2 보관본은 발급 당시 문구. */}
+        본 시험결과서는 {schema3 ? "자동화 평가 시스템" : "AI 자동화 평가 시스템"}에 의해 생성되었으며, 의뢰자의 최종 확인을 거쳐 정식 발급된 문서입니다.
       </p>
 
       {/* Signature box — 6필드 (3x2 grid) */}

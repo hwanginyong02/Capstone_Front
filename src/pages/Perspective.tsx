@@ -9,6 +9,23 @@ import { getCard } from "../data/reportComposer";
 import { getCardIssues } from "../utils/domain/composerFieldGate";
 
 /**
+ * ⑤ 중요 오류 유형 아래에 찍는 지금 양성 클래스(점검 나-15). 놓침(FN)·잘못 잡음(FP)은 양성 클래스를 기준으로
+ * 뜻이 정해진다 — 한국어 라벨에서 기본 양성이 "정상"이 되면 둘이 뒤집혀, 선언과 D24 위험 오류 사실이 거꾸로
+ * 읽힌다. 이진이 아니거나 양성 클래스를 아직 모르면 null(안내를 그리지 않는다).
+ *
+ * 조사가 값의 받침에 따라 갈리지 않게 문장을 짰다(영문 라벨도 있다).
+ */
+export function positiveClassNotice(taskType: string, positiveClass: string | null | undefined): string | null {
+  const positive = (positiveClass ?? "").trim();
+  if (taskType !== "binary" || positive === "") return null;
+  return (
+    `지금 양성 클래스(모델이 찾아내야 하는 쪽)는 "${positive}"입니다. ` +
+    `놓침(FN)은 실제 "${positive}"인데 놓친 것, 잘못 잡음(FP)은 "${positive}" 이외의 값을 "${positive}" 쪽으로 잡은 것입니다. ` +
+    "양성 클래스는 컬럼 매핑 화면에서 바꿉니다."
+  );
+}
+
+/**
  * 평가 관점 (`/app/perspective`) — 지표와 합격 기준 바로 앞(docs/MATERIAL_PICKER.md §3).
  *
  * ⑤ 의 답은 재료 선택 점검 3층의 기준점이다. 바로 다음 지표 화면이 이 답으로 "목적별 점검"을
@@ -30,6 +47,7 @@ export function Perspective() {
     true,
     store.materialPicks.perspective,
   );
+  const positiveNotice = positiveClassNotice(store.taskType, store.metadata?.positive_class);
 
   return (
     <WorkflowShell
@@ -66,6 +84,17 @@ export function Perspective() {
           issues={issues}
           showErrors={showErrors}
           picks={store.materialPicks.perspective}
+          fieldNotes={
+            positiveNotice
+              ? {
+                  criticalErrorType: (
+                    <p data-testid="positive-class-notice" className="mt-1 text-body-small text-muted-foreground">
+                      {positiveNotice}
+                    </p>
+                  ),
+                }
+              : undefined
+          }
         />
       </main>
     </WorkflowShell>

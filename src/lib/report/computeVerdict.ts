@@ -21,6 +21,7 @@ import type { TaskType } from "../../data/evaluationData";
 import type { CoreMetricsSource, KpiResult } from "../../types/finalReport.types";
 import type { ComposerValueMap } from "../../types/reportComposer.types";
 import { metricNeedsTargetValue } from "../../utils/domain/validation";
+import { difference } from "./judgedNumber";
 
 /**
  * 핵심 지표(미달 시 FAIL)의 **기본값** — Metric 표시 ID(M 표기) 기준.
@@ -119,7 +120,8 @@ export const NEAR_TARGET_RATIO = 0.03;
  */
 export function computeMargin(r: KpiResult): number | null {
   if (!isJudged(r) || r.threshold === null) return null;
-  return r.higherIsBetter === false ? r.threshold - r.value : r.value - r.threshold;
+  // 끝자리 잡음을 걷은 차이(`judgedNumber.difference`) — 판정(evaluateStatus)·문제 목록과 같은 차이다.
+  return r.higherIsBetter === false ? difference(r.threshold, r.value) : difference(r.value, r.threshold);
 }
 
 /**
@@ -130,7 +132,8 @@ export function computeMargin(r: KpiResult): number | null {
 export function isNearTarget(r: KpiResult): boolean {
   const margin = computeMargin(r);
   if (margin === null || r.threshold === null) return false;
-  return Math.abs(margin) < Math.abs(r.threshold) * NEAR_TARGET_RATIO;
+  // 폭과의 비교도 잡음을 걷은 차이로 — 0.824 대 0.8 은 마진 0.024 = 폭 0.024 라 꼭 3% 이고 아슬아슬이 아니다.
+  return difference(Math.abs(margin), Math.abs(r.threshold) * NEAR_TARGET_RATIO) < 0;
 }
 
 export function computeVerdict(

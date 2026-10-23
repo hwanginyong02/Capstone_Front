@@ -10,7 +10,7 @@
 import { useState } from "react";
 
 import type { FinalReportData } from "../types/finalReport.types";
-import { useWorkspaceStore } from "../utils/stores/useWorkspaceStore";
+import { saveRun, useWorkspaceStore } from "../utils/stores/useWorkspaceStore";
 import { ISSUE_CONTENT_MAX_BYTES, exceedsIssueLimit, jsonBytes } from "../utils/image/examplePreview";
 import { applyIssuance, issueReport, reissueReport } from "../lib/report/issuanceApi";
 
@@ -31,6 +31,8 @@ export interface UseIssuanceResult {
 export function useIssuance(
   id: string,
   reportData: FinalReportData | null,
+  /** 서술까지 끝났는가(성적서 훅의 서술 상태 done). 아니면 발급·정정 발급 모두 잠근다(서술 라운드 S3b). */
+  narrativeDone = true,
 ): UseIssuanceResult {
   const [override, setOverride] = useState<FinalReportData | null>(null);
   const [busy, setBusy] = useState(false);
@@ -40,19 +42,16 @@ export function useIssuance(
   const issued = !!data?.meta.reportId;
   // 발급은 "평가가 완료된(isEvaluated)" 리포트에만 허용 — 재로드 후 미평가 draft(빈 결과)에
   // 번호가 발급되는 것을 막는다(useReportData 는 미평가 run 도 data 로 세팅할 수 있음).
-  const canIssue = !!id && !!data && !!(data as any).isEvaluated;
+  // 끝나지 않은 서술은 완성본이 아니다 — 서술이 done 이고 완성본(isEvaluated)일 때만.
+  const complete = narrativeDone && !!data?.isEvaluated;
+  const canIssue = !!id && !!data && complete;
 
   function persist(merged: FinalReportData) {
     setOverride(merged);
     if (!id) return;
-    // useReportData 의 영속 패턴과 동일하게 run.reportData / run.reportId 갱신.
-    useWorkspaceStore.setState((state) => ({
-      evaluationRuns: state.evaluationRuns.map((r) =>
-        r.id === id
-          ? { ...r, reportId: merged.meta.reportId, reportData: merged }
-          : r,
-      ),
-    }));
+    // run.reportData / run.reportId 갱신. 서버 발급은 이미 끝났으므로 저장 실패는 '발급 실패'가 아니라 저장 실패로 알린다.
+    const err = saveRun(id, (r) => ({ ...r, reportId: merged.meta.reportId, reportData: merged }));
+    if (err) alert(`발급은 완료됐지만 ${err}`);
   }
 
   /** 서버 상한(1 MiB)을 넘으면 서버의 422 대신 이유와 고칠 곳을 알린다(예전에 원본으로 올린 예시 이미지 대비). */
@@ -68,7 +67,8 @@ export function useIssuance(
   }
 
   async function issue(note?: string) {
-    if (!data || busy || !id) return;
+    // 버튼만 잠그면 버튼 밖에서 부르는 경로가 새므로 여기서도 막는다(서술 라운드 S3b).
+    if (!data || busy || !id || !canIssue) return;
     if (tooLargeToIssue(data)) return;
     const run = useWorkspaceStore
       .getState()
@@ -94,7 +94,7 @@ export function useIssuance(
   }
 
   async function reissue(note: string) {
-    if (!data || busy || !issued) return;
+    if (!data || busy || !issued || !complete) return;
     if (tooLargeToIssue(data)) return;
     setBusy(true);
     try {

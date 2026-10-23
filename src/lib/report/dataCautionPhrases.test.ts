@@ -78,8 +78,7 @@ describe("고정 문구 12 — 정답 라벨 주의(7.2)", () => {
             coreMetricIds: [],
             thresholdGain: null,
             imbalanceEffect: null,
-            classReport: null,
-            evaluationDistribution: {},
+            facts: { weakest_class: null, distribution_shift: [] },
             composer: c,
           }).some((p) => p.kind === "label_caution");
           expect([author, review, unknown, labelCautionSentence(c) !== null]).toEqual([author, review, unknown, problem]);

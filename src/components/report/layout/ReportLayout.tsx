@@ -30,6 +30,13 @@ interface ReportLayoutProps {
   onIssue?: (note: string) => void;
   /** 정정 발급. `note` 는 정정 사유(필수, 앞뒤 공백을 뗀 값). */
   onReissue?: (note: string) => void;
+  /**
+   * 인쇄(PDF)·발급·정정 발급을 잠근 이유(서술 라운드 S3b — 서술이 끝나지 않은 성적서). 있으면 세 버튼을 잠그고 이유를
+   * 보여 준다. 발급 버튼은 숨기지 않고 잠근다 — 왜 못 하는지 보여야 한다.
+   */
+  lockReason?: string;
+  /** 인쇄(PDF)만 잠근 이유(예: 결과 저장 실패). 발급은 서버 보관이라 막지 않는다. */
+  printLockReason?: string;
 }
 
 /** 대화상자 안의 여러 줄 입력 칸. 상한은 백엔드와 같은 `ISSUANCE_TEXT_MAX_CHARS` 다. */
@@ -83,8 +90,12 @@ export function ReportLayout({
   busy = false,
   onIssue,
   onReissue,
+  lockReason,
+  printLockReason,
 }: ReportLayoutProps) {
+  const pdfLockReason = lockReason ?? printLockReason;
   const navigate = useNavigate();
+  const lockNoteId = useId();
   // 발급·정정 발급은 화면 안 대화상자로 받는다(B16). 종전 window.prompt 는 빈 사유를 말없이 버리고
   // 글자 수 상한도 알리지 못했다.
   const [dialog, setDialog] = useState<"issue" | "reissue" | null>(null);
@@ -170,7 +181,8 @@ export function ReportLayout({
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={busy}
+                  disabled={busy || !!lockReason}
+                  title={lockReason}
                   onClick={() => openDialog("reissue")}
                   className="gap-1.5"
                 >
@@ -184,10 +196,11 @@ export function ReportLayout({
               <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
                 초안 · 미발급
               </span>
-              {canIssue && onIssue && (
+              {onIssue && (canIssue || lockReason) && (
                 <Button
                   size="sm"
-                  disabled={busy}
+                  disabled={busy || !canIssue || !!lockReason}
+                  title={lockReason}
                   onClick={() => openDialog("issue")}
                   className="gap-1.5"
                 >
@@ -202,11 +215,19 @@ export function ReportLayout({
             size="sm"
             variant={issued ? "default" : "ghost"}
             onClick={onDownload}
+            disabled={!!pdfLockReason}
+            title={pdfLockReason}
+            aria-describedby={pdfLockReason ? lockNoteId : undefined}
             className="gap-1.5"
           >
             <Download className="size-4" />
             PDF 다운로드
           </Button>
+          {pdfLockReason && (
+            <span id={lockNoteId} className="text-xs text-muted-foreground">
+              {pdfLockReason}
+            </span>
+          )}
         </div>
       </header>
 

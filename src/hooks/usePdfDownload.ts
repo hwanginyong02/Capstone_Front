@@ -11,9 +11,13 @@
  *     구현 여부를 코드만으로 판단할 수 없게 만든다.
  *
  * 존재하지 않는 것을 기다리지 않는다. 서버 PDF 가 생기면 여기서 분기를 되살린다.
+ *
+ * `enabled` 가 false 면 열지 않는다 — 서술이 끝나지 않은 성적서는 인쇄하지 않는다(서술 라운드 S3b). 버튼도 잠기지만
+ * 버튼 밖에서 부르는 경로가 생겨도 새지 않게 여기서 한 번 더 막는다.
  */
-export function usePdfDownload(id: string) {
+export function usePdfDownload(id: string, enabled = true) {
   const download = () => {
+    if (!enabled) return;
     // PrintLayout(@media print)이 적용된 인쇄 경로를 새 탭으로 연다.
     window.open(`/report/${id}/print`, "_blank", "noopener");
   };

@@ -23,6 +23,8 @@ export const CHECK_NAME_KO: Readonly<Record<string, string>> = {
   "Missing value": "누락값(NaN)",
   "Duplicate ID": "중복 ID",
   "Class mismatch": "클래스 불일치",
+  // S2 — 앞뒤 공백·숫자 표기만 다른 정답·예측 라벨을 평가가 같은 클래스로 합친다(결과 칸은 한국어 문구).
+  "Label notation": "라벨 표기 맞춤",
   "Excluded samples": "제외된 샘플 수",
   "Score range error": "score 범위 오류",
   "Binary class system error": "이진 클래스 체계 오류",
@@ -42,14 +44,42 @@ export const CHECK_NAME_KO: Readonly<Record<string, string>> = {
 
 /**
  * 결과 칸이 이미 한국어 문구로 오는 항목 — 영문 낱말 바꾸기(`normalizeResult`)를 하지 않고 그대로 싣는다.
+ * "Label notation" 은 "정답 ' cat' → 'cat'" 처럼 클래스 이름이 들어 있다(이름에 rows·classes 가 올 수 있다).
  * "Probability column names" 의 결과는 평가 단계 400 과 같은 한국어 문구이고, 컬럼·클래스 이름이 들어
  * 있어("rows" 같은 이름도 올 수 있다) 바꾸면 이름이 망가진다.
  */
-const KOREAN_RESULT_CHECKS: ReadonlySet<string> = new Set(["Probability column names"]);
+const KOREAN_RESULT_CHECKS: ReadonlySet<string> = new Set(["Probability column names", "Label notation"]);
 
 /** 검증 항목명의 한글 이름. 표에 없는 이름은 그대로 돌려준다. 검증 화면도 이 표를 쓴다. */
 export function checkNameKo(name: string): string {
   return CHECK_NAME_KO[name] ?? name;
+}
+
+/**
+ * 검증 항목 하나의 결과 칸 글 — 성적서 6절과 검증 화면이 같이 쓴다(판정 지점 하나). 한국어 문구 항목은 그대로 두되
+ * 통과("None")는 "없음"으로, 나머지는 영문 낱말을 바꾼다(`normalizeResult`). 종전 검증 화면은 "None" 을 날것으로 보였다.
+ */
+export function validationResultText(item: { name: string; result: string }): string {
+  // 한국어 문구 항목도 통과("None")는 "없음"으로 — 바꾸기를 건너뛰면 성적서에 "None" 이 찍혔다(S2 검토).
+  return KOREAN_RESULT_CHECKS.has(item.name) && item.result !== "None" ? item.result : normalizeResult(item.result);
+}
+
+/** 실행 요약 칸 이름(백엔드 `validation_service` 의 고정 다섯 개) → 검증 화면의 한글 이름. 모르는 이름은 그대로. */
+const SUMMARY_LABEL_KO: Record<string, string> = {
+  "Total validated rows": "검증한 전체 행",
+  "Valid prediction rows": "평가에 쓸 행",
+  "Excluded samples": "제외한 행",
+  "Selected metric count": "선택한 지표 수",
+  "Validation result": "검증 결과",
+};
+
+/** 실행 요약 한 줄의 한글 이름과 값("1,234 rows" → "1,234건", "Errors 0 / Warnings 2" → "오류 0 / 경고 2"). */
+export function summaryItemKo(item: { label: string; value: string }): { label: string; value: string } {
+  const value = String(item.value)
+    .replace(/^([\d,]+) rows?$/, "$1건")
+    .replace(/^([\d,]+) items?$/, "$1개")
+    .replace(/^Errors (\d+) \/ Warnings (\d+)$/, "오류 $1 / 경고 $2");
+  return { label: SUMMARY_LABEL_KO[item.label] ?? item.label, value };
 }
 
 /** 백엔드 결과 문자열(영문) → 한글 표기 정규화 */
@@ -94,7 +124,7 @@ export function mapValidationResultToReport(
   const dataValidation: ValidationResult[] = vr.validation_details.map((item) => ({
     checkName: CHECK_NAME_KO[item.name] ?? item.name,
     status: STATUS_MAP[item.status] ?? "warning",
-    detail: KOREAN_RESULT_CHECKS.has(item.name) ? item.result : normalizeResult(item.result),
+    detail: validationResultText(item),
     group: item.group,
   }));
 

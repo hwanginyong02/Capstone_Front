@@ -125,3 +125,36 @@ describe("대화상자를 닫으면 연 버튼으로 포커스가 돌아온다(�
     await waitFor(() => expect(document.activeElement).toBe(opener));
   });
 });
+
+/** 서술 라운드 S3b — 서술이 끝나지 않은 성적서는 PDF·발급·정정 발급을 잠그고 이유를 보여 준다. */
+describe("잠금(lockReason)", () => {
+  const reason = "서술이 끝나지 않아 인쇄·발급할 수 없습니다.";
+
+  it("PDF·발급 버튼을 잠그고 이유를 보여 준다 — 발급 버튼은 숨기지 않는다", async () => {
+    const onDownload = vi.fn();
+    render(
+      <MemoryRouter>
+        <ReportLayout onDownload={onDownload} canIssue={false} onIssue={vi.fn()} lockReason={reason}>
+          <p>본문</p>
+        </ReportLayout>
+      </MemoryRouter>,
+    );
+    const pdf = screen.getByRole("button", { name: /PDF 다운로드/ });
+    expect(pdf).toBeDisabled();
+    expect(pdf).toHaveAccessibleDescription(reason);
+    expect(screen.getByRole("button", { name: /^발급$/ })).toBeDisabled();
+    await userEvent.click(pdf);
+    expect(onDownload).not.toHaveBeenCalled();
+  });
+
+  it("발급된 성적서의 정정 발급도 잠근다", () => {
+    renderLayout({ issued: true, reportId: "RPT-1", onReissue: vi.fn(), lockReason: reason });
+    expect(screen.getByRole("button", { name: /정정 발급/ })).toBeDisabled();
+  });
+
+  it("잠금이 없으면 PDF 는 열리고, 발급할 수 없는 성적서의 발급 버튼은 종전처럼 숨긴다", () => {
+    renderLayout({ canIssue: false, onIssue: vi.fn() });
+    expect(screen.getByRole("button", { name: /PDF 다운로드/ })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: /^발급$/ })).toBeNull();
+  });
+});
