@@ -26,5 +26,12 @@ export default defineConfig({
      * 나지 않도록 올린다 — 정말 멈춘 테스트는 늦게라도 여전히 실패한다.
      */
     testTimeout: 20000,
+    /**
+     * 성적서 판 플래그(판 4 라운드 계획 2.2)의 테스트 기본값은 판 3 이다. 저장소의 `.env*`(Vercel CLI 가 만드는 `.env.local` 등)에
+     * 값이 생겨도 테스트 기본값을 바꾸지 못하게 여기서 고정한다(`test.env` 가 이긴다). 판 4 를 보는 테스트는 `vi.stubEnv` 로
+     * 바꾸고, `unstubEnvs` 가 테스트마다 되돌린다 — 한 테스트의 판 4 가 다음 테스트로 새지 않는다.
+     */
+    env: { VITE_REPORT_EDITION: "3" },
+    unstubEnvs: true,
   },
 })
