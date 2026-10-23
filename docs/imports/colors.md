@@ -11,11 +11,11 @@ Never use color as decoration. Every colored element must communicate state, hie
 
 ## Token Naming Pattern
 
-`--color-{category}-{role}-{variant}`
+`--color-{role}` 또는 `--color-{role}-{variant}` 다. 쓰임(배경·글자·테두리)은 이름에 넣지 않고 Tailwind 유틸 앞말(`bg-`·`text-`·`border-`)이 정한다.
 
-- `category`: `bg`, `text`, `border`, `ring`
-- `role`: `primary`, `success`, `warning`, `danger`, `muted` (optional)
-- `variant`: `subtle`, `strong`, `hover`, `pressed` (optional)
+- `role`: `background`, `card`, `muted`, `border`, `foreground`, `primary`, `destructive`, `success`, `warning`, `ring` 등
+- `variant`: `subtle`(연한 바탕), `strong`(진한 글자·테두리), `hover`, `foreground`(그 색 위의 글자), `border`, `secondary` (optional)
+- 예: `--color-primary-subtle`, `--color-warning-strong`, `--color-border-strong`, `--color-foreground-secondary`
 
 In `theme.css` the variables drop the `--color-` prefix (`--primary`, `--muted-foreground`) and `@theme inline` maps them to `--color-*`, which is what makes Tailwind classes such as `bg-primary` work.
 
@@ -29,7 +29,7 @@ Cool neutrals with a faint navy cast.
 |-------|-------|-------|
 | `--color-background` | `#FFFFFF` | Page background |
 | `--color-card` | `#FFFFFF` | Card surfaces, inputs, dropdowns |
-| `--color-muted` | `#F4F5F7` | Bands and side panels (e.g. the right panel on the material picker), table header row, disabled input background |
+| `--color-muted` | `#F4F5F7` | Bands and side panels (e.g. the diagram lanes on 평가 흐름 만들기 — `DiagramLane.tsx` uses `bg-muted/50`, and the StepRail panel), table header row, disabled input background |
 | `--color-border` | `#E6E8EC` | Dividers between rows, input borders, default borders |
 | `--color-border-strong` | `#C9CED6` | Card borders, hover state on unselected cards |
 | `--color-foreground` | `#0D1420` | Headings and names (page title, card name, field name) |
@@ -80,7 +80,7 @@ There is no `-subtle` / `-border` token for danger. Tinted error surfaces use th
 
 **Need a background?**
 - Whole page, card → `--color-background` / `--color-card` (both white)
-- Band or side panel → `--color-muted`
+- Band, side panel, diagram lane → `--color-muted`
 - Header row of a table / code block → `--color-muted`
 - Saved or selected card → `--color-primary-subtle`
 - Active step marker → `--color-primary` (filled, with `--color-primary-foreground` text)
@@ -129,4 +129,4 @@ There is no `-subtle` / `-border` token for danger. Tinted error surfaces use th
 
 ## Dark Mode
 
-Out of scope for MVP. Do NOT generate dark mode styles. Leave the color variables defined in a way that a `[data-theme="dark"]` override can be added later without restructuring component code.
+Out of scope for MVP. Do NOT generate dark mode styles. `theme.css` 에 shadcn 기본 `.dark` 블록이 남아 있지만 앱은 쓰지 않는다(값도 인증 네이비가 아니다). Leave the color variables defined in a way that a `[data-theme="dark"]` override can be added later without restructuring component code.
