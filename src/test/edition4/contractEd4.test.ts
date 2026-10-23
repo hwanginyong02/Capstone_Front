@@ -3,7 +3,7 @@
  *
  * - `fact_sheet_contract_ed4.json`: 판 4 서술 요청 명세(판 신호 report_edition, 판 4 에만 있는 키, 판 4 표기로 찍는 칸).
  * - `number_wording_ed4.json`: 판 4 숫자 표기·조사 대조 표. 백엔드 tests/contract/ 에 같은 바이트가 있고, 두 저장소가
- *   같은 표로 자기 함수를 시험한다(판 4 숫자 함수 ed4Plain 등과 `josa` 는 S3 ② 가 만들고 이 표로 시험한다).
+ *   같은 표로 자기 함수를 시험한다(판 4 숫자 함수 ed4Plain 등은 `lib/report/edition4/edition4Number.test.ts`, `josa` 는 아래).
  * - `narrative_slots_ed4.json`: 서술 칸 → 판 4 자리, 판 4 제목, 작성 기록 줄(B25·B26).
  *
  * 판 3 명세·예시(`fact_sheet_contract.json`·`fact_sheet_{binary,multiclass,multilabel,legacy_main}.json`)는
@@ -18,7 +18,7 @@ import { describe, expect, it } from "vitest";
 
 import { NARRATIVE_RECORD_SECTIONS } from "../../components/report/NarrativeRecordPanel";
 import { difference, formatJudgedValue } from "../../lib/report/judgedNumber";
-import { josaEulReul, josaEunNeun, josaEuroRo, josaWaGwa } from "../../lib/report/koreanJosa";
+import { josa, josaEulReul, josaEunNeun, josaEuroRo, josaWaGwa } from "../../lib/report/koreanJosa";
 
 const CONTRACT_DIR = resolve(__dirname, "../contract");
 const BACKEND_CONTRACT_DIR = resolve(__dirname, "../../../../Capstone_Back/tests/contract");
@@ -249,8 +249,9 @@ describe("판 4 숫자 표기 대조 표(백엔드와 같은 표)", () => {
   });
 });
 
-// ── 조사: 지금 있는 함수로 볼 수 있는 줄은 지금 보고, 없는 갈래(이/가, 이름 뒤 을/를)는 S3 ② 의 josa 몫 ──────
+// ── 조사: 판 4 `josa(word, pair)`(S3 ②) 가 표 전부를 덮는다. 판 3 함수는 자기가 맡던 줄에서 josa 와 같은 답이어야 한다 ──
 
+/** 판 3 함수가 맡던 갈래(과/와·은/는·으로/로·숫자 뒤 을/를). 이/가와 이름 뒤 을/를은 판 3 함수가 없다. */
 function existingJosa(c: Json): string | null {
   if (c.pair === "과/와") return josaWaGwa(c.word);
   if (c.pair === "은/는") return josaEunNeun(c.word);
@@ -270,23 +271,22 @@ describe("판 4 조사 대조 표(백엔드와 같은 표)", () => {
     }
   });
 
-  it.each(cases.filter((c) => existingJosa(c) !== null).map((c) => [`${c.word}${c.expected}`, c] as const))(
-    "%s",
-    (_name, c) => {
-      expect(existingJosa(c)).toBe(c.expected);
-    },
-  );
+  it.each(cases.map((c) => [`${c.word}${c.expected}`, c] as const))("%s", (_name, c) => {
+    expect(josa(c.word, c.pair)).toBe(c.expected);
+  });
 
-  it("지금 함수가 없는 줄은 이/가 전부와 이름 뒤 을/를뿐이다(S3 ② 가 josa(word, pair) 로 덮는다)", () => {
-    const pending = cases.filter((c) => existingJosa(c) === null);
-    expect(pending.length).toBeGreaterThan(0);
-    expect(pending.every((c) => c.pair === "이/가" || (c.pair === "을/를" && c.kind === "name"))).toBe(true);
+  it("판 3 함수가 맡던 줄에서는 판 3 함수도 같은 답이다(두 벌 규칙이 아니다)", () => {
+    const covered = cases.filter((c) => existingJosa(c) !== null);
+    expect(covered.length).toBeGreaterThan(30);
+    expect(covered.filter((c) => existingJosa(c) !== josa(c.word, c.pair)).map((c) => c.word)).toEqual([]);
+    // 판 3 함수가 없던 갈래가 실제로 표에 있다 — josa 만 볼 수 있다.
+    expect(cases.some((c) => existingJosa(c) === null && c.pair === "이/가")).toBe(true);
+    expect(cases.some((c) => existingJosa(c) === null && c.pair === "을/를" && c.kind === "name")).toBe(true);
   });
 
   it.each((TABLE.chains as Json[]).map((c) => [c.expected, c] as const))("숫자 → 조사: %s", (_name, chain) => {
     const text = refNumber(chain.number);
-    const pick = chain.pair === "을/를" ? josaEulReul(text) : josaEuroRo(text);
-    expect(text + pick).toBe(chain.expected);
+    expect(text + josa(text, chain.pair)).toBe(chain.expected);
     if (chain.edition3_text) {
       const old = (chain.edition3_text as string).replace(/[가-힣]+$/, "");
       expect(old).not.toBe(text);

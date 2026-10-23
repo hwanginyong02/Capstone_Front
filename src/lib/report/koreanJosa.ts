@@ -63,6 +63,28 @@ export function josaWaGwaNumber(value: number | string): string {
   return sound === null || sound === "none" ? "와" : "과";
 }
 
+/** `josa` 가 고르는 조사 쌍 — "받침 있을 때/없을 때". */
+export type JosaPair = "이/가" | "을/를" | "은/는" | "과/와" | "으로/로";
+
+/**
+ * 끼워 넣는 말(이름·숫자 글자) 뒤 조사 하나 — 판 4 라운드 공통 계약(`number_wording_ed4.json` 의 josa 줄, 백엔드
+ * `wording.josa` 와 같은 표). 끝소리는 공통 규칙 `nameFinalSound`(따옴표·공백 건너뜀, "이름(설명)"은 괄호 앞 이름, 쉼표로 이은
+ * 이름은 끝 글자라 저절로 마지막 이름, 숫자는 읽는 소리)로 고른다. 숫자는 **찍힌 글자**를 넘긴다 — 0.005로, 0.0046으로.
+ *
+ * - "으로/로"만 ㄹ 받침 뒤에도 "로"(1.672로·0.977로). 나머지 넷은 ㄹ 도 받침이다(0.977이·0.9497을).
+ * - 읽는 소리를 모르면 두 꼴을 함께 적는다 — "이(가)"·"을(를)"·"은(는)"·"과(와)"·"(으)로"(고정 문구의 표기).
+ *
+ * 판 3 이 쓰는 `josaWaGwa`·`josaEunNeun`·`josaEuroRo`·`josaEulReul` 등은 그대로 둔다.
+ */
+export function josa(word: string, pair: JosaPair): string {
+  const [withFinal, withoutFinal] = pair.split("/") as [string, string];
+  const sound = nameFinalSound(word);
+  if (sound === null) return pair === "으로/로" ? "(으)로" : `${withFinal}(${withoutFinal})`;
+  if (sound === "none") return withoutFinal;
+  if (sound === "rieul" && pair === "으로/로") return withoutFinal;
+  return withFinal;
+}
+
 /** 대문자 약어 끝 글자의 이름 중 받침이 있는 것 — L 엘·M 엠·N 엔·R 알(R·L 은 ㄹ). */
 const UPPER_FINAL: Record<string, "rieul" | "other"> = { L: "rieul", M: "other", N: "other", R: "rieul" };
 const VOWELS = "aeiou";
