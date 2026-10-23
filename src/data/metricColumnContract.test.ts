@@ -130,7 +130,7 @@ describe("REQUIRED_COLUMNS_BY_METRIC ↔ 백엔드 METRIC_REQUIREMENTS", () => {
   /**
    * 백엔드 app/core/schemas.py PREDICTION_ROLES_BY_TASK 의 고정 사본.
    * 이 표가 어긋나면 화면이 허용한 매핑을 백엔드가 거절하거나(또는 그 반대),
-   * 확률만 제출한 사용자가 어느 한쪽에서만 막힌다(ISSUES.md A-01·A-02).
+   * 확률만 제출한 사용자가 어느 한쪽에서만 막힌다(A-01·A-02).
    */
   const BACKEND_PREDICTION_ROLES: Record<TaskType, { primary: string; alternatives: string[] }> = {
     binary: { primary: "y_pred", alternatives: ["score_positive"] },

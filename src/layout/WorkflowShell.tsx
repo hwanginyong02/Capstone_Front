@@ -103,7 +103,7 @@ export function WorkflowShell({
     /**
      * run 에 매인 화면은 가드하지 않는다.
      *
-     * 가드가 막으려는 것은 **빈 상태로 입력 단계에 들어가는 것**이다(ISSUES.md E-12·E-13·E-04).
+     * 가드가 막으려는 것은 **빈 상태로 입력 단계에 들어가는 것**이다(E-12·E-13·E-04).
      * 반면 `/report/<runId>/...` 는 저장된 run 을 **보여주는** 화면이고, 그 전제 조건은
      * "그 run 이 있는가"다 — 진행 표시가 아니라 `useReportData` 가 확인하고 없으면 오류
      * 화면을 띄운다. 진행 표시로 막으면 URL 로 공유받은 성적서가 열리지 않는다.
@@ -116,7 +116,7 @@ export function WorkflowShell({
       return;
     }
 
-    // 선행 단계를 마치지 않은 단계로 직접 들어오는 것을 막는다(ISSUES.md E-12).
+    // 선행 단계를 마치지 않은 단계로 직접 들어오는 것을 막는다(E-12).
     // 이 가드는 워크플로우 상태가 영속된 뒤에야 성립한다(E-01) — 종전에는 새로고침마다
     // 완료 표시가 비어서 정상 사용자도 첫 단계로 튕겼다.
     if (!canEnterStepId(stepId, store.completedStepIds, steps)) {

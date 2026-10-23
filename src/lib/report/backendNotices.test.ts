@@ -5,7 +5,7 @@ import {
 } from "./backendNotices";
 
 /**
- * ISSUES.md B-03 · B-04 · D-16 · A-12 (2026-09-07 ★작은 판단 ①).
+ * B-03 · B-04 · D-16 · A-12 (2026-09-07 ★작은 판단 ①).
  *
  * 백엔드는 세 종류의 안내를 **사용자 안내용이라고 명시해** 내려보낸다.
  * 프론트에는 셋 다 소비처가 없었다(`column_notes`·`available_metric_ids`·

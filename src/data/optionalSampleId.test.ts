@@ -11,7 +11,7 @@ import {
 import { getMappingValidityReason } from "../utils/domain/mappingValidity";
 
 /**
- * ISSUES.md A-13 (2026-09-07 ★확정된 제품 결정 3 — "`id` 를 선택으로 되돌림").
+ * A-13 (2026-09-07 ★확정된 제품 결정 3 — "`id` 를 선택으로 되돌림").
  *
  * SPEC §0 은 `id` 를 **선택(권장)** 으로 규정하고 백엔드 `METRIC_REQUIREMENTS` 에도
  * `sample_id` 가 한 번도 없다. 그런데 프론트 `REQUIRED_COLUMNS_BY_METRIC` 의 43개

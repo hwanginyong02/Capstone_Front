@@ -11,7 +11,7 @@ import { translateRoleToBackend } from "../lib/mapping/translateRoleToBackend";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 
 /**
- * ISSUES.md A-01·A-02 (2026-09-07 ★확정된 제품 결정 1) — 확률·점수 전면 지원.
+ * A-01·A-02 (2026-09-07 ★확정된 제품 결정 1) — 확률·점수 전면 지원.
  *
  * 하드 예측(y_pred) 없이 확률만 매핑해도 매핑 화면이 '다음'을 허용해야 한다.
  * 종전에는 확률 역할이 드롭다운에서 아예 빠져 있었고, 요구 역할표가 y_pred 를

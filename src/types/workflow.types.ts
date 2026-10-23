@@ -6,7 +6,7 @@ import { todayIsoDate } from "../utils/domain/isoDate";
  *
  * 종전에는 단계를 번호(`STEP` 상수 + `STEP_PATHS` 배열 위치)로 가리켰다. 이제 단계 목록이
  * 재료 고르기에서 고른 카드에서 **계산되므로**(docs/MATERIAL_PICKER.md §3), 번호는 선택이 바뀔 때마다 뜻이 달라진다 — 저장된 진행 표시가 조용히 어긋나는
- * 바로 그 상황이다(docs/WORKFLOW_REDESIGN.md §3.3). 그래서 번호가 아니라 이름으로 가리킨다.
+ * 바로 그 상황이다(docs/MATERIAL_PICKER.md §1). 그래서 번호가 아니라 이름으로 가리킨다.
  *
  * 순서는 여기서 정하지 않는다. 사용자가 재료 고르기 다이어그램에서 정한 카드 순서를 펼친 것이
  * 걸을 순서다(`utils/domain/workflowSteps.ts` 의 `buildStepList`, docs/MATERIAL_PICKER.md §11).
@@ -34,7 +34,7 @@ export interface BasicInfoFormData {
   fax: string;
   address: string;
   /** ISO 날짜 문자열("YYYY-MM-DD"). 이 상태는 localStorage 를 왕복하므로
-   *  직렬화 가능한 형태가 참 타입이다(ISSUES.md E-09). UI 경계에서만 Date 로 변환한다. */
+   *  직렬화 가능한 형태가 참 타입이다(E-09). UI 경계에서만 Date 로 변환한다. */
   contractDate?: string;
   reportPurpose: string;
   /**

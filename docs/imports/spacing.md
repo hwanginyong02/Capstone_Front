@@ -2,9 +2,9 @@
 
 ## Spacing Scale
 
-> **MATERIAL_PICKER.md로 대체됨** (§10) — 간격은 8px 단위를 기본으로 한다. 아래는 종전 기록.
+간격은 4px 격자 위에 둔다. 큰 간격(카드 사이, 영역 여백)은 8px 의 배수를 쓰고(`docs/MATERIAL_PICKER.md` §10 "8px 단위"), 4px·12px·20px 는 아이콘 옆·필드 사이 같은 촘촘한 자리에만 쓴다. Do NOT use arbitrary pixel values like `7px` or `13px`.
 
-Based on a 4px grid. All spacing on the screen snaps to these values. Do NOT use arbitrary pixel values like `7px` or `13px`.
+아래 `--space-*` 는 CSS 토큰이 아니라 이름표다. `src/styles/theme.css` 는 간격 토큰을 만들지 않고, Tailwind 기본 간격과 1:1 로 쓴다(`--space-3` = 12px = `gap-3`, `--space-12` = 48px = `mb-12`).
 
 | Token | Value | Usage |
 |-------|-------|-------|
@@ -15,8 +15,8 @@ Based on a 4px grid. All spacing on the screen snaps to these values. Do NOT use
 | `--space-5` | `20px` | Between form field groups inside a card |
 | `--space-6` | `24px` | Card internal padding (desktop), gap between sibling cards |
 | `--space-8` | `32px` | Content area side padding, gap from page title to first card |
-| `--space-10` | `40px` | Gap between major sections (e.g., metric blocks → data table on step 7) |
-| `--space-12` | `48px` | Top padding below the tab bar to the page title, bottom padding above action bar |
+| `--space-10` | `40px` | Gap between major sections |
+| `--space-12` | `48px` | Top padding above the page title, bottom padding above action bar |
 
 ## Layout Rules
 
@@ -34,11 +34,7 @@ Based on a 4px grid. All spacing on the screen snaps to these values. Do NOT use
 
 - Always use `32px` horizontal padding from viewport edge to content.
 - Inner content capped at `1280px` and centered.
-- On screens narrower than 1344px (1280 + 2×32), content simply takes full width minus the padding.
-
-### Tab bar → page title
-
-- `--space-12` (48px) from bottom of tab bar to the page title. *(MATERIAL_PICKER.md로 대체됨, §9 — 위쪽 탭 바는 없다. 단계 표시줄은 본문 오른쪽이다)*
+- On screens narrower than 1344px (1280 + 2×32), content simply takes full width minus the padding. 코드에서는 `max-w-[1344px] px-8` 로 쓴다.
 
 ### Page title → first card
 
@@ -47,7 +43,7 @@ Based on a 4px grid. All spacing on the screen snaps to these values. Do NOT use
 ### Between sibling cards
 
 - `--space-6` (24px) default.
-- `--space-10` (40px) on step 7 when separating logically distinct sections (metrics summary → table → chart).
+- `--space-10` (40px) when separating logically distinct sections.
 
 ### Card internal rhythm
 
@@ -95,14 +91,14 @@ When two fields sit side-by-side:
 
 ## Border Radius
 
-> **MATERIAL_PICKER.md로 대체됨** (§10) — 버튼·카드·입력은 8px, 체크박스는 4px 이다. `theme.css` 의 `--radius-md` 를 8px 로 바꿨다. 아래는 종전 기록.
+버튼·카드·입력은 8px, 체크박스는 4px 이다(`docs/MATERIAL_PICKER.md` §10). 값은 `src/styles/theme.css`(`--radius: 0.5rem` 기준)다.
 
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--radius-sm` | `4px` | Badge, Checkbox, small inline elements |
-| `--radius-md` | `6px` | Inputs, Buttons, Select triggers, tab containers |
+| `--radius-md` | `8px` | Inputs, Buttons, Select triggers |
 | `--radius-lg` | `8px` | **Default for Cards**, Alert boxes, drop zones, metric blocks |
-| `--radius-full` | `9999px` | Step number circles, tag pills (class name badges) |
+| (`rounded-full`) | `9999px` | Step number circles, tag pills — theme.css 토큰이 아니라 Tailwind 기본 유틸이다 |
 
 Do NOT use `--radius-xl` or anything above 8px for cards. Linear/Vercel use 8px; anything larger drifts toward friendly/playful territory.
 
@@ -110,17 +106,19 @@ Do NOT use `--radius-xl` or anything above 8px for cards. Linear/Vercel use 8px;
 
 Elevation is deliberately minimal. Surfaces sit flat. Shadows appear only on floating layers (popovers, dropdowns, tooltips).
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--shadow-none` | `none` | **Default for Cards.** They rely on border, not shadow. |
-| `--shadow-sm` | `0 1px 2px 0 rgb(0 0 0 / 0.04)` | Rarely used — very subtle lift on hover for clickable cards |
-| `--shadow-md` | `0 4px 12px -2px rgb(0 0 0 / 0.08)` | Dropdowns, popovers, tooltips — floating UI only |
-| `--shadow-lg` | `0 10px 30px -4px rgb(0 0 0 / 0.1)` | Modals (not used in MVP) |
+`src/styles/theme.css` 에는 그림자 토큰(`--shadow-*`)이 없다. Tailwind 기본 유틸을 쓴다.
+
+| 유틸 | Usage |
+|-------|-------|
+| (없음) | **Default for Cards.** They rely on border, not shadow. |
+| `shadow-sm` | Rarely used — very subtle lift on hover for clickable cards |
+| `shadow-md` | Dropdowns, popovers, tooltips — floating UI only |
+| `shadow-lg` | Modals |
 
 ### Shadow rules
 
-- ✅ Cards: `border` + `--shadow-none`.
-- ✅ Dropdowns/tooltips: `border` + `--shadow-md`.
+- ✅ Cards: `border`, no shadow.
+- ✅ Dropdowns/tooltips: `border` + `shadow-md`.
 - ❌ Do NOT stack shadows (e.g., card in card with both having shadow).
 - ❌ Do NOT use colored shadows. Neutral black-with-low-alpha only.
 
@@ -142,15 +140,13 @@ Following Tailwind defaults:
 | Breakpoint | Min width | Behavior |
 |-----------|-----------|----------|
 | `sm` | `640px` | Single column forms, single column 지표 grid |
-| `md` | `768px` | Two-column form rows, 2-column 지표 grid, tab labels show full text |
-| `lg` | `1024px` | 3-column 지표 grid, metric blocks in 2 columns |
-| `xl` | `1280px` | 4-column 지표 grid, metric blocks in 4 columns, inner max-width kicks in |
+| `md` | `768px` | Two-column form rows, 2-column 지표 grid |
+| `lg` | `1024px` | 3-column 지표 grid, 단계 표시줄이 본문 오른쪽으로 간다 |
+| `xl` | `1280px` | 4-column 지표 grid, inner max-width kicks in |
 
 ### Below `md` (mobile)
 
-- Tabs become horizontally scrollable. Do NOT collapse them into a dropdown — scrolling preserves orientation. *(MATERIAL_PICKER.md로 대체됨, §9 — 좁은 화면에서는 세로 단계 표시줄이 본문 위로 올라간다)*
+- 세로 단계 표시줄(`StepRail`)이 본문 위로 올라간다(`lg` 미만).
 - Action bar buttons remain side-by-side but narrower.
-- Content padding reduces from 32px to 16px.
-- Metric blocks stack single-column.
 
 Mobile is not a primary target for this product (users are entering large files on desktops), but the layout must remain usable.

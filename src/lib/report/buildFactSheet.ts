@@ -133,7 +133,7 @@ export interface BuildFactSheetInput {
   confusionMatrix: ConfusionMatrixData | null;
   /**
    * 클래스별 등장 횟수. multilabel 은 **레이블 등장 횟수**라 합계가 표본 수를 넘는다
-   * — 표본 수로 쓰면 안 된다(ISSUES.md B-02). 표본 수는 nSamples 를 쓸 것.
+   * — 표본 수로 쓰면 안 된다(B-02). 표본 수는 nSamples 를 쓸 것.
    */
   classDistribution: Record<string, number>;
   imbalanceRatio?: number;
@@ -181,7 +181,7 @@ function num(v: unknown): number | null {
 
 
 /**
- * fact_sheet 의 혼동행렬 — 멀티레이블은 **전 레이블 합계**로 보낸다 (ISSUES.md C-08).
+ * fact_sheet 의 혼동행렬 — 멀티레이블은 **전 레이블 합계**로 보낸다 (C-08).
  *
  * 멀티레이블 혼동행렬은 레이블마다 2x2 가 하나씩 나온다. 종전에는 그중 **첫 번째
  * 레이블의 2x2 만** 실렸고 라벨명도 `Negative (sports)` 처럼 그 레이블 이름을 달고

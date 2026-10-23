@@ -5,7 +5,7 @@ import { DEFAULT_EVAL_ENV_CONSTANTS } from "../../../lib/report/reportConstants"
 import type { EvalEnvironment, EvalScope, FinalReportMeta } from "../../../types/finalReport.types";
 
 /**
- * ISSUES.md F-08 · F-09 — 성적서 4절 '평가 수행 환경'.
+ * F-08 · F-09 — 성적서 4절 '평가 수행 환경'.
  *
  * 순수 함수(`buildEvalEnvironment`)만 테스트하면 **그것을 화면이 실제로 쓰는지**는
  * 확인되지 않는다. 이 파일이 렌더 결과를 본다.

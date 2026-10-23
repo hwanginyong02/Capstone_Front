@@ -1,7 +1,7 @@
 /**
  * /report/no/:reportNo — 번호로 서버 보관본을 복원하는 화면.
  *
- * ISSUES.md F-04 — 종전에는 성적서 실체가 localStorage 에만 있어, 저장소를 지우거나
+ * F-04 — 종전에는 성적서 실체가 localStorage 에만 있어, 저장소를 지우거나
  * 다른 기기에서 접속하면 발급된 문서가 영구히 사라졌다. 번호를 알아도 되살릴 수 없었다.
  */
 import { render, screen, waitFor } from "@testing-library/react";

@@ -21,7 +21,7 @@ export interface ConfirmMappingResult {
   errors: { message: string }[];
   /**
    * 백엔드가 사용자 안내용으로 내려보내는 값들. 종전에는 인터페이스가 **선언조차
-   * 하지 않아** 그대로 버려졌다(ISSUES.md B-04·A-12).
+   * 하지 않아** 그대로 버려졌다(B-04·A-12).
    */
   warnings?: MappingWarning[];
   available_metric_ids?: string[];

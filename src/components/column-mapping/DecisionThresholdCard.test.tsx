@@ -12,7 +12,7 @@ import {
 import type { MappingRole, MappingRow } from "../../types/mapping.types";
 
 /**
- * ISSUES.md A-01 — 결정 임계값 입력 UI(SPEC §6).
+ * A-01 — 결정 임계값 입력 UI(SPEC §6).
  *
  * 임계값은 **파생이 실제로 일어날 때만** 의미가 있다. 하드 예측이 매핑돼 있으면
  * 백엔드는 그것을 우선하므로(SPEC §1 규칙 1) 임계값은 쓰이지 않는다 — 쓰이지 않는

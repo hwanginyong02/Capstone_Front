@@ -1,8 +1,8 @@
 /**
  * issuanceApi — 발급/재발급 요청 본문 계약.
  *
- * ISSUES.md F-01 — 서버가 성적서 내용을 보관하려면 프론트가 발급 시 그것을 보내야 한다.
- * ISSUES.md G-02 — 재발급에는 run_id 소지 증명이 **필수**다(백엔드가 없으면 422).
+ * F-01 — 서버가 성적서 내용을 보관하려면 프론트가 발급 시 그것을 보내야 한다.
+ * G-02 — 재발급에는 run_id 소지 증명이 **필수**다(백엔드가 없으면 422).
  *   report_no 는 순차 채번이라 전수 열거가 가능하지만 run_id 는 randomUUID 라 추측 불가.
  */
 import { existsSync, readFileSync } from "node:fs";

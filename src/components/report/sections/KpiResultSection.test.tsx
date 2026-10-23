@@ -4,7 +4,7 @@ import { KpiResultSection } from "./KpiResultSection";
 import type { DerivedPredictionFact, FinalReportMeta, KpiResult } from "../../../types/finalReport.types";
 
 /**
- * ISSUES.md A-01 — 파생 예측의 성적서 기재.
+ * A-01 — 파생 예측의 성적서 기재.
  *
  * SPEC §0: "argmax·threshold 로 만든 예측은 모델의 실제 출력이 아니라 파생값이므로,
  * 성적서에 파생 사실과 사용한 임계값을 반드시 기재해야 한다."

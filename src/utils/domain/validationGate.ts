@@ -1,7 +1,7 @@
 /**
  * Step 6 진행 게이트 — 데이터 검증 결과로 '평가 실행'을 허용할지 판정한다.
  *
- * ISSUES.md E-04 — 종전 판정은 `(validationData?.error_count ?? 0) > 0` 하나였다.
+ * E-04 — 종전 판정은 `(validationData?.error_count ?? 0) > 0` 하나였다.
  * 검증이 **실패했거나 아예 수행되지 않은** 경우(validationData === null)가 `?? 0` 에
  * 흡수되어 '오류 0건'으로 해석됐고, 훅이 반환한 error 상태는 게이트에 쓰이지 않았다.
  *

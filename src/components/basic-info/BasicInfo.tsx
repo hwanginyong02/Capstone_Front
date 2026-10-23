@@ -111,7 +111,7 @@ export function ClientInfoForm({ formData, onFormDataChange, picks }: ClientInfo
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* 스토어는 ISO 날짜 문자열을 들고, Date 변환은 이 UI 경계에서만 한다
-                (ISSUES.md E-09 — 상태가 localStorage 를 왕복해도 타입이 붕괴하지 않게). */}
+                (E-09 — 상태가 localStorage 를 왕복해도 타입이 붕괴하지 않게). */}
             <DateField
               label="평가 의뢰일"
               required

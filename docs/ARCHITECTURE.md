@@ -5,19 +5,21 @@
 ## 1. 프로젝트 개요
 
 - **목적**: KS X ISO/IEC TS 4213:2022 표준에 기반한 머신러닝 모델 성능 평가 보고서("시험성적서") 자동 생성 웹 애플리케이션
-- **주요 워크플로우 (7단계, 각 단계 = 독립 라우트 `/app/*`)**:
-  기본 정보 입력 → 시험항목(지표) 선택 → 지표 상세 → 데이터 업로드 → 컬럼 매핑 → 데이터 검증 → 결과 미리보기(보고서 생성) *(MATERIAL_PICKER.md로 대체됨, §3 — 재료 고르기 뒤 카드 순서로 8~10단계다. 확인과 생성만 run 에 매인 `/report/:id` 이고 나머지는 `/app/*` 다)* *(MATERIAL_PICKER.md §11로 대체됨 — 순서는 재료 고르기 다이어그램에서 사용자가 정한다. 데이터 정보는 학습 데이터·테스트 데이터·정답 라벨 단계로 나뉘어 최소 8단계·전체 12단계다)* *(MATERIAL_PICKER.md §12로 대체됨 — 재료 고르기는 평가 흐름 만들기가 됐다. 순서는 흐름도에서 정하고, 화면 용어로 '단계'는 네 단계(의뢰 정보·모델·데이터·평가 기준)만, 입력 화면 하나하나는 '화면'이다)*
+- **주요 흐름**: 작업 유형(`/app`) → 평가 흐름 만들기(`/app/composer`) → 입력 화면들 → 검증(`/app/data-validation`) → 확인과 생성(`/report/:id`)
+  - 평가 흐름 만들기에서 사용자가 항목을 넣어 블록을 만들고 순서를 정한다. 입력 화면은 그 블록 순서대로 나오며, 검증과 확인과 생성까지 합쳐 최소 8개·전체 12개다(`utils/domain/workflowSteps.ts` 의 `buildStepList`). 자세히는 `docs/MATERIAL_PICKER.md` §12.
+  - 입력 화면과 검증은 `/app/*` 이고, run 이 생긴 뒤의 확인과 생성만 `/report/:id` 다. 발급한 성적서는 번호로 연다(`/report/no/:reportNo`).
+  - 화면 용어로 '단계'는 흐름의 네 묶음(의뢰 정보·모델·데이터·평가 기준)만 뜻하고, 입력 화면 하나하나는 '화면'이라 부른다.
 - **핵심 정책 및 스펙 문서**:
   - `SPEC.md`: 각 테스트 케이스(지표)별 필요 컬럼 및 동적 계산 로직이 정의된 **단일 진실 문서(Single Source of Truth)**. (프론트/백엔드 공통 기준)
   - `FRONTEND_DEVELOPMENT_GUIDELINE.md`: 프론트엔드 아키텍처 규칙 및 개발 시 준수해야 할 구조적 가이드라인 명시
-  - `README.md`: 전체적인 디자인 시스템(색상, 타이포그래피, 레이아웃) 및 기타 설정 명시 *(MATERIAL_PICKER.md로 대체됨, §10 — 색·글자·모서리의 정본은 MATERIAL_PICKER.md §10 과 `src/styles/theme.css`)*
+  - 디자인 시스템(색·글자·모서리): `docs/imports/colors.md`·`typography.md`·`spacing.md` 와 `docs/MATERIAL_PICKER.md` §10. 실제 값의 정본은 `src/styles/theme.css` 다.
 
 ## 2. 기술 스택
 
 - **Core**: React (v18.3), TypeScript
 - **Build Tool**: Vite (v6)
 - **Routing**: React Router (v7)
-- **Styling**: Tailwind CSS (v4), shadcn/ui (Radix UI 기반 프리미티브), Emotion (일부 지원용)
+- **Styling**: Tailwind CSS (v4), shadcn/ui (Radix UI 기반 프리미티브). `package.json` 에 Emotion·MUI 가 남아 있지만 `src/` 는 쓰지 않는다.
 - **State/Data Management**: Zustand 전역 스토어 (`src/utils/stores/useWorkflowStore.ts`, `useWorkspaceStore.ts`)
 - **Package Manager**: pnpm
 
@@ -25,43 +27,57 @@
 
 프로젝트는 **"페이지 기반 컴포넌트 코로케이션(Page-based Component Colocation)"** 아키텍처를 따릅니다. 페이지(`pages/`)는 상태를 스토어에서 읽어 도메인 컴포넌트에 주입하고 레이아웃을 제어하는 **얇은 조립자(Assembler)** 역할만 하며, 실제 UI와 비즈니스 로직은 도메인별 `components/`, `hooks/`, `lib/` 로 분리됩니다.
 
-> **MATERIAL_PICKER.md로 대체됨** (§3) — 아래 트리의 Step 1~6 번호는 종전 7단계 기준이다. 지금 단계는 번호가 아니라 이름으로 부르고 순서는 MATERIAL_PICKER.md §3 을 따른다. `metric-detail/` 은 없어졌고, 평가 흐름 만들기(옛 재료 고르기, `material-picker/` — 트리·흐름도·하단 바, MATERIAL_PICKER.md §12.3)·카드 입력(`composer-input/`, `data-info/`, `model-env/`) 폴더가 생겼다.
+단계는 번호가 아니라 이름(`StepId`)으로 부른다 — 화면 순서는 사용자가 평가 흐름 만들기에서 정하므로 폴더에 단계 번호를 붙이지 않는다.
 
 ```text
 Capstone_Front/
 ├── docs/                      # 프로젝트 문서
 ├── src/
 │   ├── components/            # 도메인별 및 재사용 UI 컴포넌트
-│   │   ├── basic-info/        # Step 1: 기본 정보
-│   │   ├── test-items/        # Step 2: 시험항목(지표) 선택
-│   │   ├── metric-detail/     # Step 3: 지표 상세
-│   │   ├── data-upload/       # Step 4: 데이터 업로드
-│   │   ├── column-mapping/    # Step 5: 컬럼 매핑
-│   │   ├── data-validation/   # Step 6: 데이터 검증
+│   │   ├── task-type/         # 작업 유형 선택 (TaskTypeSelect, TaskTypeIcon)
+│   │   ├── material-picker/   # 평가 흐름 만들기 (트리·흐름도·하단 바)
+│   │   ├── basic-info/        # 회사·모델 정보 폼 (의뢰자 정보·평가 대상 모델 화면이 씀)
+│   │   ├── composer-input/    # 레지스트리 항목을 그리는 입력 폼 부품
+│   │   ├── model-env/         # 모델 설정과 실행 환경
+│   │   ├── data-info/         # 학습 데이터·테스트 데이터·정답 라벨
+│   │   ├── report-info/       # 학습 데이터 예시 파일 칸
+│   │   ├── data-upload/       # 평가 데이터 업로드
+│   │   ├── column-mapping/    # 컬럼 매핑
+│   │   ├── test-items/        # 지표와 합격 기준
+│   │   ├── data-validation/   # 검증
+│   │   ├── workflow/          # 여러 화면이 함께 쓰는 안내 (생성 전 안내, 백엔드 안내, 파일 다시 올리기)
 │   │   ├── report/            # 📊 최종 성적서 렌더링 (layout/ · sections/ · shared/)
 │   │   ├── workspaces/        # 워크스페이스 목록/상세용 컴포넌트
 │   │   ├── landing/           # 랜딩 페이지 섹션 컴포넌트
-│   │   └── ui/                # 🧩 공통 원시(primitive) 컴포넌트 (shadcn/ui 기반)
-│   ├── data/                  # 정적 도메인 데이터/카탈로그 (evaluationData, templateExamples, landingData, dataValidationShowcase)
-│   ├── hooks/                 # React 결합 재사용 로직 (useReportData, useIssuance, usePdfDownload, useDataValidation, useColumnAnalysis, usePrintOnReady)
+│   │   ├── ui/                # 🧩 공통 원시(primitive) 컴포넌트 (shadcn/ui 기반)
+│   │   └── ErrorBoundary.tsx  # 렌더 오류를 잡아 백지 대신 안내를 보인다
+│   ├── data/                  # 정적 도메인 데이터/카탈로그 (evaluationData, reportComposer(항목 레지스트리), workflowSteps(화면 카탈로그), templateExamples, landingData, dataValidationShowcase, reportShowcase)
+│   ├── hooks/                 # React 결합 재사용 로직 (useReportData, useIssuance, usePdfDownload, useDataValidation, useColumnAnalysis, usePrintOnReady, useStepFlow, useScrollEdges)
 │   ├── layout/                # 공개 레이아웃 셸
-│   │   ├── WorkflowShell.tsx  # 워크플로우 스텝 페이지용 셸 (AppHeader + StepRail + ActionBar)
+│   │   ├── WorkflowShell.tsx  # 워크플로우 화면용 셸 (AppHeader + StepRail + ActionBar)
 │   │   ├── AppShell.tsx       # 비-워크플로우 페이지용 경량 셸 (AppHeader만)
 │   │   └── components/        # 레이아웃 내부 부품 (AppHeader, ActionBar, StepRail) — 은닉
 │   ├── lib/                   # 백엔드 계약·외부 연동(API)·리포트 도메인 로직 계층
 │   │   ├── apiBase.ts         # API base URL 헬퍼
 │   │   ├── mapping/           # 프론트↔백엔드 역할 변환 (translateRoleToBackend/Frontend)
-│   │   └── report/            # 성적서 조립·평가 로직 + 코로케이션된 테스트
+│   │   ├── report/            # 성적서 조립·평가 로직 + 코로케이션된 테스트
+│   │   └── upload/            # 업로드 파일 크기 한도
 │   ├── pages/                 # 라우팅 단위 페이지 (Assembler 역할)
-│   │   ├── report/            # Report, ReportPrint
+│   │   ├── report/            # Report, ReportPrint, ReportByNumber(번호로 열기)
 │   │   └── workspaces/        # WorkspaceList, WorkspaceDetail
 │   ├── styles/                # 글로벌 스타일 (fonts.css, index.css, landing.css, tailwind.css, theme.css)
-│   ├── test/                  # 테스트 설정 및 스모크 테스트 (setup.ts, smoke.test.tsx)
+│   ├── test/                  # 테스트 설정과 저장소 전체 검사
+│   │   ├── archive/           # 옛 판 성적서 정답 파일·스냅샷 (손으로 고치지 않는다, §6.3)
+│   │   ├── contract/          # 사실 시트 계약 사본 (백엔드와 같아야 함, §6.2)
+│   │   ├── noPrivateDocLinks.test.ts  # 저장소 밖 개인 문서 링크 금지
+│   │   ├── noStockColors.test.ts      # 토큰 대신 쓴 stock 색 금지
+│   │   └── setup.ts, smoke.test.tsx …
 │   ├── types/                 # TypeScript 타입 정의 (*.types.ts)
 │   ├── utils/                 # 계층화된 유틸리티 (아래 4.4 참고)
 │   │   ├── styling/           # styles.ts (Tailwind cn 등)
 │   │   ├── format/            # format.ts (파일 크기·날짜 포맷)
-│   │   ├── domain/            # validation.ts, mappingHelpers.ts, showcaseSeed.ts
+│   │   ├── domain/            # 순수 도메인 헬퍼 (workflowSteps, cardOrder, flowChart, validation, mappingHelpers …)
+│   │   ├── image/             # 예시 이미지 미리보기
 │   │   └── stores/            # useWorkflowStore.ts, useWorkspaceStore.ts (Zustand)
 │   ├── App.tsx                # 라우팅 설정 (BrowserRouter + Routes, routes.ts 를 map)
 │   ├── main.tsx               # React DOM 진입점 (styles/index.css 로드)
@@ -76,8 +92,8 @@ Capstone_Front/
 ### 4.1. 얇은 페이지 컴포넌트 (Thin Pages / Assembler Pattern)
 `src/pages/` 내의 파일들은 복잡한 JSX나 비즈니스 로직을 직접 갖지 않습니다.
 - **역할**: `useWorkflowStore`(Zustand)에서 상태를 읽어 `components/<도메인>/` 컴포넌트에 props 로 주입하고, `WorkflowShell`(워크플로우) 또는 `AppShell`(비-워크플로우)로 감쌉니다. 데이터 페칭 등 부수효과는 `hooks/` 로 분리합니다.
-- **구조**: 각 단계는 독립 라우트/페이지입니다. 예: `routes.ts` 의 `/app/basic-info → BasicInfo`, `/app/metrics → TestItems`. `Home.tsx` 는 루트("/")에서 `LandingPage` 를 렌더합니다.
-- **레퍼런스**: `pages/BasicInfo.tsx`, `pages/TestItems.tsx` 가 얇은 조립자의 모범 예시입니다.
+- **구조**: 각 입력 화면은 독립 라우트/페이지입니다. 예: `routes.ts` 의 `/app/client-info → ClientInfo`, `/app/metrics → TestItems`. `Home.tsx` 는 루트("/")에서 `LandingPage` 를 렌더합니다. 옛 `/app/basic-info` 는 이제 작업 유형 화면(`/app`)으로 보내는 리다이렉트일 뿐입니다.
+- **레퍼런스**: `pages/ClientInfo.tsx`, `pages/TestItems.tsx` 가 얇은 조립자의 모범 예시입니다.
 
 ### 4.2. 관심사의 분리 (Separation of Concerns)
 - **전역 상태**: 워크플로우/워크스페이스 상태는 `utils/stores/` 의 Zustand 스토어에 응집됩니다.
@@ -102,7 +118,8 @@ Capstone_Front/
 ## 5. 새로운 개발자를 위한 시작 팁
 1. **`SPEC.md` 정독 필수**: "데이터 컬럼 매핑 규칙"과 "계산 가능한 테스트 케이스 결정 로직"이 이 문서에 있습니다.
 2. **`FRONTEND_DEVELOPMENT_GUIDELINE.md` 확인**: 페이지=조립자, 레이아웃 오케스트레이션, UI/도메인 분리, utils/lib 계층화 등 반드시 지켜야 할 규칙이 정리되어 있습니다.
-3. **컴포넌트 추적 방법**: 특정 단계를 수정하려면 `src/routes.ts` 에서 경로(예: `/app/data-upload → DataUpload`)를 확인하고, 해당 `src/pages/*.tsx` 페이지가 주입하는 `src/components/<도메인>/` 컴포넌트를 찾으세요.
+3. **컴포넌트 추적 방법**: 특정 화면을 수정하려면 `src/routes.ts` 에서 경로(예: `/app/data-upload → DataUpload`)를 확인하고, 해당 `src/pages/*.tsx` 페이지가 주입하는 `src/components/<도메인>/` 컴포넌트를 찾으세요.
+4. **주석 속 짧은 코드**: 코드 주석의 `A-01`·`E-06`·`F-09` 같은 코드는 옛 문제 대장(저장소에 없음)의 항목 번호이고, `DESIGN_GAPS R1`~`R6` 은 옛 설계–구현 차이 기록의 번호다. 둘 다 "이 코드가 왜 이렇게 됐는지"를 가리키는 역사 표시로만 남겨 두었다. 원문은 저장소에 없으므로 주석이 그 자리의 이유를 직접 적는다.
 
 ## 6. 성적서 서술과 판(contentSchema)
 
@@ -134,7 +151,7 @@ Capstone_Front/
 3. `factSheetFit` — 백엔드와 **같은 상한**(`factSheetLimits.ts`)으로 미리 자른다. 상위 N개만 남기고 뺀 수는 `facts.omitted` 에 적는다. 요청 본문이 1.8MB 를 넘으면 클래스 단위 칸을 비운다(413 으로 서술을 잃지 않게).
 4. `buildClientInputs`(`reportMaterials.ts`) — 의뢰자가 준 입력(평가 관점·데이터 설명·모델 이름과 버전·실행 환경 등). **회사·과제 정보는 보내지 않는다.**
 
-- **계약 사본**: 사실 시트 모양은 `src/test/contract/`(계약 + 예시 요청 + 백엔드 골든 평가 응답 사본)에 있고, 백엔드 저장소 `tests/contract/` 와 같아야 한다. `factSheetContract.test.ts` 가 실제 조립 결과를 예시와 대조하고, 옆 저장소가 있을 때만 두 사본이 같은지 본다. 예시를 다시 만들려면 `UPDATE_CONTRACT=1 npx vitest run src/lib/report/factSheetContract.test.ts` — 백엔드 사본도 함께 고친다.
+- **계약 사본**: 사실 시트 모양은 `src/test/contract/`(계약 + 예시 요청 + 백엔드 골든 평가 응답 사본)에 있고, 백엔드 저장소 `tests/contract/` 와 같아야 한다. `factSheetContract.test.ts` 가 실제 조립 결과를 예시와 대조하고, 옆 저장소가 있을 때만 두 사본이 같은지 본다. 예시를 다시 만들려면 `UPDATE_CONTRACT=1 pnpm vitest run src/lib/report/factSheetContract.test.ts` — 백엔드 사본도 함께 고친다.
 
 ### 6.3 판(contentSchema) — 발급한 성적서는 발급 당시 모양으로
 

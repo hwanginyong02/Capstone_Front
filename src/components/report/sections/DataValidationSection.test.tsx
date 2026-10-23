@@ -1,7 +1,7 @@
 /**
  * DataValidationSection — 성적서 6절 '시험 수행 요약' 수치 검증.
  *
- * ISSUES.md E-17 / D-01 — 화면(Report.tsx)은 validationSummary 를 넘기는데
+ * E-17 / D-01 — 화면(Report.tsx)은 validationSummary 를 넘기는데
  * 인쇄본(ReportPrint.tsx)은 넘기지 않아, **고객에게 실제로 나가는 산출물인 PDF** 가
  * 폴백값을 인쇄한다. 폴백은 `datasetInfo.sampleCount`, 즉 사용자가 2단계에서 손으로
  * 타이핑한 숫자다. 라벨은 "누락값·오류 제외 후 실제 metric 산출에 사용된 건수" 인데.

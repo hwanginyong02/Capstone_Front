@@ -37,7 +37,7 @@ export function EvalEnvSection({ meta, evalScope, evalEnv, materials, schema3 }:
           // 판 3 본문에는 AI 표현을 쓰지 않는다(서술 라운드 세션 B, 사용자 결정 2). 판 1·2 보관본은 발급 당시 문구.
           { label: "평가 플랫폼",      value: schema3 ? "분류 성능 평가 시스템" : "AI 분류 성능 평가 시스템" },
           // 이 값은 사용자가 입력한 **대상 모델**의 버전이다. 종전 라벨("평가 엔진 버전")은
-          // 평가 시스템의 버전인 것처럼 읽혀, 성적서가 평가 도구를 잘못 증언했다(ISSUES.md F-08).
+          // 평가 시스템의 버전인 것처럼 읽혀, 성적서가 평가 도구를 잘못 증언했다(F-08).
           // 값을 지우는 대신 라벨을 바로잡는다 — 모델 버전은 성적서 다른 곳에 인쇄되지 않는다.
           { label: "대상 모델 버전",   value: evalScope.version },
           { label: "평가 실행 방식",   value: evalEnv.method },
@@ -51,7 +51,7 @@ export function EvalEnvSection({ meta, evalScope, evalEnv, materials, schema3 }:
           ...(materials ? toTableRows(materials.environment) : []),
           { label: "주요 라이브러리",  value: environment.tools.join(", ") },
           // 평가 수행 시각은 서버가 확정한다. 종전에는 "09:00/18:00 KST" 라는 고정 문자열을
-          // 붙여 실제 수행 시각과 무관한 시간을 인쇄했다(ISSUES.md F-09).
+          // 붙여 실제 수행 시각과 무관한 시간을 인쇄했다(F-09).
           {
             label: "평가 수행 일시",
             value: environment.evaluatedAt ?? `${meta.evaluationPeriod.to} (시각 미기록)`,

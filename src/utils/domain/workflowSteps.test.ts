@@ -268,7 +268,7 @@ describe("이웃 단계", () => {
 
 /**
  * 종전 `canEnterStep` 은 `step - 1` 을 선행 단계로 삼았다. 단계가 고정일 때만 맞는 산수다 —
- * 카드를 빼면 번호가 당겨지므로 **계산된 목록의 직전 항목**을 봐야 한다(ISSUES.md E-12).
+ * 카드를 빼면 번호가 당겨지므로 **계산된 목록의 직전 항목**을 봐야 한다(E-12).
  */
 describe("진입 가드", () => {
   const steps = buildStepList(FULL);
@@ -360,7 +360,7 @@ describe("단계 ↔ 경로", () => {
     expect(stepIdToPath("report", "run-1")).toBe("/report/run-1");
   });
 
-  it("run id 가 없으면 성적서 대신 워크스페이스 목록으로 보낸다 (ISSUES.md E-02·E-06)", () => {
+  it("run id 가 없으면 성적서 대신 워크스페이스 목록으로 보낸다 (E-02·E-06)", () => {
     // 종전의 `/report/preview` 는 저장되지 않는 임시 성적서를 만들어 발급을 불가능하게 했다.
     expect(stepIdToPath("report")).toBe("/workspaces");
     expect(stepIdToPath("report", null)).toBe("/workspaces");

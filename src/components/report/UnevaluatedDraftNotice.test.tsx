@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 import { UnevaluatedDraftNotice } from "./UnevaluatedDraftNotice";
 
 /**
- * ISSUES.md E-03 — 미평가 draft 가 안내·재실행 수단 없이 성적서로 렌더됐다.
+ * E-03 — 미평가 draft 가 안내·재실행 수단 없이 성적서로 렌더됐다.
  */
 const renderNotice = (isEvaluated: boolean) =>
   render(

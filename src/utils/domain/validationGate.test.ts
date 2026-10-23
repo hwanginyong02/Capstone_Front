@@ -1,5 +1,5 @@
 /**
- * ISSUES.md E-04 — 검증 실패·미수행이 '오류 0건'으로 해석되어 진행이 허용되던 문제.
+ * E-04 — 검증 실패·미수행이 '오류 0건'으로 해석되어 진행이 허용되던 문제.
  *
  * 종전 판정: `nextDisabled={(validationData?.error_count ?? 0) > 0 || isLoading}`
  *  - validationData === null(검증 미수행/실패) → `?? 0` 에 흡수되어 통과

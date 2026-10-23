@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 
 /**
- * 아직 평가가 끝나지 않은 성적서를 보고 있다는 안내 (ISSUES.md E-03).
+ * 아직 평가가 끝나지 않은 성적서를 보고 있다는 안내 (E-03).
  *
  * LLM 서술 병합은 최대 160초 걸린다. 그 사이에 새로고침하면 워크스페이스에 저장된
  * run 은 있지만 `isEvaluated` 가 아직 false 인 **미평가 draft** 가 그대로 렌더된다.

@@ -20,7 +20,7 @@ export interface FinalReportMeta {
   contractDate?: string;
   positiveClass?: string;
   /**
-   * 하드 예측 없이 확률·점수에서 예측을 파생한 경우의 사실 기재(ISSUES.md A-01).
+   * 하드 예측 없이 확률·점수에서 예측을 파생한 경우의 사실 기재(A-01).
    * SPEC §0 — "argmax·threshold 로 만든 예측은 모델의 실제 출력이 아니라 파생값이므로,
    * 성적서에 파생 사실과 사용한 임계값을 반드시 기재해야 한다."
    * 백엔드 `results.success_metrics.derived_prediction` 을 그대로 받는다.
@@ -92,7 +92,7 @@ export interface EvalEnvironment {
   /**
    * 평가를 실제로 수행한 환경(백엔드 `EvaluateResponse.environment`).
    * **옵셔널이다** — 이 필드가 생기기 전에 발급된 성적서 스냅샷에는 없어서,
-   * 없으면 종전 상수로 폴백한다(ISSUES.md F-09, 결정 4).
+   * 없으면 종전 상수로 폴백한다(F-09, 결정 4).
    */
   environment?: { libraries: Record<string, string>; evaluated_at: string };
 }
@@ -562,7 +562,7 @@ export interface FinalReportData {
   isEvaluated?: boolean;
   /**
    * 평가 전처리가 만든 경고(백엔드 `EvaluateResponse.warnings`).
-   * 종전에는 프론트에 소비처가 없어 그대로 버려졌다(ISSUES.md D-16).
+   * 종전에는 프론트에 소비처가 없어 그대로 버려졌다(D-16).
    * **검증 단계가 아니라 성적서 화면에서 도착한다** — evaluate 를 호출하는 곳이 여기다.
    */
   evaluationWarnings?: string[];
