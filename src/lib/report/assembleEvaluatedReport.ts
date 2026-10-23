@@ -338,6 +338,7 @@ export function assembleEvaluatedReport(
     imbalanceEffect,
     facts: factsWithoutSentences,
     composer: inputs.composer,
+    edition: edition4 ? 4 : 3,
   });
 
   // 7.2 고정 문구 12(9절 "정답 라벨 주의"와 같은 판정)와 8.2 고정 문구 11a·11b. 의뢰자 답은

@@ -9,6 +9,10 @@
  *   불균형 영향(D20)은 백엔드 평가 엔진이 계산해 실어 보낸 값을 읽기만 한다.
  * - 목록은 생성 때 한 번 만들어 성적서 데이터에 저장한다 — 발급본은 나중에 기준이 바뀌어도 그대로다.
  *
+ * 판 4 run(`edition: 4`)은 판 4 갈래를 쓴다(대응표 16·25) — 이름 "핵심 지표 근소 합격", 그 조건은 판정 여유 "작음"
+ * (`KpiResult.judgmentMargin`), 종류 하나 더(같은 출처, LOW 맨 끝). 우선순위 저장값(HIGH/MEDIUM/LOW)은 판과 무관하게 그대로이고,
+ * 판 4 성적서는 그릴 때 `priorityLabelEd4` 로 높음·중간·낮음을 찍는다. 판 3 run 의 목록은 종전과 한 글자도 같다.
+ *
  * 최약 클래스·학습↔평가 분포 차이 두 종은 설계에 기준이 없어 새로 정했다(자체 설정, 설계 문서에 기록).
  * 두 종의 값은 서술용 파생값(`narrativeFacts.ts`)이 계산한 것을 받아 쓴다 — 사실 시트·D6 표와 같은 값(S4a).
  * 최약 클래스는 지표 선택과 무관하게 늘 본다(종전 "M22 를 골랐고" 조건 삭제 — 사용자 결정).
@@ -51,6 +55,22 @@ const KINDS: Array<{
   { kind: "distribution_shift", priority: "LOW", title: "학습↔평가 분포 차이", source: "7.2", recommend: "9.1" },
   { kind: "label_caution", priority: "LOW", title: "정답 라벨 주의", source: "7.2", recommend: "9.1" },
 ];
+
+/**
+ * 판 4 의 종류 표(대응표 16·25) — 판 3 표에서 근소 합격 이름만 바꾸고(부록 A6), 같은 출처(J8)를 LOW 맨 끝에 더한다.
+ * 같은 출처는 8.2 칸(판 4 5.1 일반화 고정 문구 11a 자리)에서 드러나고 9.1 칸(판 4 6.1 데이터)에 권고한다.
+ */
+const KINDS_ED4: typeof KINDS = [
+  ...KINDS.map((k) => (k.kind === "core_near_target" ? { ...k, title: "핵심 지표 근소 합격" } : k)),
+  { kind: "same_source", priority: "LOW", title: "평가 데이터가 학습과 같은 출처", source: "8.2", recommend: "9.1" },
+];
+
+/** 판 4 성적서의 우선순위 표기(대응표 16, 부록 A6). 저장 코드값은 HIGH/MEDIUM/LOW 그대로다. */
+export const PRIORITY_LABEL_ED4: Record<Problem["priority"], string> = { HIGH: "높음", MEDIUM: "중간", LOW: "낮음" };
+
+export function priorityLabelEd4(priority: Problem["priority"]): string {
+  return PRIORITY_LABEL_ED4[priority];
+}
 
 /** 임계값 조정 여지 — 최대 F1 과 실제 F1 의 차이가 이 값 이상이면 문제다(D40). */
 export const THRESHOLD_GAIN_MIN = 0.1;
@@ -176,6 +196,22 @@ export function labelCautions(composer: ReportComposerInput | undefined): LabelC
   return out;
 }
 
+/**
+ * 평가 데이터가 학습 데이터와 같은 출처라고 의뢰자가 답했는가 — ⑦ 테스트 데이터 카드의 "학습 데이터와 출처 관계"가
+ * "같은 출처"(고정 문구 11a 의 조건, D33). 카드를 껐거나, 답이 없거나, "모름"이면 아니다.
+ *
+ * 판 4 의 같은 출처 문제(6.1)와 표지 주요 제약 줄(고정 문구 21)이 이 함수 하나를 본다. 8.2 고정 문구 11a 를 고르는 판 3 함수
+ * (`dataCautionPhrases.sourceRelationSentence`)와 결과가 같은지는 시험이 본다(그 판 3 함수는 고치지 않는다).
+ */
+export function isSameSourceRelation(composer: ReportComposerInput | undefined): boolean {
+  if (!composer?.cards.testData) return false;
+  const answer = composer.testData.testSourceRelation;
+  return !!answer && !answer.unknown && answer.text === "Same source";
+}
+
+/** 같은 출처 문제의 근거 칸 이름 — 의뢰자가 고른 답의 성적서 이름을 싣는다(정답 라벨 주의처럼 한국어 이름). */
+const SAME_SOURCE_EVIDENCE_KEY = "학습 데이터와의 관계";
+
 /** 편향 감소 노력에 "수행 안 함"을 골랐는지(불균형 영향 문제의 메모). 카드를 껐거나 "모름"이면 아니다. */
 function didNothingForImbalance(composer: ReportComposerInput | undefined): boolean {
   if (!composer?.cards.trainingData) return false;
@@ -200,6 +236,8 @@ export interface ProblemListInput {
   facts: Pick<NarrativeFacts, "weakest_class" | "distribution_shift">;
   /** 성적서 구성 카드의 값 — 학습 분포·편향 감소 노력·정답 라벨. 없으면 그 문제는 판단하지 않는다. */
   composer?: ReportComposerInput;
+  /** 성적서 판. 4 면 판 4 갈래(이름·근소 합격 조건·같은 출처). 없으면 3(지금 동작). */
+  edition?: 3 | 4;
 }
 
 type Found = { title?: string; evidence: Record<string, unknown>; note?: string | null };
@@ -265,6 +303,7 @@ function distributionShiftProblem(rows: NarrativeFacts["distribution_shift"]): F
  */
 export function buildProblemList(input: ProblemListInput): Problem[] {
   const { kpiResults, taskType, coreMetricIds, thresholdGain, imbalanceEffect, composer } = input;
+  const edition4 = input.edition === 4;
   const { verdict, reasons } = computeVerdict(kpiResults, taskType, coreMetricIds);
   const found: Partial<Record<ProblemKind, Found>> = {};
 
@@ -298,9 +337,11 @@ export function buildProblemList(input: ProblemListInput): Problem[] {
   }
 
   // 핵심이고 합격인데 목표값과의 차이가 목표값의 3% 미만 — 판정은 `isNearTarget` 한 곳의 식이다.
+  // 판 4 는 판정 여유가 "작음"인 것(생성 때 저장한 `judgmentMargin` 하나 — 반올림 전 신뢰구간이 목표를 포함, 구간이 없으면 3%).
   // 핵심 여부는 판정과 같은 목록(coreMetricIds)으로 본다.
   const coreIds = new Set(coreMetricIds);
-  const near = kpiResults.filter((r) => coreIds.has(r.metricId) && r.status === "pass" && isNearTarget(r));
+  const isNear = edition4 ? (r: KpiResult) => r.judgmentMargin === "small" : isNearTarget;
+  const near = kpiResults.filter((r) => coreIds.has(r.metricId) && r.status === "pass" && isNear(r));
   if (near.length > 0) {
     found.core_near_target = {
       title: near.map((r) => r.name).join(", "),
@@ -342,7 +383,13 @@ export function buildProblemList(input: ProblemListInput): Problem[] {
     };
   }
 
-  return KINDS.filter(({ kind }) => found[kind]).map(({ kind, priority, title, source, recommend }, i) => {
+  if (edition4 && isSameSourceRelation(composer)) {
+    found.same_source = {
+      evidence: { [SAME_SOURCE_EVIDENCE_KEY]: choiceLabel("testData", "testSourceRelation", "Same source") },
+    };
+  }
+
+  return (edition4 ? KINDS_ED4 : KINDS).filter(({ kind }) => found[kind]).map(({ kind, priority, title, source, recommend }, i) => {
     const hit = found[kind]!;
     return {
       id: `P${i + 1}`,

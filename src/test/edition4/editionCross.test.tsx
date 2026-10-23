@@ -179,5 +179,20 @@ describe.each(TAGS)("판 4 run 을 플래그 3 상태에서 평가 — %s", (tag
       expect(m1.ciRaw).toEqual({ low: 0.9496962348678732, high: 0.9940158635836336 });
       expect(m1.ci.low).toBe(0.9497);
     });
+
+    it("RPT-2026-0001 입력: 문제는 예시본 6절대로 P1 근소 합격(Recall, 중간)·P2 같은 출처(낮음)(S3 ④)", () => {
+      expect((stage1.problems as any[]).map((p) => [p.id, p.kind, p.priority, p.title, p.source_section, p.recommend_section])).toEqual([
+        ["P1", "core_near_target", "MEDIUM", "핵심 지표 근소 합격 (Recall)", "8.3", "9.2"],
+        ["P2", "same_source", "LOW", "평가 데이터가 학습과 같은 출처", "8.2", "9.1"],
+      ]);
+    });
   }
+
+  it("입력 셋 모두 '같은 출처'라 같은 출처 문제가 LOW 맨 끝에 있다(S3 ④)", () => {
+    const problems: any[] = stage1.problems;
+    expect(problems.length).toBeGreaterThan(0);
+    expect(problems.at(-1)).toMatchObject({ kind: "same_source", priority: "LOW", evidence: { "학습 데이터와의 관계": "같은 출처" } });
+    expect(problems.filter((p) => p.kind === "same_source").length).toBe(1);
+    expect(problems.map((p) => p.title).join(" ")).not.toContain("아슬아슬");
+  });
 });

@@ -251,7 +251,9 @@ export type ProblemKind =
   | "imbalance_effect"
   | "weakest_class"
   | "distribution_shift"
-  | "label_caution";
+  | "label_caution"
+  /** 판 4 에만(J8, D22·D33) — 평가 데이터가 학습 데이터와 같은 출처. 판 3 run 에는 나오지 않는다. */
+  | "same_source";
 
 /**
  * 9절 권고가 대응하는 문제 하나(`problemList.ts`). 생성 때 만들어 저장한다 — AI 사실 시트에도 이 모양
