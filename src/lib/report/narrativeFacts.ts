@@ -10,6 +10,9 @@
  *   나온 클래스는 혼동행렬의 줄(0)·열로만 남고, 여기서는 예측 편향에만 실제 0 줄로 나온다.
  * - 기준과 비교되는 값은 숫자(반올림 전 값을 9자리로 정리)와 `*_text`(판정과 같은 쪽으로 읽히게 자릿수를
  *   늘린 표기 — `judgedText`)를 함께 싣는다. "넘었나"는 반올림 전 값과 `difference`(1e-10 보정)로 정한다.
+ * - 판 4 run(`edition4`)은 `*_text` 를 판 4 표기(셋째 자리·끝 0 유지 — `edition4/edition4Number.ts`, 공통 계약
+ *   `fact_sheet_contract_ed4.json` 의 edition4_notation)로 찍고, 분포 차 줄에 판 4 전용 칸(평가 − 학습)을 더한다. 판정(flagged·
+ *   far_below_macro·작은 몫)은 판과 무관하게 같은 식 하나다. 판 3 run 은 종전과 한 글자도 같다(기본값 = 판 3).
  */
 import type { TaskType } from "../../data/evaluationData";
 import type {
@@ -24,6 +27,7 @@ import type { RawConfidenceInterval } from "./confidenceIntervals";
 import { cleanNumber, difference, factText, judgedText } from "./judgedNumber";
 import { REPORT_PURPOSE_LABEL } from "./reportConstants";
 import type { ReportComposerInput } from "./reportMaterials";
+import { ed4Judged, ed4Plain, ed4SignedJudged } from "./edition4/edition4Number";
 
 export const FACTS_CONTRACT = "facts-1";
 
@@ -76,6 +80,8 @@ export interface DistributionShiftRow {
   difference: number;
   difference_text: string;
   flagged: boolean;
+  /** 판 4 전용(계약 edition4_only_keys) — 평가 비율 − 학습 비율, signed_judged(0.1, 충족 = flagged). 판 3 run 에는 키가 없다. */
+  evaluation_minus_training_text?: string;
 }
 
 export interface NarrativeFacts {
@@ -178,6 +184,8 @@ export interface NarrativeFactsInput {
   /** 엔진 신뢰구간 원본(생략 사유를 읽는다). 엔진이 보내지 않았으면 null. */
   confidenceIntervals: Record<string, RawConfidenceInterval> | null;
   fixedSentences: FixedSentenceFact[];
+  /** 판 4 run 인가(`usesSchema4(바탕 성적서)` — 조립이 맨 위에서 한 번 정한 값). 없으면 판 3. */
+  edition4?: boolean;
 }
 
 const has = (obj: object, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
@@ -204,7 +212,7 @@ function isLowSupport(support: number, share: number): boolean {
  * 계산한다(사용자 결정). 정답 클래스가 둘 미만이면 견줄 클래스가 없어 null. 9절 문제 7 은
  * `low_support || far_below_macro` 일 때 이 값을 근거로 쓴다.
  */
-export function weakestClass(table: ClassReportTable | null | undefined): WeakestClassFact | null {
+export function weakestClass(table: ClassReportTable | null | undefined, edition4 = false): WeakestClassFact | null {
   const truth = groundTruthRows(table);
   if (truth.length < 2) return null;
   const weakest = weakestRow(truth);
@@ -220,10 +228,12 @@ export function weakestClass(table: ClassReportTable | null | undefined): Weakes
     f1: weakest.f1!,
     support,
     share: cleanNumber(share),
-    share_text: judgedText(share, LOW_SHARE_MIN, !isLowShare(share)),
+    share_text: edition4
+      ? ed4Judged(share, LOW_SHARE_MIN, true, !isLowShare(share))
+      : judgedText(share, LOW_SHARE_MIN, !isLowShare(share)),
     macro_f1: macro,
     gap_from_macro: gap === null ? null : cleanNumber(gap),
-    gap_text: gap === null ? null : judgedText(gap, WEAKEST_F1_GAP, farBelow),
+    gap_text: gap === null ? null : edition4 ? ed4Judged(gap, WEAKEST_F1_GAP, true, farBelow) : judgedText(gap, WEAKEST_F1_GAP, farBelow),
     low_support: isLowSupport(support, share),
     far_below_macro: farBelow,
   };
@@ -236,7 +246,10 @@ function weakestRow(rows: ClassReportRow[]): ClassReportRow | null {
 }
 
 /** 작은 표본 클래스 — 정답 클래스 중 support < 30 또는 전체의 5% 미만, 엔진 순서. 정답 클래스가 둘 미만이면 []. */
-export function lowSupportClasses(table: ClassReportTable | null | undefined): NarrativeFacts["low_support_classes"] {
+export function lowSupportClasses(
+  table: ClassReportTable | null | undefined,
+  edition4 = false,
+): NarrativeFacts["low_support_classes"] {
   const truth = groundTruthRows(table);
   if (truth.length < 2) return [];
   const total = truth.reduce((sum, r) => sum + r.support!, 0);
@@ -248,7 +261,9 @@ export function lowSupportClasses(table: ClassReportTable | null | undefined): N
         label: r.label,
         support: r.support!,
         share: cleanNumber(share),
-        share_text: judgedText(share, LOW_SHARE_MIN, !isLowShare(share)),
+        share_text: edition4
+          ? ed4Judged(share, LOW_SHARE_MIN, true, !isLowShare(share))
+          : judgedText(share, LOW_SHARE_MIN, !isLowShare(share)),
       };
     });
 }
@@ -384,6 +399,7 @@ export function declarations(
 export function declaredRiskErrors(
   risk: RiskDirection | null,
   counts: ConfusionCounts | null,
+  edition4 = false,
 ): NarrativeFacts["declared_risk_errors"] {
   if (risk !== "fn" && risk !== "fp") return null;
   const row = counts?.kind === "binary" ? counts.rows[0] : undefined;
@@ -396,7 +412,7 @@ export function declaredRiskErrors(
     count,
     total_errors: total,
     share: share === null ? null : cleanNumber(share),
-    share_text: share === null ? null : factText(share),
+    share_text: share === null ? null : edition4 ? ed4Plain(share) : factText(share),
   };
 }
 
@@ -404,6 +420,7 @@ export function declaredRiskErrors(
 export function precisionRecallGap(
   table: ClassReportTable | null,
   positiveClass: string | null,
+  edition4 = false,
 ): NarrativeFacts["precision_recall_gap"] {
   if (positiveClass === null) return null;
   const row = table?.rows.find((r) => r.label === positiveClass);
@@ -415,7 +432,7 @@ export function precisionRecallGap(
     precision: row.precision,
     recall: row.recall,
     difference: cleanNumber(gap),
-    difference_text: gap < 0 && magnitude !== "0" ? `-${magnitude}` : magnitude,
+    difference_text: edition4 ? ed4SignedJudged(gap, PR_GAP_MIN, flagged) : gap < 0 && magnitude !== "0" ? `-${magnitude}` : magnitude,
     flagged,
   };
 }
@@ -424,7 +441,11 @@ export function precisionRecallGap(
  * 평균 방식 사이의 차이(D17·D39) — 다중은 가중 − 매크로 F1 과 support 최대 정답 클래스(같으면 엔진 순서
  * 앞), 멀티는 마이크로 − 매크로 F1 과 F1 최저 레이블. 정답 클래스가 둘 미만이면 null.
  */
-export function averageGap(taskType: TaskType, table: ClassReportTable | null): NarrativeFacts["average_gap"] {
+export function averageGap(
+  taskType: TaskType,
+  table: ClassReportTable | null,
+  edition4 = false,
+): NarrativeFacts["average_gap"] {
   if (taskType === "binary") return null;
   const macro = averageRow(table, "매크로 평균")?.f1 ?? null;
   const other = averageRow(table, taskType === "multiclass" ? "가중 평균" : "마이크로 평균")?.f1 ?? null;
@@ -440,7 +461,7 @@ export function averageGap(taskType: TaskType, table: ClassReportTable | null): 
     macro_f1: macro,
     other_f1: other,
     difference: cleanNumber(difference(other, macro)),
-    difference_text: factText(difference(other, macro)),
+    difference_text: edition4 ? ed4Plain(difference(other, macro)) : factText(difference(other, macro)),
     reference_class: { label: reference.label, support: reference.support, f1: reference.f1 },
   };
 }
@@ -507,6 +528,7 @@ function ratios(counts: Map<string, number>): Map<string, number> {
 export function distributionShift(
   composer: ReportComposerInput | undefined,
   evaluation: Record<string, number>,
+  edition4 = false,
 ): { status: NarrativeFacts["distribution_shift_status"]; rows: DistributionShiftRow[] } {
   const training = trainingCounts(composer);
   const evalCounts = new Map<string, number>();
@@ -528,14 +550,19 @@ export function distributionShift(
     const gap = difference(t, e);
     const flagged = Math.abs(gap) >= DISTRIBUTION_SHIFT_MIN;
     const magnitude = judgedText(Math.abs(gap), DISTRIBUTION_SHIFT_MIN, flagged);
-    return {
+    const row: DistributionShiftRow = {
       label,
       training_ratio: cleanNumber(t),
       evaluation_ratio: cleanNumber(e),
       difference: cleanNumber(gap),
-      difference_text: gap < 0 && magnitude !== "0" ? `-${magnitude}` : magnitude,
+      difference_text: edition4
+        ? ed4SignedJudged(gap, DISTRIBUTION_SHIFT_MIN, flagged)
+        : gap < 0 && magnitude !== "0" ? `-${magnitude}` : magnitude,
       flagged,
     };
+    // 판 4 전용 — 4.5 표의 차이 열(평가 − 학습)과 같은 값. 부호만 반대인 같은 크기다.
+    if (edition4) row.evaluation_minus_training_text = ed4SignedJudged(difference(e, t), DISTRIBUTION_SHIFT_MIN, flagged);
+    return row;
   });
   return { status: "compared", rows };
 }
@@ -590,10 +617,11 @@ export function verdictDetail(
 /** 서술용 파생값 전체(자르기 전). 자르기(상한)는 `fitFactSheet` 가 한다. */
 export function buildNarrativeFacts(input: NarrativeFactsInput & { nSamples: number }): NarrativeFacts {
   const { taskType, kpiResults, classTable, confusion, confusionCounts, composer } = input;
+  const edition4 = input.edition4 === true;
   const decl = declarations(composer, taskType);
   const positiveClass = taskType === "binary" ? input.positiveClass : null;
   const truth = groundTruthRows(classTable);
-  const shift = distributionShift(composer, input.evaluationDistribution);
+  const shift = distributionShift(composer, input.evaluationDistribution, edition4);
   return {
     contract: FACTS_CONTRACT,
     positive_class: positiveClass,
@@ -605,13 +633,13 @@ export function buildNarrativeFacts(input: NarrativeFactsInput & { nSamples: num
     declarations: decl,
     verdict_detail: verdictDetail(kpiResults, taskType, input.coreMetricIds),
     error_totals: errorTotals(taskType, confusionCounts, input.nSamples),
-    weakest_class: weakestClass(classTable),
-    low_support_classes: lowSupportClasses(classTable),
+    weakest_class: weakestClass(classTable, edition4),
+    low_support_classes: lowSupportClasses(classTable, edition4),
     top_confusion_pairs: taskType === "multiclass" ? topConfusionPairs(confusion) : [],
     prediction_bias: predictionBias(taskType, confusion, confusionCounts),
-    declared_risk_errors: taskType === "binary" ? declaredRiskErrors(decl.risk_direction, confusionCounts) : null,
-    precision_recall_gap: taskType === "binary" ? precisionRecallGap(classTable, positiveClass) : null,
-    average_gap: averageGap(taskType, classTable),
+    declared_risk_errors: taskType === "binary" ? declaredRiskErrors(decl.risk_direction, confusionCounts, edition4) : null,
+    precision_recall_gap: taskType === "binary" ? precisionRecallGap(classTable, positiveClass, edition4) : null,
+    average_gap: averageGap(taskType, classTable, edition4),
     declared_average: declaredAverage(decl.class_priority, classTable),
     distribution_shift_status: shift.status,
     distribution_shift: shift.rows,
