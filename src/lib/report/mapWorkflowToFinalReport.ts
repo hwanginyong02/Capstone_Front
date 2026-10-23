@@ -44,6 +44,7 @@ import { resolveBeta, resolveTargetValue, TARGET_DIGITS } from "../../utils/doma
 import { formatTargetCriteria } from "./metricValueFormat";
 import { checkMaterialSelection } from "./materialCheck";
 import { isSameSourceRelation } from "./problemList";
+import { formulaEd4 } from "./edition4/metricFormulasEd4";
 import { imbalanceRatioOf } from "./buildDatasetDiagnosis";
 import type {
   BasicInfoFormData,
@@ -615,11 +616,10 @@ function buildMetricList(
 }
 
 /**
- * 3.2 산정식 표. `edition4` 는 판 4 산정식 덮어쓰기 표(대응표 11)를 고를 자리다 — 덮어쓰기 표는 S3 ⑥ 에서 더한다.
- * 그 전까지는 판과 무관하게 지금 글이다.
+ * 3.2 산정식 표. 판 4 run(`edition4`)은 산정식 글을 판 4 덮어쓰기 표(대응표 11, `edition4/metricFormulasEd4.ts`)로 바꿔 저장한다.
+ * 판 3 run 은 지금 글 그대로다.
  */
 function buildMetricFormulas(taskType: TaskType, selectedMetricIds: string[], edition4 = false): MetricFormula[] {
-  void edition4;
   const ids = selectedMetricIds.length > 0 ? selectedMetricIds : [];
   if (ids.length === 0) return [];
 
@@ -629,11 +629,12 @@ function buildMetricFormulas(taskType: TaskType, selectedMetricIds: string[], ed
       if (!metric || !metric.supportedTaskTypes.includes(taskType)) return null;
 
       const displayId = getMetricDisplayId(metricId);
+      const formula = metric.formula || "—";
 
       return {
         metricId: displayId,
         name: metric.name,
-        formula: metric.formula || "—",
+        formula: edition4 ? formulaEd4(displayId, formula) : formula,
         description: metric.description,
         isCommon: !!metric.isCommon,
       };
