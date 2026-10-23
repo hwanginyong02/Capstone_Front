@@ -50,7 +50,6 @@ describe("A-13 — id 는 어떤 지표의 필수 컬럼도 아니다", () => {
     expect(
       getMappingValidityReason({
         taskType: "binary",
-        selectedMetricIds: ["M1"],
         assignedRoleCount: 2,
         missingRoleCodes: missing,
         duplicateRoleCount: 0,

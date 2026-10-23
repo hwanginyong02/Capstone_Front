@@ -1,12 +1,15 @@
 import { CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 import type {
   KpiResult,
+  MaterialCheckResult,
   ValidationResult,
   ValidationSummary,
 } from "../../../types/finalReport.types";
 import type { ValidationGroup } from "../../../types/validation.types";
 import { SectionTitle } from "../shared/SectionTitle";
 import { cn } from "../../../utils/styling/styles";
+import { isLegacyTaskTypeLabel, TASK_TYPE_LABELS_KO } from "../../../data/evaluationData";
+import { SubsectionTitle } from "../shared/SubsectionTitle";
 
 const STATUS_CONFIG = {
   pass:    { icon: CheckCircle2,  color: "text-emerald-500", label: "통과" },
@@ -14,7 +17,22 @@ const STATUS_CONFIG = {
   fail:    { icon: XCircle,       color: "text-red-500",     label: "오류" },
 } as const;
 
-const GROUP_META: Record<ValidationGroup, { label: string; description: string }> = {
+type GroupMeta = Record<ValidationGroup, { label: string; description: string }>;
+
+const GROUP_META: GroupMeta = {
+  common:     { label: "공통 검증 항목",        description: "모든 분류 유형에 공통 적용" },
+  // 유형 이름은 화면·성적서와 같은 한국어 표(W9). 종전에는 영문(Multiclass 등)이었다.
+  multiclass: { label: `${TASK_TYPE_LABELS_KO.multiclass} 검증 항목`, description: `분류 유형이 ${TASK_TYPE_LABELS_KO.multiclass}인 경우 적용` },
+  binary:     { label: `${TASK_TYPE_LABELS_KO.binary} 검증 항목`,     description: `분류 유형이 ${TASK_TYPE_LABELS_KO.binary}인 경우 적용` },
+  multilabel: { label: `${TASK_TYPE_LABELS_KO.multilabel} 검증 항목`, description: `분류 유형이 ${TASK_TYPE_LABELS_KO.multilabel}인 경우 적용` },
+  latency:    { label: "응답시간 검증 항목",    description: "응답시간(latency) 컬럼이 있는 경우 적용" },
+};
+
+/**
+ * W9 이전의 묶음 이름·설명(6392c78 시점 글자 그대로). 옛 발급본(저장된 유형 이름이 영문)은 이 표로
+ * 그린다 — 사용자 결정 "발급본은 그대로". 묶음 이름은 저장하지 않고 그릴 때 정하기 때문이다.
+ */
+const LEGACY_GROUP_META: GroupMeta = {
   common:     { label: "공통 검증 항목",        description: "모든 태스크 유형에 공통 적용" },
   multiclass: { label: "다중 분류 검증 항목",   description: "태스크 유형이 Multiclass인 경우 적용" },
   binary:     { label: "이진 분류 검증 항목",   description: "태스크 유형이 Binary인 경우 적용" },
@@ -29,10 +47,16 @@ interface DataValidationSectionProps {
   kpiResults: KpiResult[];
   totalSamples: number;
   validationSummary?: ValidationSummary;
+  /** 재료 선택 점검 결과. 있으면 6.0 에 세 줄(보고 항목·목적별 점검·생성 전 안내 확인)을 더한다. */
+  materialCheck?: MaterialCheckResult;
+  /** 저장된 유형 이름(`meta.taskTypeLabel`). 옛 영문 이름이면 묶음 이름을 그때 글자로 그린다(W9 발급본). */
+  taskTypeLabel: string;
+  /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
+  schema3?: boolean;
 }
 
-function GroupBlock({ group, items }: { group: ValidationGroup; items: ValidationResult[] }) {
-  const meta = GROUP_META[group];
+function GroupBlock({ group, items, legacy }: { group: ValidationGroup; items: ValidationResult[]; legacy: boolean }) {
+  const meta = (legacy ? LEGACY_GROUP_META : GROUP_META)[group];
   const failCount    = items.filter((i) => i.status === "fail").length;
   const warningCount = items.filter((i) => i.status === "warning").length;
   const passCount    = items.filter((i) => i.status === "pass").length;
@@ -89,7 +113,11 @@ export function DataValidationSection({
   kpiResults,
   totalSamples,
   validationSummary,
+  materialCheck,
+  taskTypeLabel,
+  schema3,
 }: DataValidationSectionProps) {
+  const legacyNames = isLegacyTaskTypeLabel(taskTypeLabel);
   const failCount    = dataValidation.filter((r) => r.status === "fail").length;
   const warningCount = dataValidation.filter((r) => r.status === "warning").length;
 
@@ -113,7 +141,7 @@ export function DataValidationSection({
 
       {/* 6.0 시험 수행 요약 */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-700">시험 수행 요약</h3>
+        <SubsectionTitle number="6.0" schema3={schema3} className="text-sm font-semibold text-slate-700">시험 수행 요약</SubsectionTitle>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b-2 border-slate-200">
@@ -153,6 +181,14 @@ export function DataValidationSection({
                 )}
               </td>
             </tr>
+            {/* 재료 선택 점검(고정 문구 14 · 2.1 "한눈에 보기") — 생성 때 만든 문구를 그대로 찍는다. */}
+            {materialCheck?.printed.summary.map((row) => (
+              <tr key={row.label} className="border-b border-slate-100">
+                <td className="py-2.5 pr-4 font-semibold text-slate-700">{row.label}</td>
+                <td className="py-2.5 pr-4 text-slate-900">{row.value}</td>
+                <td className="py-2.5 text-slate-500 text-xs">{row.note}</td>
+              </tr>
+            ))}
             <tr>
               <td className="py-2.5 pr-4 font-semibold text-slate-700">데이터 검증 결과</td>
               <td className="py-2.5 pr-4 text-slate-900">
@@ -166,11 +202,11 @@ export function DataValidationSection({
 
       {/* 6.0.1 데이터 검증 상세 */}
       <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-700">데이터 검증 상세 내역</h3>
+        <SubsectionTitle number="6.0.1" schema3={schema3} className="text-sm font-semibold text-slate-700">데이터 검증 상세 내역</SubsectionTitle>
         {hasValidation ? (
           <div className="space-y-3">
             {groupedSections.map(({ group, items }) => (
-              <GroupBlock key={group} group={group} items={items} />
+              <GroupBlock key={group} group={group} items={items} legacy={legacyNames} />
             ))}
           </div>
         ) : (

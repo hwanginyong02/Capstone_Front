@@ -2,64 +2,100 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription } from "../components/ui/alert";
-import { useWorkflowStore, stepToPath, STEP } from "../utils/stores/useWorkflowStore";
+import { Button } from "../components/ui/button";
+import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
+import { useStepFlow } from "../hooks/useStepFlow";
+import { useColumnAnalysis } from "../hooks/useColumnAnalysis";
+import { evaluationClassNames, keepPositiveClass } from "../utils/domain/evaluationClasses";
 import { WorkflowShell } from "../layout/WorkflowShell";
 import {
   DataUpload as DataUploadContent,
   isEvaluationDataUploadValid,
 } from "../components/data-upload/DataUpload";
+import { resolveTaskType } from "../data/evaluationData";
+
 /**
- * Step 1 — 평가 데이터 업로드.
+ * ① 평가 데이터 — 결과 파일 업로드. 다음이 컬럼 매핑이다(docs/MATERIAL_PICKER.md §3).
  *
- * **컬럼 자동 분석(`/api/analyze-columns`)은 여기서 돌리지 않는다.** 그 호출은 최대 150초가
- * 걸리는데(`ANALYSIS_TIMEOUT_MS`), 결과를 쓰는 화면은 3단계(컬럼 매핑)다. 여기서 돌리면
- * 결과가 필요 없는 2단계(지표 선택)로 가려고 그 시간을 기다리게 된다. 분석은 매핑 직전인
- * 2단계 '다음'에서 실행한다.
+ * **컬럼 자동 분석(`/api/analyze-columns`)은 여기 '다음'에서 돌린다.** 결과를 쓰는 화면이 바로
+ * 다음인 컬럼 매핑이다. 종전에는 매핑 직전이던 지표 선택의 '다음'에서 돌렸다 — 그때는 지표가
+ * 매핑보다 앞이었다. 분석은 최대 150초가 걸리므로(`ANALYSIS_TIMEOUT_MS`) 취소할 수 있다.
  *
- * 학습 데이터셋 정보도 이 화면에서 빠졌다 — 평가에 쓰이지 않고 성적서 3절을 채우는 값이라
- * 성적서 구간(`/report/:id/issue-info`)으로 옮겼다. 다만 모델명·버전은 여기 남는다:
- * 평가 결과를 식별하는 이름표라, 성적서를 내지 않는 run 에도 반드시 있어야 한다.
+ * 모델 이름·버전은 ④ 평가 대상 모델 단계가 먼저 받는다.
  */
 export function DataUpload() {
   const navigate = useNavigate();
   const store = useWorkflowStore();
+  const flow = useStepFlow("upload");
+  const { analyzeColumns, isAnalyzing, cancel } = useColumnAnalysis();
+  // 종전에는 raw alert() 로만 드러났다. 화면 안에 남겨야 사용자가 읽고 조치할 수 있다(E-18).
   const [fileError, setFileError] = useState<string | null>(null);
 
-  // 분류 유형은 진입 화면에서 고른다. 유형 없이 들어오면 안내할 컬럼도 분석 기준도
-  // 정해지지 않으므로 진입 화면으로 돌려보낸다.
+  // 분류 유형은 작업 유형 화면에서 고른다. 유형 없이 들어오면 안내할 컬럼도 분석 기준도
+  // 정해지지 않으므로 그 화면으로 돌려보낸다.
   useEffect(() => {
     if (!store.taskType) {
       navigate("/app", { replace: true });
     }
   }, [store.taskType, navigate]);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!store.rawFile) {
-      setFileError("Evaluation file is missing. Please re-upload it in this step.");
+      setFileError("평가 데이터 파일이 없습니다. 이 화면에서 다시 올려 주세요.");
       return;
     }
 
     setFileError(null);
-    store.markStepCompleted(STEP.UPLOAD);
-    store.setCurrentStep(STEP.METRICS);
-    navigate(stepToPath(STEP.METRICS));
+    try {
+      const { rows, metadata, columnNotes } = await analyzeColumns(
+        store.rawFile,
+        resolveTaskType(store.taskType),
+      );
+
+      // 다시 올린 경우 전에 고른 양성 클래스가 새 파일의 클래스에도 있으면 지킨다(M5) — 분석은 metadata 를
+      // 통째로 덮어, 종전에는 다시 올릴 때마다 자동 판단 값으로 조용히 뒤집혔다.
+      const previousPositive = store.taskType === "binary" ? (store.metadata?.positive_class ?? "") : "";
+      store.setColumnMapping(rows);
+      const mapped = useWorkflowStore.getState().columnMapping;
+      store.setMetadata(
+        previousPositive && metadata
+          ? {
+              ...metadata,
+              positive_class: keepPositiveClass(
+                previousPositive,
+                evaluationClassNames(store.taskType, mapped, metadata),
+                metadata.positive_class ?? "",
+              ),
+            }
+          : metadata,
+      );
+      // 백엔드가 만든 컬럼 대조 안내를 검증 단계까지 나른다(ISSUES.md B-03).
+      store.setColumnNotes(columnNotes);
+
+      flow.goNext();
+    } catch (err: any) {
+      console.error("Column analysis failed:", err);
+      setFileError(err?.message || String(err));
+    }
   };
 
   return (
     <WorkflowShell
       showActionBar
-      showPrevious={false}
+      showPrevious={!isAnalyzing}
       showNext
+      onPrevious={() => flow.goPrevious()}
       onNext={handleNext}
-      nextDisabled={
-        !isEvaluationDataUploadValid(
-          store.uploadedFile,
-          !!store.rawFile,
-          store.basicInfo.modelName,
-          store.basicInfo.versionName,
-        )
+      nextDisabled={!isEvaluationDataUploadValid(store.uploadedFile, !!store.rawFile) || isAnalyzing}
+      previousLabel="이전"
+      nextLabel={isAnalyzing ? "컬럼 분석 중…" : "다음"}
+      leftAction={
+        isAnalyzing ? (
+          <Button variant="outline" onClick={cancel}>
+            분석 취소
+          </Button>
+        ) : undefined
       }
-      nextLabel="Next step"
     >
       {fileError && (
         <Alert variant="destructive" className="mb-6">
@@ -71,15 +107,8 @@ export function DataUpload() {
         taskType={store.taskType}
         uploadedFile={store.uploadedFile}
         onUploadedFileChange={store.setUploadedFile}
-        modelName={store.basicInfo.modelName}
-        versionName={store.basicInfo.versionName}
-        onModelNameChange={(value) =>
-          store.setBasicInfo((prev) => ({ ...prev, modelName: value }))
-        }
-        onVersionNameChange={(value) =>
-          store.setBasicInfo((prev) => ({ ...prev, versionName: value }))
-        }
         needsReupload={!!store.uploadedFile && !store.rawFile}
+        evalDataPicks={store.materialPicks.evalData}
       />
     </WorkflowShell>
   );

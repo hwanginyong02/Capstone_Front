@@ -2,7 +2,7 @@
 
 ML 모델 성능 평가 보고서("시험성적서")를 **KS X ISO/IEC TS 4213:2022** 표준에 따라 자동 생성하는 웹 애플리케이션의 프론트엔드입니다.
 
-> 이 README는 **디자인 시스템·컴포넌트 패턴** 위주입니다. 코드 구조/아키텍처는 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)와 [`docs/FRONTEND_DEVELOPMENT_GUIDELINE.md`](docs/FRONTEND_DEVELOPMENT_GUIDELINE.md)를, 지표·컬럼·검증 규칙은 [`SPEC.md`](SPEC.md)(프론트/백 공통 단일 진실 문서)를, 프로젝트 전체(프론트+백)는 상위 `../PROJECT_OVERVIEW.md`를 참고하세요.
+> 이 README는 **디자인 시스템·컴포넌트 패턴** 위주입니다. 코드 구조/아키텍처는 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)와 [`docs/FRONTEND_DEVELOPMENT_GUIDELINE.md`](docs/FRONTEND_DEVELOPMENT_GUIDELINE.md)를, 지표·컬럼·검증 규칙은 [`SPEC.md`](SPEC.md)(프론트/백 공통 단일 진실 문서)를, 프로젝트 전체(프론트+백)는 백엔드 저장소(`Capstone_Back`)의 `docs/PROJECT_OVERVIEW.md`를 참고하세요. 성적서 서술·판(contentSchema)은 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §6.
 
 ## 프로젝트 구조 (요약)
 
@@ -22,17 +22,21 @@ src/
 
 ## 7단계 워크플로우
 
+> **MATERIAL_PICKER.md로 대체됨** (§1·§3) — 흐름은 작업 유형 → 재료 고르기 → 의뢰자 정보 → 평가 대상 모델 → [모델 설정과 실행 환경] → 평가 데이터 → 컬럼 매핑 → [데이터 정보] → 평가 관점 → 지표와 합격 기준 → 검증 → 확인과 생성이다. 대괄호 단계는 재료 고르기에서 그 카드를 넣었을 때만 나온다. *(MATERIAL_PICKER.md §11로 대체됨 — 순서는 재료 고르기 다이어그램에서 사용자가 정한다. 데이터 정보는 학습 데이터·테스트 데이터·정답 라벨 단계로 나뉘어 최소 8단계·전체 12단계다)* *(MATERIAL_PICKER.md §12로 대체됨 — 재료 고르기는 **평가 흐름 만들기**가 됐다. 빈 흐름에서 왼쪽 트리의 항목을 단계에 넣어 블록을 만들고, 필수 항목을 모두 넣어야 "다음"으로 간다. 화면 용어는 단계 > 블록 > 항목이고 입력 화면 하나하나는 '화면'이다)* 아래는 종전 기록.
+
 1. **기본 정보** — 회사/모델 정보, 평가 유형(binary/multiclass/multilabel) 선택
 2. **시험항목** — 지표(Metric, M1~M23) 선택
 3. **지표 상세** — 지표별 목표값·추가 입력(M5 선택 시 β값 등)
 4. **데이터 업로드** — 평가 데이터(CSV/JSON) + 학습 데이터셋 정보
 5. **컬럼 매핑** — AI 자동 매핑 검토, positive_class 설정(조건부)
 6. **데이터 검증** — 백엔드 전처리 검증 결과 확인
-7. **결과 미리보기(성적서)** — 지표 대시보드, 혼동 행렬, 차트, LLM 서술
+7. **결과 미리보기(성적서)** — 지표 대시보드, 혼동 행렬, 차트, LLM 서술 *(지금: 서술은 백엔드 작업 경로 — `POST /api/narrative/jobs` 로 작업 번호를 받고 조회해 기다린다. 모델은 Claude Sonnet 5.5, 키가 없거나 실패한 칸은 규칙 문장. 서술이 끝나야 인쇄·PDF·발급이 열린다 — docs/ARCHITECTURE.md §6)*
 
 ## 디자인 시스템
 
 ### 영감
+
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 톤은 "인증 네이비"이고 단일 강조색은 #1d3b6e 다. 아래는 종전 기록.
 Linear, Vercel, Supabase 대시보드에서 영감을 받은 정밀하고 깔끔한 디자인:
 - 크리스프한 흰색 카드 + 밝은 중립 배경
 - 샤프한 타이포그래피 + 넉넉한 line-height
@@ -40,18 +44,22 @@ Linear, Vercel, Supabase 대시보드에서 영감을 받은 정밀하고 깔끔
 - 단일 액센트 컬러 (Blue #2563EB)
 
 ### 컬러 시스템
+
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 배경 #ffffff, 글자 #0d1420(제목)·#1f2a3a(본문)·#4a5568(보조), 강조 #1d3b6e, 오류 #aa0808. 토큰은 `docs/imports/colors.md`. 아래는 종전 기록.
 - **Neutrals**: #FAFAFA (background) → #FFFFFF (card) → #09090B (text)
 - **Primary**: #2563EB (액션 컬러)
 - **Status**: Green(success), Amber(warning), Red(danger)
 
 ### 타이포그래피
+
+> **MATERIAL_PICKER.md로 대체됨** (§10) — 글꼴은 Pretendard Variable 이다(Inter 는 불러오지 않는다). 22px/500 제목, 16px/500 이름·버튼, 14px/400 설명. 아래는 종전 기록.
 - **Sans**: Pretendard Variable (한글), Inter (영문)
 - **Mono**: JetBrains Mono (숫자, 코드, 지표 ID)
 - 모든 숫자에 `tabular-nums` 적용 필수
 
 ### 레이아웃
 - Full-width with inner cap (1280px centered, 32px side padding)
-- Sticky top navigation (App Header 56px + Step Tabs 48px)
+- Sticky top navigation (App Header 56px + Step Tabs 48px) *(MATERIAL_PICKER.md로 대체됨, §9 — 단계 표시줄은 입력 화면 오른쪽의 세로 목록이다)*
 - Sticky bottom Action Bar (72px)
 - 카드 간격: 24px (기본), 40px (주요 섹션 구분)
 
@@ -66,7 +74,7 @@ Linear, Vercel, Supabase 대시보드에서 영감을 받은 정밀하고 깔끔
 - 체크박스 + 지표 ID(mono) + 메트릭명 + 설명
 - 그리드: xl=4열, lg=3열, md=2열, sm=1열
 - M5 선택 시 하단에 β값 입력 카드 표시
-- 요구사항 Badge: "score 필요", "prob 필요", "β값 필요"
+- 요구사항 Badge: "score 필요", "prob 필요", "β값 필요" *(MATERIAL_PICKER.md로 대체됨, §3 — 매핑한 컬럼으로 계산할 수 없는 지표는 비활성으로 두고 이유를 한 줄 붙인다)*
 
 ### Metric Block
 - 대형 메트릭 표시 (성적서/결과)
@@ -101,6 +109,8 @@ pnpm build            # 프로덕션 빌드
 ```
 `VITE_API_BASE_URL` 미설정 시 API 호출은 상대경로 → Vite 프록시로 전달됩니다.
 
+테스트 관례: 옆 저장소(`../Capstone_Back`)를 읽는 테스트는 `it.skipIf(!existsSync(…))` 로 둔다 — CI 는 이 저장소만 받는다. 판 1 보관본의 정답은 운영 main 이 그린 글(`src/test/archive/main_d38890d/`)이고 새 코드로 다시 뜨지 않는다(판 1·2 스냅샷이 바뀌면 그 판 분기를 고친다).
+
 ## 중요 규칙
 
 ### 컴포넌트 사용
@@ -108,7 +118,7 @@ pnpm build            # 프로덕션 빌드
 - ✅ Card로 모든 그룹핑
 - ✅ 모든 숫자에 font-mono + tabular-nums
 - ❌ 그라디언트, 그림자, 장식 아이콘 금지
-- ❌ 8px 이상의 border-radius 금지
+- ❌ 8px 초과 border-radius 금지 (버튼·카드는 8px — MATERIAL_PICKER.md §10)
 
 ### 데이터 처리 (자세한 규칙은 `SPEC.md`)
 - Binary: positive_class 필수, score 사용 시 threshold 필요

@@ -33,9 +33,9 @@ export function WorkspaceCreateForm({ onCreate }: WorkspaceCreateFormProps) {
   return (
     <Card className="rounded-lg">
       <CardHeader>
-        <CardTitle>Create Workspace</CardTitle>
+        <CardTitle>워크스페이스 만들기</CardTitle>
         <CardDescription>
-          Name the workspace by model group, evaluation goal, or dataset.
+          모델 묶음, 평가 목적, 데이터셋 기준으로 이름을 붙이세요.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -44,25 +44,25 @@ export function WorkspaceCreateForm({ onCreate }: WorkspaceCreateFormProps) {
           onSubmit={handleSubmit}
         >
           <div className="space-y-2">
-            <Label htmlFor="workspace-name">Name</Label>
+            <Label htmlFor="workspace-name">이름</Label>
             <Input
               id="workspace-name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="Document classification model comparison"
+              placeholder="문서 분류 모델 비교"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="workspace-description">Description</Label>
+            <Label htmlFor="workspace-description">설명</Label>
             <Input
               id="workspace-description"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Evaluation goal or dataset"
+              placeholder="평가 목적이나 데이터셋"
             />
           </div>
           <Button type="submit" disabled={!name.trim()}>
-            Create
+            만들기
           </Button>
         </form>
       </CardContent>

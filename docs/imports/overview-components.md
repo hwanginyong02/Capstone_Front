@@ -16,7 +16,7 @@ This project uses **shadcn/ui** as the base component library, with Tailwind CSS
 | `Badge` | Short status label | 감지된 클래스, 상태 표시 (정상, 진행 중). |
 | `Alert` | Warnings, success, errors | 검증 결과, 샘플 부족 경고. |
 | `Table` | Tabular data | Class-wise metrics, class distribution, 지표 selection summary. |
-| `Tabs` | Top step navigation | See **Step Tabs** pattern below. |
+| `Tabs` | Top step navigation | See **Step Tabs** pattern below. *(MATERIAL_PICKER.md로 대체됨, §9 — 세로 단계 표시줄이고 Tabs 를 쓰지 않는다)* |
 | `Tooltip` | Contextual help | Field-level help icons, metric definitions. |
 | Drop zone (custom) | File upload | Step 3. See `components/drop-zone.md`. |
 
@@ -38,6 +38,8 @@ Structure:
 - **Bottom border**: 1px `border-border`. No shadow.
 
 ### Step Tabs (48px, fixed below header)
+
+> **MATERIAL_PICKER.md로 대체됨** (§9) — 입력 화면 오른쪽의 세로 단계 표시줄(`StepRail`)이다. 단계 수는 고른 카드에 따라 8~10개다. 화면이 `lg` 보다 좁으면 본문 위로 올라간다. 아래는 종전 기록.
 
 A horizontal row of 7 tabs, each equally distributed across the inner max-width (1280px, centered with the same 32px side padding as content).
 
@@ -70,6 +72,8 @@ Three visual states:
 
 ### Action Bar (72px, sticky bottom)
 
+> **MATERIAL_PICKER.md로 대체됨** (§4) — 재료 고르기 화면에는 Action Bar 가 없다. 이전·다음은 오른쪽 입력 순서 패널 아래에 있다. 입력 화면은 아래 규칙 그대로다.
+
 ```
 ┌─────────────────────────────────────────────────────┐
 │  [← 이전]                          [다음 단계 →]    │
@@ -80,7 +84,7 @@ Three visual states:
 - Flex row `justify-between`, same 32px side padding as content.
 - Left slot: `← 이전` in `outline` variant, hidden on step 1.
 - Right slot: `다음 단계 →` in `default` variant, disabled until the step's validation passes.
-- On step 7, the right slot has TWO buttons (`결과 내보내기 (JSON)` as `outline`, `시험성적서 생성` as `default`) with 8px gap.
+- On step 7, the right slot has TWO buttons (`결과 내보내기 (JSON)` as `outline`, `시험성적서 생성` as `default`) with 8px gap. *(MATERIAL_PICKER.md로 대체됨, §3 — 단계 번호는 고정이 아니다. 마지막 단계는 확인과 생성이다)*
 - Sticky bottom — stays visible as main content scrolls.
 
 ## Content Patterns

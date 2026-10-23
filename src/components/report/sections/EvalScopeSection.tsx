@@ -1,5 +1,6 @@
-import type { FinalReportMeta } from "../../../types/finalReport.types";
+import type { EvalScope, FinalReportMeta } from "../../../types/finalReport.types";
 import { SectionTitle } from "../shared/SectionTitle";
+import { SubsectionTitle } from "../shared/SubsectionTitle";
 
 const EVAL_PROCEDURE_STEPS = [
   { step: "시험신청서 제출", desc: "신규 프로젝트 생성 및 요구되는 형식에 맞춘 데이터셋 업로드" },
@@ -13,24 +14,44 @@ const EVAL_PROCEDURE_STEPS = [
 
 interface EvalScopeSectionProps {
   meta: FinalReportMeta;
+  /** 시험 대상 모델명·버전을 2절에 찍는다(재료 목록 2절 "모델명, 버전 — 1절, 2절, 4절"). */
+  evalScope?: EvalScope;
+  /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
+  schema3?: boolean;
+  /** 판 1 보관본인가(`isLegacyLayout`) — 운영 main 이 발급하던 2절에는 시험 대상 모델 표가 없었다. */
+  legacyLayout?: boolean;
 }
 
-export function EvalScopeSection({ meta }: EvalScopeSectionProps) {
+export function EvalScopeSection({ meta, evalScope, schema3, legacyLayout = false }: EvalScopeSectionProps) {
   return (
     <section className="space-y-6 border-t border-slate-200 py-10">
       <SectionTitle number={2} title="시험 목적 및 절차" />
 
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-slate-700">시험 목적</h3>
+        <SubsectionTitle number="2.1" schema3={schema3} className="text-sm font-semibold text-slate-700">시험 목적</SubsectionTitle>
         <p className="text-sm leading-relaxed text-slate-600">
           본 시험의 목적은 의뢰자가 제출한 기계학습 분류 모델의 추론 결과 데이터(Inference Result Dataset)를
           바탕으로, 국제 표준인 ISO/IEC TS 4213:2022에 명시된 평가 지표를 적용하여 객관적인 분류 성능을
           측정하고 신뢰성 수준을 정량적으로 확인하는 데 있다.
         </p>
+        {evalScope && !legacyLayout && (
+          <table className="text-sm border-collapse" aria-label="시험 대상 모델">
+            <tbody>
+              <tr className="border-b border-slate-100">
+                <th className="py-1.5 pr-6 text-left font-medium text-slate-500">시험 대상 모델</th>
+                <td className="py-1.5 text-slate-700">{evalScope.targetModel}</td>
+              </tr>
+              <tr>
+                <th className="py-1.5 pr-6 text-left font-medium text-slate-500">버전</th>
+                <td className="py-1.5 font-mono text-slate-700">{evalScope.version}</td>
+              </tr>
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-slate-700">시험 절차</h3>
+        <SubsectionTitle number="2.2" schema3={schema3} className="text-sm font-semibold text-slate-700">시험 절차</SubsectionTitle>
         <ol className="space-y-2">
           {EVAL_PROCEDURE_STEPS.map(({ step, desc }, i) => (
             <li key={step} className="flex gap-3 text-sm">
@@ -45,7 +66,7 @@ export function EvalScopeSection({ meta }: EvalScopeSectionProps) {
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-slate-700">수행내용 및 시험기간</h3>
+        <SubsectionTitle number="2.3" schema3={schema3} className="text-sm font-semibold text-slate-700">수행내용 및 시험기간</SubsectionTitle>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b-2 border-slate-200">

@@ -1,8 +1,11 @@
 # Color Design Tokens
 
+> 정본: `docs/MATERIAL_PICKER.md` §10 "인증 네이비"(2026-10-15). 아래 값은 그 표를 옮긴 것이고,
+> 구현은 `src/styles/theme.css` 다. §10 에 없는 값(hover, 성공·주의)은 따로 표시했다.
+
 ## Philosophy
 
-This palette mirrors the **Linear/Vercel/Supabase** aesthetic: a near-white canvas, almost-black text, a single considered blue accent, and restrained status colors. Saturated or bright colors appear only when they carry meaning (error, success, warning).
+The palette is **인증 네이비**: a white canvas, near-black navy text, a single deep navy accent, and one error color. Saturated colors appear only when they carry meaning (error, and the existing success/warning states).
 
 Never use color as decoration. Every colored element must communicate state, hierarchy, or interactivity.
 
@@ -14,91 +17,88 @@ Never use color as decoration. Every colored element must communicate state, hie
 - `role`: `primary`, `success`, `warning`, `danger`, `muted` (optional)
 - `variant`: `subtle`, `strong`, `hover`, `pressed` (optional)
 
+In `theme.css` the variables drop the `--color-` prefix (`--primary`, `--muted-foreground`) and `@theme inline` maps them to `--color-*`, which is what makes Tailwind classes such as `bg-primary` work.
+
 ## Core Palette
 
 ### Neutrals (the foundation — used for ~80% of the UI)
 
-Linear/Vercel-style palette: cool neutrals with a faint hint of slate. Avoid pure grays (too dead) and warm grays (too soft for this domain).
+Cool neutrals with a faint navy cast.
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--color-background` | `#FAFAFA` | Page background — not pure white, subtle contrast against cards |
+| `--color-background` | `#FFFFFF` | Page background |
 | `--color-card` | `#FFFFFF` | Card surfaces, inputs, dropdowns |
-| `--color-muted` | `#F4F4F5` | Muted surface: table header row, code block, disabled input background |
-| `--color-muted-hover` | `#EBEBED` | Hover on table rows, tab hover state |
-| `--color-border` | `#E4E4E7` | Default borders on cards, inputs, tables |
-| `--color-border-strong` | `#D4D4D8` | Dividers that need weight, hover state on unselected cards |
-| `--color-foreground` | `#09090B` | Primary text, nearly black but not pure |
-| `--color-foreground-muted` | `#71717A` | Secondary text, helper text, muted labels |
-| `--color-foreground-subtle` | `#A1A1AA` | Placeholder text, least-prominent metadata |
+| `--color-muted` | `#F4F5F7` | Bands and side panels (e.g. the right panel on the material picker), table header row, disabled input background |
+| `--color-border` | `#E6E8EC` | Dividers between rows, input borders, default borders |
+| `--color-border-strong` | `#C9CED6` | Card borders, hover state on unselected cards |
+| `--color-foreground` | `#0D1420` | Headings and names (page title, card name, field name) |
+| `--color-foreground-secondary` | `#1F2A3A` | Body text |
+| `--color-foreground-muted` | `#4A5568` | Secondary text, helper text, descriptions, formats. In `theme.css` this is `--muted-foreground` |
+| `--color-foreground-subtle` | `#667080` | Inactive steps, placeholder text |
+
+`--color-foreground-muted` stays above 4.5:1 on every background here (7.5:1 on white, 6.7:1 on `--color-primary-subtle`, 7.0:1 on `--color-muted`), so there is no separate muted color for tinted backgrounds.
 
 ### Primary (single accent — action color)
 
-A confident, professional blue. Not too bright (avoid Facebook blue), not too dark (avoid navy). This is the Linear/Vercel palette feel.
+A deep, formal navy. It marks primary actions and the "saved" state.
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--color-primary` | `#2563EB` | Primary button bg, active tab underline, selected card border, focus ring |
-| `--color-primary-hover` | `#1D4ED8` | Hover state for primary button |
-| `--color-primary-pressed` | `#1E40AF` | Active/pressed state |
-| `--color-primary-subtle` | `#EFF6FF` | Selected card background tint, completed-step circle background |
+| `--color-primary` | `#1D3B6E` | Primary button bg, saved mark, selected card border, focus ring |
+| `--color-primary-hover` | `#16305A` | Hover state for primary button *(not in §10; a darker step of the accent)* |
+| `--color-primary-subtle` | `#EDF2F9` | Saved / selected card background |
 | `--color-primary-foreground` | `#FFFFFF` | Text/icon on primary-colored backgrounds |
-| `--color-ring` | `#2563EB` | Focus ring (2px outline, 2px offset) |
+| `--color-ring` | `#1D3B6E` | Focus ring (2px outline, 2px offset) |
 
 ### Semantic Status Colors
 
 Used ONLY to communicate state. Never decoratively.
 
-**Success (green)** — validation passed, step completed, positive confirmation
+**Danger (error)** — blocking error, structural data problem. §10 calls this the warning color and reserves it for **real errors only**.
 
 | Token | Value |
 |-------|-------|
-| `--color-success` | `#16A34A` |
-| `--color-success-subtle` | `#F0FDF4` |
-| `--color-success-border` | `#BBF7D0` |
-| `--color-success-foreground` | `#FFFFFF` |
-
-**Warning (amber)** — non-blocking advisory ("샘플 수가 적습니다")
-
-| Token | Value |
-|-------|-------|
-| `--color-warning` | `#D97706` |
-| `--color-warning-subtle` | `#FFFBEB` |
-| `--color-warning-border` | `#FDE68A` |
-| `--color-warning-foreground` | `#FFFFFF` |
-
-**Danger (red)** — blocking error, structural data problem
-
-| Token | Value |
-|-------|-------|
-| `--color-danger` | `#DC2626` |
-| `--color-danger-subtle` | `#FEF2F2` |
-| `--color-danger-border` | `#FECACA` |
+| `--color-danger` | `#AA0808` (`--destructive` in `theme.css`) |
 | `--color-danger-foreground` | `#FFFFFF` |
+
+There is no `-subtle` / `-border` token for danger. Tinted error surfaces use the base color with opacity (`bg-destructive/5`, `border-destructive/30`).
+
+**Success (green)** and **Warning (amber)** are not defined by §10. They keep the colors the screens already used, now as tokens.
+
+| Token | Success | Warning |
+|-------|---------|---------|
+| `--color-{role}` | `#16A34A` | `#D97706` |
+| `--color-{role}-strong` | `#15803D` | `#B45309` |
+| `--color-{role}-subtle` | `#F0FDF4` | `#FFFBEB` |
+| `--color-{role}-border` | `#BBF7D0` | `#FDE68A` |
+| `--color-{role}-foreground` | `#FFFFFF` | `#FFFFFF` |
+
+`-strong` is the text color on the `-subtle` background. The base colors reach only 3.3:1 / 3.1:1 there, so use them for icons only.
 
 ## Decision Tree
 
 **Need a background?**
-- Whole page → `--color-background`
-- Card on top of the page → `--color-card`
+- Whole page, card → `--color-background` / `--color-card` (both white)
+- Band or side panel → `--color-muted`
 - Header row of a table / code block → `--color-muted`
-- Hover state on a table row → `--color-muted-hover`
-- Selected card tint → `--color-primary-subtle`
-- Active tab's step-number circle → `--color-primary` (filled, with `--color-primary-foreground` text)
+- Saved or selected card → `--color-primary-subtle`
+- Active step marker → `--color-primary` (filled, with `--color-primary-foreground` text)
 
 **Need text?**
-- Primary text (body, headings) → `--color-foreground`
-- Secondary text (helper, sublabel, inactive tab) → `--color-foreground-muted`
-- Placeholder → `--color-foreground-subtle`
+- Headings, names → `--color-foreground`
+- Body text → `--color-foreground-secondary`
+- Helper text, descriptions, formats → `--color-foreground-muted`
+- Inactive step, placeholder → `--color-foreground-subtle`
 - On primary-filled bg → `--color-primary-foreground`
-- On success/warning/danger **filled** bg → corresponding `*-foreground`
-- On success/warning/danger **subtle** bg → corresponding base color (e.g., `--color-warning` for text on `--color-warning-subtle`)
+- Error message → `--color-danger`
+- On success/warning **subtle** bg → `--color-{role}-strong`
 
 **Need a border?**
-- Card/input default → `--color-border`
+- Card → `--color-border-strong`
+- Divider, input → `--color-border`
 - Selected card (2px) → `--color-primary`
-- Alert box → corresponding `*-border` with `*-subtle` background
-- Divider with more weight → `--color-border-strong`
+- Alert box → `--color-{role}-border` with `--color-{role}-subtle` background
 
 **Need interactive state?**
 - Focus on any interactive element → 2px `--color-ring` outline, 2px offset
@@ -107,20 +107,23 @@ Used ONLY to communicate state. Never decoratively.
 
 ### Correct pairings
 
-- ✅ Warning alert: `bg-warning-subtle` + `text-warning` (amber text on soft amber tint)
-- ✅ Success alert: `bg-success-subtle` + `text-success` + `border-success-border`
-- ✅ Primary button: `bg-primary` + `text-primary-foreground` (white on blue)
-- ✅ Completed tab circle: `bg-primary-subtle` + check icon in `text-primary`
+- ✅ Warning alert: `bg-warning-subtle` + `border-warning-border` + `text-warning-strong` (icon `text-warning`)
+- ✅ Success alert: `bg-success-subtle` + `border-success-border` + `text-success-strong` (icon `text-success`)
+- ✅ Primary button: `bg-primary` + `text-primary-foreground` (white on navy)
+- ✅ Saved card: `bg-primary-subtle` + check mark in `text-primary`
+- ✅ Error message: `text-destructive` on white
 
 ### Wrong pairings (common mistakes)
 
-- ❌ Warning alert: `bg-warning-subtle` + `text-warning-foreground` (white text on soft amber = invisible)
-- ❌ Primary button: `bg-primary-subtle` + `text-primary-foreground` (white on very-pale blue = invisible)
+- ❌ Warning alert: `bg-warning-subtle` + `text-warning` for body text (3.1:1, below the 4.5:1 text minimum)
+- ❌ Primary button: `bg-primary-subtle` + `text-primary-foreground` (white on very pale navy = invisible)
+- ❌ Stock Tailwind colors (`bg-blue-50`, `text-slate-500`) or raw hex in components. Use the tokens; `src/test/noStockColors.test.ts` enforces this for app screens
 - ❌ Decorative use: using `--color-success` on a static check-mark icon that has no success meaning
 
 ### Multi-color restraint
 
-- Only ONE accent (primary blue) per screen for non-status elements.
+- Only ONE accent (navy) per screen for non-status elements.
+- Use the danger color for real errors only.
 - At most ONE status color visible at a time in validation messages. If you have 3 issues, consolidate into one alert with bullets.
 - Badges use `variant="secondary"` (muted gray) unless they carry a specific status.
 

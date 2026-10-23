@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { useWorkspaceStore } from "../utils/stores/useWorkspaceStore";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
-import { STEP, stepToPath } from "../utils/stores/useWorkflowStore";
+import { stepIdToPath } from "../utils/domain/workflowSteps";
 import { ensureActiveWorkspace } from "../utils/domain/ensureActiveWorkspace";
 
 /**
@@ -51,10 +51,10 @@ describe("preview 경로가 코드에서 사라졌다 (E-06)", () => {
   });
 });
 
-describe("마지막 단계의 stepToPath — preview 를 가리키지 않는다", () => {
-  it("워크스페이스 목록으로 간다", () => {
-    // 번호를 직접 쓰지 않는다 — 단계 순서가 바뀌어도 '마지막 단계'라는 의미는 유지된다.
-    expect(stepToPath(STEP.RESULT)).toBe("/workspaces");
+describe("마지막 단계의 경로 — preview 를 가리키지 않는다", () => {
+  it("run 이 없으면 워크스페이스 목록으로 간다", () => {
+    // 번호를 직접 쓰지 않는다 — 단계 순서가 바뀌어도 "마지막 단계"라는 의미는 유지된다.
+    expect(stepIdToPath("report")).toBe("/workspaces");
   });
 });
 
@@ -99,13 +99,14 @@ describe("ensureActiveWorkspace — 워크스페이스 자동 생성 (E-02)", ()
   });
 });
 
-describe("6단계는 워크스페이스 없이 성적서로 넘어가지 않는다 (E-02)", () => {
+describe("검증 단계는 워크스페이스 없이 성적서로 넘어가지 않는다 (E-02)", () => {
   it("DataValidation 이 워크스페이스를 보장한 뒤 run 을 만든다", () => {
     const source = read("pages/DataValidation.tsx");
 
     expect(source).toContain("ensureActiveWorkspace");
-    // 워크스페이스 없이 마지막 단계 경로로 빠지는 폴백이 사라졌다 —
-    // 그 분기는 계산해 둔 reportData 를 버리고 preview 로 갔다.
-    expect(source).not.toContain("navigate(stepToPath(STEP.RESULT))");
+    // 목적지를 직접 적지 않고 단계 목록에서 유도하며, **방금 만든 run 의 id 를 싣는다**.
+    // 워크스페이스 없이 마지막 단계로 빠지는 폴백은 그래서 쓸 수조차 없다 — 그 분기는
+    // 계산해 둔 reportData 를 버리고 preview 로 갔다.
+    expect(source).toContain("flow.goNext({ runId: run.id })");
   });
 });

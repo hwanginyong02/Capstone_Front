@@ -1,462 +1,492 @@
 /**
- * 최종 성적서 데이터 페칭 훅.
+ * 최종 성적서 데이터 훅 — 평가와 서술 작업(job)을 나눠 돈다(서술 라운드 S3b, 계획 설계 요지 8).
  *
- * 워크스페이스에 저장된 run(`/report/:id`)의 성적서를 만든다. 캐시된 완성본이 있으면
- * 그대로 쓰고, 없으면 워크플로우 store 의 입력으로 `/api/evaluate` → `/api/generate-narrative`
- * 를 호출해 조립한다.
+ * 워크스페이스에 저장된 run(`/report/:id`)의 성적서를 만든다. 효과는 둘이다.
  *
- * 종전에는 `id === "preview"` 라는 임시 경로가 있어 워크스페이스 없이도 성적서가
- * 렌더됐다 — 그 성적서는 어디에도 저장되지 않아 발급·재조회가 불가능했다(ISSUES.md E-02·E-06).
+ * 1. **평가 효과** — 의존성은 run id·서술 상태(·평가할 파일)뿐이다. run 객체를 의존성에 넣지 않는다: 종전에는 run 전체에
+ *    걸려 있어 저장할 때마다 다시 돌았고, 서술 상태를 run 에 쓰면 평가와 유료 서술 작업이 되풀이된다. 서술을 아직 시작하지
+ *    않은 run 만 평가한다. 평가 요청은 run 을 만들 때 얼린 스냅샷(`evaluationRequest`)으로 만들고, 파일 지문이 다르거나 파일이
+ *    없으면 다시 올려 달라고 한다(점검 유-8). 평가가 끝나면 서술 작업을 만들고 **한 번에** 저장한다 — 1단계 성적서(지표·차트·
+ *    8.1 표, 서술 없음)와 서술 상태 pending(작업 번호).
+ * 2. **서술 효과** — 서술 상태가 pending 이고 작업 번호가 있으면 조회만 한다. 진행 단계(대기·생성 중·검사 중)는 컴포넌트
+ *    상태에만 두고, 스토어에는 끝 상태(done·failed)만 쓴다. done 일 때만 서술을 병합해 완성본(isEvaluated)으로 저장한다.
+ *
+ * 새로고침하면 저장된 작업 번호로 이어 조회한다(평가를 다시 하지 않는다). 실패·시간 초과·유실이면 "서술 다시 만들기"가
+ * 저장해 둔 서술 요청으로 새 작업을 만든다. 없는 id 는 평가를 시작하지 않고 "찾을 수 없음"이다(점검 유-9).
+ *
+ * 같은 run 의 평가는 모듈 단위로 한 번만 돈다(`evaluationsInFlight`). React StrictMode 는 개발 중에 효과를 두 번 실행하고,
+ * 인쇄 탭·두 화면이 같은 run 을 열 수도 있다 — 그때마다 평가와 서술 작업이 둘씩 나가면 안 된다.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { apiUrl } from "@/lib/apiBase";
-import { applyUserInputs } from "../lib/report/applyUserInputs";
-import { mapWorkflowToFinalReport } from "../lib/report/mapWorkflowToFinalReport";
-import type { FinalReportData, LatencyStats } from "../types/finalReport.types";
+import type { BenchmarkRef, FinalReportData, NarrativeSource } from "../types/finalReport.types";
+import type { WorkspaceEvaluationRun } from "../types/workspace.types";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
-import { useWorkspaceStore } from "../utils/stores/useWorkspaceStore";
-import { getMetricDisplayId, METRICS } from "../data/evaluationData";
-import { buildConclusion } from "../lib/report/computeVerdict";
-import { buildDatasetDiagnosis } from "../lib/report/buildDatasetDiagnosis";
-import { buildFactSheet } from "../lib/report/buildFactSheet";
-import { evaluateStatus } from "../lib/report/evaluateStatus";
-import { fetchNarrative } from "../lib/report/fetchNarrative";
-import { translateRoleToBackend } from "../lib/mapping/translateRoleToBackend";
-import { metricNeedsTargetValue } from "../utils/domain/validation";
+import { saveRun, useWorkspaceStore } from "../utils/stores/useWorkspaceStore";
+import { buildClientInputs } from "../lib/report/reportMaterials";
+import { assembleEvaluatedReport } from "../lib/report/assembleEvaluatedReport";
+import { normalizeReportContent } from "../lib/report/normalizeReportContent";
+import type { NarrativeRequestPayload } from "../lib/report/buildFactSheet";
+import { fitNarrativePayload } from "../lib/report/factSheetFit";
+import { sameFile, type FileFingerprint } from "../lib/report/evaluationRequest";
+import {
+  createNarrativeJob,
+  fetchNarrativeJob,
+  type CreateJobResult,
+  type JobView,
+  type NarrativeFields,
+  type NarrativeFailure,
+  type NarrativeJobStage,
+} from "../lib/report/narrativeJobApi";
+import { resolveTaskType } from "../data/evaluationData";
 
-interface UseReportDataResult {
-  data: FinalReportData | null;
-  isLoading: boolean;
-  /** KPI·차트는 렌더됐으나 LLM 서술(7·8·9절)이 아직 병합 중인 상태(D6b). */
-  narrativePending: boolean;
-  error?: string | null;
+/** 조회 설정. 테스트가 간격을 줄이려고 고칠 수 있게 객체로 둔다(수치를 테스트에 박지 않는다). */
+export const narrativePolling = {
+  /** 조회 간격. */
+  intervalMs: 2000,
+  /**
+   * 조회가 이 시간 동안 내내 닿지 않으면(마지막 성공 뒤) 실패(unreachable)로 끝낸다. 횟수가 아니라 시간으로 센다 —
+   * 와이파이가 몇 초 끊기거나 Render 가 잠깐 5xx 를 줄 때 작업을 실패로 굳히면, 서버에서는 원래 작업이 계속 도는데
+   * 사용자는 다시 만들기로 유료 작업을 하나 더 만든다(S3b 검토). 실패로 끝낸 뒤에도 다시 만들기는 원래 작업부터 다시 본다.
+   */
+  unreachableGiveUpMs: 60_000,
+  /** 작업을 만든 뒤 이만큼 지나도 끝나지 않으면 시간 초과로 끝낸다(서버 전체 제한 10분 + 여유 — 서버가 유실을 먼저 알린다). */
+  giveUpMs: 12 * 60_000,
+};
+
+/** 다시 만들기용 서술 요청을 run 에 저장하는 상한(직렬화 글자 수). 넘으면 남기지 않고 다시 만들기는 평가부터 한다. */
+export const NARRATIVE_INPUT_MAX_CHARS = 400_000;
+
+export type NarrativePhase = "none" | "pending" | "done" | "failed";
+
+/** run 의 서술 상태. 서술 칸이 없는 옛 run 은 완성본이면 done, 아니면 아직 시작 전(none). */
+export function narrativePhaseOf(run: WorkspaceEvaluationRun | undefined): NarrativePhase {
+  if (!run) return "none";
+  if (run.narrative) return run.narrative.status;
+  return run.reportData?.isEvaluated ? "done" : "none";
 }
 
-export function useReportData(id: string): UseReportDataResult {
-  const workflowState = useWorkflowStore();
-  const run = useWorkspaceStore((state) =>
-    state.evaluationRuns.find((item) => item.id === id),
-  );
+/**
+ * 성적서 화면 상태.
+ * - ready: 그릴 데이터가 있다(서술 상태는 narrative.phase 로 따로 본다).
+ * - loading: 평가 중(서술 작업을 만들 때까지).
+ * - not_found: 이 id 의 run 이 없다.
+ * - needs_file: 평가할 파일이 없거나 지문이 다르다 — 다시 올려야 한다.
+ * - needs_reevaluation: 평가 요청 스냅샷이 없는 옛 run, 또는 저장소 이행이 다시 평가하라고 표시한 run.
+ * - error: 평가 요청이 실패했다.
+ */
+export type ReportStatus = "ready" | "loading" | "not_found" | "needs_file" | "needs_reevaluation" | "error";
 
-  const [data, setData] = useState<FinalReportData | null>(() => {
-    if (run?.reportData && (run.reportData as any).isEvaluated) {
-      return run.reportData;
-    }
+export interface UseReportDataResult {
+  data: FinalReportData | null;
+  status: ReportStatus;
+  isLoading: boolean;
+  error?: string | null;
+  narrative: {
+    phase: NarrativePhase;
+    /** 진행 단계 — pending 일 때만, 컴포넌트 상태(저장하지 않음). */
+    stage: NarrativeJobStage | null;
+    failure?: NarrativeFailure;
+    /** 다시 만들기 요청을 보내는 중. */
+    retrying: boolean;
+  };
+  /** 서술이 아직 끝나지 않았다(pending) — 종전 이름. */
+  narrativePending: boolean;
+  /** 저장 실패 안내(저장 공간 초과 등). 없으면 null. */
+  saveError: string | null;
+  /** 실패한 서술을 다시 만든다. */
+  retryNarrative: () => Promise<void>;
+  /** 다시 올린 파일을 넘긴다(지문이 맞으면 그 파일로 평가한다). */
+  provideFile: (file: File) => void;
+  /** 평가 파일 지문(파일 다시 올리기 안내용). */
+  expectedFile: FileFingerprint | null;
+  /** 다시 올린 파일이 지문과 달랐다. */
+  fileMismatch: boolean;
+}
+
+function getRun(id: string): WorkspaceEvaluationRun | undefined {
+  return useWorkspaceStore.getState().evaluationRuns.find((r) => r.id === id);
+}
+
+/** 서술 요청을 저장할 수 있는 크기인가. */
+export function storableInput(payload: NarrativeRequestPayload): NarrativeRequestPayload | null {
+  try {
+    return JSON.stringify(payload).length <= NARRATIVE_INPUT_MAX_CHARS ? payload : null;
+  } catch {
     return null;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * 평가 + 서술 작업 만들기 (run 하나에 한 번)
+ * ------------------------------------------------------------------ */
+
+interface EvaluationOutcome {
+  error: string | null;
+  saveError: string | null;
+}
+
+const evaluationsInFlight = new Map<string, Promise<EvaluationOutcome>>();
+
+/** 테스트 정리용 — 남은 진행 표시를 지운다. */
+export function resetReportDataForTests() {
+  evaluationsInFlight.clear();
+}
+
+async function postEvaluate(file: File, run: WorkspaceEvaluationRun): Promise<any> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("data", JSON.stringify(run.evaluationRequest!.payload));
+  const response = await fetch(apiUrl("/api/evaluate"), { method: "POST", body: formData });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `서버 오류: ${response.status}`);
+  }
+  return response.json();
+}
+
+async function evaluateAndStartNarrative(id: string, file: File): Promise<EvaluationOutcome> {
+  // 평가 요청뿐 아니라 응답 조립(assembleEvaluatedReport·buildClientInputs)에서 나는 예외도 오류 화면으로 보낸다 —
+  // 밖으로 새면 화면이 '평가 중'에서 멈춘다(S3b 검토). 평가가 성공해도 조립이 실패하면 서술 작업은 만들지 않는다.
+  try {
+    return await evaluateAndStartNarrativeUnsafe(id, file);
+  } catch (err: any) {
+    console.error("Evaluation assembly failed:", err);
+    return { error: err?.message || String(err), saveError: null };
+  }
+}
+
+async function evaluateAndStartNarrativeUnsafe(id: string, file: File): Promise<EvaluationOutcome> {
+  const run = getRun(id);
+  if (!run?.evaluationRequest) return { error: "평가 요청을 찾을 수 없습니다.", saveError: null };
+  const snapshot = run.evaluationRequest;
+
+  let result: any;
+  try {
+    result = await postEvaluate(file, run);
+  } catch (err: any) {
+    console.error("Evaluation run failed:", err);
+    return { error: err?.message || String(err), saveError: null };
+  }
+
+  // 성적서 입력 스냅샷 — 매퍼·문제 목록·AI 고객 입력이 같은 값을 본다(run 을 만들 때 얼린 값).
+  const reportInput = run.workflowSnapshot;
+  // run 을 만들 때 그 스냅샷으로 만든 초안이 1단계의 바탕이다(그때의 검증 결과가 들어 있다).
+  const baseReport = normalizeReportContent(run.reportData);
+
+  // 평가 응답 → 1단계 성적서·AI 사실 시트(서술과 무관한 결정론적 조립, `assembleEvaluatedReport`).
+  const { stage1Report, factSheet } = assembleEvaluatedReport(baseReport, result, {
+    ...snapshot.assemble,
+    composer: reportInput.composer,
   });
-  const [isLoading, setIsLoading] = useState(false);
-  const [narrativePending, setNarrativePending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // 만약 워크스페이스에 기 저장된 run 정보가 있고, 이미 계산이 완료된 상태라면 바로 캐시 반환
-    if (run?.reportData && (run.reportData as any).isEvaluated) {
-      setData(run.reportData);
-      return;
-    }
+  // 고객이 제공한 입력도 함께 넘긴다(서술 설계 D25). 회사·과제 정보는 넣지 않는다(D34).
+  const clientInputs =
+    reportInput.composer && baseReport.materials
+      ? buildClientInputs({
+          composer: reportInput.composer,
+          materials: baseReport.materials,
+          model: {
+            name: snapshot.model.name,
+            // 성적서에 찍는 버전과 같은 값(기본값 판정은 매퍼 한 곳).
+            version: baseReport.evalScope.version,
+            purpose: snapshot.model.purpose,
+            category: snapshot.model.category,
+          },
+          reportPurposeNote: snapshot.model.reportPurposeNote,
+          // 의뢰자가 고른 핵심 지표만 — 기본값이면 보내지 않는다(재-7). 지표 번호(Mn)는 빼고 이름만(재-4).
+          coreMetrics:
+            stage1Report.coreMetricsSource === "client"
+              ? stage1Report.kpiResults.filter((r) => r.isCore).map((r) => r.name)
+              : null,
+          // 성적서 3절과 같은 출처 — 놓지 않은 설명은 `buildReportInput` 이 이미 비웠다.
+          classLabelDescriptions: reportInput.classLabelDescriptions,
+          // 성적서 4절과 같은 출처 — ⑨ 실행 환경을 넣었으면 그 값이다(`buildReportInput`).
+          runtime: {
+            운영체제: reportInput.basicInfo.envOS ?? "",
+            CPU: reportInput.basicInfo.envCPU ?? "",
+            GPU: reportInput.basicInfo.envGPU ?? "",
+            메모리: reportInput.basicInfo.envMemory ?? "",
+            소프트웨어: reportInput.basicInfo.envSoftware ?? "",
+          },
+        })
+      : undefined;
 
-    // 원본 파일이 없으면 평가를 다시 돌릴 수 없다(File 객체는 저장소를 넘지 못한다).
-    // 저장된 run 의 성적서를 그대로 내보내고, 사용자 입력은 아래 applyUserInputs 가 덮는다.
-    //
-    // 종전에는 이 아래에 **같은 조건의 블록이 하나 더** 있었다. 도달할 수 없는 코드였고,
-    // 하는 일도 지금은 틀렸다 — 전역 워크플로우 store 로 성적서를 새로 조립했는데,
-    // 그러면 지금 작업 중인 다른 평가의 입력이 이 run 의 성적서로 새어 들어간다.
-    if (!workflowState.rawFile) {
-      setData(run?.reportData || null);
-      return;
-    }
+  // 본문이 백엔드 상한(2MB)에 가까우면 클래스 단위 칸을 비운다 — 413 으로 서술을 잃지 않게(유-11).
+  const payload: NarrativeRequestPayload = fitNarrativePayload({
+    task_type: resolveTaskType(snapshot.assemble.taskType),
+    report_purpose: baseReport.evalScope.reportPurposeKey,
+    fact_sheet: factSheet,
+    ...(clientInputs ? { client_inputs: clientInputs } : {}),
+  });
 
-    let active = true;
-    setIsLoading(true);
-    setError(null);
+  const created = await createNarrativeJob(payload);
+  // 1단계 성적서는 완성본이 아니다(isEvaluated=false) — 서술이 끝나야(done) 완성본이 된다.
+  const input = storableInput(payload);
+  // 성적서 데이터의 facts 는 실제로 보낸 값(예산으로 목록을 비웠으면 비운 값)과 같아야 한다 — S7 D6 표가 이 값을 그린다.
+  const stored = payload.fact_sheet.facts ? { ...stage1Report, narrativeFacts: payload.fact_sheet.facts } : stage1Report;
+  const saveError = saveRun(id, (r) => applyCreated(r, stored, created, input));
+  // 작업 번호를 저장하지 못했으면 새로고침 뒤 이어 조회할 수 없다 — 평가와 서술 작업을 다시 만들게 되니 알린다.
+  const notice =
+    saveError && created.kind === "started"
+      ? `${saveError} 서술이 끝날 때까지 이 화면을 닫거나 새로고침하지 마세요 — 새로고침하면 서술을 다시 만들어 비용이 다시 듭니다.`
+      : saveError;
+  return { error: null, saveError: notice };
+}
 
-    const runEvaluate = async () => {
-      // stage1(KPI·차트) 렌더 이후 발생한 오류는 에러 화면으로 덮지 않기 위한 플래그(D6b).
-      let narrativeStarted = false;
-      try {
-        const backendMappings = workflowState.columnMapping.map((row) => ({
-          column: row.originalName,
-          role: translateRoleToBackend(row.confirmedRole, workflowState.taskType || "multiclass"),
-          sample_values: row.sampleValues,
-        }));
+function startEvaluation(id: string, file: File): Promise<EvaluationOutcome> {
+  const existing = evaluationsInFlight.get(id);
+  if (existing) return existing;
+  const promise = evaluateAndStartNarrative(id, file).finally(() => evaluationsInFlight.delete(id));
+  evaluationsInFlight.set(id, promise);
+  return promise;
+}
 
-        const metadata = {
-          positive_class: workflowState.metadata?.positive_class || null,
-          negative_class: workflowState.metadata?.negative_class || null,
-          positive_class_ambiguous: workflowState.metadata?.positive_class_ambiguous || false,
-          detected_classes: workflowState.metadata?.detected_classes || [],
-          detected_labels: workflowState.metadata?.detected_labels || [],
-          class_distribution: workflowState.metadata?.class_distribution || {},
-        };
+/* ------------------------------------------------------------------ *
+ * 서술 작업 끝 상태 저장
+ * ------------------------------------------------------------------ */
 
-        const beta = parseFloat(workflowState.metricDetails["M5"]?.beta || "1.0");
+/** 아직 이 작업을 기다리는 run 인가 — 늦게 온 응답이 새 작업(다시 만들기)의 상태를 덮지 않게. */
+function stillWaitingFor(run: WorkspaceEvaluationRun, jobId: string): boolean {
+  return run.narrative?.status === "pending" && run.narrative.jobId === jobId;
+}
 
-        const payload = {
-          task_type: workflowState.taskType || "multiclass",
-          column_mappings: backendMappings,
-          selected_metric_ids: workflowState.selectedMetricIds,
-          metadata: metadata,
-          beta: beta,
-          // 하드 예측이 없을 때 확률에서 예측을 파생하는 기준(ISSUES.md A-01).
-          // 성적서 합격 목표값(threshold)과는 다른 개념이라 필드명이 분리돼 있다.
-          decision_threshold: workflowState.decisionThreshold,
-        };
+/** 1단계 성적서에 끝난 서술을 병합해 완성본으로. verdict/score 는 규칙 산출값, 서술(benchmark/narrative/risks)만 병합한다. */
+function mergeNarrative(report: FinalReportData, fields: NarrativeFields, benchmarkRefs: BenchmarkRef[]): FinalReportData {
+  // 칸별 모델(작성 기록, 사용자 결정 4). 모델을 알려 주지 않은 응답이면 키를 두지 않는다 — 이전 서술의 기록도 남기지 않는다.
+  const { narrativeModels: _previous, ...rest } = report;
+  return {
+    ...rest,
+    ...(fields.sectionModels ? { narrativeModels: fields.sectionModels } : {}),
+    conclusion: {
+      ...report.conclusion,
+      ...fields.conclusionText,
+      benchmarkRefs: benchmarkRefs.length > 0 ? benchmarkRefs : report.conclusion.benchmarkRefs,
+    },
+    interpretation: fields.interpretation,
+    recommendationNarrative: fields.recommendationNarrative,
+    recommendations: fields.recommendations,
+    narrativeSource: fields.source,
+    narrativeSections: fields.sectionSources,
+    isEvaluated: true,
+  };
+}
 
-        const formData = new FormData();
-        formData.append("file", workflowState.rawFile!);
-        formData.append("data", JSON.stringify(payload));
+function saveDone(id: string, jobId: string, view: Extract<JobView, { kind: "done" }>): string | null {
+  const run = getRun(id);
+  if (!run || !stillWaitingFor(run, jobId)) return null;
+  const merged = mergeNarrative(run.reportData, view.fields, view.benchmarkRefs);
+  return saveRun(id, (r) =>
+    stillWaitingFor(r, jobId) ? { ...r, reportData: merged, narrative: { status: "done", jobId } } : r,
+  );
+}
 
-        const response = await fetch(apiUrl("/api/evaluate"), {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          const errorMessage = errorData.detail || `Server error: ${response.status}`;
-          throw new Error(errorMessage);
-        }
-
-        const result = await response.json();
-        if (!active) return;
-
-        const baseReport = mapWorkflowToFinalReport({
-          basicInfo: workflowState.basicInfo,
-          datasetInfo: workflowState.datasetInfo,
-          taskType: workflowState.taskType,
-          selectedMetricIds: workflowState.selectedMetricIds,
-          metricDetails: workflowState.metricDetails,
-          uploadedFile: workflowState.uploadedFile,
-          trainingExampleFiles: workflowState.trainingExampleFiles,
-          trainingUnsuitableExampleFiles: workflowState.trainingUnsuitableExampleFiles,
-          columnMapping: workflowState.columnMapping,
-          classLabelDescriptions: workflowState.classLabelDescriptions,
-          metadata: workflowState.metadata,
-        }, workflowState.validationResult);
-
-        const success_metrics = result.results.success_metrics || {};
-        // 계산 실패 지표({metricId: 에러문자열}). value 0/fail 위장 대신 'unavailable' 처리(D4).
-        const failed_metrics = result.results.failed_metrics || {};
-
-        // 1. KPI 지표 계산값 치환
-        const taskTypeForMetrics = workflowState.taskType || "multiclass";
-        const updatedKpiResults = workflowState.selectedMetricIds
-          .map((metricId) => {
-            // **task 필터를 함께 본다.** 4절(metricList)·5절(metricFormulas)은
-            // supportedTaskTypes 로 거르는데 여기만 걸러내지 않아, 그 task 가 노출하지
-            // 않는 지표가 6절 KPI 표에만 숫자로 찍혔다(ISSUES.md A-04 의 인쇄 결과).
-            const metric = METRICS.find(
-              (m) => m.id === metricId && m.supportedTaskTypes.includes(taskTypeForMetrics),
-            );
-            if (!metric) return null;
-
-            // 방향성(높을수록/낮을수록 좋음) — 판정·기준 표기의 단일 출처(evaluationData.ts)
-            const higherIsBetter = metric.higherIsBetter !== false;
-            const detail = workflowState.metricDetails[metricId];
-            const target = parseFloat(detail?.targetValue ?? "");
-            // 정보성 지표(M21/M22)는 타겟값을 받지 않는다. 과거 세션에 저장된 값이
-            // 남아 있어도 판정 대상이 되지 않도록 여기서도 같은 규칙을 적용한다.
-            const hasThreshold =
-              metricNeedsTargetValue(metricId) && Number.isFinite(target) && target > 0;
-            const displayId = getMetricDisplayId(metricId);
-
-            // 계산 실패 지표: 판정/집계에서 제외되도록 'unavailable' 로 표기(value 0/fail 위장 금지)
-            const failReason = failed_metrics[metricId];
-            if (failReason !== undefined) {
-              return {
-                metricId: displayId,
-                name: metric.name,
-                value: 0,
-                threshold: hasThreshold ? target : 0,
-                status: "unavailable" as const,
-                higherIsBetter,
-                errorMessage: typeof failReason === "string" ? failReason : String(failReason),
-                perClass: undefined,
-                subMetrics: undefined,
-              };
-            }
-
-            const val = success_metrics[metricId];
-
-            // dict 반환 메트릭 (M11/M12/M13): f1_score를 대표값으로, 세부값은 subMetrics로
-            let resolvedValue = 0;
-            let subMetrics: { precision: number; recall: number; f1Score: number } | undefined;
-
-            if (typeof val === "number") {
-              resolvedValue = val;
-            } else if (val && typeof val === "object" && "f1_score" in val) {
-              resolvedValue = val.f1_score;
-              subMetrics = { precision: val.precision, recall: val.recall, f1Score: val.f1_score };
-            }
-
-            let status: "pass" | "fail" | "warning" | "unavailable" = "pass";
-            if (hasThreshold) {
-              status = evaluateStatus(resolvedValue, target, higherIsBetter);
-            }
-
-            let perClass: Array<{ label: string; value: number; status: string }> | undefined;
-            if (["M2", "M3", "M4"].includes(metricId) && success_metrics["M22"]) {
-              const classReport = success_metrics["M22"];
-              const excludeKeys = ["accuracy", "macro avg", "weighted avg", "micro avg", "samples avg"];
-              const classValues = Object.keys(classReport).filter(k => !excludeKeys.includes(k));
-
-              const metricKeyMap: Record<string, string> = {
-                "M2": "precision",
-                "M3": "recall",
-                "M4": "f1-score",
-              };
-              const key = metricKeyMap[metricId];
-
-              if (classValues.length > 0 && key) {
-                perClass = classValues.map((val) => {
-                  const classVal = classReport[val];
-                  const score = classVal ? classVal[key] : 0;
-                  const classStatus = hasThreshold
-                    ? evaluateStatus(score, target, higherIsBetter)
-                    : "pass";
-                  return {
-                    label: val,
-                    value: score,
-                    status: classStatus,
-                  };
-                });
-              }
-            }
-
-            const isVisualOnly = metricId === "M21" || metricId === "M22";
-
-            return {
-              metricId: displayId,
-              name: metric.name,
-              value: resolvedValue,
-              threshold: (hasThreshold && !isVisualOnly) ? target : 0,
-              status: isVisualOnly ? "pass" : status,
-              higherIsBetter,
-              perClass,
-              subMetrics,
-            };
-          })
-          .filter((item): item is any => item !== null);
-
-        // 2. 오차 행렬(Confusion Matrix) 치환
-        let confusionMatrix = null;
-        if (success_metrics.M21) {
-          const cm = success_metrics.M21;
-          if (cm.type === "multilabel") {
-            const classLabels = cm.labels || workflowState.metadata?.detected_labels || [];
-            const multilabelMatrices = cm.matrix.map((mat: number[][], idx: number) => {
-              const labelName = classLabels[idx] || `Label ${idx}`;
-              const total = mat.reduce((acc: number, row: number[]) => acc + row.reduce((a, b) => a + b, 0), 0);
-              return { label: labelName, matrix: mat, totalSamples: total };
-            });
-            const defaultMat = multilabelMatrices[0] || { label: "Label 0", matrix: [[0, 0], [0, 0]], totalSamples: 0 };
-            confusionMatrix = {
-              labels: [`Negative (${defaultMat.label})`, `Positive (${defaultMat.label})`],
-              matrix: defaultMat.matrix,
-              totalSamples: defaultMat.totalSamples,
-              multilabelMatrices,
-            };
-          } else {
-            const total = cm.matrix.reduce((acc: number, row: number[]) => acc + row.reduce((a, b) => a + b, 0), 0);
-            confusionMatrix = {
-              labels: cm.labels || cm.matrix.map((_: any, idx: number) => `Class ${idx}`),
-              matrix: cm.matrix,
-              totalSamples: total,
-            };
-          }
-        }
-
-        // 2-1. ROC / PR 곡선 좌표 + 스칼라 AUC (binary, 백엔드 success_metrics)
-        const rocCurve = success_metrics.roc_curve
-          ? {
-              fpr: success_metrics.roc_curve.fpr,
-              tpr: success_metrics.roc_curve.tpr,
-              auroc: typeof success_metrics.M9 === "number" ? success_metrics.M9 : undefined,
-            }
-          : null;
-        const prCurve = success_metrics.pr_curve
-          ? {
-              recall: success_metrics.pr_curve.recall,
-              precision: success_metrics.pr_curve.precision,
-              auprc: typeof success_metrics.M10 === "number" ? success_metrics.M10 : undefined,
-            }
-          : null;
-
-        // 2-2. 지연시간 통계 — latency 컬럼이 매핑된 경우만 백엔드가 latency_stats 반환
-        const ls = success_metrics.latency_stats;
-        const latencyStats: LatencyStats | null = ls
-          ? {
-              mean: ls.mean,
-              min: ls.min,
-              p50: ls.p50,
-              p95: ls.p95,
-              p99: ls.p99,
-              max: ls.max,
-              unit: ls.unit === "s" ? "s" : "ms",
-            }
-          : null;
-
-        // 3. 데이터셋 진단 문구 — 실제 클래스 분포 + 불균형비(M23) + 제외 행수로 구성
-        const imbalanceRatio =
-          typeof success_metrics.M23 === "number" ? success_metrics.M23 : undefined;
-        
-        // 백엔드 EvaluateResponse 에서 최신 class_distribution 이 오면 우선 사용, 없으면 metadata 폴백
-        const resolvedClassDistribution = result.class_distribution && Object.keys(result.class_distribution).length > 0 
-          ? result.class_distribution 
-          : workflowState.metadata?.class_distribution || {};
-
-        const taskTypeResolved = workflowState.taskType || "binary";
-        // 혼동행렬의 totalSamples가 가장 정확한 평가 데이터의 row 수 (멀티레이블의 경우 200)
-        // 서버가 확정한 표본 수를 최우선으로 쓴다. validationSampleCount 는 4단계에서
-        // 사용자가 손으로 적은 값이라 실제 평가 행 수와 무관할 수 있다(ISSUES.md B-02·E-17).
-        const datasetSize =
-          result.n_samples ||
-          confusionMatrix?.totalSamples ||
-          Number(workflowState.datasetInfo?.validationSampleCount) ||
-          undefined;
-
-        const datasetDiagnosis = buildDatasetDiagnosis(
-          { class_distribution: resolvedClassDistribution },
-          imbalanceRatio,
-          result.dropped_rows,
-          datasetSize,
-          taskTypeResolved
-        );
-
-        // 4. verdict/score 규칙 산출 (서술의 권위 값 — 백엔드도 fact_sheet.verdict 로 강제)
-        const ruleConclusion = buildConclusion(updatedKpiResults, taskTypeResolved);
-
-        // 5. LLM 서술 생성 — 평가 결과로 fact_sheet 조립 후 /api/generate-narrative 호출.
-        //    실패/무키 시 빈 서술 반환(섹션이 "생성 예정" 안내). KPI·차트는 영향받지 않음.
-        const yTrueRow = workflowState.columnMapping.find(
-          (r) => r.confirmedRole === "y_true",
-        );
-        const classLabels: string[] =
-          workflowState.metadata?.detected_classes?.length
-            ? workflowState.metadata.detected_classes
-            : workflowState.metadata?.detected_labels?.length
-              ? workflowState.metadata.detected_labels
-              : yTrueRow
-                ? [...new Set(yTrueRow.sampleValues)]
-                : [];
-
-        const factSheet = buildFactSheet({
-          kpiResults: updatedKpiResults,
-          confusionMatrix,
-          classDistribution: resolvedClassDistribution,
-          // 표본 수는 서버가 확정한 값을 그대로 쓴다. 분포 합계로 추측하면 멀티레이블에서
-          // 200행이 408 이 된다(ISSUES.md B-02).
-          nSamples: result.n_samples ?? confusionMatrix?.totalSamples ?? 0,
-          imbalanceRatio,
-          droppedRows: result.dropped_rows,
-          verdict: ruleConclusion.verdict,
-          score: ruleConclusion.score,
-          classReport: success_metrics.M22 ?? null,
-          classLabels,
-          latencyStats,
-          positiveClass: workflowState.metadata?.positive_class ?? null,
-        });
-
-        // ── Stage 1: 서술과 무관한 결정론적 결과(KPI·차트·규칙 verdict)를 즉시 렌더한다.
-        //    느리거나 실패하는 LLM 서술이 성적서 전체 표시를 인질로 잡지 않도록 분리(D6b).
-        //    interpretation/recommendation* 은 baseReport 의 빈 기본값 유지, narrativeSource 미설정.
-        // 파생 예측 사실(SPEC §0 기재 의무)을 성적서 메타로 나른다. 백엔드는 실제로
-        // 파생이 일어났을 때만 이 키를 내려보낸다(ISSUES.md A-01).
-        const derivedPrediction = success_metrics.derived_prediction ?? undefined;
-
-        const stage1Report: FinalReportData = {
-          ...baseReport,
-          meta: { ...baseReport.meta, derivedPrediction },
-          // 평가를 실제로 수행한 환경(라이브러리 버전·수행 시각). 종전에는 프론트
-          // 상수를 인쇄해 실제와 무관한 값이 성적서에 남았다(ISSUES.md F-09).
-          evalEnv: { ...baseReport.evalEnv, environment: result.environment ?? undefined },
-          // 전처리 경고를 버리지 않는다(ISSUES.md D-16). 결측 제외·확률합 이상·파생 예측
-          // 같은 사실이 여기에만 실려 온다.
-          evaluationWarnings: Array.isArray(result.warnings) ? result.warnings : [],
-          kpiResults: updatedKpiResults,
-          conclusion: ruleConclusion,  // full ConclusionData (verdict/score + 빈 서술)
-          datasetDiagnosis,
-          charts: { confusionMatrix, rocCurve, prCurve },
-          latency: latencyStats,
-        };
-        // stage1(서술 없음)은 스토어에 저장하지 않는다(캐시 오염 방지) — 로컬 렌더만.
-        setData(stage1Report);
-        setIsLoading(false);
-        setNarrativePending(true);
-        narrativeStarted = true;
-
-        // ── Stage 2: LLM 서술을 받아 7·8·9절만 병합한다(KPI·차트는 이미 화면에 있음).
-        const narrative = await fetchNarrative({
-          task_type: taskTypeResolved,
-          report_purpose: baseReport.evalScope.reportPurposeKey,
-          fact_sheet: factSheet,
-        });
-        if (!active) return;
-
-        const mergedReport: FinalReportData = {
-          ...stage1Report,
-          // verdict/score 는 규칙 산출값, 서술(benchmark/narrative/risks)은 LLM 결과로 병합
-          conclusion: { ...ruleConclusion, ...narrative.conclusionText },
-          interpretation: narrative.interpretation,
-          recommendationNarrative: narrative.recommendationNarrative,
-          recommendations: narrative.recommendations,
-          // 추적성: 규칙 폴백으로 생성된 경우 7·8·9절에 배지 표시
-          narrativeSource: narrative.source,
-          // dataValidation 은 baseReport(= /api/validate-data 실측)에서 그대로 사용한다.
-        };
-
-        // 완성본(서술 포함)만 isEvaluated=true 로 스토어에 저장한다(캐시 히트 시 완성본 서빙).
-        if (id) {
-          const evaluatedReport = { ...mergedReport, isEvaluated: true };
-          useWorkspaceStore.setState((state) => ({
-            evaluationRuns: state.evaluationRuns.map((r) =>
-              r.id === id ? { ...r, reportData: evaluatedReport } : r
-            ),
-          }));
-          setData(evaluatedReport);
-        } else {
-          setData(mergedReport);
-        }
-        setNarrativePending(false);
-      } catch (err: any) {
-        console.error("Evaluation run failed:", err);
-        // stage1 이 이미 렌더된 뒤의 오류가 성적서를 에러 화면으로 덮지 않도록 가드.
-        // (fetchNarrative 는 내부에서 흡수하므로 여기 도달은 드묾)
-        if (active && !narrativeStarted) {
-          setError(err.message || String(err));
-        }
-      } finally {
-        if (active) {
-          setIsLoading(false);
-          setNarrativePending(false);
-        }
-      }
+/** 작업 생성 결과를 run 에 저장할 모양으로 — 처음 평가 뒤와 다시 만들기가 같이 쓴다. */
+function applyCreated(
+  run: WorkspaceEvaluationRun,
+  report: FinalReportData,
+  created: CreateJobResult,
+  input: NarrativeRequestPayload | null,
+): WorkspaceEvaluationRun {
+  if (created.kind === "finished") {
+    return { ...run, reportData: mergeNarrative(report, created.fields, created.benchmarkRefs), narrative: { status: "done", jobId: null } };
+  }
+  if (created.kind === "started") {
+    return {
+      ...run,
+      // 8.1 표는 작업 생성 응답으로 서술보다 먼저 채운다(점검 유-2).
+      reportData: { ...report, conclusion: { ...report.conclusion, benchmarkRefs: created.benchmarkRefs }, isEvaluated: false },
+      narrative: { status: "pending", jobId: created.jobId, input, startedAt: new Date().toISOString() },
     };
+  }
+  return {
+    ...run,
+    reportData: { ...report, isEvaluated: false },
+    narrative: { status: "failed", jobId: null, failure: created.failure, input },
+  };
+}
 
-    runEvaluate();
+function saveFailed(id: string, jobId: string, failure: NarrativeFailure): string | null {
+  const run = getRun(id);
+  if (!run || !stillWaitingFor(run, jobId)) return null;
+  return saveRun(id, (r) =>
+    stillWaitingFor(r, jobId) ? { ...r, narrative: { ...r.narrative!, status: "failed", failure } } : r,
+  );
+}
 
+/** 화면 전용 출처 — 서술을 기다리는 중·만들지 못함일 때 섹션이 안내 문구를 고르게 한다(저장하지 않는다). */
+function displaySource(report: FinalReportData, phase: NarrativePhase): NarrativeSource | undefined {
+  if (phase === "pending") return "pending";
+  if (phase === "failed") return "failed";
+  return report.narrativeSource;
+}
+
+/* ------------------------------------------------------------------ *
+ * 훅
+ * ------------------------------------------------------------------ */
+
+export function useReportData(id: string): UseReportDataResult {
+  const run = useWorkspaceStore((state) => state.evaluationRuns.find((item) => item.id === id));
+  const rawFile = useWorkflowStore((state) => state.rawFile);
+  const [providedFile, setProvidedFile] = useState<File | null>(null);
+  // 아직 서술을 시작하지 않은 run 은 첫 화면부터 '평가 중'으로 둔다 — 'ready' 로 시작하면 효과가 상태를 정하기 전에
+  // 미평가 초안과 빨간 안내가 한 번 그려진다(S3b 검토).
+  const [evalState, setEvalState] = useState<{ status: ReportStatus; error: string | null }>(() => ({
+    status: run && narrativePhaseOf(run) === "none" ? "loading" : "ready",
+    error: null,
+  }));
+  const [stage, setStage] = useState<NarrativeJobStage | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+
+  const runExists = run !== undefined;
+  const phase = narrativePhaseOf(run);
+  const jobId = run?.narrative?.jobId ?? null;
+  const file = providedFile ?? rawFile;
+
+  // ── 평가 효과: 의존성 = run id · 서술 상태 · 평가할 파일 (run 객체가 아니다) ──
+  useEffect(() => {
+    if (!runExists || phase !== "none") {
+      setEvalState({ status: "ready", error: null });
+      return;
+    }
+    const current = getRun(id)!;
+    if (current.migrationNote === "needs_reevaluation" || !current.evaluationRequest) {
+      setEvalState({ status: "needs_reevaluation", error: null });
+      return;
+    }
+    if (!sameFile(current.evaluationRequest.file, file)) {
+      setEvalState({ status: "needs_file", error: null });
+      return;
+    }
+    let active = true;
+    setEvalState({ status: "loading", error: null });
+    startEvaluation(id, file!).then((outcome) => {
+      // 저장 실패는 이 효과가 끝난 뒤에도 알린다 — 저장(메모리는 바뀜)이 서술 상태를 pending 으로 바꿔 이 효과는 이미
+      // 정리된 뒤라, active 를 따지면 안내가 사라진다.
+      if (outcome.saveError) setSaveError(outcome.saveError);
+      if (!active) return;
+      setEvalState(outcome.error ? { status: "error", error: outcome.error } : { status: "ready", error: null });
+    });
     return () => {
       active = false;
     };
-  }, [id, run, workflowState.rawFile, workflowState.columnMapping, workflowState.selectedMetricIds]);
+  }, [id, runExists, phase, file]);
 
-  /**
-   * 성적서 구간 입력을 평가 결과 위에 덮는다.
-   *
-   * 이 effect 안이 아니라 **렌더 시점**에 하는 것이 핵심이다. 기관 정보·학습 데이터셋·
-   * 목표값은 평가가 끝난 뒤 `/report/:id/issue-info` 에서 들어오는데, 위 effect 는
-   * 캐시가 있으면 즉시 반환해 버려서 그 입력을 두 번 다시 쳐다보지 않았다.
-   * 그래서 사용자가 입력한 값이 성적서에 하나도 나오지 않았다.
-   *
-   * 출처는 전역 store 가 아니라 **run 의 스냅샷**이다 — 워크스페이스에서 예전 run 을
-   * 열었을 때 지금 작업 중인 다른 평가의 입력이 새어 들어가면 안 된다.
-   */
-  const merged = useMemo(() => {
-    const snapshot = run?.workflowSnapshot;
-    if (!data || !snapshot) return data;
-    return applyUserInputs(data, snapshot);
-  }, [data, run?.workflowSnapshot]);
+  // ── 서술 효과: pending 이고 작업 번호가 있으면 조회만 ──
+  useEffect(() => {
+    if (phase !== "pending" || !jobId) {
+      setStage(null);
+      return;
+    }
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let unreachableSince: number | null = null;
+    const startedAt = Date.parse(getRun(id)?.narrative?.startedAt ?? "") || Date.now();
 
-  return { data: merged, isLoading, narrativePending, error };
+    const finish = (err: string | null) => {
+      if (err) setSaveError(err);
+    };
+    const tick = async () => {
+      const view = await fetchNarrativeJob(jobId);
+      if (cancelled) return;
+      if (view.kind === "done") return finish(saveDone(id, jobId, view));
+      if (view.kind === "failed") return finish(saveFailed(id, jobId, view.failure));
+      if (view.kind === "unreachable") {
+        unreachableSince ??= Date.now();
+        if (Date.now() - unreachableSince >= narrativePolling.unreachableGiveUpMs) {
+          return finish(saveFailed(id, jobId, "unreachable"));
+        }
+      } else {
+        unreachableSince = null;
+        setStage(view.stage);
+      }
+      if (Date.now() - startedAt > narrativePolling.giveUpMs) return finish(saveFailed(id, jobId, "gave_up"));
+      timer = setTimeout(tick, narrativePolling.intervalMs);
+    };
+    setStage((prev) => prev ?? "queued");
+    void tick();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [id, phase, jobId]);
+
+  const retryingRef = useRef(false);
+  const retryNarrative = useCallback(async () => {
+    const current = getRun(id);
+    // 연달아 누르면 상태가 바뀌기 전 두 번째 호출이 들어온다 — ref 로 막는다(작업이 둘 생기지 않게).
+    if (!current || current.narrative?.status !== "failed" || retryingRef.current) return;
+    const { failure, jobId: oldJobId } = current.narrative;
+    // 서버에 닿지 않았거나 프론트가 기다리다 포기한 경우, 원래 작업은 서버에서 아직 돌거나 끝났을 수 있다. 새 유료 작업을
+    // 만들기 전에 원래 작업 번호로 다시 조회한다 — 서버가 실패·유실을 알리면 그때 다시 만들기가 새 작업을 만든다.
+    if (oldJobId && (failure === "unreachable" || failure === "gave_up")) {
+      const err = saveRun(id, (r) => ({
+        ...r,
+        narrative: { ...r.narrative!, status: "pending", failure: undefined, startedAt: new Date().toISOString() },
+      }));
+      if (err) setSaveError(err);
+      return;
+    }
+    const input = current.narrative.input;
+    if (!input) {
+      // 저장해 둔 요청이 없으면(너무 컸음) 평가부터 다시 — 서술 상태를 지우면 평가 효과가 파일을 찾는다.
+      const err = saveRun(id, (r) => ({ ...r, narrative: undefined }));
+      if (err) setSaveError(err);
+      return;
+    }
+    retryingRef.current = true;
+    setRetrying(true);
+    try {
+      const created = await createNarrativeJob(input);
+      const err = saveRun(id, (r) => applyCreated(r, r.reportData, created, input));
+      if (err) setSaveError(err);
+    } finally {
+      retryingRef.current = false;
+      setRetrying(false);
+    }
+  }, [id]);
+
+  const provideFile = useCallback((next: File) => setProvidedFile(next), []);
+
+  const reportData = run?.reportData;
+  const data = useMemo(() => {
+    if (!reportData) return null;
+    const normalized = normalizeReportContent(reportData);
+    const source = displaySource(normalized, phase);
+    return source === normalized.narrativeSource ? normalized : { ...normalized, narrativeSource: source };
+  }, [reportData, phase]);
+
+  const status: ReportStatus = !runExists ? "not_found" : evalState.status;
+
+  return {
+    data: runExists ? data : null,
+    status,
+    isLoading: status === "loading",
+    error: evalState.error,
+    narrative: { phase, stage: phase === "pending" ? stage ?? "queued" : null, failure: run?.narrative?.failure, retrying },
+    narrativePending: phase === "pending",
+    saveError,
+    retryNarrative,
+    provideFile,
+    expectedFile: run?.evaluationRequest?.file ?? null,
+    fileMismatch: providedFile !== null && status === "needs_file",
+  };
+}
+
+/**
+ * 인쇄 화면용 — 저장된 run 만 읽는다(평가·서술 작업을 시작하지 않는다). 인쇄는 서술까지 끝난 완성본만.
+ * 인쇄 탭이 같은 평가 훅을 돌리면 탭마다 평가와 서술 작업이 새로 나갔다.
+ */
+export function useStoredReport(id: string): {
+  data: FinalReportData | null;
+  status: "not_found" | "not_printable" | "ready";
+} {
+  const run = useWorkspaceStore((state) => state.evaluationRuns.find((item) => item.id === id));
+  const reportData = run?.reportData;
+  const data = useMemo(() => (reportData ? normalizeReportContent(reportData) : null), [reportData]);
+  if (!run || !data) return { data: null, status: "not_found" };
+  if (narrativePhaseOf(run) !== "done" || !data.isEvaluated) return { data, status: "not_printable" };
+  return { data, status: "ready" };
 }

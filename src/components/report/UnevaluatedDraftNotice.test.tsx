@@ -21,9 +21,9 @@ describe("미평가 draft 안내 (E-03)", () => {
     expect(screen.getByText(/아직 평가가 끝나지 않은/)).toBeInTheDocument();
   });
 
-  it("되돌아갈 길을 준다 — 6단계 링크", () => {
+  it("되돌아갈 길을 준다 — 검증 화면 링크", () => {
     renderNotice(false);
-    expect(screen.getByRole("link", { name: /6단계/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /검증 화면/ })).toHaveAttribute(
       "href",
       "/app/data-validation",
     );

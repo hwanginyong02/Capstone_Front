@@ -3,17 +3,32 @@ import { FileImage, ZoomIn, X } from "lucide-react";
 import type {
   DatasetInfo,
   DatasetSampleRow,
+  ReportMaterials,
   TrainingDatasetInfo,
   UploadedFileInfo,
 } from "../../../types/finalReport.types";
 import { SectionTitle } from "../shared/SectionTitle";
 import { TwoColTable } from "../shared/TwoColTable";
+import { toTableRows } from "../shared/materialRows";
+import { SubsectionTitle } from "../shared/SubsectionTitle";
 
 interface DatasetSectionProps {
   datasetInfo: DatasetInfo;
   datasetSamples: DatasetSampleRow[];
   datasetDiagnosis: string;
   trainingDatasetInfo?: TrainingDatasetInfo;
+  /**
+   * 고객 재료(⑥ ⑦ ⑧). 있으면 학습 데이터 표를 이것으로 그리고, 평가 데이터 표와 정답 라벨 표에
+   * 줄을 더한다. 2층 항목이 빠졌으면 "제공되지 않음"으로 적는다. 옛 성적서에는 없다.
+   */
+  materials?: ReportMaterials;
+  /** 판 3 성적서인가(`usesSchema3`) — 소절 번호 등 판 3 모양을 이 판에만 그린다. 판 1·2 보관본은 발급 당시 모양. */
+  schema3?: boolean;
+  /**
+   * 판 1 보관본인가(`isLegacyLayout`) — 운영 main 이 발급하던 모양 그대로: 학습 샘플 수 0 도 줄로 찍고,
+   * 예시 표는 '정상 데이터'·'불량 데이터', 파일명은 미리보기가 없을 때 칸 안에만.
+   */
+  legacyLayout?: boolean;
 }
 
 export function DatasetSection({
@@ -21,16 +36,22 @@ export function DatasetSection({
   datasetSamples,
   datasetDiagnosis,
   trainingDatasetInfo,
+  materials,
+  schema3,
+  legacyLayout = false,
 }: DatasetSectionProps) {
   const [activeImage, setActiveImage] = useState<{ url: string; title: string } | null>(null);
 
-  const trainingRows = trainingDatasetInfo
+  const legacyTrainingRows = trainingDatasetInfo
     ? [
         { label: "학습 데이터셋명", value: trainingDatasetInfo.name },
-        {
-          label: "학습 샘플 수",
-          value: `${trainingDatasetInfo.trainingSampleCount.toLocaleString()}개`,
-        },
+        // 건수는 ⑥ 에서 "모름"을 고를 수 있다 — 0개로 찍지 않고 줄을 뺀다. 판 1 은 0개도 찍었다.
+        ...(trainingDatasetInfo.trainingSampleCount > 0 || legacyLayout
+          ? [{
+              label: "학습 샘플 수",
+              value: `${trainingDatasetInfo.trainingSampleCount.toLocaleString()}개`,
+            }]
+          : []),
         ...(trainingDatasetInfo.validationSampleCount > 0
           ? [{
               label: "검증 샘플 수",
@@ -46,6 +67,9 @@ export function DatasetSection({
         ...(trainingDatasetInfo.description
           ? [{ label: "학습 데이터 설명", value: trainingDatasetInfo.description }]
           : []),
+        ...(trainingDatasetInfo.notes
+          ? [{ label: "비고", value: trainingDatasetInfo.notes }]
+          : []),
       ]
     : [];
 
@@ -59,7 +83,13 @@ export function DatasetSection({
       value: `${datasetInfo.classCount}개 — 클래스 목록: ${datasetInfo.classLabels.join(", ")}`,
     },
     { label: "업로드 파일명",      value: datasetInfo.fileName },
+    // ⑦ 평가 데이터 — 출처·학습 데이터와의 관계(2층), 수집 기간(선택).
+    ...(materials ? toTableRows(materials.test) : []),
   ];
+
+  // 학습 데이터 표는 ⑥ 재료로 그린다. ⑥ 을 꺼도 2층 항목은 "제공되지 않음"으로 남는다.
+  const trainingRows = materials ? toTableRows(materials.training) : legacyTrainingRows;
+  const hasTrainingTable = Boolean(materials) || Boolean(trainingDatasetInfo);
 
   const classLabelDescriptions = datasetInfo.classLabelDescriptions ?? [];
 
@@ -69,22 +99,24 @@ export function DatasetSection({
 
       {/* ===== 학습 데이터셋 ===== */}
       <div className="space-y-6">
-        <h3 className="text-base font-semibold text-slate-800">학습 데이터셋</h3>
+        <SubsectionTitle number="3.1" schema3={schema3} className="text-base font-semibold text-slate-800">학습 데이터셋</SubsectionTitle>
 
-        {trainingDatasetInfo ? (
+        {hasTrainingTable ? (
           <>
             <div className="space-y-3">
               <h4 className="text-sm font-semibold text-slate-700">학습 데이터 정보</h4>
               <TwoColTable rows={trainingRows} />
             </div>
 
-            {(trainingDatasetInfo.validExamples.length > 0 ||
+            {trainingDatasetInfo &&
+              (trainingDatasetInfo.validExamples.length > 0 ||
               trainingDatasetInfo.edgeExamples.length > 0) && (
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-slate-700">학습 데이터 예시</h4>
                 <TrainingDatasetExampleTable
                   validExamples={trainingDatasetInfo.validExamples}
                   edgeExamples={trainingDatasetInfo.edgeExamples}
+                  legacyLayout={legacyLayout}
                   onImageClick={(url, title) => setActiveImage({ url, title })}
                 />
               </div>
@@ -97,13 +129,21 @@ export function DatasetSection({
 
       {/* ===== 평가 데이터셋 ===== */}
       <div className="space-y-6">
-        <h3 className="text-base font-semibold text-slate-800">평가 데이터셋</h3>
+        <SubsectionTitle number="3.2" schema3={schema3} className="text-base font-semibold text-slate-800">평가 데이터셋</SubsectionTitle>
 
         {/* 평가 데이터 정보 */}
         <div className="space-y-3">
           <h4 className="text-sm font-semibold text-slate-700">평가 데이터 정보</h4>
           <TwoColTable rows={evalRows} />
         </div>
+
+        {/* 정답 라벨(⑧) — 구축 방법·신뢰성은 2층이라 빠지면 "제공되지 않음". */}
+        {materials && (
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-slate-700">정답 라벨</h4>
+            <TwoColTable rows={toTableRows(materials.groundTruth)} />
+          </div>
+        )}
 
         {/* 클래스 레이블 설명 */}
         {classLabelDescriptions.length > 0 && (
@@ -234,54 +274,60 @@ function TrainingDatasetExampleTable({
   validExamples,
   edgeExamples,
   onImageClick,
+  legacyLayout,
 }: {
   validExamples: UploadedFileInfo[];
   edgeExamples: UploadedFileInfo[];
   onImageClick?: (url: string, title: string) => void;
+  legacyLayout: boolean;
 }) {
+  // 판 1 보관본은 발급 당시 칸 이름(운영 main).
+  const validLabel = legacyLayout ? "정상 데이터" : "적합 예시";
+  const edgeLabel = legacyLayout ? "불량 데이터" : "부적합 예시";
+  const Cell = legacyLayout ? LegacyExampleImageCell : ExampleImageCell;
   return (
     <div className="overflow-hidden rounded-md border border-slate-300 bg-white">
       {/* 표 헤더 */}
       <div className="grid grid-cols-2 border-b border-slate-300 bg-slate-100 text-center text-xs font-bold text-slate-800 divide-x divide-slate-300">
-        <div className="py-2.5 px-3">정상 데이터</div>
-        <div className="py-2.5 px-3">불량 데이터</div>
+        <div className="py-2.5 px-3">{validLabel}</div>
+        <div className="py-2.5 px-3">{edgeLabel}</div>
       </div>
 
       {/* 표 본문 (흰색 깔끔한 셀 2분할) */}
       <div className="grid grid-cols-2 divide-x divide-slate-300 bg-white">
-        {/* 정상 데이터 셀 */}
+        {/* 적합 예시 셀 */}
         <div className="flex items-center justify-center p-3 overflow-hidden">
           {validExamples.length > 0 ? (
             <div className="w-full space-y-2">
               {validExamples.map((file, idx) => (
-                <ExampleImageCell
+                <Cell
                   key={`valid-${file.name}-${idx}`}
                   file={file}
-                  label="정상 데이터"
+                  label={validLabel}
                   onImageClick={onImageClick}
                 />
               ))}
             </div>
           ) : (
-            <p className="text-xs text-slate-400 p-6">등록된 정상 데이터 없음</p>
+            <p className="text-xs text-slate-400 p-6">등록된 {validLabel} 없음</p>
           )}
         </div>
 
-        {/* 불량 데이터 셀 */}
+        {/* 부적합 예시 셀 */}
         <div className="flex items-center justify-center p-3 overflow-hidden">
           {edgeExamples.length > 0 ? (
             <div className="w-full space-y-2">
               {edgeExamples.map((file, idx) => (
-                <ExampleImageCell
+                <Cell
                   key={`edge-${file.name}-${idx}`}
                   file={file}
-                  label="불량 데이터"
+                  label={edgeLabel}
                   onImageClick={onImageClick}
                 />
               ))}
             </div>
           ) : (
-            <p className="text-xs text-slate-400 p-6">등록된 불량 데이터 없음</p>
+            <p className="text-xs text-slate-400 p-6">등록된 {edgeLabel} 없음</p>
           )}
         </div>
       </div>
@@ -289,7 +335,53 @@ function TrainingDatasetExampleTable({
   );
 }
 
+/** "파일명 · 크기" — 3절은 예시 파일의 파일명과 크기를 적는다(재료 목록 6절). 크기는 원본 파일의 크기다. */
+function exampleFileCaption(file: UploadedFileInfo): string {
+  return file.size ? `${file.name} · ${file.size}` : file.name;
+}
+
 function ExampleImageCell({
+  file,
+  label,
+  onImageClick,
+}: {
+  file: UploadedFileInfo;
+  label: string;
+  onImageClick?: (url: string, title: string) => void;
+}) {
+  const hasPreview = !!file.previewUrl;
+  return (
+    <figure className="w-full space-y-1">
+      <div
+        className="group relative flex w-full items-center justify-center overflow-hidden cursor-pointer bg-white py-2"
+        onClick={() => hasPreview && onImageClick?.(file.previewUrl!, `${label} - ${file.name}`)}
+      >
+        {hasPreview ? (
+          <>
+            <img
+              src={file.previewUrl}
+              alt={file.name}
+              className="w-full max-h-[300px] object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded print:hidden">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-semibold text-white shadow">
+                <ZoomIn className="size-4 text-teal-400" /> 클릭하여 확대
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-2 text-slate-400 py-4">
+            <FileImage className="size-10 stroke-[1.5]" />
+          </div>
+        )}
+      </div>
+      <figcaption className="text-center text-xs text-slate-600 break-all">{exampleFileCaption(file)}</figcaption>
+    </figure>
+  );
+}
+
+/** 판 1 보관본의 예시 칸(운영 main 그대로) — 파일명은 미리보기가 없을 때만 칸 안에 적고 크기는 적지 않았다. */
+function LegacyExampleImageCell({
   file,
   label,
   onImageClick,

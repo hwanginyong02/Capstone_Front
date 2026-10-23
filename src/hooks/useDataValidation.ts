@@ -12,12 +12,16 @@ import { useSearchParams } from "react-router";
 import { apiUrl } from "@/lib/apiBase";
 import { translateRoleToBackend } from "../lib/mapping/translateRoleToBackend";
 import {
+  buildReportInput,
   mapWorkflowToFinalReport,
   type MapWorkflowToReportInput,
 } from "../lib/report/mapWorkflowToFinalReport";
 import type { ValidateDataResponseData } from "../types/validation.types";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
 import { DATA_VALIDATION_SHOWCASE } from "../data/dataValidationShowcase";
+import { resolveBeta } from "../utils/domain/validation";
+import { resolveTaskType } from "../data/evaluationData";
+import { requestDecisionThreshold } from "../components/column-mapping/DecisionThresholdCard";
 
 interface EvaluationResult {
   workflowSnapshot: MapWorkflowToReportInput;
@@ -48,7 +52,7 @@ export function useDataValidation(): UseDataValidationResult {
     }
 
     if (!store.rawFile) {
-      setError("업로드된 파일이 없습니다. 데이터 업로드 단계로 돌아가 주세요.");
+      setError("업로드된 파일이 없습니다. 평가 데이터 화면으로 돌아가 주세요.");
       return;
     }
 
@@ -60,7 +64,7 @@ export function useDataValidation(): UseDataValidationResult {
       try {
         const backendMappings = store.columnMapping.map((row) => ({
           column: row.originalName,
-          role: translateRoleToBackend(row.confirmedRole, store.taskType || "multiclass"),
+          role: translateRoleToBackend(row.confirmedRole, resolveTaskType(store.taskType)),
           sample_values: row.sampleValues,
         }));
 
@@ -73,15 +77,18 @@ export function useDataValidation(): UseDataValidationResult {
           class_distribution: store.metadata?.class_distribution || {},
         };
 
-        const beta = parseFloat(store.metricDetails?.["M5"]?.beta || "1.0");
+        const beta = resolveBeta(store.metricDetails);
 
         const payload = {
-          task_type: store.taskType || "multiclass",
+          task_type: resolveTaskType(store.taskType),
           column_mappings: backendMappings,
           selected_metric_ids: store.selectedMetricIds,
           metadata: metadata,
           beta: beta,
-          decision_threshold: store.decisionThreshold,
+          // 지금 매핑에서 쓰이는 값만(S2 P1) — 안 쓰이는 옛 값이 범위 밖이면 422 로 막혔다.
+          decision_threshold: requestDecisionThreshold(
+            resolveTaskType(store.taskType), store.columnMapping, store.decisionThreshold,
+          ),
         };
 
         const formData = new FormData();
@@ -95,7 +102,7 @@ export function useDataValidation(): UseDataValidationResult {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.detail || `Server error: ${response.status}`);
+          throw new Error(errorData.detail || `서버 오류: ${response.status}`);
         }
 
         const result: ValidateDataResponseData = await response.json();
@@ -124,19 +131,9 @@ export function useDataValidation(): UseDataValidationResult {
   }, [store.rawFile, store.columnMapping, store.selectedMetricIds, store.taskType]);
 
   const buildEvaluationResult = (): EvaluationResult => {
-    const workflowSnapshot: MapWorkflowToReportInput = {
-      basicInfo: store.basicInfo,
-      datasetInfo: store.datasetInfo,
-      taskType: store.taskType,
-      selectedMetricIds: store.selectedMetricIds,
-      metricDetails: store.metricDetails,
-      uploadedFile: store.uploadedFile,
-      trainingExampleFiles: store.trainingExampleFiles,
-      trainingUnsuitableExampleFiles: store.trainingUnsuitableExampleFiles,
-      columnMapping: store.columnMapping,
-      classLabelDescriptions: store.classLabelDescriptions,
-      metadata: store.metadata,
-    };
+    // 렌더 때 잡은 `store` 가 아니라 지금 값을 읽는다 — 검증 화면의 "다음"이 진행 기록을 남긴 직후
+    // 다시 부르기 때문이다(재료 선택 점검 6절).
+    const workflowSnapshot: MapWorkflowToReportInput = buildReportInput(useWorkflowStore.getState());
     const reportData = mapWorkflowToFinalReport(workflowSnapshot, validationData);
     return { workflowSnapshot, reportData };
   };

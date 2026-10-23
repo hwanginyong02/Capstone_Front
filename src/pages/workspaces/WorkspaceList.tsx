@@ -13,7 +13,7 @@ export function WorkspaceList() {
   const { workspaces, createWorkspace, deleteWorkspace } = useWorkspaceStore();
 
   const handleDeleteWorkspace = (id: string) => {
-    if (confirm("Delete this workspace and every evaluation in it? This cannot be undone.")) {
+    if (confirm("이 워크스페이스와 안의 평가를 모두 지울까요? 되돌릴 수 없습니다.")) {
       deleteWorkspace(id);
     }
   };
@@ -37,13 +37,13 @@ export function WorkspaceList() {
         <Button asChild variant="ghost" size="sm" className="-ml-3 w-fit">
           <Link to="/">
             <ArrowLeft className="h-4 w-4" />
-            Home
+            홈
           </Link>
         </Button>
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-foreground">Evaluation Workspaces</h1>
+          <h1 className="text-2xl font-semibold text-foreground">평가 워크스페이스</h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Save model evaluation results by workspace and compare them.
+            모델 평가와 그 성적서를 워크스페이스별로 모아 둡니다.
           </p>
         </div>
       </section>

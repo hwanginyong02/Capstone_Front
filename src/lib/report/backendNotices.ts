@@ -6,8 +6,8 @@
  * `available_metric_ids`·`unavailable_metric_ids` grep 0건, evaluate 의
  * `warnings` 도 참조 0건). 값을 잘못 만드는 쪽이 아니라 **버리는 쪽**의 결함이다.
  *
- * 세 안내는 서로 다른 단계에서 도착한다(4단계 분석 · 5단계 매핑 확정 · 평가).
- * 결정문대로 **6단계 상단에 합쳐서** 보여준다 — 5단계는 안내가 도착하는 순간 이미
+ * 세 안내는 서로 다른 단계에서 도착한다(평가 데이터 단계의 분석 · 매핑 확정 · 평가).
+ * 결정문대로 **검증 단계 상단에 합쳐서** 보여준다 — 매핑 단계는 안내가 도착하는 순간 이미
  * 다음 화면으로 넘어가 있다.
  */
 
@@ -63,7 +63,8 @@ export function collectBackendNotices(notices: BackendNotices): BackendNotice[] 
  * "계산 가능한 지표 N/M"(구 SPEC §6 · ISSUES.md A-12)을 만들던 함수다. 전부 계산
  * 가능할 때도 'N/N' 이 떠서 사용자가 읽고 할 일이 없는 문구였다.
  *
- * 지표 선택이 매핑보다 앞선 뒤로는 매핑 화면이 필수 역할 누락을 직접 막으므로
- * (`resolveMissingRoleCodes` → `getMappingValidityReason`), 이 집계가 없어도
- * 고른 지표가 조용히 빠지지는 않는다.
+ * 지표 선택이 매핑보다 앞이던 때는 매핑 화면이 고른 지표의 필수 역할 누락을 직접 막았다
+ * (`resolveMissingRoleCodes` → `getMappingValidityReason`). 이제 매핑이 지표보다 앞이라
+ * (docs/MATERIAL_PICKER.md §3) 매핑은 유형 기준 역할만 막는다. 매핑으로 계산할 수 없는 지표는
+ * 지표 화면이 비활성으로 두어야 하며(§3), 그 전까지는 성적서에 측정 불가로 찍힌다.
  */

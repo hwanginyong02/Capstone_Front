@@ -87,7 +87,7 @@ describe("미정의 URL", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/Page not found/i)).toBeInTheDocument();
+    expect(screen.getByText(/페이지를 찾을 수 없습니다/)).toBeInTheDocument();
     expect(screen.getByText(/이런\/경로는\/없다/)).toBeInTheDocument();
   });
 

@@ -1,3 +1,5 @@
+import type { MetricDetailState } from "../../types/workflow.types";
+
 /**
  * 평가 데이터 유효성 검사 규칙
  *
@@ -35,46 +37,63 @@ export function getTargetValueRule(metricId: string): { summary: string; validat
     "M11",
     "M12",
     "M13",
+    // M14(클래스 분포 차이)는 총변동거리 0.5·Σ|P−Q|, M18(레이블 분포 차이)은 코사인 거리 1−cos 이라
+    // 둘 다 0~1 이다(백엔드 multiclass.py·multilabel.py). 종전에는 0 이상만 봐 1 을 넘는 목표를 받았다(B9).
+    "M14",
     "M15",
     "M16",
     "M17",
+    "M18",
     "M22",
   ]);
 
-  const nonNegativeIds = new Set(["M6", "M14", "M18", "M19"]);
+  const nonNegativeIds = new Set(["M6", "M19"]);
 
   if (zeroToOneIds.has(metricId)) {
     return {
-      summary: "Enter a number between 0 and 1.",
-      validate: (value) => (value < 0 || value > 1 ? "Target value must be between 0 and 1 for this metric." : null),
+      summary: "0과 1 사이의 숫자를 넣으세요.",
+      validate: (value) => (value < 0 || value > 1 ? "이 지표의 목표값은 0과 1 사이여야 합니다." : null),
     };
   }
 
   if (nonNegativeIds.has(metricId)) {
     return {
-      summary: "Enter a number greater than or equal to 0.",
-      validate: (value) => (value < 0 ? "Target value must be 0 or greater for this metric." : null),
+      summary: "0 이상의 숫자를 넣으세요.",
+      validate: (value) => (value < 0 ? "이 지표의 목표값은 0 이상이어야 합니다." : null),
     };
   }
 
   if (metricId === "M20") {
     return {
-      summary: "Enter a number between -1 and 1.",
-      validate: (value) => (value < -1 || value > 1 ? "Target value must be between -1 and 1 for MCC." : null),
+      summary: "-1과 1 사이의 숫자를 넣으세요.",
+      validate: (value) => (value < -1 || value > 1 ? "MCC 의 목표값은 -1과 1 사이여야 합니다." : null),
     };
   }
 
   if (metricId === "M23") {
     return {
-      summary: "Enter a number greater than or equal to 1.",
-      validate: (value) => (value < 1 ? "Target value must be 1 or greater for imbalance ratio." : null),
+      summary: "1 이상의 숫자를 넣으세요.",
+      validate: (value) => (value < 1 ? "불균형 비율의 목표값은 1 이상이어야 합니다." : null),
     };
   }
 
   return {
-    summary: "Enter a valid numeric target value.",
+    summary: "목표값을 숫자로 넣으세요.",
     validate: () => null,
   };
+}
+
+/**
+ * 합격 목표값의 소수 자릿수 상한. 목표값은 셋째 자리까지만 받고(넷째 자리부터 입력 오류), 성적서는
+ * 같은 자릿수로 찍는다(B10). 그래야 인쇄된 목표값과 판정에 쓴 목표값이 같다 — 종전에는 0.855 를
+ * 받아 "≥ 0.86" 으로 찍고 0.855 로 판정했다.
+ */
+export const TARGET_DIGITS = 3;
+
+/** 소수 `TARGET_DIGITS` 자리 안에 드는 값인가(지수 표기 입력도 값으로 본다). */
+export function fitsTargetDigits(value: number): boolean {
+  const scaled = value * 10 ** TARGET_DIGITS;
+  return Math.abs(scaled - Math.round(scaled)) < 1e-6;
 }
 
 /**
@@ -89,4 +108,57 @@ export function getTargetValueRule(metricId: string): { summary: string; validat
  */
 export function metricNeedsTargetValue(metricId: string): boolean {
   return metricId !== "M21" && metricId !== "M22";
+}
+
+/**
+ * 성적서·판정에 쓸 합격 목표값. 목표값이 없으면 `null` 이다.
+ *
+ * 비었거나, 숫자가 아니거나, 그 지표의 허용 범위(`getTargetValueRule`)를 벗어나면 목표값이 없는
+ * 것으로 본다. 정보성 지표(M21·M22)는 늘 `null` 이다.
+ *
+ * 종전에는 "목표값 없음"을 0 으로 나타내고 `> 0` 만 판정했다. 그래서 MCC(−1~1)처럼 0 이나
+ * 음수가 정상인 목표가 판정에서 조용히 빠졌다(재료 목록 7절 "지표별 허용 범위 검사").
+ */
+export function resolveTargetValue(metricId: string, raw: string | undefined): number | null {
+  if (!metricNeedsTargetValue(metricId)) return null;
+  const value = parseNumericValue(raw ?? "");
+  if (value === null) return null;
+  return getTargetValueRule(metricId).validate(value) === null ? value : null;
+}
+
+/**
+ * Fβ(M5)의 β. 입력이 비었으면 1.0 이다 — 평가 요청과 재료 선택 점검(2번 줄: β > 1 이면 재현율 쪽,
+ * β < 1 이면 정밀도 쪽)이 이 함수 하나로 같은 값을 쓴다. 숫자가 아니면 NaN 이 그대로 나온다
+ * (지표 화면이 그 값을 막는다).
+ */
+export function resolveBeta(metricDetails: Record<string, { beta?: string } | undefined> | null | undefined): number {
+  return parseFloat(metricDetails?.["M5"]?.beta || DEFAULT_BETA);
+}
+
+/**
+ * Fβ(M5)의 β 기본값. β 칸의 처음 값, 저장값이 없을 때의 화면 표시, 평가 요청이 모두 이 하나를 쓴다.
+ * 종전에는 목표값을 β 보다 먼저 적으면 M5 줄이 `beta: ""` 로 만들어져 β 칸이 비고 "다음"이 잠겼다(B3).
+ */
+export const DEFAULT_BETA = "1.0";
+
+/** β 입력이 쓸 수 있는 값인가(0 보다 큰 숫자). 지표 화면과 검증 화면의 1층 재확인이 같은 규칙을 쓴다. */
+export function isBetaValid(raw: string | undefined): boolean {
+  const beta = raw ?? DEFAULT_BETA;
+  return beta.trim() !== "" && Number.isFinite(Number(beta)) && Number(beta) > 0;
+}
+
+/**
+ * 지표 하나의 처음 상세 값. β 칸과 목표값 칸 중 어느 쪽을 먼저 적어도 이 함수로 줄을 만든다 —
+ * Fβ(M5)는 β 가 `DEFAULT_BETA` 로 시작한다. 다른 지표의 β 는 쓰이지 않아 비워 둔다.
+ */
+export function newMetricDetail(id: string, name: string): MetricDetailState {
+  return {
+    id,
+    name,
+    description: "",
+    targetValue: "",
+    beta: id === "M5" ? DEFAULT_BETA : "",
+    positiveClass: "",
+    completed: false,
+  };
 }

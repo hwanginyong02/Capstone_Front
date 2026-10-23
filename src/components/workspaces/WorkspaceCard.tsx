@@ -30,7 +30,7 @@ export function WorkspaceCard({ workspace, onDelete }: WorkspaceCardProps) {
           <div className="flex gap-2">
             <Button asChild variant="outline" size="sm">
               <Link to={`/workspaces/${workspace.id}`}>
-                Open
+                열기
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -41,7 +41,7 @@ export function WorkspaceCard({ workspace, onDelete }: WorkspaceCardProps) {
               onClick={() => onDelete(workspace.id)}
             >
               <Trash2 className="h-4 w-4" />
-              Delete
+              지우기
             </Button>
           </div>
         </CardAction>

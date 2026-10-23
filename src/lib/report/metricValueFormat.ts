@@ -29,17 +29,9 @@ export const VISUAL_ONLY_METRIC_IDS = new Set(["M21", "M22"]);
 
 /** 스칼라 값이 없는 지표가 어디에 그려지는지 알려주는 한 줄. */
 export const VISUAL_ONLY_HINT: Record<string, string> = {
-  M21: "Rendered as the confusion matrix below.",
-  M22: "Adds a per-class breakdown to Precision, Recall, and F1.",
+  M21: "아래 혼동행렬로 보입니다.",
+  M22: "Precision, Recall, F1 을 클래스별로 나눠 보입니다.",
 };
-
-/**
- * 비교 표에서 M21/M22 칸에 넣는 표기.
- *
- * 숫자 칸에 긴 문장을 넣을 수 없으므로 아래의 그림·표를 가리키기만 한다
- * (비교 화면은 이 표 아래에 버전별 혼동행렬과 클래스별 표를 함께 그린다).
- */
-export const VISUAL_ONLY_CELL = "See below";
 
 /** 소수 표기(항상 3자리). 지표 종류와 무관하게 쓸 수 있는 원값. */
 export function formatMetricValue(value: number | null | undefined): string {
@@ -58,20 +50,28 @@ export function formatMetricPercent(
   return `${(value * 100).toFixed(1)}%`;
 }
 
-/**
- * 표 한 칸에 넣을 대표 표기 — 비율이면 %, 아니면 소수.
- *
- * 행렬·클래스별 표를 돌려주는 지표(M21/M22)는 스칼라가 없어 `resolvedValue` 가 0 으로
- * 남는다. 그 0 을 그대로 찍으면 **"Confusion Matrix 0.000"** 이라는 없는 측정값이
- * 생긴다 — 성적서(MetricRow)와 평가 결과 화면은 이미 걸러내는데 비교 표만 새고 있었다.
- */
+/** 표 한 칸에 넣을 대표 표기 — 비율이면 %, 아니면 소수. */
 export function formatMetricCell(
   metricId: string,
   value: number | null | undefined,
 ): string {
-  if (VISUAL_ONLY_METRIC_IDS.has(metricId)) {
-    // 값이 아예 없으면(계산 실패·미선택) 측정 불가 표기가 맞다.
-    return typeof value === "number" && Number.isFinite(value) ? VISUAL_ONLY_CELL : NOT_MEASURED;
-  }
   return formatMetricPercent(metricId, value) ?? formatMetricValue(value);
+}
+
+/**
+ * 합격 목표값을 찍을 자릿수가 없던 성적서(`FinalReportData.targetDigits` 없음)의 자릿수. 그때는 목표값을
+ * 둘째 자리로 반올림해 찍었다 — 발급본은 그 모양 그대로 다시 그린다.
+ */
+export const LEGACY_TARGET_DIGITS = 2;
+
+/**
+ * 합격 기준 한 칸("≥ 0.855"). 5절 문자열과 6.1·6.2 표가 이 하나로 찍는다. `digits` 는 성적서에 실린
+ * `targetDigits`(새 성적서 3) — 없으면 종전 2자리.
+ */
+export function formatTargetCriteria(
+  target: number,
+  higherIsBetter: boolean | undefined,
+  digits: number = LEGACY_TARGET_DIGITS,
+): string {
+  return `${higherIsBetter === false ? "≤" : "≥"} ${target.toFixed(digits)}`;
 }

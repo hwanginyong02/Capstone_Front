@@ -1,16 +1,15 @@
 /**
  * useWorkflowStore — 워크플로우 입력의 영속성.
  *
- * ISSUES.md E-01 — 이 스토어에는 persist 가 없어 **새로고침 한 번으로 1~5단계 입력이
+ * ISSUES.md E-01 — 이 스토어에는 persist 가 없어 **새로고침 한 번으로 검증 앞 단계 입력이
  * 전부 사라진다.** 수십 분간 입력한 기업정보·모델정보·지표·매핑이 날아가고, 그것을
- * 알리는 신호는 6단계의 "업로드된 파일이 없습니다" 문구뿐이다. 탭은 여전히 활성으로
+ * 알리는 신호는 검증 단계의 "업로드된 파일이 없습니다" 문구뿐이다. 탭은 여전히 활성으로
  * 보이고 'Save draft' 버튼은 무동작이라 오인까지 강화된다.
  *
  * 함께 다뤄야 하는 것들 — persist 를 붙이는 순간 **지금은 새로고침이 초기화 역할을 해서
  * 세션 안에 갇혀 있던 오염이 영속화된다**:
- *   E-08 `setTaskType` 이 completedSteps·datasetInfo 를 비우지 않는다
+ *   E-08 `setTaskType` 이 completedSteps·학습 데이터 정보를 비우지 않는다
  *   E-05 `?showcase=1` 이 실제 store 에 가짜 기업정보를 주입한다
- *   E-09 `loadWorkflowSnapshot` 이 rawFile=null 인데 completedSteps 를 [1..6] 으로 채운다
  */
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -18,7 +17,8 @@ import {
   WORKFLOW_STORAGE_KEY,
   useWorkflowStore,
 } from "./useWorkflowStore";
-import { DEFAULT_BASIC_INFO, DEFAULT_DATASET_INFO } from "../../types/workflow.types";
+import { DEFAULT_BASIC_INFO } from "../../types/workflow.types";
+import type { MappingRow } from "../../types/mapping.types";
 
 /** persist 가 실제로 기록한 내용을 읽는다. */
 function persistedState(): Record<string, unknown> | null {
@@ -56,17 +56,17 @@ describe("입력 영속", () => {
       ...DEFAULT_BASIC_INFO,
       companyName: "복원되어야 함",
     });
-    useWorkflowStore.getState().markStepCompleted(1);
+    useWorkflowStore.getState().markStepIdCompleted("upload");
 
     // 새로고침을 흉내낸다 — 저장소 내용은 그대로, 메모리만 초기 상태.
     // (setState 자체가 persist 를 트리거해 저장소를 덮으므로 스냅샷을 되돌려 놓는다.)
     const saved = localStorage.getItem(WORKFLOW_STORAGE_KEY)!;
-    useWorkflowStore.setState({ basicInfo: DEFAULT_BASIC_INFO, completedSteps: [] });
+    useWorkflowStore.setState({ basicInfo: DEFAULT_BASIC_INFO, completedStepIds: [] });
     localStorage.setItem(WORKFLOW_STORAGE_KEY, saved);
     await useWorkflowStore.persist.rehydrate();
 
     expect(useWorkflowStore.getState().basicInfo.companyName).toBe("복원되어야 함");
-    expect(useWorkflowStore.getState().completedSteps).toContain(1);
+    expect(useWorkflowStore.getState().completedStepIds).toContain("upload");
   });
 
   it("[E-01] rawFile 은 저장하지 않는다 — File 객체는 직렬화할 수 없다", () => {
@@ -113,25 +113,25 @@ describe("입력 영속", () => {
 describe("[E-08] 작업 유형 변경", () => {
   it("완료 표시를 비운다 — 빈 상태로 뒤 단계에 점프하지 못하게", () => {
     const s = useWorkflowStore.getState();
-    [1, 2, 3, 4].forEach((n) => s.markStepCompleted(n));
-    expect(useWorkflowStore.getState().completedSteps).toHaveLength(4);
+    (["upload", "metrics", "mapping", "validation"] as const).forEach((id) =>
+      s.markStepIdCompleted(id),
+    );
+    expect(useWorkflowStore.getState().completedStepIds).toHaveLength(4);
 
     useWorkflowStore.getState().setTaskType("multiclass");
 
-    expect(useWorkflowStore.getState().completedSteps).toEqual([]);
+    expect(useWorkflowStore.getState().completedStepIds).toEqual([]);
   });
 
-  it("데이터셋 정보를 비운다 — 이전 평가의 표본 수가 새 성적서에 인쇄되지 않게", () => {
-    useWorkflowStore.getState().setDatasetInfo({
-      ...DEFAULT_DATASET_INFO,
-      validationSampleCount: "9999",
+  it("학습 데이터 정보를 비운다 — 이전 평가의 표본 수가 새 성적서에 인쇄되지 않게", () => {
+    // 학습 데이터는 ⑥ 카드가 받는다(종전의 Details 학습 데이터 폼, persist v10).
+    useWorkflowStore.getState().setComposerTrainingData({
+      trainingVolume: { entries: [{ key: "Validation", value: "9999" }] },
     });
 
     useWorkflowStore.getState().setTaskType("multiclass");
 
-    expect(useWorkflowStore.getState().datasetInfo.validationSampleCount).toBe(
-      DEFAULT_DATASET_INFO.validationSampleCount,
-    );
+    expect(useWorkflowStore.getState().composerTrainingData).toEqual({});
   });
 
   it("기업정보(basicInfo)는 유지한다 — 작업 유형만 바꿨는데 1단계까지 날아가면 안 된다", () => {
@@ -156,39 +156,10 @@ describe("[E-08] 작업 유형 변경", () => {
   });
 });
 
-describe("[E-09] 과거 평가 스냅샷 복원", () => {
-  const snapshot = {
-    basicInfo: { ...DEFAULT_BASIC_INFO, companyName: "과거 평가" },
-    datasetInfo: DEFAULT_DATASET_INFO,
-    taskType: "binary" as const,
-    selectedMetricIds: ["M1"],
-    metricDetails: {},
-    uploadedFile: { name: "old.csv", size: "1 KB", type: "text/csv" },
-    trainingExampleFiles: [],
-    trainingUnsuitableExampleFiles: [],
-    columnMapping: [],
-    classLabelDescriptions: {},
-  };
-
-  it("파일이 없는 단계까지 '완료'로 표시하지 않는다", () => {
-    useWorkflowStore.getState().loadWorkflowSnapshot(snapshot);
-
-    const s = useWorkflowStore.getState();
-    expect(s.rawFile).toBeNull();
-    // 4단계(데이터 업로드) 이후는 파일이 있어야 성립한다 — 완료로 표시하면 거짓말이다.
-    expect(s.completedSteps).not.toContain(4);
-    expect(s.completedSteps).not.toContain(5);
-    expect(s.completedSteps).not.toContain(6);
-  });
-
-  it("파일 재업로드가 필요하다는 사실을 상태로 남긴다", () => {
-    useWorkflowStore.getState().loadWorkflowSnapshot(snapshot);
-
-    expect(useWorkflowStore.getState().needsFileReupload).toBe(true);
-  });
-
+describe("파일 재업로드 표시", () => {
   it("파일을 다시 올리면 재업로드 필요 표시가 사라진다", () => {
-    useWorkflowStore.getState().loadWorkflowSnapshot(snapshot);
+    // 재수화 직후의 상태 — 입력은 남았고 원본 파일만 없다.
+    useWorkflowStore.setState({ needsFileReupload: true, rawFile: null });
     useWorkflowStore
       .getState()
       .setUploadedFile({ name: "new.csv", size: "1 B", type: "text/csv" }, new File(["x"], "new.csv"));
@@ -260,5 +231,118 @@ describe("[E-05] 시연 모드(?showcase=1)", () => {
     useWorkflowStore.getState().setBasicInfo({ ...DEFAULT_BASIC_INFO, companyName: "실제" });
     expect(persistedState()).not.toBeNull();
     expect((persistedState()!.basicInfo as { companyName: string }).companyName).toBe("실제");
+  });
+});
+
+describe("재료 선택 점검의 진행 기록(materialCheckAck) — persist 판을 올리지 않는 최상위 키", () => {
+  const ack = { at: "2026-10-17T05:03:00.000Z", version: "1.0", warningIds: ["reporting:8"] };
+
+  it("저장소에 남고, 작업 유형을 바꾸면 비운다", () => {
+    useWorkflowStore.getState().setMaterialCheckAck(ack);
+    expect(persistedState()!.materialCheckAck).toEqual(ack);
+
+    useWorkflowStore.getState().setTaskType("multiclass");
+    expect(useWorkflowStore.getState().materialCheckAck).toBeNull();
+  });
+
+  it("이 키가 없던 옛 저장분을 읽어도 null 로 남는다(이 키 때문에 판을 올리지 않음)", async () => {
+    // 판 15 는 평가 흐름 만들기의 놓인 항목(필수 포함) 때문에 올렸다 — 이 키와 무관하다.
+    const { WORKFLOW_PERSIST_VERSION } = await import("./useWorkflowStore");
+    expect(WORKFLOW_PERSIST_VERSION).toBe(15);
+    useWorkflowStore.getState().setMaterialCheckAck(ack);
+    const raw = JSON.parse(localStorage.getItem(WORKFLOW_STORAGE_KEY)!);
+    delete raw.state.materialCheckAck;
+    useWorkflowStore.setState({ materialCheckAck: null });
+    localStorage.setItem(WORKFLOW_STORAGE_KEY, JSON.stringify(raw));
+    await useWorkflowStore.persist.rehydrate();
+    expect(useWorkflowStore.getState().materialCheckAck).toBeNull();
+  });
+});
+
+describe("persist v15 — 판 14 저장분을 다시 읽으면 놓인 항목이 채워진다", () => {
+  it("rehydrate 가 이행을 돌려 필수 항목과 지연시간을 넣는다", async () => {
+    localStorage.setItem(
+      WORKFLOW_STORAGE_KEY,
+      JSON.stringify({
+        version: 14,
+        state: {
+          taskType: "binary",
+          materialPicks: { clientInfo: ["contactExtra:website"], evalData: [] },
+        },
+      }),
+    );
+    await useWorkflowStore.persist.rehydrate();
+
+    const { materialPicks } = useWorkflowStore.getState();
+    expect(materialPicks.clientInfo).toEqual(["companyInfo", "reportPurpose", "contactExtra:website", "requestDate"]);
+    expect(materialPicks.evalData).toContain("latencyColumn");
+    // 키가 없던 잠긴 카드는 그대로 없다.
+    expect(materialPicks.model).toBeUndefined();
+  });
+});
+
+describe("매핑 불변식 — 평가 흐름에 놓지 않은 항목의 역할은 받지 않는다(docs/MATERIAL_PICKER.md §12.4)", () => {
+  const analysed = (): MappingRow[] => [
+    { originalName: "label", sampleValues: ["0", "1"], inferredRole: "y_true", confirmedRole: "y_true", modified: false, warnings: [] },
+    { originalName: "pred", sampleValues: ["0", "1"], inferredRole: "y_pred", confirmedRole: "y_pred", modified: false, warnings: [] },
+    { originalName: "latency_ms", sampleValues: ["12"], inferredRole: "latency", confirmedRole: "latency", modified: false, warnings: [] },
+  ];
+  const latencyRow = () => useWorkflowStore.getState().columnMapping.find((row) => row.originalName === "latency_ms")!;
+
+  beforeEach(() => {
+    useWorkflowStore.getState().setTaskType("binary");
+  });
+
+  it("분석 결과의 latency 는 지연시간을 놓지 않았으면 ignore 로 들어가고 맡아 둔다", () => {
+    useWorkflowStore.getState().setMaterialPick("evalData", ["yTrueColumn", "predictionColumns"]);
+    useWorkflowStore.getState().setColumnMapping(analysed());
+    expect(latencyRow()).toMatchObject({ confirmedRole: "ignore", heldRole: "latency", inferredRole: "latency" });
+    expect(useWorkflowStore.getState().columnMapping[0].confirmedRole).toBe("y_true");
+  });
+
+  it("함수 꼴 쓰기도 거른다", () => {
+    useWorkflowStore.getState().setMaterialPick("evalData", []);
+    useWorkflowStore.getState().setColumnMapping(() => analysed());
+    expect(latencyRow().confirmedRole).toBe("ignore");
+  });
+
+  it("빼면 ignore, 다시 넣으면 돌아온다 — 바뀔 때마다 가용 지표를 비운다", () => {
+    useWorkflowStore.getState().setMaterialPick("evalData", ["latencyColumn"]);
+    useWorkflowStore.getState().setColumnMapping(analysed());
+    expect(latencyRow().confirmedRole).toBe("latency");
+
+    useWorkflowStore.setState({ availableMetricIds: ["M1"] });
+    useWorkflowStore.getState().setMaterialPick("evalData", []);
+    expect(latencyRow()).toMatchObject({ confirmedRole: "ignore", heldRole: "latency" });
+    expect(useWorkflowStore.getState().availableMetricIds).toBeNull();
+
+    useWorkflowStore.setState({ availableMetricIds: ["M1"] });
+    useWorkflowStore.getState().setMaterialPick("evalData", ["latencyColumn"]);
+    expect(latencyRow().confirmedRole).toBe("latency");
+    expect(latencyRow().heldRole).toBeUndefined();
+    expect(useWorkflowStore.getState().availableMetricIds).toBeNull();
+  });
+
+  it("매핑이 그대로면 가용 지표도 그대로 — 다른 블록·같은 결과의 evalData 쓰기", () => {
+    useWorkflowStore.getState().setMaterialPick("evalData", ["latencyColumn"]);
+    useWorkflowStore.getState().setColumnMapping(analysed());
+    const before = useWorkflowStore.getState().columnMapping;
+    useWorkflowStore.setState({ availableMetricIds: ["M1"] });
+
+    useWorkflowStore.getState().setMaterialPick("trainingData", ["trainingDescription"]);
+    useWorkflowStore.getState().setMaterialPick("evalData", ["latencyColumn", "sampleIdColumn"]);
+    expect(useWorkflowStore.getState().columnMapping).toBe(before);
+    expect(useWorkflowStore.getState().availableMetricIds).toEqual(["M1"]);
+
+    // 같은 배열을 다시 써도 바뀐 것이 없다.
+    useWorkflowStore.getState().setColumnMapping(before);
+    expect(useWorkflowStore.getState().availableMetricIds).toEqual(["M1"]);
+  });
+
+  it("picks 가 {} 면(평가 흐름 이전·시연) 그대로 받는다", () => {
+    expect(useWorkflowStore.getState().materialPicks).toEqual({});
+    useWorkflowStore.getState().setColumnMapping(analysed());
+    expect(latencyRow().confirmedRole).toBe("latency");
+    expect(latencyRow().heldRole).toBeUndefined();
   });
 });

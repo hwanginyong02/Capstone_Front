@@ -5,7 +5,7 @@ export function DataUploadDemo() {
   return (
     <DemoPanel index={3} action="scroll & upload">
       <div className="mb-6">
-        <h3 className="mb-2 text-2xl font-bold text-foreground">Data upload</h3>
+        <h3 className="mb-2 text-2xl font-bold text-foreground">Evaluation file</h3>
         <p className="text-sm text-muted-foreground">
           Upload the evaluation data first, then enter the training dataset information used to build the model.
         </p>

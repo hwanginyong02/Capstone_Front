@@ -1,44 +1,84 @@
 @custom-variant dark (&:is(.dark *));
+/* 마우스처럼 올려 볼 수 있는 기기에서만 — 터치에서는 숨겼다 보이는 버튼을 늘 보인다. */
+@custom-variant can-hover (@media (hover: hover));
 
+/**
+ * 색 토큰 — docs/MATERIAL_PICKER.md §10 "인증 네이비". 이름과 쓰임은
+ * docs/imports/colors.md 와 같고 값만 §10 표를 따른다.
+ *
+ * 글자는 세 단계다: `--foreground` 제목·이름(#0d1420), `--foreground-secondary` 본문
+ * (#1f2a3a), `--muted-foreground` 보조(#4a5568). 비활성 단계와 placeholder 는
+ * `--foreground-subtle`(#667080). 보조 글자는 강조 배경(#edf2f9) 위에서도 6.7:1 이라
+ * 연한 배경용 보조 글자를 따로 두지 않는다.
+ */
 :root {
   --font-size: 16px;
-  --background: #FAFAFA;
-  --foreground: #09090B;
-  --card: #FFFFFF;
-  --card-foreground: #09090B;
-  --popover: #FFFFFF;
-  --popover-foreground: #09090B;
-  --primary: #2563EB;
-  --primary-foreground: #FFFFFF;
-  --secondary: #F4F4F5;
-  --secondary-foreground: #09090B;
-  --muted: #F4F4F5;
-  --muted-foreground: #71717A;
-  --accent: #F4F4F5;
-  --accent-foreground: #09090B;
-  --destructive: #DC2626;
-  --destructive-foreground: #FFFFFF;
-  --border: #E4E4E7;
-  --input: #E4E4E7;
-  --input-background: #FFFFFF;
-  --switch-background: #E4E4E7;
+  --background: #ffffff;
+  --foreground: #0d1420;
+  --card: #ffffff;
+  --card-foreground: #0d1420;
+  --popover: #ffffff;
+  --popover-foreground: #0d1420;
+  --primary: #1d3b6e;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f5f7;
+  --secondary-foreground: #0d1420;
+  --muted: #f4f5f7;
+  --muted-foreground: #4a5568;
+  --accent: #f4f5f7;
+  --accent-foreground: #0d1420;
+  /* 경고색 — 실제 오류에만 쓴다(§10). */
+  --destructive: #aa0808;
+  --destructive-foreground: #ffffff;
+  /* 구분선. 카드 테두리는 `--border-strong` 이다. */
+  --border: #e6e8ec;
+  --input: #e6e8ec;
+  --input-background: #ffffff;
+  --switch-background: #e6e8ec;
+
+  --border-strong: #c9ced6;
+  /* §10 표에 hover 값은 없다. 강조색을 어둡게 한 값이다. */
+  --primary-hover: #16305a;
+  /* 강조 배경 — 선택·저장된 카드. */
+  --primary-subtle: #edf2f9;
+  --foreground-secondary: #1f2a3a;
+  --foreground-subtle: #667080;
+
+  /**
+   * 상태색. §10 은 경고색(오류)만 정한다. 성공·주의는 화면에서 이미 쓰던 초록·호박색을
+   * 그대로 토큰으로 옮겼다(docs/imports/colors.md "Semantic Status Colors").
+   *
+   * `-strong` 은 연한 바탕(`-subtle`) 위 알림 본문 글자다. 기본값(#16a34a·#d97706)은
+   * 그 바탕에서 3.3:1·3.1:1 로 일반 글자 기준(4.5:1)에 못 미쳐 아이콘에만 쓴다.
+   */
+  --success: #16a34a;
+  --success-strong: #15803d;
+  --success-subtle: #f0fdf4;
+  --success-border: #bbf7d0;
+  --success-foreground: #ffffff;
+  --warning: #d97706;
+  --warning-strong: #b45309;
+  --warning-subtle: #fffbeb;
+  --warning-border: #fde68a;
+  --warning-foreground: #ffffff;
+
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #2563EB;
+  --ring: #1d3b6e;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.5rem;
-  --sidebar: #FAFAFA;
-  --sidebar-foreground: #09090B;
-  --sidebar-primary: #2563EB;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F4F4F5;
-  --sidebar-accent-foreground: #09090B;
-  --sidebar-border: #E4E4E7;
-  --sidebar-ring: #2563EB;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0d1420;
+  --sidebar-primary: #1d3b6e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f4f5f7;
+  --sidebar-accent-foreground: #0d1420;
+  --sidebar-border: #e6e8ec;
+  --sidebar-ring: #1d3b6e;
 }
 
 .dark {
@@ -100,13 +140,31 @@
   --color-input-background: var(--input-background);
   --color-switch-background: var(--switch-background);
   --color-ring: var(--ring);
+  /* imports/colors.md 보강분. imports 의 `--color-foreground-muted` 는 위
+     `--color-muted-foreground` 로 이미 있으므로 중복 토큰을 만들지 않는다. */
+  --color-border-strong: var(--border-strong);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-foreground-subtle: var(--foreground-subtle);
+  --color-success: var(--success);
+  --color-success-strong: var(--success-strong);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-border: var(--success-border);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-strong: var(--warning-strong);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-border: var(--warning-border);
+  --color-warning-foreground: var(--warning-foreground);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  /* 버튼·입력도 카드와 같은 8px 이다(§10 "버튼·카드 8px"). */
+  --radius-md: var(--radius);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --color-sidebar: var(--sidebar);
@@ -117,6 +175,47 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/**
+ * docs/imports/typography.md 의 타입 스케일. 값·줄 높이를 그대로 옮겼다 — 페이지 제목만
+ * docs/MATERIAL_PICKER.md §10 의 22px 을 따른다.
+ *
+ * `@theme inline` 이 아니라 `@theme` 인 이유: 이쪽은 다른 변수를 참조하는 별칭이 아니라
+ * 리터럴 값이다. Tailwind v4 는 `--text-*` 로 `text-body-small` 같은 유틸을 만들고,
+ * `--text-*--line-height` 를 그 유틸의 줄 높이로 짝지어 준다.
+ *
+ * stock 유틸로는 문서 값을 정확히 낼 수 없어서 토큰을 둔다 — 13/20·18/26·12/18 은
+ * `text-sm`(14/20)·`text-lg`(18/28)·`text-xs`(12/16) 와 어긋난다. Tailwind 기본 스케일은
+ * 그대로 남으므로 기존 화면에는 영향이 없다.
+ *
+ * 간격은 토큰을 만들지 않는다. imports 의 4px 격자(`--space-1`~`--space-12`)는 Tailwind
+ * 기본 간격과 1:1 이다(`--space-3`=12px=`gap-3`, `--space-12`=48px=`mb-12`).
+ */
+@theme {
+  /* 페이지 제목은 22px 이다(docs/MATERIAL_PICKER.md §10). */
+  --text-heading-large: 1.375rem;
+  --text-heading-large--line-height: 1.875rem;
+  --text-heading-medium: 1.125rem;
+  --text-heading-medium--line-height: 1.625rem;
+  --text-heading-small: 1rem;
+  --text-heading-small--line-height: 1.5rem;
+
+  --text-body-large: 1rem;
+  --text-body-large--line-height: 1.625rem;
+  --text-body-medium: 0.875rem;
+  --text-body-medium--line-height: 1.375rem;
+  --text-body-small: 0.8125rem;
+  --text-body-small--line-height: 1.25rem;
+  --text-body-xs: 0.75rem;
+  --text-body-xs--line-height: 1.125rem;
+
+  --text-metric-large: 2rem;
+  --text-metric-large--line-height: 2.5rem;
+  --text-metric-medium: 1.25rem;
+  --text-metric-medium--line-height: 1.75rem;
+  --text-mono-small: 0.75rem;
+  --text-mono-small--line-height: 1.125rem;
 }
 
 @layer base {
@@ -177,5 +276,31 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
+  }
+}
+
+/*
+ * 늘 보이는 얇은 스크롤바 — 넘친 영역의 스크롤 단서(docs/MATERIAL_PICKER.md §12.3, U1).
+ * macOS 의 "스크롤할 때만 보기"에서도 보이게 WebKit 스크롤바를 직접 그린다. Chrome 은 표준
+ * scrollbar-width·scrollbar-color 가 있으면 WebKit 스타일을 무시하므로, 표준 속성은 WebKit 스크롤바를
+ * 모르는 브라우저(Firefox)에만 준다. 그라데이션은 쓰지 않는다(디자인 지침).
+ */
+@utility scrollbar-visible {
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  &::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
   }
 }

@@ -1,0 +1,504 @@
+{
+  "meta": {
+    "reportId": "",
+    "title": "기계학습 분류 성능 시험결과서",
+    "issuedAt": "",
+    "evaluationPeriod": {
+      "from": "2026-10-01",
+      "to": "2026-10-01"
+    },
+    "taskType": "multiclass",
+    "taskTypeLabel": "Multi-class",
+    "contractDate": "2026-10-01",
+    "derivedPrediction": {
+      "method": "argmax",
+      "threshold": null,
+      "source_columns": [
+        "prob_bird",
+        "prob_cat",
+        "prob_dog"
+      ],
+      "target_role": "y_pred"
+    }
+  },
+  "applicant": {
+    "companyName": "보관본 주식회사",
+    "representative": "—",
+    "businessNumber": "—",
+    "contact": "—",
+    "fax": "—",
+    "homepage": "—",
+    "address": "—"
+  },
+  "performer": {
+    "orgName": "한국 AI 인증원",
+    "evaluator": "자동 평가 엔진",
+    "contact": "—"
+  },
+  "evalScope": {
+    "purpose": "조직 내부 QA 및 모델 모니터링 목적으로 활용",
+    "targetModel": "ArchiveModel",
+    "version": "v1.0.0",
+    "scope": "의뢰자가 제출한 평가 데이터셋을 기반으로 선택된 시험항목에 대해 정량적 성능 지표를 산출하고 합격 기준 충족 여부를 판정한다.",
+    "reportPurposeKey": "internal"
+  },
+  "datasetInfo": {
+    "format": "정형 데이터 (CSV)",
+    "inputColumns": [
+      "id",
+      "label",
+      "pred"
+    ],
+    "sampleCount": 200,
+    "taskTypeLabel": "Multi-class",
+    "classCount": 3,
+    "classLabels": [
+      "bird",
+      "cat",
+      "dog"
+    ],
+    "classLabelDescriptions": [
+      {
+        "label": "bird",
+        "description": "새"
+      },
+      {
+        "label": "cat",
+        "description": "고양이"
+      },
+      {
+        "label": "dog",
+        "description": "개"
+      }
+    ],
+    "fileName": "data.csv"
+  },
+  "datasetSamples": [],
+  "datasetDiagnosis": "평가 데이터셋은 총 200건이며, 클래스(레이블)별 분포는 bird 69건(34.5%), cat 57건(28.5%), dog 74건(37.0%)이다. 클래스 불균형 비율(Imbalance Ratio)은 1.30로, 허용 기준(≤ 1.50) 이내의 균형 상태이다.",
+  "trainingDatasetInfo": {
+    "name": "—",
+    "trainingSampleCount": 0,
+    "validationSampleCount": 200,
+    "classDistribution": "bird 20% / cat 60% / dog 20%",
+    "validExamples": [],
+    "edgeExamples": []
+  },
+  "evalEnv": {
+    "method": "서버 사이드 자동 연산 (Python 기반 metric 산출)",
+    "outputFormat": "성능 지표 수치 및 합격/불합격 판정 성적서 (PDF)",
+    "tools": [
+      "Python 3.11",
+      "scikit-learn 1.4.0",
+      "pandas 2.2.0",
+      "numpy 1.26.0"
+    ],
+    "systemSpec": {
+      "os": "—",
+      "cpu": "—",
+      "gpu": "—",
+      "memory": "—",
+      "software": "—"
+    },
+    "environment": {
+      "evaluated_at": "2026-10-01T02:00:00+00:00",
+      "libraries": {
+        "python": "3.11.9",
+        "scikit-learn": "1.4.0",
+        "pandas": "2.2.0",
+        "numpy": "1.26.0"
+      }
+    }
+  },
+  "metricList": [
+    {
+      "metricId": "M1",
+      "name": "Accuracy",
+      "threshold": 0.4,
+      "passCriteria": "≥ 0.40"
+    },
+    {
+      "metricId": "M2",
+      "name": "Precision",
+      "threshold": 0,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M3",
+      "name": "Recall",
+      "threshold": 0,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M4",
+      "name": "F1 Score",
+      "threshold": 0.3,
+      "passCriteria": "≥ 0.30"
+    },
+    {
+      "metricId": "M6",
+      "name": "KL Divergence",
+      "threshold": 0,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M11",
+      "name": "Macro Average",
+      "threshold": 0,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M21",
+      "name": "Confusion Matrix",
+      "threshold": 0,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M22",
+      "name": "Class-wise Metric",
+      "threshold": 0,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M23",
+      "name": "Imbalance Ratio",
+      "threshold": 0,
+      "passCriteria": "정보 제공"
+    }
+  ],
+  "metricFormulas": [
+    {
+      "metricId": "M1",
+      "name": "Accuracy",
+      "formula": "(TP + TN) / Total",
+      "description": "Measures how often the classifier predicts the correct result.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M2",
+      "name": "Precision",
+      "formula": "binary: TP/(TP+FP) · 그 외: 클래스별 TP/(TP+FP) 의 macro 평균",
+      "description": "Among predicted positives, measures how many are actually positive.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M3",
+      "name": "Recall",
+      "formula": "binary: TP/(TP+FN) · 그 외: 클래스별 TP/(TP+FN) 의 macro 평균",
+      "description": "Measures how many true positives are successfully detected.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M4",
+      "name": "F1 Score",
+      "formula": "binary: 2PR/(P+R) · 그 외: 클래스별 F1 의 macro 평균(macro-P·macro-R 의 조화평균이 아님)",
+      "description": "Balances precision and recall in a single metric.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M6",
+      "name": "KL Divergence",
+      "formula": "∑ P(x) * log(P(x) / Q(x))",
+      "description": "정답 레이블의 분포와 모델이 예측한 클래스 레이블의 분포 간의 차이(Target Drift)를 계산합니다.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M11",
+      "name": "Macro Average",
+      "formula": "클래스별 P·R·F1 의 macro 평균 — (Class1 + … + ClassN) / N",
+      "description": "Averages class metrics equally across classes.",
+      "isCommon": false
+    },
+    {
+      "metricId": "M21",
+      "name": "Confusion Matrix",
+      "formula": "실제/예측 클래스의 교차 분포를 행렬로 산출",
+      "description": "Shows actual versus predicted counts by class or label.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M22",
+      "name": "Class-wise Metric",
+      "formula": "개별 클래스별 P/R/F1 산출",
+      "description": "Breaks down metrics for each class or label.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M23",
+      "name": "Imbalance Ratio",
+      "formula": "max(class count) / min(class count)",
+      "description": "Measures the balance of the evaluation dataset itself.",
+      "isCommon": true
+    }
+  ],
+  "dataValidation": [
+    {
+      "checkName": "Empty dataset (no data rows)",
+      "status": "pass",
+      "detail": "200 건",
+      "group": "common"
+    },
+    {
+      "checkName": "필수 컬럼 누락",
+      "status": "pass",
+      "detail": "없음",
+      "group": "common"
+    },
+    {
+      "checkName": "누락값(NaN)",
+      "status": "warning",
+      "detail": "1 건",
+      "group": "common"
+    },
+    {
+      "checkName": "중복 ID",
+      "status": "warning",
+      "detail": "1 건",
+      "group": "common"
+    },
+    {
+      "checkName": "클래스 불일치",
+      "status": "warning",
+      "detail": "Pred has unknown 클래스: lion",
+      "group": "common"
+    },
+    {
+      "checkName": "Label notation",
+      "status": "pass",
+      "detail": "없음",
+      "group": "common"
+    },
+    {
+      "checkName": "제외된 샘플 수",
+      "status": "warning",
+      "detail": "1 건",
+      "group": "common"
+    },
+    {
+      "checkName": "확률값 범위 오류",
+      "status": "fail",
+      "detail": "2 건 — 허용 범위 벗어남: [0, 1]",
+      "group": "multiclass"
+    },
+    {
+      "checkName": "확률합 오류",
+      "status": "warning",
+      "detail": "3 건",
+      "group": "multiclass"
+    },
+    {
+      "checkName": "Argmax–y_pred 불일치",
+      "status": "warning",
+      "detail": "3 건",
+      "group": "multiclass"
+    },
+    {
+      "checkName": "미확인 클래스 감지",
+      "status": "warning",
+      "detail": "lion",
+      "group": "multiclass"
+    }
+  ],
+  "validationSummary": {
+    "totalRows": 200,
+    "validRows": 199,
+    "excludedRows": 1
+  },
+  "kpiResults": [
+    {
+      "metricId": "M1",
+      "name": "Accuracy",
+      "value": 0.335,
+      "threshold": 0.4,
+      "status": "fail",
+      "higherIsBetter": true
+    },
+    {
+      "metricId": "M2",
+      "name": "Precision",
+      "value": 0.3338518128551015,
+      "threshold": 0,
+      "status": "pass",
+      "higherIsBetter": true,
+      "perClass": [
+        {
+          "label": "bird",
+          "value": 0.3559322033898305,
+          "status": "pass"
+        },
+        {
+          "label": "cat",
+          "value": 0.2537313432835821,
+          "status": "pass"
+        },
+        {
+          "label": "dog",
+          "value": 0.3918918918918919,
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "metricId": "M3",
+      "name": "Recall",
+      "value": 0.33149511067131204,
+      "threshold": 0,
+      "status": "pass",
+      "higherIsBetter": true,
+      "perClass": [
+        {
+          "label": "bird",
+          "value": 0.30434782608695654,
+          "status": "pass"
+        },
+        {
+          "label": "cat",
+          "value": 0.2982456140350877,
+          "status": "pass"
+        },
+        {
+          "label": "dog",
+          "value": 0.3918918918918919,
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "metricId": "M4",
+      "name": "F1 Score",
+      "value": 0.3314034800929962,
+      "threshold": 0.3,
+      "status": "pass",
+      "higherIsBetter": true,
+      "perClass": [
+        {
+          "label": "bird",
+          "value": 0.328125,
+          "status": "pass"
+        },
+        {
+          "label": "cat",
+          "value": 0.27419354838709675,
+          "status": "fail"
+        },
+        {
+          "label": "dog",
+          "value": 0.3918918918918919,
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "metricId": "M6",
+      "name": "KL Divergence",
+      "value": 0,
+      "threshold": 0,
+      "status": "unavailable",
+      "higherIsBetter": false,
+      "errorMessage": "예측 분포에 0 인 클래스가 있어 계산할 수 없습니다."
+    },
+    {
+      "metricId": "M11",
+      "name": "Macro Average",
+      "value": 0.3314034800929962,
+      "threshold": 0,
+      "status": "pass",
+      "higherIsBetter": true,
+      "subMetrics": {
+        "precision": 0.3338518128551015,
+        "recall": 0.33149511067131204,
+        "f1Score": 0.3314034800929962
+      }
+    },
+    {
+      "metricId": "M21",
+      "name": "Confusion Matrix",
+      "value": 0,
+      "threshold": 0,
+      "status": "pass",
+      "higherIsBetter": true
+    },
+    {
+      "metricId": "M22",
+      "name": "Class-wise Metric",
+      "value": 0,
+      "threshold": 0,
+      "status": "pass",
+      "higherIsBetter": true
+    },
+    {
+      "metricId": "M23",
+      "name": "Imbalance Ratio",
+      "value": 1.2982456140350878,
+      "threshold": 0,
+      "status": "pass",
+      "higherIsBetter": false
+    }
+  ],
+  "charts": {
+    "confusionMatrix": {
+      "labels": [
+        "bird",
+        "cat",
+        "dog"
+      ],
+      "matrix": [
+        [
+          21,
+          22,
+          26
+        ],
+        [
+          21,
+          17,
+          19
+        ],
+        [
+          17,
+          28,
+          29
+        ]
+      ],
+      "totalSamples": 200
+    },
+    "rocCurve": null,
+    "prCurve": null
+  },
+  "latency": null,
+  "interpretation": {
+    "confusionAnalysis": "혼동행렬 기준 전체 200건 중 133건(66.5%)이 오분류되었다. 클래스별 오류(FP+FN)는 cat(고양이) FP 50건·FN 40건, dog(개) FP 45건·FN 45건, bird(새) FP 38건·FN 48건이다. 가장 많이 헷갈린 쌍(실제→예측)은 dog(개)→cat(고양이) 28건(전체 오분류의 21.1%), bird(새)→dog(개) 26건(전체 오분류의 19.5%), bird(새)→cat(고양이) 22건(전체 오분류의 16.5%)이다. 예측 수와 실제 수의 차이가 큰 클래스는 bird(새) 예측 59건·실제 69건, cat(고양이) 예측 67건·실제 57건이다. F1 이 가장 낮은 클래스는 F1 0.2742인 cat(고양이)이며, 표본은 57건으로 전체 표본의 28.5%이다. 매크로 F1 과의 차이는 0.0572이다. 확률이 있는 오분류 가운데 경계 오류가 확신 오류보다 많다. 경계 오류는 결정 경계 가까이에서 갈린 오류로, 경계에 가까운 사례의 판단에 따라 결과가 달라질 수 있는 오류다.",
+    "distributionAnalysis": "평가 데이터셋은 총 200건이며, 클래스 분포는 bird(새) 69건(34.5%), cat(고양이) 57건(28.5%), dog(개) 74건(37.0%)이다. 불균형 비율(1.2982)이 1.5 미만이어서 불균형은 경미하다. 학습 분포와 평가 분포의 비율 차가 10%p 이상인 클래스는 bird(새) 학습 20%·평가 34.5%, cat(고양이) 학습 60%·평가 28.5%, dog(개) 학습 20%·평가 37%이다."
+  },
+  "conclusion": {
+    "verdict": "FAIL",
+    "score": 50,
+    "benchmark": "내부 참조 기준과 비교하면 참조 범위에 비해 미흡한 지표는 Accuracy(0.335, 참조 범위 0.8~0.9), Precision(0.3339, 참조 범위 0.78~0.89), Recall(0.3315, 참조 범위 0.78~0.89), F1 Score(0.331, 참조 범위 0.78~0.89)이다. 비교 기준은 내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)이다. 목표값이 참조 범위보다 낮은 지표는 Accuracy(목표 0.4), F1 Score(목표 0.3)이다.",
+    "narrative": "핵심 지표가 목표에 미달하여 종합 판정은 '최종 불합격'이다(미달한 핵심 지표: Accuracy(0.335, 목표 0.4)). 참고로 목표값이 설정된 지표 2개 중 1개가 목표를 충족하였다(통과율 50.0%). 95% 신뢰구간이 목표값을 포함하는 지표는 Accuracy(구간 0.273~0.403, 목표 0.4), F1 Score(구간 0.267~0.394, 목표 0.3)로, 표본 변동에 따라 해당 지표의 판정이 달라질 수 있다. 의뢰자가 클래스 중요도를 '다수 클래스 우선'으로 밝혔으므로, 그에 맞춘 가중 평균 F1 은 0.3363이다. 의뢰자가 밝힌 모델 용도는 '생산 라인 2 의 불량 검출'이다.",
+    "risks": "목표에 미달한 지표가 있어 해당 영역의 성능 저하 위험이 존재한다(목표 미달 지표: Accuracy(0.335, 목표 0.4)). F1 이 가장 낮은 클래스는 F1 0.2742인 cat(고양이)이다."
+  },
+  "recommendationNarrative": {
+    "dataQuality": "데이터 측면에서 지목된 문제는 P2(학습↔평가 분포 차이 (bird, cat, dog))이며, 9절 권고표의 해당 항목에 따른 보완 후 재평가를 권고한다.",
+    "modelOps": "모델 측면에서 지목된 문제는 P1(핵심 지표 미달 (Accuracy))이며, 9절 권고표의 해당 항목에 따른 개선 후 재평가를 권고한다."
+  },
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "category": "핵심 지표 개선",
+      "action": "미달한 핵심 지표의 오분류 사례를 분석하고 재학습·데이터 보강·결정 임계값 재조정을 검토한 뒤 재평가한다",
+      "expectedImpact": "핵심 지표 충족 여부 재확인 및 종합 판정 개선 근거 확보"
+    },
+    {
+      "priority": "LOW",
+      "category": "분포 일치 확인",
+      "action": "학습 데이터와 평가 데이터의 클래스 비율이 다른 원인을 확인하고, 운영 환경 분포를 반영한 데이터로 재평가한다",
+      "expectedImpact": "운영 환경 성능 추정의 정확도 향상"
+    }
+  ],
+  "signature": {
+    "issuer": "",
+    "signedAt": "",
+    "history": []
+  },
+  "evaluationWarnings": [],
+  "narrativeSource": "llm",
+  "isEvaluated": true
+}

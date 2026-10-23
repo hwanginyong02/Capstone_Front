@@ -9,18 +9,16 @@
  * **카드 클릭 = 즉시 진행.** 라디오 인디케이터를 두지 않는다 — 선택 상태를 보여줄 시간이
  * 없고, 넣으면 "고르고 → 다음 버튼" 두 동작이 된다.
  *
- * 세 카드의 설명은 **같은 문장 골격**("Assign ___ to each sample.")을 쓴다. 나란히 읽을 때
- * 바뀌는 부분만 눈에 들어와야 차이가 드러난다. 문구의 언어는 추후 일괄 정리한다.
+ * 세 카드의 설명은 **같은 문장 골격**을 쓴다. 나란히 읽을 때 바뀌는 부분만 눈에 들어와야 차이가
+ * 드러난다. 설명 문장은 머리의 분류 유형 툴팁과 함께 쓰는 `TASK_TYPE_DESCRIPTIONS_KO` 에 있다.
  */
 import { Card } from "../ui/card";
 import { cn } from "../../utils/styling/styles";
-import { TASK_TYPE_LABELS, type TaskType } from "../../data/evaluationData";
+import { TASK_TYPE_DESCRIPTIONS_KO, TASK_TYPE_LABELS_KO, type TaskType } from "../../data/evaluationData";
 import { TaskTypeIcon } from "./TaskTypeIcon";
 
 interface TaskTypeOption {
   type: TaskType;
-  /** 같은 골격을 공유하는 한 줄 설명. */
-  description: string;
   /** 추상 설명만으로는 multiclass/multilabel 이 구분되지 않아 붙이는 구체 예시. */
   example: string;
 }
@@ -28,18 +26,15 @@ interface TaskTypeOption {
 const OPTIONS: TaskTypeOption[] = [
   {
     type: "binary",
-    description: "Assign one of two categories to each sample.",
-    example: "Pass / Fail",
+    example: "합격 / 불합격",
   },
   {
     type: "multiclass",
-    description: "Assign one of many categories to each sample.",
-    example: "Cat · Dog · Bird",
+    example: "고양이 · 개 · 새",
   },
   {
     type: "multilabel",
-    description: "Assign any number of relevant categories to each sample.",
-    example: "Cat + Outdoor + Night",
+    example: "고양이 + 실외 + 밤",
   },
 ];
 
@@ -55,10 +50,10 @@ export function TaskTypeSelect({ selected, onSelect }: TaskTypeSelectProps) {
     <div className="pt-4">
       <div className="mb-10">
         <h1 className="text-2xl font-bold text-foreground mb-2">
-          What kind of classifier are you evaluating?
+          어떤 분류 모델을 평가하나요?
         </h1>
         <p className="text-sm text-muted-foreground">
-          Metrics, required columns, and validation rules all depend on this choice.
+          고른 유형에 따라 지표, 필요한 컬럼, 검증 규칙이 달라집니다.
         </p>
       </div>
 
@@ -82,8 +77,8 @@ export function TaskTypeSelect({ selected, onSelect }: TaskTypeSelectProps) {
                 "flex flex-col gap-4 p-6 cursor-pointer border-2 transition-colors text-left",
                 "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                 isSelected
-                  ? "border-primary bg-blue-50 text-primary"
-                  : "border-border bg-card hover:border-gray-400",
+                  ? "border-primary bg-primary-subtle text-primary"
+                  : "border-border bg-card hover:border-border-strong",
               )}
             >
               {/* 아이콘은 크게 — 세 카드를 훑을 때 도형이 먼저 눈에 들어와야 한다. */}
@@ -91,9 +86,9 @@ export function TaskTypeSelect({ selected, onSelect }: TaskTypeSelectProps) {
 
               <div className="space-y-1.5">
                 <div className="text-base font-semibold text-foreground">
-                  {TASK_TYPE_LABELS[option.type]}
+                  {TASK_TYPE_LABELS_KO[option.type]}
                 </div>
-                <p className="text-sm text-muted-foreground">{option.description}</p>
+                <p className="text-sm text-muted-foreground">{TASK_TYPE_DESCRIPTIONS_KO[option.type]}</p>
               </div>
 
               <div className="mt-auto pt-2 font-mono text-xs text-muted-foreground">

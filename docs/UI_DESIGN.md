@@ -4,10 +4,10 @@
 >
 > **범위**: 세 분류 유형(이진·다중 클래스·다중 레이블)을 **아이콘으로 구분되는 독립
 > 진입점**으로 분리하는 화면 설계. 단계 구조·라우트·스토어는
-> `docs/WORKFLOW_REDESIGN.md`, 색상·타이포 등 디자인 시스템은 `README.md`.
+> `docs/WORKFLOW_REDESIGN.md`, 색상·타이포 등 디자인 시스템은 `README.md`. *(MATERIAL_PICKER.md로 대체됨, §10 — 디자인 시스템의 정본은 MATERIAL_PICKER.md §10)*
 >
 > 문구의 언어(한/영)는 이번 범위 밖이다. 아래 문구는 **자리와 길이를 잡기 위한
-> 임시안**이며 나중에 일괄 정리한다.
+> 임시안**이며 나중에 일괄 정리한다. *(MATERIAL_PICKER.md로 대체됨, §8 — 화면 문구는 한국어로 정리됐다)*
 
 ---
 
@@ -121,22 +121,23 @@ export function TaskTypeIcon({ type, size = 40 }: { type: TaskType; size?: numbe
 **레이아웃**
 - 그리드 `md` 이상 3열 / 미만 1열 (README 반응형 규칙)
 - 카드는 기존 `ClassifierCard`(`components/basic-info/BasicInfo.tsx`) 스타일 재사용 —
-  선택 `border-primary` + `bg-blue-50`, 비선택 `border-border` + hover
+  선택 `border-primary` + `bg-blue-50`, 비선택 `border-border` + hover *(MATERIAL_PICKER.md로 대체됨, §10 — `bg-blue-50` 은 `bg-primary-subtle` 토큰으로 바뀌었다)*
 - **아이콘은 카드 상단에 크게(40px)** 놓는다. 세 카드를 훑을 때 도형이 먼저 눈에 들어와야 한다
 
 **동작**
 - **카드 클릭 = 즉시 다음 화면.** 라디오 인디케이터를 넣지 않는다 — 선택 상태를 보여줄
   시간이 없고, 넣으면 "고르고 → 다음 버튼" 두 동작이 된다
 - 하단 Action Bar 없음
-- `StepTabs` 숨김 — 아직 워크플로우에 들어가기 전이다
+- 단계 표시줄(`StepRail`) 숨김 — 아직 워크플로우에 들어가기 전이다
 
 **각 카드가 담는 3줄**
-1. 유형 이름
+1. 유형 이름 — "이진 분류 / 다중 클래스 분류 / 다중 레이블 분류". 화면과 성적서·AI 서술이 같은 한 벌을 쓴다
+   (`TASK_TYPE_LABELS_KO`, MATERIAL_PICKER.md §12.6). 위 그림의 줄인 이름은 칸 폭 때문이다
 2. 한 줄 설명 — 세 카드가 **같은 문장 골격**을 쓴다. 바뀌는 부분만 다르게 해서
    나란히 읽으면 차이가 드러나게 한다
 3. 구체 예시 한 줄 — 추상 설명만으로는 다중 클래스/다중 레이블이 구분되지 않는다
 
-> 실제 문구는 언어 정리 때 확정한다. 다만 **"세 줄, 같은 골격"** 이라는 구조는
+> 실제 문구는 언어 정리 때 확정한다. 다만 **"세 줄, 같은 골격"** 이라는 구조는 *(MATERIAL_PICKER.md로 대체됨, §8 — 문구는 한국어로 확정했다)*
 > 이번에 잡아둔다 — 현재 문구는 세 번째만 문장 구조가 달라서
 > (`"Multiple labels can be assigned"` 만 수동태) 가장 헷갈리는 유형의 설명이
 > 가장 안 읽힌다.
@@ -160,7 +161,7 @@ export function TaskTypeIcon({ type, size = 40 }: { type: TaskType; size?: numbe
 - 워크플로우 밖(`AppShell`·랜딩·워크스페이스)에서는 숨긴다
 - **클릭 시 유형 변경 가능. 단 확인 대화를 띄운다** — `useWorkflowStore` 의 `setTaskType`
   은 2~5단계 입력을 **전부 리셋**한다(`selectedMetricIds`·`metricDetails`·
-  `uploadedFile`·`columnMapping`·`completedSteps`…). 경고 없이 날리면 안 된다
+  `uploadedFile`·`columnMapping`·`completedSteps`…). 경고 없이 날리면 안 된다 *(MATERIAL_PICKER.md로 대체됨, §3 — "2~5단계"는 종전 번호다. 지금은 유형 선택 뒤의 입력 전부다)*
 
 ---
 
@@ -168,8 +169,8 @@ export function TaskTypeIcon({ type, size = 40 }: { type: TaskType; size?: numbe
 
 | 항목 | 왜 |
 |---|---|
-| 문구 언어 정리(한/영) | 구조 변경과 문자열 변경을 한 커밋에 섞으면 리뷰가 불가능해진다. 기존 테스트가 영문 문자열을 찾고 있어 같이 움직인다 |
-| 지표 설명 문구 재작성 | 위와 같은 이유. `evaluationData.ts` 문구 15개를 한 번에 |
+| 문구 언어 정리(한/영) | 구조 변경과 문자열 변경을 한 커밋에 섞으면 리뷰가 불가능해진다. 기존 테스트가 영문 문자열을 찾고 있어 같이 움직인다 *(MATERIAL_PICKER.md로 대체됨, §8 — 한국어로 바꾸고 테스트도 함께 고쳤다)* |
+| 지표 설명 문구 재작성 | 위와 같은 이유. `evaluationData.ts` 문구 15개를 한 번에 *(MATERIAL_PICKER.md로 대체됨, §8 — 지표 부제·설명도 한국어로 바꿨다)* |
 | 지표+목표값 화면 시각 설계 | 병합 자체는 `WORKFLOW_REDESIGN.md` §3.1 에 있다. 표 하나로 접는 것이라 별도 시각 설계가 필요 없다 |
 | 컬럼 매핑 화면 | 이미 CSV 임포트 표준 패턴을 따른다. `WORKFLOW_REDESIGN.md` §4.2 |
 | 결과/성적서 화면 | 이번 개편 대상이 아니다 |

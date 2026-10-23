@@ -4,9 +4,9 @@
  * 이 스토어는 전체 평가 워크플로우의 상태(각 스텝의 입력 데이터, 현재 단계, 완료 여부 등)를
  * 관리하며, 최종 평가 리포트 데이터를 생성하는 로직을 포함합니다.
  *
- * ISSUES.md E-01 — 종전에는 persist 가 없어 **새로고침 한 번으로 1~5단계 입력이 전부
+ * ISSUES.md E-01 — 종전에는 persist 가 없어 **새로고침 한 번으로 검증 앞 단계 입력이 전부
  * 사라졌다.** 수십 분간 입력한 기업정보·모델정보·지표·매핑이 날아가고, 그것을 알리는
- * 신호는 6단계의 "업로드된 파일이 없습니다" 문구뿐이었다.
+ * 신호는 검증 단계의 "업로드된 파일이 없습니다" 문구뿐이었다.
  *
  * `rawFile` 은 File 객체라 JSON 직렬화가 원리적으로 불가능하므로 persist 대상에서 뺀다.
  * 대신 `uploadedFile`(파일 메타)은 저장해, 재수화 후 **"파일이 있었는데 지금은 없다"** 를
@@ -18,80 +18,516 @@ import { getAvailableMetrics, type TaskType } from "../../data/evaluationData";
 import type { ColumnNote, MappingWarning } from "../../lib/report/backendNotices";
 import type { MappingRow } from "../../types/mapping.types";
 import type { ValidateDataResponseData } from "../../types/validation.types";
-import type { MapWorkflowToReportInput } from "../../lib/report/mapWorkflowToFinalReport";
+import type { MaterialCheckAck } from "../../types/finalReport.types";
 import {
   DEFAULT_BASIC_INFO,
-  DEFAULT_DATASET_INFO,
+  createDefaultBasicInfo,
   type BasicInfoFormData,
-  type DatasetInfoFormData,
   type MetricDetailStateMap,
+  type StepId,
   type UploadedFileInfo,
 } from "../../types/workflow.types";
+import {
+  DEFAULT_COMPOSER_SELECTION,
+  type ComposerCardId,
+  type ComposerFieldValue,
+  type ComposerSelection,
+  type ComposerValueMap,
+  type MaterialPicks,
+  type OptionalCardId,
+} from "../../types/reportComposer.types";
+import {
+  COMPOSER_CARDS,
+  OPTIONAL_CARD_IDS,
+  fieldOfLeaf,
+  leafKind,
+  pickKind,
+  pickableIds,
+  placeableIds,
+  unknownPerEntry,
+} from "../../data/reportComposer";
+import { orderPlaced } from "../domain/materialPicks";
+import { restrictMappingRoles } from "../domain/mappingPicks";
+import { DEFAULT_CARD_ORDER, moveCard, normalizeCardOrder, orderAfterPlacing } from "../domain/cardOrder";
 
 /**
- * 평가 구간의 단계 경로. **배열 순서가 곧 단계 번호다**(1-based).
+ * 단계 번호·경로 상수는 이 파일을 떠났다.
  *
- * 성적서 발급에만 필요한 입력(기관 정보·학습 데이터셋 정보·목표값)은 이 구간에 없다.
- * 평가는 그것들 없이 성립한다 — `/api/evaluate` 페이로드에 하나도 들어가지 않는다.
- * 성적서 구간은 평가 결과 화면에서 이어진다(docs/WORKFLOW_REDESIGN.md).
- */
-export const STEP_PATHS = [
-  "data-upload",
-  "metrics",
-  "column-mapping",
-  "data-validation",
-  "evaluation-summary",
-  "report",
-] as const;
-
-export type StepPath = (typeof STEP_PATHS)[number];
-
-/**
- * 단계 번호에 이름을 붙인다.
+ * 단계 목록이 재료 고르기에서 고른 카드에서 **계산되므로**, 고정 번호(`STEP`)와 고정
+ * 경로 배열(`STEP_PATHS`)이 성립하지 않는다. 카탈로그는 `data/workflowSteps.ts`, 목록 계산과
+ * 이동은 `utils/domain/workflowSteps.ts` 에 있다.
  *
- * 종전에는 `markStepCompleted(3)` 같은 **생짜 숫자**가 8개 파일에 흩어져 있었다. 타입이
- * 전부 `number` 라 순서를 바꿔도 컴파일러가 잡아주지 않아, 재배치 때 조용히 어긋난다.
- * 앞으로 순서가 또 바뀌면 이 표 하나만 고친다.
+ * 이 스토어가 드는 것은 **지금 어디에 있고 무엇을 마쳤는지**(`currentStepId`
+ * ·`completedStepIds`)뿐이다.
  */
-export const STEP = {
-  UPLOAD: 1,
-  METRICS: 2,
-  MAPPING: 3,
-  VALIDATION: 4,
-  /** 평가 결과 — 고른 지표의 값만 본다. 합불 판정은 여기 없다(목표값은 성적서 구간 입력). */
-  SUMMARY: 5,
-  /** 성적서. */
-  RESULT: 6,
-} as const;
-
-/** 평가 구간의 마지막 단계. */
-export const LAST_STEP = STEP.RESULT;
-
-/**
- * run id 가 있어야만 열 수 있는 단계. 평가를 실행해야 생기는 화면들이다.
- * 경로가 `/report/<runId>/...` 라 단계 번호만으로는 목적지를 만들 수 없다.
- */
-export const RUN_SCOPED_STEPS: number[] = [STEP.SUMMARY, STEP.RESULT];
-
-/** Convert a 1-based step number to a route path */
-export function stepToPath(step: number): string {
-  // run 이 필요한 단계는 목적지가 정해지지 않으므로 항상 유효한 워크스페이스 목록으로
-  // 보낸다 — 종전의 "/report/preview" 는 저장되지 않는 임시 성적서를 만들어 발급·재조회를
-  // 불가능하게 했다(ISSUES.md E-02·E-06). 실제 이동은 StepTabs 가 lastRunId 로 처리한다.
-  if (RUN_SCOPED_STEPS.includes(step)) return "/workspaces";
-  return `/app/${STEP_PATHS[step - 1] ?? STEP_PATHS[0]}`;
-}
-
-/** Convert a route path segment to a 1-based step number */
-export function pathToStep(path: string): number {
-  // 워크플로우 페이지는 항상 정식 /app/* 경로로 렌더된다(레거시 /step/* 는 routes.ts 에서 리다이렉트).
-  const segment = path.replace("/app/", "");
-  const index = STEP_PATHS.indexOf(segment as StepPath);
-  return index >= 0 ? index + 1 : 1;
-}
 
 /** persist 스키마 버전. 저장된 상태의 의미가 바뀔 때만 올린다. */
-export const WORKFLOW_PERSIST_VERSION = 3;
+export const WORKFLOW_PERSIST_VERSION = 15;
+
+/**
+ * 구 번호 체계(v4 까지)의 1~6 이 가리켰던 단계.
+ *
+ * v4→v5 마이그레이션 **전용**이다. 새 코드에서 번호로 단계를 가리키는 곳은 없다.
+ *
+ * `StepId` 가 아니라 문자열인 이유: 구 5번(`"summary"`)은 v8 에서 폐지돼 지금의 `StepId` 에
+ * 없다. 여기서는 그 시절 이름을 그대로 만들고, v7 → v8 단계가 정리한다.
+ */
+const LEGACY_STEP_IDS: readonly string[] = [
+  "upload", // 1
+  "metrics", // 2
+  "mapping", // 3
+  "validation", // 4
+  "summary", // 5
+  "report", // 6
+];
+
+/**
+ * 성적서 구성 상태의 기본값. 마이그레이션과 초기 상태가 함께 쓴다.
+ *
+ * `composerMetrics` 는 v9 에서 생겼다(② 지표 선택 이유·핵심 지표). 그 전에는 ② 카드 값을
+ * 담을 그룹이 없어 레지스트리에 정의만 있고 받을 곳이 없었다.
+ */
+const INITIAL_COMPOSER_STATE = {
+  composerCards: DEFAULT_COMPOSER_SELECTION,
+  materialPicks: {} as MaterialPicks,
+  cardOrder: DEFAULT_CARD_ORDER,
+  composerMetrics: {} as ComposerValueMap,
+  composerPerspective: {} as ComposerValueMap,
+  composerTrainingData: {} as ComposerValueMap,
+  composerTestData: {} as ComposerValueMap,
+  composerGroundTruth: {} as ComposerValueMap,
+  composerModelEnv: {} as ComposerValueMap,
+};
+
+/** 분류 유형이 바뀌면 비우는 입력 그룹(카드 선택은 남긴다 — 아래 `setTaskType` 참고). */
+const EMPTY_COMPOSER_INPUTS = {
+  composerMetrics: {} as ComposerValueMap,
+  composerPerspective: {} as ComposerValueMap,
+  composerTrainingData: {} as ComposerValueMap,
+  composerTestData: {} as ComposerValueMap,
+  composerGroundTruth: {} as ComposerValueMap,
+  composerModelEnv: {} as ComposerValueMap,
+};
+
+/**
+ * v8 → v9 — 입력 형태가 바뀐 필드의 옛 값을 새 형태로 옮긴다.
+ *
+ * v6 → v7 은 선택지가 통째로 바뀌어 비웠지만, 여기는 **같은 답을 다른 그릇에 담는 것**이라
+ * 옮길 수 있다. 옮기지 못하는 값(형식이 다른 자유 텍스트)만 버린다 — 틀리게 옮긴 숫자가
+ * 성적서에 찍히는 것보다 빈 칸으로 다시 묻는 편이 안전하다.
+ */
+function migrateComposerShapesV9(next: any): any {
+  const training: ComposerValueMap = { ...(next.composerTrainingData ?? {}) };
+  const test: ComposerValueMap = { ...(next.composerTestData ?? {}) };
+  const groundTruth: ComposerValueMap = { ...(next.composerGroundTruth ?? {}) };
+
+  // ⑥ 편향 감소 노력: 하나 고르기 → 여럿 고르기.
+  const imbalance = training.imbalanceHandling;
+  if (imbalance?.text) {
+    const { text, ...rest } = imbalance;
+    training.imbalanceHandling = { ...rest, choices: [text] };
+  }
+
+  // ⑥ ⑦ 수집 기간: "YYYY-MM ~ YYYY-MM" 한 줄 → 시작 월·끝 월.
+  const toMonthRange = (map: ComposerValueMap, fieldId: string) => {
+    const old = map[fieldId];
+    if (!old || old.entries || old.text === undefined) return;
+    const match = old.text.match(/(\d{4}-\d{2})\s*[~–—-]\s*(\d{4}-\d{2})/);
+    if (match) {
+      map[fieldId] = {
+        entries: [
+          { key: "From", value: match[1] },
+          { key: "To", value: match[2] },
+        ],
+      };
+    } else {
+      delete map[fieldId];
+    }
+  };
+  toMonthRange(training, "trainingPeriod");
+  toMonthRange(test, "testPeriod");
+
+  // ⑧ "3명 · 82%" 한 칸 → 라벨러 수·일치도 두 칸. 일치도는 % 앞 숫자, 라벨러 수는 나머지
+  // 정수 하나다. 둘 중 하나라도 못 찾으면 그 칸만 비운다.
+  const agreement = groundTruth.labelAgreement;
+  if (agreement) {
+    delete groundTruth.labelAgreement;
+    const text = agreement.text ?? "";
+    const rate = text.match(/(\d+(?:\.\d+)?)\s*%/);
+    const withoutRate = rate ? text.replace(rate[0], "") : text;
+    const count = withoutRate.match(/\d+/);
+    if (count) groundTruth.labelReviewerCount = { text: count[0] };
+    if (rate) groundTruth.labelAgreementRate = { text: rate[1] };
+  }
+
+  // Details "Report notes" → ⑥ 학습 데이터 설명. 그 메모가 이미 "학습 데이터 설명"으로
+  // 인쇄되고 있었으므로 사용자가 본 성적서와 같은 자리로 옮긴다.
+  let datasetInfo = next.datasetInfo;
+  if (datasetInfo && "trainingDataDescription" in datasetInfo) {
+    const { trainingDataDescription, ...restInfo } = datasetInfo;
+    datasetInfo = restInfo;
+    const memo = typeof trainingDataDescription === "string" ? trainingDataDescription.trim() : "";
+    if (memo && !training.trainingDescription?.text) {
+      training.trainingDescription = { text: trainingDataDescription };
+    }
+  }
+
+  return {
+    ...next,
+    ...(datasetInfo ? { datasetInfo } : {}),
+    composerMetrics: next.composerMetrics ?? {},
+    composerTrainingData: training,
+    composerTestData: test,
+    composerGroundTruth: groundTruth,
+  };
+}
+
+/**
+ * v9 → v10 — Details 의 학습 데이터 폼(`datasetInfo`)을 ⑥ 카드로 합쳤다.
+ *
+ * 같은 값을 두 화면에서 받던 것을 하나로 줄였다(docs/WORKFLOW_REDESIGN.md §10.6). 폼에 적은
+ * 값을 ⑥ 의 같은 칸으로 옮기고 `datasetInfo` 는 지운다. ⑥ 에 이미 값이 있으면 덮지 않는다 —
+ * 카드 값이 나중에 생긴 쪽이다.
+ *
+ * 클래스 분포는 옮기지 않는다. 폼은 한 줄 자유 텍스트였고 ⑥ 은 클래스마다 칸이 따로 있어,
+ * 글을 쪼개 칸에 넣으면 틀릴 수 있다. 카드를 켜는 것도 사용자의 결정이라 건드리지 않는다.
+ */
+function migrateTrainingDataV10(next: any): any {
+  const { datasetInfo, ...rest } = next;
+  if (!datasetInfo || typeof datasetInfo !== "object") return rest;
+
+  const training: ComposerValueMap = { ...(rest.composerTrainingData ?? {}) };
+  const textOf = (key: string) =>
+    typeof datasetInfo[key] === "string" ? datasetInfo[key].trim() : "";
+  const isEmpty = (fieldId: string) => {
+    const value = training[fieldId];
+    return !value || (!value.unknown && !value.text && !(value.entries?.length));
+  };
+
+  const name = textOf("trainingDatasetName");
+  if (name && isEmpty("trainingDatasetName")) training.trainingDatasetName = { text: name };
+
+  const format = textOf("trainingDataFormat");
+  if (format && isEmpty("trainingDataFormat")) training.trainingDataFormat = { text: format };
+
+  const trainingCount = textOf("trainingSampleCount");
+  const validationCount = textOf("validationSampleCount");
+  if ((trainingCount || validationCount) && isEmpty("trainingVolume")) {
+    training.trainingVolume = {
+      entries: [
+        { key: "Training", value: trainingCount },
+        { key: "Validation", value: validationCount },
+      ],
+    };
+  }
+
+  return { ...rest, composerTrainingData: training };
+}
+
+/** 옛 ⑦ 전처리 선택지 → 새 "학습과 같은 전처리인가" 선택지. "None"(전처리 없음)은 짝이 없다. */
+const LEGACY_PREPROCESSING_CHOICE: Record<string, string> = {
+  "Same as training": "Same",
+  "Different from training": "Different",
+};
+
+/**
+ * v10 → v11 — 문서에서 정할 것으로 남았던 항목을 정했다(2026-10-14, 서술 설계 D41~D44).
+ *
+ * - 전처리 자유서술 세 칸(⑥ 전처리, ⑦ 전처리·전처리 내용)을 ⑦ "학습과 같은 전처리인가" 한 칸으로
+ *   합쳤다. 고른 답은 짝이 있으면 옮기고, 적어 둔 글은 버리지 않고 덧붙이는 글로 옮긴다.
+ * - ⑧ 라벨 일치도는 종류를 먼저 받는다. 옛 값은 % 로 받던 칸이라 "단순 일치율"로 옮긴다.
+ * - 성적서 용도에 덧붙이는 글(`basicInfo.reportPurposeNote`)이 생겼다. 얕은 merge 라 옛 저장분의
+ *   `basicInfo` 에는 이 키가 없으므로 채운다.
+ */
+function migrateDecisionsV11(next: any): any {
+  const training: ComposerValueMap = { ...(next.composerTrainingData ?? {}) };
+  const test: ComposerValueMap = { ...(next.composerTestData ?? {}) };
+  const groundTruth: ComposerValueMap = { ...(next.composerGroundTruth ?? {}) };
+
+  const oldChoice = test.testPreprocessing;
+  const notes = [
+    training.preprocessing?.text?.trim() ? "Training: " + training.preprocessing.text.trim() : "",
+    oldChoice?.text === "None" ? "Test: no preprocessing" : "",
+    test.testPreprocessingDetail?.text?.trim()
+      ? "Test: " + test.testPreprocessingDetail.text.trim()
+      : "",
+  ].filter(Boolean);
+  const choice = oldChoice?.unknown
+    ? "Unknown"
+    : LEGACY_PREPROCESSING_CHOICE[oldChoice?.text ?? ""];
+  if ((choice || notes.length > 0) && !test.preprocessingMatch) {
+    test.preprocessingMatch = {
+      ...(choice ? { text: choice } : {}),
+      ...(notes.length > 0 ? { note: notes.join(" / ") } : {}),
+    };
+  }
+  delete training.preprocessing;
+  delete test.testPreprocessing;
+  delete test.testPreprocessingDetail;
+
+  const oldRate = groundTruth.labelAgreementRate;
+  if (oldRate) {
+    delete groundTruth.labelAgreementRate;
+    if (oldRate.text?.trim()) {
+      groundTruth.labelAgreementKind = { text: "Percent agreement" };
+      groundTruth.labelAgreementValue = { text: oldRate.text.trim() };
+    }
+  }
+
+  const basicInfo =
+    next.basicInfo && typeof next.basicInfo === "object"
+      ? { reportPurposeNote: "", ...next.basicInfo }
+      : next.basicInfo;
+
+  return {
+    ...next,
+    ...(basicInfo ? { basicInfo } : {}),
+    composerTrainingData: training,
+    composerTestData: test,
+    composerGroundTruth: groundTruth,
+  };
+}
+
+/** 값이 하나라도 들어 있는지. 마이그레이션이 "이미 적은 선택 항목"을 체크해 둘 때 쓴다. */
+function hasAnyValue(value: ComposerFieldValue | undefined): boolean {
+  if (!value) return false;
+  return Boolean(
+    value.unknown ||
+      value.text?.trim() ||
+      value.note?.trim() ||
+      value.otherText?.trim() ||
+      value.choices?.length ||
+      value.entries?.some((entry) => entry.value?.trim()),
+  );
+}
+
+/**
+ * v11 → v12 — 재료 고르기(docs/MATERIAL_PICKER.md §7). 카드마다 무엇을 받을지 저장한 체크
+ * (`materialPicks`)가 생겼다.
+ *
+ * 이미 진행 중인 사용자를 재료 고르기에서 다시 막지 않도록 **지금 상태를 저장된 것으로 옮긴다.**
+ * - 필수 카드는 모두 저장된 것으로 본다. 이미 값을 적은 선택 항목을 체크한다.
+ * - 켜져 있던 선택 카드는 저장된 것으로 보고 권장 항목을 모두 체크한다 — 종전 규칙("카드를 켜면
+ *   표준 보고 항목은 모두 입력")과 같은 뜻이다. 이미 값을 적은 선택 항목도 체크한다.
+ * - 꺼져 있던 선택 카드는 저장하지 않은 것으로 둔다.
+ */
+function migrateMaterialPicksV12(next: any): any {
+  const cards: ComposerSelection = { ...DEFAULT_COMPOSER_SELECTION, ...(next.composerCards ?? {}) };
+  const groups: Partial<Record<ComposerCardId, ComposerValueMap | undefined>> = {
+    metrics: next.composerMetrics,
+    perspective: next.composerPerspective,
+    trainingData: next.composerTrainingData,
+    testData: next.composerTestData,
+    groundTruth: next.composerGroundTruth,
+    modelEnv: next.composerModelEnv,
+  };
+  // ③ 의 선택 항목은 아직 카드 그룹이 아니라 기존 폼(`basicInfo`)에 적힌다.
+  const basicInfo = next.basicInfo ?? {};
+  const filledInBasicInfo: Record<string, boolean> = {
+    "contactExtra:website": Boolean(basicInfo.website?.trim?.()),
+    "contactExtra:fax": Boolean(basicInfo.fax?.trim?.()),
+    projectNumber: Boolean(basicInfo.projectNumber?.trim?.()),
+  };
+
+  const picks: MaterialPicks = {};
+  for (const card of COMPOSER_CARDS) {
+    if (!card.locked && !cards[card.id as OptionalCardId]) continue;
+    const values = groups[card.id] ?? {};
+    picks[card.id] = pickableIds(card.id, next.taskType ?? "").filter((id) => {
+      const field = card.fields.find((item) => item.id === id.split(":")[0]);
+      if (!field) return false;
+      if (pickKind(card, field) === "recommended") return true;
+      return filledInBasicInfo[id] ?? hasAnyValue(values[field.id]);
+    });
+  }
+  return { ...next, materialPicks: picks };
+}
+
+/**
+ * v12 → v13 — 학습·평가 전처리 일치(`preprocessingMatch`)가 ⑦ 테스트 데이터에서 ⑥ 학습 데이터 카드로
+ * 옮겨 갔다. 적어 둔 값과 재료 고르기의 체크를 함께 옮긴다. ⑥ 에 이미 값이 있으면 그것을 둔다.
+ * ⑦ 에 그 체크만 있었다면 ⑦ 은 고른 항목이 없어져 빠진다(선택 카드는 항목이 있어야 들어간다).
+ *
+ * ⑦ 에서 이 항목을 썼다는 신호가 있으면 ⑥ 에 체크하고 ⑥ 카드를 켠다 — 카드를 옮긴 것은 우리이고
+ * 사용자는 이 항목을 고른 것이므로, 옮긴 뒤에도 입력이 보여야 한다(DESIGN_GAPS R2).
+ * - v12 저장분: ⑦ 의 체크(`materialPicks.testData`)가 신호다. ⑥ 을 저장하지 않았거나 "넣지 않음"(`[]`)
+ *   으로 저장했어도 따른다.
+ * - v11 이하 저장분: v12 단계가 **지금** 레지스트리로 체크를 만들어 ⑦ 에는 이 항목이 없고, ⑥ 은 값이
+ *   아직 ⑦ 에 있어 체크되지 않는다. 그래서 "⑦ 카드가 켜져 있었고 값이 있었는지"가 신호다(v12 시절
+ *   선택 항목은 값이 있으면 체크된다는 규칙과 같다).
+ */
+function migratePreprocessingV13(next: any, fromVersion: number): any {
+  const test: ComposerValueMap = { ...(next.composerTestData ?? {}) };
+  const training: ComposerValueMap = { ...(next.composerTrainingData ?? {}) };
+  const moved = test.preprocessingMatch;
+  if (moved !== undefined) {
+    if (training.preprocessingMatch === undefined) training.preprocessingMatch = moved;
+    delete test.preprocessingMatch;
+  }
+
+  const picks: MaterialPicks = { ...(next.materialPicks ?? {}) };
+  const cards: ComposerSelection = { ...DEFAULT_COMPOSER_SELECTION, ...(next.composerCards ?? {}) };
+  const pickedIn7 = picks.testData?.includes("preprocessingMatch") ?? false;
+  const usedIn7 = fromVersion < 12 && cards.testData && hasAnyValue(moved);
+  let changed = false;
+  if (pickedIn7) {
+    picks.testData = (picks.testData ?? []).filter((id) => id !== "preprocessingMatch");
+    cards.testData = picks.testData.length > 0;
+    changed = true;
+  }
+  if (pickedIn7 || usedIn7) {
+    const trainingPicks = picks.trainingData ?? [];
+    if (!trainingPicks.includes("preprocessingMatch")) {
+      picks.trainingData = [...trainingPicks, "preprocessingMatch"];
+    }
+    cards.trainingData = true;
+    changed = true;
+  }
+
+  return {
+    ...next,
+    composerTestData: test,
+    composerTrainingData: training,
+    ...(next.materialPicks || changed ? { materialPicks: picks } : {}),
+    ...(next.composerCards || changed ? { composerCards: cards } : {}),
+  };
+}
+
+/**
+ * v13 → v14 — 재료 고르기가 다이어그램이 됐다(docs/MATERIAL_PICKER.md §11). 입력 순서를 사용자가
+ * 정하고(`cardOrder`), ⑥ ⑦ ⑧ 을 묶던 "데이터 정보" 단계가 카드마다 한 단계로 나뉘었다.
+ *
+ * - 순서는 카탈로그 순서로 시작한다 — 지금까지 걸어 온 순서와 같다.
+ * - 진행 표시의 `"dataInfo"` 는 넣어 둔 데이터 카드의 단계로 옮긴다. 데이터 정보를 마쳤으면 그
+ *   카드들을 모두 마친 것이고, 거기 서 있었으면 그 첫 카드에 서 있는 것이다. 넣은 데이터 카드가
+ *   없으면 데이터 정보 다음이던 평가 관점에 세운다.
+ */
+const DATA_CARD_STEPS = ["trainingData", "testData", "groundTruth"] as const;
+
+function migrateCardOrderV14(next: any): any {
+  const cards: ComposerSelection = { ...DEFAULT_COMPOSER_SELECTION, ...(next.composerCards ?? {}) };
+  const dataSteps: StepId[] = DATA_CARD_STEPS.filter((id) => cards[id]);
+  const completed: unknown = next.completedStepIds;
+  const completedStepIds = [
+    ...new Set(
+      (Array.isArray(completed) ? completed : []).flatMap((id: StepId | "dataInfo") =>
+        id === "dataInfo" ? dataSteps : [id],
+      ),
+    ),
+  ];
+  const currentStepId =
+    next.currentStepId === "dataInfo" ? (dataSteps[0] ?? "perspective") : next.currentStepId;
+  return { ...next, cardOrder: normalizeCardOrder(next.cardOrder), completedStepIds, currentStepId };
+}
+
+/**
+ * v14 → v15 — 재료 고르기가 빈 흐름에서 항목을 넣는 "평가 흐름 만들기"가 됐다(docs/MATERIAL_PICKER.md
+ * §12.2). 잠긴 카드의 `materialPicks` 키 뜻이 "필수는 들어가 있음"에서 "넣은 항목만"으로 바뀌었다.
+ *
+ * 진행 중인 사용자가 돌아와 "다음"에서 갇히지 않게 **종전에 받던 것을 넣은 것으로 옮긴다.**
+ * - 키가 있는 잠긴 카드: 모든 유형의 필수 항목을 더한다. 유형을 바꿔도 다시 넣지 않게 합집합이다
+ *   (셈은 지금 유형의 항목만 돈다).
+ * - ① 평가 데이터: 지연시간 컬럼(종전에는 늘 받던 권장)을 더한다. 샘플 ID 컬럼은 매핑에 id 역할이
+ *   있을 때, 클래스 레이블 설명은 빈칸이 아닌 설명이 있을 때만 더한다 — 이미 쓴 선택 항목만 옮기는
+ *   v12 의 원칙과 같다.
+ * - ⑥ 학습 데이터(켜짐): 예시 파일을 올려 두었으면 그 항목을 더한다.
+ * - 키가 없는 카드·다른 선택 카드는 그대로다. 키가 없으면 입력 쪽은 "모두 받음"이고 흐름은 빈 블록이다.
+ *
+ * 합집합이라 여러 번 돌려도 같다. 결과는 레지스트리 순서다(`orderPlaced`).
+ * `placeableIds`·`leafKind` 의 뜻을 바꾸면 이 이행의 결과가 달라진다 — 바꾸려면 새 함수를 더한다.
+ *
+ * 같은 판에서 순서도 바로잡는다: 평가 관점 → 지표가 권고에서 규칙이 됐다(D4). 지표가 관점보다 앞인
+ * 저장분은 그대로 두면 어떤 순서 이동도 `orderViolation` 에 걸려 막히므로, 관점을 지표 바로 앞으로
+ * 옮긴다(`fixPerspectiveOrderV15`).
+ */
+function migratePlacedLeavesV15(next: any): any {
+  const saved: MaterialPicks = next.materialPicks ?? {};
+  const picks: MaterialPicks = { ...saved };
+  const rows: unknown[] = Array.isArray(next.columnMapping) ? next.columnMapping : [];
+  const mappedId = rows.some((row) => (row as MappingRow | null)?.confirmedRole === "id");
+  const described = Object.values(next.classLabelDescriptions ?? {}).some(
+    (text) => typeof text === "string" && text.trim() !== "",
+  );
+  const cards: ComposerSelection = { ...DEFAULT_COMPOSER_SELECTION, ...(next.composerCards ?? {}) };
+
+  let changed = false;
+  for (const card of COMPOSER_CARDS) {
+    const current = saved[card.id];
+    if (!Array.isArray(current)) continue;
+    const add: string[] = [];
+    if (card.locked) {
+      add.push(
+        ...placeableIds(card.id, "").filter((id) => leafKind(card, fieldOfLeaf(card.id, id)!) === "required"),
+      );
+      if (card.id === "evalData") {
+        add.push("latencyColumn");
+        if (mappedId) add.push("sampleIdColumn");
+        if (described) add.push("classLabelDescriptions");
+      }
+    } else if (card.id === "trainingData" && cards.trainingData) {
+      if (next.trainingExampleFiles?.length) add.push("trainingExamples");
+      if (next.trainingUnsuitableExampleFiles?.length) add.push("trainingUnsuitableExamples");
+    }
+    if (add.length === 0) continue;
+    picks[card.id] = orderPlaced(card.id, [...current, ...add]);
+    changed = true;
+  }
+  return changed ? { ...next, materialPicks: picks } : next;
+}
+
+/** v15 의 순서 바로잡기 — 지표가 평가 관점보다 앞이면 관점을 지표 바로 앞으로. 이미 맞으면 그대로. */
+function fixPerspectiveOrderV15(next: any): any {
+  if (!Array.isArray(next.cardOrder)) return next;
+  const order = normalizeCardOrder(next.cardOrder);
+  if (order.indexOf("metrics") > order.indexOf("perspective")) return next;
+  return { ...next, cardOrder: moveCard(order, "perspective", "metrics", "before") };
+}
+
+/** 성적서 구성 카드의 값이 담긴 저장 키. ① ② ③ ④ 는 카드 값 모음이 아니거나 모름 칸이 없다. */
+const COMPOSER_VALUE_KEYS = {
+  perspective: "composerPerspective",
+  metrics: "composerMetrics",
+  trainingData: "composerTrainingData",
+  testData: "composerTestData",
+  groundTruth: "composerGroundTruth",
+  modelEnv: "composerModelEnv",
+} as const;
+
+/**
+ * v15 의 칸별 "모름" 옮기기(W3) — 모름을 칸마다 고르게 됐다.
+ *
+ * - 칸이 정해진 글·숫자 묶음(⑥ 데이터 양, ⑨ 실행 환경 — `unknownPerEntry`)의 옛 필드 모름은 **모든 칸의
+ *   모름**(`unknownKeys`)으로 옮긴다. 뜻이 같다(성적서에는 칸마다 "제공되지 않음").
+ * - ⑨ GPU 사용 여부는 필드 모름 체크를 없앴다(칸마다 "모름" 선택지가 있다). 옛 필드 모름은 두 칸 모두
+ *   "Unknown" 으로 옮긴다. 옮기지 않으면 값에 남은 `unknown` 이 체크박스 없이 입력을 잠가 갇힌다(R2).
+ *
+ * 옮긴 값에는 `unknown` 이 남지 않아 여러 번 돌려도 같다. 바뀐 것이 없으면 같은 객체를 돌려준다.
+ */
+function migrateUnknownPerEntryV15(next: any): any {
+  let result = next;
+  for (const card of COMPOSER_CARDS) {
+    const storeKey = COMPOSER_VALUE_KEYS[card.id as keyof typeof COMPOSER_VALUE_KEYS];
+    const group: ComposerValueMap | undefined = storeKey ? next[storeKey] : undefined;
+    if (!group || typeof group !== "object") continue;
+    let moved: ComposerValueMap | null = null;
+    for (const field of card.fields) {
+      const value = group[field.id];
+      if (!value?.unknown || !field.entryKeys) continue;
+      const { unknown: _unknown, ...rest } = value;
+      if (unknownPerEntry(field)) {
+        moved = { ...(moved ?? group), [field.id]: { ...rest, unknownKeys: [...field.entryKeys] } };
+      } else if (field.unknownChoice) {
+        const answer = field.unknownChoice;
+        moved = {
+          ...(moved ?? group),
+          [field.id]: { ...rest, entries: field.entryKeys.map((key) => ({ key, value: answer })) },
+        };
+      }
+    }
+    if (moved) result = { ...result, [storeKey]: moved };
+  }
+  return result;
+}
 
 /**
  * 저장된 워크플로우 상태를 현재 규칙으로 옮긴다(순수 함수 — 테스트가 직접 호출한다).
@@ -112,6 +548,56 @@ export const WORKFLOW_PERSIST_VERSION = 3;
  * 그래서 **진행 표시만 초기화하고 입력 데이터는 전부 보존한다.** 어차피 원본 파일은
  * persist 대상이 아니라 재수화 후 재업로드가 필요하므로(`onRehydrateStorage`),
  * 1단계부터 다시 밟는 것이 실제 상태와도 맞다.
+ *
+ * **v3 → v4**: 성적서 구성 화면이 생겼다(docs/COMPOSER_COMPONENTS.md). 선택 카드의
+ * 켜짐/꺼짐(`composerCards`)과 새 입력 그룹 다섯 개가 상태에 추가됐다. 여기서는 **버릴 것이
+ * 없다** — 기존 키의 뜻이 하나도 바뀌지 않았고 새 키만 생겼으므로, 기본값으로 채우기만 한다.
+ * 채우지 않으면 얕은 merge 때문에 `undefined` 로 남는다(아래 주석 참고).
+ *
+ * **v4 → v5**: 단계 목록이 카드 선택에서 계산되기 시작했다. 진행 표시를 번호
+ * (`completedSteps`·`currentStep`)에서 이름(`completedStepIds`·`currentStepId`)으로 옮긴다.
+ * v2 → v3 과 달리 **1:1 대응이 성립해 진행을 버리지 않는다** — 구 1~6 이 가리켰던 단계가
+ * 새 체계에 그대로 있고 순서도 같다(`LEGACY_STEP_IDS`).
+ *
+ * **v5 → v6**: 평가 관점이 단계에서 빠져 지표 선택 화면 안으로 들어갔다. 저장된 진행
+ * 표시에 남은 `"perspective"` 는 이제 아무 단계도 가리키지 않는다 — 그대로 두면 진입
+ * 가드가 목록에 없는 id 를 만나고, 현재 위치라면 갈 곳이 없다. 완료 목록에서는 지우고,
+ * 현재 위치면 흡수한 단계(`metrics`)로 옮긴다. 입력값(`composerPerspective`)은 그대로
+ * 살아 있다 — 받는 질문이 같고 화면만 바뀌었기 때문이다.
+ *
+ * **v6 → v7**: ⑥ ⑦ ⑧ ⑨ 의 선택지와 칸 이름이 영어가 됐다. 이 둘은 레지스트리가 그릴 때
+ * 쓰는 라벨이면서 **저장되는 값 자체**다("알려진 것 없음" 이 값으로 들어 있다). 그대로 두면
+ * 저장된 값이 어느 선택지와도 맞지 않아 라디오가 전부 빈 채로 열리고, 필수 점검은 통과하는
+ * 모순이 생긴다. 네 입력 그룹을 비운다 — ⑤ 는 선택지가 이미 영어였으므로 남긴다.
+ *
+ * **v7 → v8**: 평가 결과(`"summary"`) 단계가 폐지되고 Details 가 선택 카드 단계 앞으로
+ * 왔다(docs/WORKFLOW_REDESIGN.md §11). 완료 목록에서 `"summary"` 를 지우고, 현재 위치면
+ * 검증 다음 단계인 Details(`clientInfo`)로 옮긴다. 순서가 바뀐 나머지 단계는 이름이 그대로라
+ * 손대지 않는다 — 진입 가드가 처음 미완료 단계로 보낸다.
+ *
+ * **v8 → v9**: 입력 화면을 재료 목록에 맞췄다. ② 카드 값 그룹(`composerMetrics`)이 생겼고,
+ * 형태가 바뀐 필드(⑥ 편향 감소 노력·수집 기간, ⑦ 수집 기간, ⑧ 라벨러 수·일치도)의 옛 값을
+ * 새 형태로 옮긴다. Details 의 "Report notes" 칸이 없어져, 거기 적힌 메모는 ⑥ 학습 데이터
+ * 설명으로 간다(`migrateComposerShapesV9`).
+ *
+ * **v9 → v10**: Details 의 학습 데이터 폼을 없애고 ⑥ 카드 하나로 받는다. 폼에 적은 이름·건수·
+ * 형식을 ⑥ 으로 옮기고 `datasetInfo` 를 지운다(`migrateTrainingDataV10`).
+ *
+ * **v10 → v11**: 전처리 세 칸을 ⑦ 한 칸으로, ⑧ 라벨 일치도를 종류 + 값으로 바꾸고, 성적서 용도에
+ * 덧붙이는 글을 더했다(`migrateDecisionsV11`).
+ *
+ * **v11 → v12**: 성적서 구성 화면이 재료 고르기가 됐다. 카드마다 저장한 체크(`materialPicks`)를
+ * 지금 상태에서 만든다(`migrateMaterialPicksV12`).
+ *
+ * **v12 → v13**: 학습·평가 전처리 일치가 ⑦ 에서 ⑥ 학습 데이터 카드로 옮겨 갔다
+ * (`migratePreprocessingV13`).
+ *
+ * **v13 → v14**: 입력 순서(`cardOrder`)가 생기고 데이터 정보 단계가 카드마다 나뉘었다
+ * (`migrateCardOrderV14`).
+ *
+ * **v14 → v15**: 재료 고르기가 빈 흐름에서 항목을 넣는 평가 흐름 만들기가 됐다. 종전에 받던 필수·
+ * 지연시간·이미 쓴 항목을 넣은 것으로 옮긴다(`migratePlacedLeavesV15`). 하위 단계 둘: 평가 관점 → 지표
+ * 순서 바로잡기(`fixPerspectiveOrderV15`, D4), 칸별 "모름" 옮기기(`migrateUnknownPerEntryV15`, W3).
  */
 export function migrateWorkflowState(persisted: any, version: number): any {
   if (!persisted || version >= WORKFLOW_PERSIST_VERSION) return persisted;
@@ -129,17 +615,129 @@ export function migrateWorkflowState(persisted: any, version: number): any {
   }
 
   // v2 → v3 — 단계 번호 체계 교체. 진행 표시만 버리고 입력은 남긴다.
+  // 숫자 1 은 **구 번호 체계의 업로드**다. 아래 v4 → v5 가 이것을 id 로 옮긴다.
   if (version < 3) {
-    next = { ...next, completedSteps: [], currentStep: STEP.UPLOAD };
+    next = { ...next, completedSteps: [], currentStep: 1 };
+  }
+
+  // v3 → v4 — 성적서 구성 화면이 생겼다. 카드 선택과 새 입력 그룹 여섯 키를 채운다.
+  //
+  // 기본값을 **여기서** 넣는 이유: zustand 의 merge 는 얕아서, 옛 저장분에 없는 키는
+  // 초기 상태의 값으로 채워지지 않고 `undefined` 로 남는다. 그 상태로 화면이 열리면
+  // 체크박스가 `undefined` 를 읽어 선택 카드가 하나도 안 켜진 것처럼 보인다.
+  // v1 → v2 와 같은 방식으로 저장분을 직접 패치한다.
+  if (version < 4) {
+    next = { ...next, ...INITIAL_COMPOSER_STATE };
+  }
+
+  // v4 → v5 — 진행 표시를 번호에서 이름으로 옮긴다.
+  //
+  // v2 → v3 과 달리 **1:1 대응이 성립한다.** 구 1~6 이 가리켰던 단계가 새 체계에도 그대로
+  // 있고 순서도 같다(사이에 평가 관점이 끼어들었을 뿐이다). 그래서 진행을 버리지 않고
+  // 옮긴다 — 다 걸어온 사용자를 다시 1단계로 돌려보낼 이유가 없다.
+  //
+  // 새로 생긴 단계(평가 관점·데이터 정보·모델과 환경·의뢰자 정보)는 미완료로 남는다.
+  // 가드가 사용자를 처음 미완료 단계로 보내는데, 그 입력을 실제로 받아야 하므로 **옳은
+  // 동작**이다.
+  if (version < 5) {
+    const legacyCompleted: unknown = next.completedSteps;
+    const completedStepIds = (Array.isArray(legacyCompleted) ? legacyCompleted : [])
+      .map((step: unknown) => LEGACY_STEP_IDS[Number(step) - 1])
+      .filter((id): id is string => Boolean(id));
+
+    const currentStepId = LEGACY_STEP_IDS[Number(next.currentStep) - 1] ?? "upload";
+
+    const { completedSteps, currentStep, ...rest } = next;
+    void completedSteps;
+    void currentStep;
+    next = { ...rest, completedStepIds, currentStepId };
+  }
+
+  // v5 → v6 — 평가 관점이 단계에서 빠지고 지표 선택 화면 안으로 들어갔다.
+  if (version < 6) {
+    const completed: unknown = next.completedStepIds;
+    next = {
+      ...next,
+      completedStepIds: (Array.isArray(completed) ? completed : []).filter(
+        (id: unknown) => id !== "perspective",
+      ),
+      currentStepId: next.currentStepId === "perspective" ? "metrics" : next.currentStepId,
+    };
+  }
+
+  // v6 → v7 — ⑥ ⑦ ⑧ ⑨ 의 선택지·칸 이름이 영어로 바뀌었다. 옛 한국어 값은 새 선택지와
+  // 짝지을 수 없으므로(한 글자씩 대응표를 만들면 선택지를 고칠 때마다 또 틀린다) 비운다.
+  if (version < 7) {
+    next = {
+      ...next,
+      composerTrainingData: {},
+      composerTestData: {},
+      composerGroundTruth: {},
+      composerModelEnv: {},
+    };
+  }
+
+  // v7 → v8 — 평가 결과 단계가 폐지됐다.
+  if (version < 8) {
+    const completed: unknown = next.completedStepIds;
+    next = {
+      ...next,
+      completedStepIds: (Array.isArray(completed) ? completed : []).filter(
+        (id: unknown) => id !== "summary",
+      ),
+      currentStepId: next.currentStepId === "summary" ? "clientInfo" : next.currentStepId,
+    };
+  }
+
+  // v8 → v9 — 입력 형태 변경. 옛 값을 새 그릇으로 옮긴다.
+  if (version < 9) {
+    next = migrateComposerShapesV9(next);
+  }
+
+  // v9 → v10 — Details 의 학습 데이터 폼을 ⑥ 카드로 합쳤다.
+  if (version < 10) {
+    next = migrateTrainingDataV10(next);
+  }
+
+  // v10 → v11 — 전처리 한 칸, 라벨 일치도 종류, 성적서 용도 덧붙이는 글.
+  if (version < 11) {
+    next = migrateDecisionsV11(next);
+  }
+
+  // v11 → v12 — 재료 고르기. 지금 상태를 저장된 체크로 옮긴다.
+  if (version < 12) {
+    next = migrateMaterialPicksV12(next);
+  }
+
+  // v12 → v13 — 전처리 일치를 ⑦ 에서 ⑥ 으로.
+  if (version < 13) {
+    next = migratePreprocessingV13(next, version);
+  }
+
+  // v13 → v14 — 사용자 입력 순서, 데이터 정보 단계 분리.
+  if (version < 14) {
+    next = migrateCardOrderV14(next);
+  }
+
+  // v14 → v15 — 평가 흐름 만들기. 종전에 받던 항목을 넣은 것으로 옮긴다.
+  if (version < 15) {
+    next = migrateUnknownPerEntryV15(fixPerspectiveOrderV15(migratePlacedLeavesV15(next)));
   }
 
   return next;
 }
 
 interface WorkflowState {
-  // Navigation
-  currentStep: number;
-  completedSteps: number[];
+  /**
+   * 지금 있는 단계와 마친 단계. **번호가 아니라 이름이다.**
+   *
+   * 걸을 단계 목록은 `composerCards`·`cardOrder` 에서 계산되므로 번호의 뜻이 선택에 따라 달라진다.
+   * 저장소를 왕복하는 값이 그런 번호면 카드를 토글할 때마다 진행 표시가 조용히 어긋난다
+   * (docs/WORKFLOW_REDESIGN.md §3.3 이 경고한 상황). 화면에 보일 번호는 목록 위치에서
+   * 그때그때 만든다(`stepNumberOf`).
+   */
+  currentStepId: StepId;
+  completedStepIds: StepId[];
 
   // Step 1 — Basic info
   basicInfo: BasicInfoFormData;
@@ -151,13 +749,13 @@ interface WorkflowState {
   // Step 3 — Metric details
   metricDetails: MetricDetailStateMap;
 
-  // Step 4 — Data upload
+  // Step 4 — Evaluation file
   uploadedFile: UploadedFileInfo | null;
   rawFile: File | null;
   metadata: any | null;
+  /** ⑥ 학습 데이터의 예시 파일. ⑥ 을 넣었을 때 학습 데이터 단계에서 받는다. */
   trainingExampleFiles: UploadedFileInfo[];
   trainingUnsuitableExampleFiles: UploadedFileInfo[];
-  datasetInfo: DatasetInfoFormData;
 
   /**
    * 결정 임계값 — 하드 예측이 없을 때 확률에서 예측을 파생하는 기준(ISSUES.md A-01).
@@ -171,12 +769,16 @@ interface WorkflowState {
 
   /**
    * 백엔드가 '사용자 안내용'으로 내려보낸 값들(ISSUES.md B-03·B-04·D-16·A-12).
-   * 각각 4단계·5단계에서 도착하지만 **6단계 상단에 합쳐서** 보여준다 —
-   * 5단계는 안내가 도착하는 순간 이미 다음 화면으로 넘어가 있다.
+   * 각각 평가 데이터·매핑 단계에서 도착하지만 **검증 단계 상단에 합쳐서** 보여준다 —
+   * 매핑 단계는 안내가 도착하는 순간 이미 다음 화면으로 넘어가 있다.
    */
   columnNotes: ColumnNote[];
   mappingWarnings: MappingWarning[];
-  /** confirm-mapping 이 계산 가능하다고 답한 지표 ID(‘N/M’ 표시용, A-12). */
+  /**
+   * confirm-mapping 이 계산 가능하다고 답한 지표 ID(A-12). 지표 화면이 계산할 수 없는 지표를
+   * 비활성으로 둘 때 정본으로 쓴다(docs/MATERIAL_PICKER.md §3, `metricAvailability`). 매핑을
+   * 바꾸면 비운다 — 그 뒤의 답이 아니기 때문이다.
+   */
   availableMetricIds: string[] | null;
 
   // Step 5 — Column mapping
@@ -188,17 +790,68 @@ interface WorkflowState {
   validationResult: ValidateDataResponseData | null;
 
   /**
-   * 과거 평가 스냅샷을 복원했거나 저장소에서 재수화해, 입력은 있는데 원본 파일이 없는 상태.
-   * 파일은 어떤 경우에도 복원할 수 없으므로 재업로드를 유도해야 한다(ISSUES.md E-01·E-09).
+   * 저장소에서 재수화해, 입력은 있는데 원본 파일이 없는 상태.
+   * 파일은 어떤 경우에도 복원할 수 없으므로 재업로드를 유도해야 한다(ISSUES.md E-01).
    */
   needsFileReupload: boolean;
 
   /** 가장 최근에 만든 평가 run 의 id. 성적서로 되돌아가는 경로에 쓴다(ISSUES.md E-16). */
   lastRunId: string | null;
 
+  /**
+   * 재료 선택 점검의 생성 전 안내를 보고도 진행한 기록(재료 선택 점검 6절). 검증 화면의 "다음"이
+   * 남기고, 성적서 6.0 이 "확인 후 진행"으로 찍는다(`checkMaterialSelection` 이 인정 여부를 정함).
+   *
+   * 최상위 새 키라 persist 판을 올리지 않았다 — 옛 저장분에는 없고, 얕은 병합으로 초기값
+   * null 이 남는다. 작업 유형을 바꾸면 비운다.
+   */
+  materialCheckAck: MaterialCheckAck | null;
+
+  /**
+   * 선택 카드(⑥~⑨)가 성적서에 들어가는지.
+   *
+   * 필수 카드(①~⑤)는 늘 들어가 상태로 들지 않는다. 이 값이 **걸을 단계 목록을 정한다**
+   * (`utils/domain/workflowSteps.ts` 의 `buildStepList`). 평가 흐름 만들기에서 선택 카드의 항목을
+   * 바꿀 때 함께 맞춘다(`setMaterialPick`) — 항목이 하나라도 들어가면 켜진다.
+   */
+  composerCards: ComposerSelection;
+
+  /**
+   * 평가 흐름 만들기에서 카드마다 넣은 항목(docs/MATERIAL_PICKER.md §12.2). 필수 항목도 넣어야
+   * 들어 있다. 넣고 빼는 즉시 바뀐다.
+   *
+   * 두 쪽이 다르게 읽는다.
+   * - 입력 쪽(`isFieldPicked`): 키가 없으면 그 카드의 필드를 모두 받는다. 필수는 늘 받는다.
+   * - 흐름 쪽(`isLeafPlaced`): 키가 없으면 아무것도 놓이지 않았다.
+   *
+   * 키는 사용자가 항목을 넣거나 블록을 비울 때만 생긴다 — 화면에 들어오기만 해서는 만들지 않는다.
+   * 잠긴 카드의 `[]` 는 사용자가 비운 것 하나의 뜻이다(persist v15).
+   */
+  materialPicks: MaterialPicks;
+
+  /**
+   * 입력 순서 — 사용자가 다이어그램에서 정한 카드 순서(`utils/domain/cardOrder.ts`). 넣지 않은
+   * 선택 카드도 자리를 갖는다. 걸을 단계 목록이 이 순서를 따른다.
+   */
+  cardOrder: ComposerCardId[];
+
+  /**
+   * 카드별 입력값. 키는 재료 레지스트리의 `field.id` 다(`data/reportComposer.ts`).
+   *
+   * 성적서 매퍼가 받는 필드의 값만 골라 인쇄하고(`pickedValues`), 레지스트리의 `sentToAi` 필드는
+   * AI 서술 요청에도 실린다. ② 핵심 지표는 판정에도 쓰인다(`resolveCoreMetricIds`). ⑥ 은 Details 의
+   * 학습 데이터 폼을 흡수해 유일한 입력처다(persist v10).
+   */
+  composerMetrics: ComposerValueMap;
+  composerPerspective: ComposerValueMap;
+  composerTrainingData: ComposerValueMap;
+  composerTestData: ComposerValueMap;
+  composerGroundTruth: ComposerValueMap;
+  composerModelEnv: ComposerValueMap;
+
   // Actions — Navigation
-  setCurrentStep: (step: number) => void;
-  markStepCompleted: (step: number) => void;
+  setCurrentStepId: (id: StepId) => void;
+  markStepIdCompleted: (id: StepId) => void;
 
   // Actions — Step 1
   setBasicInfo: (
@@ -227,11 +880,6 @@ interface WorkflowState {
   setTrainingUnsuitableExampleFiles: (
     value: UploadedFileInfo[] | ((prev: UploadedFileInfo[]) => UploadedFileInfo[]),
   ) => void;
-  setDatasetInfo: (
-    value:
-      | DatasetInfoFormData
-      | ((prev: DatasetInfoFormData) => DatasetInfoFormData),
-  ) => void;
 
   // Actions — Step 5
   setColumnMapping: (
@@ -246,15 +894,41 @@ interface WorkflowState {
   // Actions — Step 6
   setValidationResult: (result: ValidateDataResponseData | null) => void;
   setLastRunId: (runId: string | null) => void;
+  setMaterialCheckAck: (ack: MaterialCheckAck | null) => void;
+
+  // Actions — 재료 고르기
+  /**
+   * 카드 하나의 항목을 바꾼다. 선택 카드면 항목이 하나 이상일 때 켜고, 비어 있으면 끈다. 새로 켜진
+   * 선택 카드는 그 레인 맨 아래로 간다(`orderAfterPlacing`).
+   */
+  setMaterialPick: (cardId: ComposerCardId, ids: string[]) => void;
+  setCardOrder: (order: ComposerCardId[]) => void;
+  setComposerMetrics: (
+    value: ComposerValueMap | ((prev: ComposerValueMap) => ComposerValueMap),
+  ) => void;
+  setComposerPerspective: (
+    value: ComposerValueMap | ((prev: ComposerValueMap) => ComposerValueMap),
+  ) => void;
+  setComposerTrainingData: (
+    value: ComposerValueMap | ((prev: ComposerValueMap) => ComposerValueMap),
+  ) => void;
+  setComposerTestData: (
+    value: ComposerValueMap | ((prev: ComposerValueMap) => ComposerValueMap),
+  ) => void;
+  setComposerGroundTruth: (
+    value: ComposerValueMap | ((prev: ComposerValueMap) => ComposerValueMap),
+  ) => void;
+  setComposerModelEnv: (
+    value: ComposerValueMap | ((prev: ComposerValueMap) => ComposerValueMap),
+  ) => void;
 
   // Reset
   resetWorkflow: () => void;
-  loadWorkflowSnapshot: (snapshot: MapWorkflowToReportInput) => void;
 }
 
 const INITIAL_STATE = {
-  currentStep: 1,
-  completedSteps: [] as number[],
+  currentStepId: "clientInfo" as StepId,
+  completedStepIds: [] as StepId[],
   basicInfo: DEFAULT_BASIC_INFO,
   taskType: "" as TaskType | "",
   selectedMetricIds: [] as string[],
@@ -264,7 +938,6 @@ const INITIAL_STATE = {
   metadata: null as any | null,
   trainingExampleFiles: [] as UploadedFileInfo[],
   trainingUnsuitableExampleFiles: [] as UploadedFileInfo[],
-  datasetInfo: DEFAULT_DATASET_INFO,
   columnNotes: [] as ColumnNote[],
   mappingWarnings: [] as MappingWarning[],
   availableMetricIds: null as string[] | null,
@@ -274,7 +947,43 @@ const INITIAL_STATE = {
   validationResult: null as ValidateDataResponseData | null,
   needsFileReupload: false,
   lastRunId: null as string | null,
+  materialCheckAck: null as MaterialCheckAck | null,
+  ...INITIAL_COMPOSER_STATE,
 };
+
+/**
+ * 카드 항목을 바꾸고 선택 카드의 켜짐(`composerCards`)과 순서를 맞춘다.
+ *
+ * 선택 카드는 항목이 하나라도 있으면 켜진다. 꺼져 있다가 켜진 카드는 그 레인 맨 아래로 보낸다 —
+ * 넣지 않은 동안 남아 있던 옛 자리가 순서 규칙(`ORDER_RULES`)을 깨지 않게 한다. 잠긴 카드는
+ * 제자리다(`orderAfterPlacing`).
+ */
+function applyMaterialPicks(
+  state: Pick<WorkflowState, "materialPicks" | "composerCards" | "cardOrder" | "taskType" | "columnMapping">,
+  changes: MaterialPicks,
+): Partial<WorkflowState> {
+  const composerCards = { ...state.composerCards };
+  let cardOrder = state.cardOrder;
+  for (const [cardId, ids] of Object.entries(changes) as Array<[ComposerCardId, string[]]>) {
+    if (!(OPTIONAL_CARD_IDS as string[]).includes(cardId)) continue;
+    const on = ids.length > 0;
+    if (on) cardOrder = orderAfterPlacing(cardOrder, composerCards, cardId);
+    composerCards[cardId as OptionalCardId] = on;
+  }
+  const materialPicks = { ...state.materialPicks, ...changes };
+  // ① 의 항목이 바뀌면 매핑이 받는 역할도 바뀐다 — 뺀 항목의 역할은 맡아 두고, 다시 넣은 항목의 역할은
+  // 돌려준다(docs/MATERIAL_PICKER.md §12.4). 매핑이 바뀌면 가용 지표는 이 매핑의 답이 아니다.
+  const columnMapping =
+    "evalData" in changes
+      ? restrictMappingRoles(state.columnMapping, state.taskType, materialPicks.evalData)
+      : state.columnMapping;
+  return {
+    materialPicks,
+    composerCards,
+    cardOrder,
+    ...(columnMapping !== state.columnMapping ? { columnMapping, availableMetricIds: null } : {}),
+  };
+}
 
 /** persist 저장소 키. 테스트와 운영이 같은 값을 보도록 export 한다. */
 export const WORKFLOW_STORAGE_KEY = "ml-evaluation-workflow";
@@ -299,11 +1008,11 @@ export const useWorkflowStore = create<WorkflowState>()(
       ...INITIAL_STATE,
 
       // Navigation
-      setCurrentStep: (step) => set({ currentStep: step }),
+      setCurrentStepId: (id) => set({ currentStepId: id }),
 
-      markStepCompleted: (step) =>
+      markStepIdCompleted: (id) =>
         set((state) => ({
-          completedSteps: [...new Set([...state.completedSteps, step])],
+          completedStepIds: [...new Set([...state.completedStepIds, id])],
         })),
 
       // Step 1
@@ -333,11 +1042,26 @@ export const useWorkflowStore = create<WorkflowState>()(
           // 작업 유형이 바뀌면 뒤 단계의 근거가 전부 사라진다. 완료 표시와 데이터셋 정보를
           // 남겨두면 (a) 빈 상태로 뒤 단계에 점프할 수 있고 (b) 이전 평가의 표본 수가 새
           // 성적서에 인쇄된다(ISSUES.md E-08). persist 도입 전에는 새로고침이 사실상
-          // 초기화 역할을 해서 세션 안에 갇혀 있던 오염이다.
-          completedSteps: [],
-          datasetInfo: DEFAULT_DATASET_INFO,
+          // 초기화 역할을 해서 세션 안에 갇혀 있던 오염이다. 학습 데이터 정보는 이제 ⑥ 카드
+          // 값이라 아래 `EMPTY_COMPOSER_INPUTS` 가 함께 비운다.
+          completedStepIds: [],
           needsFileReupload: false,
+          // 진행 기록은 그때의 경고에 대한 것이다. 유형이 바뀌면 점검 줄 자체가 달라진다.
+          materialCheckAck: null,
           // basicInfo 는 유지한다 — 작업 유형만 바꿨는데 1단계 입력까지 날아가면 안 된다.
+          /**
+           * 성적서 구성의 **입력값은 비우고 카드 선택은 남긴다.**
+           *
+           * 입력값을 비우는 이유: ⑤ 평가 관점은 유형마다 묻는 질문이 다르고(이진은 중요 오류
+           * 유형, 그 외는 클래스 중요도), ⑥ 클래스별 데이터 양은 업로드한 클래스 목록에
+           * 매여 있다. ② 핵심 지표는 고른 지표 중에서 고르는데 지표 선택이 위에서 비워지고,
+           * 지표 선택 이유는 멀티레이블에서만 묻는다. 유형이 바뀌면 모두 근거가 사라진다.
+           *
+           * 카드 선택을 남기는 이유: "어떤 정보를 성적서에 넣을지"는 분류 유형과 무관한
+           * 결정이고, 9개 카드 모두 전 유형에 적용된다. 어차피 유형을 바꾸면 재료 고르기를
+           * 다시 지나가므로 거기서 고칠 수 있다.
+           */
+          ...EMPTY_COMPOSER_INPUTS,
         }),
 
       // Step 2
@@ -373,18 +1097,20 @@ export const useWorkflowStore = create<WorkflowState>()(
             typeof value === "function" ? value(state.trainingUnsuitableExampleFiles) : value,
         })),
 
-      setDatasetInfo: (value) =>
-        set((state) => ({
-          datasetInfo:
-            typeof value === "function" ? value(state.datasetInfo) : value,
-        })),
-
       // Step 5
       setColumnMapping: (value) =>
-        set((state) => ({
-          columnMapping:
+        set((state) => {
+          // 모든 매핑 쓰기(업로드의 분석 결과·역할 변경·시연 시드)가 여기를 지난다. 평가 흐름에 놓지
+          // 않은 항목의 역할은 받지 않는다 — 맡아 둔다(docs/MATERIAL_PICKER.md §12.4).
+          const next = restrictMappingRoles(
             typeof value === "function" ? value(state.columnMapping) : value,
-        })),
+            state.taskType,
+            state.materialPicks.evalData,
+          );
+          // 매핑이 바뀌면 확정 응답의 가용 지표는 이 매핑의 답이 아니다. 지표 화면이 낡은 답으로
+          // 지표를 막거나 열지 않도록 비운다 — 그때는 지금 매핑으로 다시 계산한다.
+          return next === state.columnMapping ? {} : { columnMapping: next, availableMetricIds: null };
+        }),
 
       setClassLabelDescriptions: (value) =>
         set((state) => ({
@@ -398,45 +1124,52 @@ export const useWorkflowStore = create<WorkflowState>()(
       setValidationResult: (result) => set({ validationResult: result }),
 
       setLastRunId: (runId) => set({ lastRunId: runId }),
+      setMaterialCheckAck: (ack) => set({ materialCheckAck: ack }),
+
+      // 평가 흐름 만들기
+      setMaterialPick: (cardId, ids) => set((state) => applyMaterialPicks(state, { [cardId]: ids })),
+
+      setCardOrder: (order) => set({ cardOrder: normalizeCardOrder(order) }),
+
+      setComposerMetrics: (value) =>
+        set((state) => ({
+          composerMetrics:
+            typeof value === "function" ? value(state.composerMetrics) : value,
+        })),
+
+      setComposerPerspective: (value) =>
+        set((state) => ({
+          composerPerspective:
+            typeof value === "function" ? value(state.composerPerspective) : value,
+        })),
+
+      setComposerTrainingData: (value) =>
+        set((state) => ({
+          composerTrainingData:
+            typeof value === "function" ? value(state.composerTrainingData) : value,
+        })),
+
+      setComposerTestData: (value) =>
+        set((state) => ({
+          composerTestData:
+            typeof value === "function" ? value(state.composerTestData) : value,
+        })),
+
+      setComposerGroundTruth: (value) =>
+        set((state) => ({
+          composerGroundTruth:
+            typeof value === "function" ? value(state.composerGroundTruth) : value,
+        })),
+
+      setComposerModelEnv: (value) =>
+        set((state) => ({
+          composerModelEnv:
+            typeof value === "function" ? value(state.composerModelEnv) : value,
+        })),
 
       // Reset
-      resetWorkflow: () => set(INITIAL_STATE),
-
-      loadWorkflowSnapshot: (snapshot) =>
-        set({
-          basicInfo: snapshot.basicInfo,
-          taskType: snapshot.taskType,
-          selectedMetricIds: snapshot.selectedMetricIds,
-          metricDetails: snapshot.metricDetails,
-          uploadedFile: snapshot.uploadedFile,
-          rawFile: null,
-          metadata: null,
-          trainingExampleFiles: snapshot.trainingExampleFiles,
-          trainingUnsuitableExampleFiles: snapshot.trainingUnsuitableExampleFiles,
-          datasetInfo: snapshot.datasetInfo,
-          decisionThreshold: null,
-          columnNotes: [],
-          mappingWarnings: [],
-          availableMetricIds: null,
-          columnMapping: snapshot.columnMapping,
-          classLabelDescriptions: snapshot.classLabelDescriptions,
-          validationResult: null,
-          currentStep: STEP.UPLOAD,
-          /**
-           * 원본 파일은 복원할 수 없다(File 객체).
-           *
-           * 2026-09-19 재배치로 **업로드가 1단계**가 됐다. 파일이 없으면 1단계부터 성립하지
-           * 않으므로 완료로 표시할 단계가 하나도 없다 — 종전의 `[1, 2, 3]` 은 구 번호 체계
-           * (기본정보·지표·지표상세)를 가리키던 값이라, 그대로 두면 새 체계에서
-           * 업로드·지표·매핑이 '완료'로 둔갑해 사용자가 빈 상태로 뒤 단계에 진입한다
-           * (ISSUES.md E-09 가 막으려던 바로 그 상태).
-           *
-           * 지표 선택·매핑 **입력 자체는 위에서 복원**했으므로, 파일만 다시 올리면
-           * 그대로 이어서 진행할 수 있다.
-           */
-          completedSteps: [],
-          needsFileReupload: true,
-        }),
+      // 새 평가를 시작하는 초기화다 — 평가 의뢰일을 지금의 오늘로 채운다(B1②).
+      resetWorkflow: () => set({ ...INITIAL_STATE, basicInfo: createDefaultBasicInfo() }),
     }),
     {
       name: WORKFLOW_STORAGE_KEY,
@@ -460,7 +1193,7 @@ export const useWorkflowStore = create<WorkflowState>()(
             window.localStorage.setItem(name, value);
           } catch {
             // 용량 초과 등으로 저장에 실패해도 진행 중인 입력을 잃게 하지 않는다.
-            // (저장소가 가득 찬 상황의 안내는 6단계 저장 경로가 담당한다 — ISSUES.md E-11)
+            // (저장소가 가득 찬 상황의 안내는 검증 단계의 저장 경로가 담당한다 — ISSUES.md E-11)
           }
         },
         removeItem: (name) => window.localStorage.removeItem(name),
@@ -469,9 +1202,9 @@ export const useWorkflowStore = create<WorkflowState>()(
        * 저장 대상 선별.
        * - `rawFile` 제외: File 객체는 JSON 직렬화가 원리적으로 불가능하다. 대신
        *   `uploadedFile`(메타)은 저장해 "파일이 있었는데 지금은 없다"를 감지한다.
-       * - `validationResult` 제외: 응답 전문이라 용량 기여가 크고 6단계 재진입 시
+       * - `validationResult` 제외: 응답 전문이라 용량 기여가 크고 검증 단계 재진입 시
        *   다시 받으면 된다(ISSUES.md E-11).
-       * - `metadata` 포함: 5단계의 양성 클래스·감지 클래스·컬럼 고유값이 여기 있어,
+       * - `metadata` 포함: 매핑 단계의 양성 클래스·감지 클래스·컬럼 고유값이 여기 있어,
        *   빼면 새로고침 후 매핑 화면이 무너져 persist 의 효용이 절반이 된다.
        *   백엔드가 컬럼당 고유값을 200개로 상한하므로 용량은 감당 가능하다.
        */

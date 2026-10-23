@@ -5,11 +5,13 @@
  * 컬럼 매핑, 메타데이터, 데이터셋 정보, 업로드 파일 등)를 채워진 상태로 시연한다.
  * 레이아웃 셸에서 도메인 시드 로직을 분리해 셸이 순수 오케스트레이션만 담당하도록 한다.
  */
-import { STEP_PATHS, useWorkflowStore } from "../stores/useWorkflowStore";
+import { useWorkflowStore } from "../stores/useWorkflowStore";
+import { buildStepList } from "./workflowSteps";
+import type { StepId } from "../../types/workflow.types";
 
 type WorkflowStore = ReturnType<typeof useWorkflowStore.getState>;
 
-export function seedShowcaseData(store: WorkflowStore, step: number) {
+export function seedShowcaseData(store: WorkflowStore, step: StepId) {
   store.setBasicInfo((prev) => ({
     ...prev,
     companyName: prev.companyName || "Apex AI Lab",
@@ -81,15 +83,26 @@ export function seedShowcaseData(store: WorkflowStore, step: number) {
     positive_class_ambiguous: false,
     class_distribution: { "0": 52, "1": 48 },
   });
-  store.setDatasetInfo({
-    trainingDatasetName: "Binary review dataset",
-    trainingSampleCount: "100",
-    validationSampleCount: "100",
-    trainingDataFormat: "Structured JSON",
-    trainingClassDistribution: "Negative 52 / Positive 48",
-    trainingDataDescription:
-      "Customer review sentiment samples labeled by human annotators.",
-  });
+  // 학습 데이터는 ⑥ 카드가 받는다(종전의 Details 학습 데이터 폼을 흡수했다). 카드가 꺼져
+  // 있으면 성적서에 찍히지 않는다.
+  store.setComposerTrainingData((prev) => ({
+    ...prev,
+    trainingDatasetName: { text: "Binary review dataset" },
+    trainingVolume: {
+      entries: [
+        { key: "Training", value: "100" },
+        { key: "Validation", value: "100" },
+      ],
+    },
+    trainingClassVolume: {
+      entries: [
+        { key: "0", value: "52" },
+        { key: "1", value: "48" },
+      ],
+    },
+    trainingDataFormat: { text: "Structured JSON" },
+    trainingDescription: { text: "Customer review sentiment samples labeled by human annotators." },
+  }));
   store.setUploadedFile({
     name: "eval_result_1775625159458.json",
     size: "42 KB",
@@ -101,8 +114,8 @@ export function seedShowcaseData(store: WorkflowStore, step: number) {
   store.setTrainingUnsuitableExampleFiles([
     { name: "edge_case_examples.json", size: "12 KB", type: "application/json" },
   ]);
-  // 시연은 어느 단계로 들어와도 화면이 채워져 보여야 하므로 평가 구간을 전부 완료로 둔다.
-  // 번호를 직접 쓰지 않는다 — 단계 순서가 바뀌면 여기가 조용히 어긋난다.
-  STEP_PATHS.forEach((_, index) => store.markStepCompleted(index + 1));
-  store.setCurrentStep(step);
+  // 시연은 어느 단계로 들어와도 화면이 채워져 보여야 하므로 전 단계를 완료로 둔다.
+  // 목록은 고른 카드에서 계산한다 — 단계가 늘거나 줄어도 여기가 따라간다.
+  buildStepList(store.composerCards, store.cardOrder).forEach((id) => store.markStepIdCompleted(id));
+  store.setCurrentStepId(step);
 }

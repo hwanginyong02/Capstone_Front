@@ -1,89 +1,69 @@
-import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { cn } from "../../utils/styling/styles";
-import type { FilterMode, MappingRole, MappingRow } from "../../types/mapping.types";
-import { getRowMatchState } from "../../utils/domain/mappingHelpers";
+import type { MappingRole, MappingRow } from "../../types/mapping.types";
+import { getRowMatchState, isDuplicateRole } from "../../utils/domain/mappingHelpers";
+import { leafOfRole, roleOptionLabel } from "../../utils/domain/mappingPicks";
+import { fieldOfLeaf } from "../../data/reportComposer";
+import { Badge } from "../ui/badge";
 
 interface DetectedMappingTableProps {
-  filterMode: FilterMode;
-  setFilterMode: (mode: FilterMode) => void;
-  visibleRows: MappingRow[];
+  rows: MappingRow[];
   roleCounts: Partial<Record<MappingRole, number>>;
   handleRoleChange: (columnName: string, newRole: string) => void;
   roleOptions: Array<{ value: MappingRole; label: string }>;
+  /** 맡아 둔 행의 "평가 흐름 만들기에서 넣기". 없으면 버튼을 그리지 않는다. */
+  onPlaceLeaf?: (leafId: string) => void;
+}
+
+/** 맡아 둔 역할을 받는 ① 항목의 id 와 이름. */
+function heldLeaf(role: MappingRole): { id: string; label: string } | null {
+  const id = leafOfRole(role);
+  const field = id ? fieldOfLeaf("evalData", id) : undefined;
+  return id && field ? { id, label: field.label } : null;
 }
 
 export function DetectedMappingTable({
-  filterMode,
-  setFilterMode,
-  visibleRows,
+  rows,
   roleCounts,
   handleRoleChange,
   roleOptions,
+  onPlaceLeaf,
 }: DetectedMappingTableProps) {
   return (
     <Card>
-      <CardHeader className="gap-4">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <CardTitle className="text-lg font-semibold">Detected mapping</CardTitle>
-            <CardDescription className="text-sm text-muted-foreground">
-              Check whether each uploaded column was mapped to the right role, then edit only the ones that need correction.
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={filterMode === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilterMode("all")}
-            >
-              All rows
-            </Button>
-            <Button
-              variant={filterMode === "issues" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilterMode("issues")}
-            >
-              Issues only
-            </Button>
-            <Button
-              variant={filterMode === "edited" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilterMode("edited")}
-            >
-              Edited only
-            </Button>
-          </div>
-        </div>
+      <CardHeader>
+        <CardTitle className="text-lg font-semibold">찾은 매핑</CardTitle>
+        <CardDescription className="text-sm text-muted-foreground">
+          올린 컬럼마다 맞는 역할에 매핑됐는지 확인하고, 고쳐야 할 것만 바꾸세요.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="rounded-lg border border-border overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40">
-                <TableHead className="text-xs uppercase text-muted-foreground">Uploaded column</TableHead>
-                <TableHead className="text-xs uppercase text-muted-foreground">Sample values</TableHead>
-                <TableHead className="text-xs uppercase text-muted-foreground">Role</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground">올린 컬럼</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground">값 예시</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground">역할</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {visibleRows.map((row) => {
-                const duplicate = Boolean(
-                  row.confirmedRole &&
-                  row.confirmedRole !== "ignore" &&
-                  row.confirmedRole !== "prob_class_*" &&
-                  row.confirmedRole !== "prob_label_*" &&
-                  (roleCounts[row.confirmedRole] ?? 0) > 1
-                );
-                const needsAttention = duplicate || row.confirmedRole === null || row.warnings.length > 0;
+              {rows.map((row) => {
+                const duplicate = isDuplicateRole(row.confirmedRole, roleCounts);
+                const needsAttention = duplicate || row.warnings.length > 0;
                 const matchState = getRowMatchState(row, duplicate);
 
                 return (
-                  <TableRow key={row.originalName} className={cn(needsAttention && "bg-amber-50/40")}>
+                  <TableRow key={row.originalName} className={cn(needsAttention && "bg-warning-subtle/40")}>
                     <TableCell className="align-top">
                       <div className="font-mono text-sm">{row.originalName}</div>
+                      {row.heldRole && (
+                        <Badge variant={matchState.tone} className="mt-1">
+                          {matchState.label}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="align-top">
                       <div className="max-w-[240px] text-sm text-muted-foreground">
@@ -93,14 +73,14 @@ export function DetectedMappingTable({
                     <TableCell className="align-top">
                       <div className="flex flex-col gap-2">
                         <Select
-                          value={row.confirmedRole ?? "unassigned"}
+                          // 역할이 비어 있는 옛 행은 "쓰지 않음"으로 보인다(M7).
+                          value={row.confirmedRole ?? "ignore"}
                           onValueChange={(value) => handleRoleChange(row.originalName, value)}
                         >
                           <SelectTrigger className={cn("w-[210px]", duplicate && "border-destructive")}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="unassigned">unassigned</SelectItem>
                             {roleOptions.map((option) => (
                               <SelectItem key={option.value} value={option.value}>
                                 {option.label}
@@ -108,10 +88,15 @@ export function DetectedMappingTable({
                             ))}
                           </SelectContent>
                         </Select>
-                        {row.inferredRole && row.confirmedRole !== row.inferredRole && (
-                          <div className="text-xs text-muted-foreground">
-                            Auto-mapped as: <span className="font-medium text-foreground">{row.inferredRole}</span>
-                          </div>
+                        {row.heldRole ? (
+                          <HeldRoleNote role={row.heldRole} onPlaceLeaf={onPlaceLeaf} />
+                        ) : (
+                          row.inferredRole &&
+                          row.confirmedRole !== row.inferredRole && (
+                            <div className="text-xs text-muted-foreground">
+                              자동 매핑: <span className="font-medium text-foreground">{row.inferredRole}</span>
+                            </div>
+                          )
                         )}
                       </div>
                     </TableCell>
@@ -123,5 +108,31 @@ export function DetectedMappingTable({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * 맡아 둔 행(N3) — 평가 흐름에 놓지 않은 항목의 역할이라 지금은 "쓰지 않음"이다. 그 항목을 넣으면
+ * 원래 역할로 돌아온다. 역할을 직접 바꾸면 맡아 둔 값은 지워진다(`applyRoleChange`).
+ */
+function HeldRoleNote({ role, onPlaceLeaf }: { role: MappingRole; onPlaceLeaf?: (leafId: string) => void }) {
+  const leaf = heldLeaf(role);
+  return (
+    <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+      <span>
+        {/* 역할 이름은 선택지와 같은 한국어 이름표(roleOptionLabel) — 코드만 보이면 무슨 역할인지 모른다. */}
+        맡아 둠: <span className="font-medium text-foreground">{roleOptionLabel(role)}</span>
+        {leaf ? ` — 평가 흐름에 '${leaf.label}'을 넣으면 이 역할로 돌아옵니다.` : null}
+      </span>
+      {leaf && onPlaceLeaf && (
+        <button
+          type="button"
+          onClick={() => onPlaceLeaf(leaf.id)}
+          className="w-fit text-foreground-secondary underline underline-offset-4 hover:text-foreground"
+        >
+          평가 흐름 만들기에서 넣기
+        </button>
+      )}
+    </div>
   );
 }
