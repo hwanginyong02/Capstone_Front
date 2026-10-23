@@ -5,8 +5,12 @@
  *   같아야 한다. 백엔드는 같은 예시를 자기 사본으로 읽어 `NarrativeRequest` 로 검증한다(각 저장소가 CI 에서 돈다).
  * - 예시를 다시 만들려면 `UPDATE_CONTRACT=1 npx vitest run src/lib/report/factSheetContract.test.ts` — 바뀐 이유를
  *   라운드 기록에 적고 세 사본(라운드 폴더·백엔드)을 함께 고친다.
+ * - 판 4 라운드 S0 부터 `UPDATE_CONTRACT` 는 **이름에 "ed4" 가 든 예시만** 쓴다. 판 3 예시 4개(이진·다중·멀티·옛 main)와
+ *   계약 명세(`fact_sheet_contract.json`)는 판 3 요청의 정답이라 이 경로로 덮이지 않고, 아래 `EDITION3_CONTRACT_SHA256` 의
+ *   sha256 과 바이트까지 같아야 한다. 판 3 예시가 바뀌어야 통과한다면 그 변경이 판 3 요청을 바꾼 것이다 — 코드를 고친다.
  * - 두 저장소 사본이 같은지는 옆 저장소가 있을 때만 본다(CI 는 저장소 하나만 받는다 — skipIf).
  */
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -180,12 +184,32 @@ function legacyMainShape(payload: NarrativeRequestPayload): Record<string, unkno
 
 const UPDATE = process.env.UPDATE_CONTRACT === "1";
 
+/** `UPDATE_CONTRACT` 가 쓸 수 있는 예시인가 — 판 4 예시(이름에 "ed4")만. 판 3 예시는 고정이다(판 4 라운드 S0). */
+function updatableExample(name: string): boolean {
+  return name.includes("ed4");
+}
+
+/**
+ * 판 3 계약 파일의 sha256(판 4 라운드 S0 에 운영 main 58d99ea 와 같은 바이트임을 확인하고 박음). 고치지 않는다 — 이 값이
+ * 달라졌다면 판 3 요청이 바뀐 것이다.
+ */
+const EDITION3_CONTRACT_SHA256: Record<string, string> = {
+  "fact_sheet_contract.json": "7501c56ba1c5f3553389509acfd74b36348f4c48279cfc956e149e67c3182e0b",
+  "fact_sheet_binary.json": "d055975b12eeb3529c724cd769e9b39584baf40bfd5531f4c9347ca84f68c13e",
+  "fact_sheet_multiclass.json": "70268e8866c7c5d71280a077b706d3c7ac2f8c2da25a249d3aab95dab2d32688",
+  "fact_sheet_multilabel.json": "2f8cc375b2dab5d408ac887428f25593a8378ad1a07ffe58a5e9db2bcd50f3f1",
+  "fact_sheet_legacy_main.json": "a88a786b579a259a8ad50b02bd5c56e7b38299553b0bd72c83c3e1a24ee8e950",
+};
+
 function expectExample(name: string, actual: unknown) {
   const path = resolve(CONTRACT_DIR, name);
   // JSON 왕복 — 계약 파일에 실제로 실리는 모양(undefined 키 없음)으로 비교한다.
   const normalized = JSON.parse(JSON.stringify(actual));
-  if (UPDATE) writeFileSync(path, `${JSON.stringify(normalized, null, 2)}\n`);
+  const text = `${JSON.stringify(normalized, null, 2)}\n`;
+  if (UPDATE && updatableExample(name)) writeFileSync(path, text);
   expect(normalized).toEqual(readJson(path));
+  // 글자까지(키 순서·줄바꿈 포함) — 정적 파일과 toBe.
+  expect(text).toBe(readFileSync(path, "utf8"));
 }
 
 describe("계약 예시 — 백엔드 골든 평가 응답 → 조립 → 미리 자르기 = 계약 사본", () => {
@@ -197,6 +221,23 @@ describe("계약 예시 — 백엔드 골든 평가 응답 → 조립 → 미리
 
   it("legacy — 운영 main 프론트 모양(facts 없음, M21·M22 값 0 줄)", () => {
     expectExample("fact_sheet_legacy_main.json", legacyMainShape(buildPayload(CASES.binary).payload));
+  });
+});
+
+describe("판 3 계약 파일 고정(판 4 라운드 S0)", () => {
+  it("판 3 예시 4개와 계약 명세는 박아 둔 sha256 과 바이트까지 같다", () => {
+    const actual = Object.fromEntries(
+      Object.keys(EDITION3_CONTRACT_SHA256).map((name) => [
+        name,
+        createHash("sha256").update(readFileSync(resolve(CONTRACT_DIR, name))).digest("hex"),
+      ]),
+    );
+    expect(actual).toEqual(EDITION3_CONTRACT_SHA256);
+  });
+
+  it("UPDATE_CONTRACT 는 이름에 ed4 가 든 예시만 쓴다 — 판 3 예시·명세는 쓰지 않는다", () => {
+    for (const name of Object.keys(EDITION3_CONTRACT_SHA256)) expect([name, updatableExample(name)]).toEqual([name, false]);
+    expect(updatableExample("fact_sheet_ed4_binary.json")).toBe(true);
   });
 });
 
