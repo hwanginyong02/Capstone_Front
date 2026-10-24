@@ -7,7 +7,7 @@
  * isCommon`, `meta.derivedPrediction/positiveClass/contractDate/issuedAt/evaluationPeriod/taskTypeLabel`, `confidenceIntervalNote`,
  * `evalEnv.method/environment/engineVersion`.
  */
-import { taskTypeLabelsFor } from "../../../../data/evaluationData";
+import { getMetricDisplayId, METRICS, taskTypeLabelsFor } from "../../../../data/evaluationData";
 import type { FinalReportData, KpiResult, MaterialRow } from "../../../../types/finalReport.types";
 import { perLabelThresholds } from "../../derivationText";
 import { josa } from "../../koreanJosa";
@@ -62,6 +62,16 @@ export interface MethodItemRow {
 const kpiOf = (data: FinalReportData, metricId: string): KpiResult | undefined =>
   data.kpiResults.find((r) => r.metricId === metricId);
 
+/**
+ * 지표의 방향(높을수록 좋음) — 지표 결과가 있으면 그 저장값, 없으면(평가 전 초안) 지표 정의(`METRICS` 의 낮을수록 좋음 표 — 매퍼가
+ * `metricList[].passCriteria` 를 만들 때 쓰는 것과 같은 표). 평가 뒤에는 늘 지표 결과 값이라 글이 바뀌지 않는다.
+ */
+export function higherIsBetterEd4(data: FinalReportData, metricId: string): boolean | undefined {
+  const kpi = kpiOf(data, metricId);
+  if (kpi) return kpi.higherIsBetter;
+  return METRICS.find((m) => getMetricDisplayId(m.id) === metricId)?.higherIsBetter;
+}
+
 /* ------------------------------------------------------------------ *
  * 3.1 의뢰자 요구사항
  * ------------------------------------------------------------------ */
@@ -93,7 +103,8 @@ export function metricRationaleEd4(data: FinalReportData): string | null {
 
 /**
  * 3.1 선택 지표와 합격 기준 표의 행 — [Metric ID, 시험항목, 합격 기준, 핵심 지표]. 합격 기준은 판 4 표기(`ed4TargetCriteria`, D1 —
- * 표지·4.3 과 같은 함수), 목표가 없거나 M21·M22 면 "없음(참고 지표)"(대응표 10, B5). 핵심 지표 열은 "핵심" / 기본값이면 "핵심(기본값)" / "—".
+ * 표지·4.3 과 같은 함수, 방향은 `higherIsBetterEd4`), 목표가 없거나 M21·M22 면 "없음(참고 지표)"(대응표 10, B5). 핵심 지표 열은
+ * "핵심" / 기본값이면 "핵심(기본값)" / "—".
  */
 export function criteriaRowsEd4(data: FinalReportData): string[][] {
   const defaultCore = data.coreMetricsSource === "default";
@@ -102,7 +113,7 @@ export function criteriaRowsEd4(data: FinalReportData): string[][] {
     const criteria =
       metric.threshold === null || B5_REFERENCE_METRIC_IDS.has(metric.metricId)
         ? B5_CRITERIA_REFERENCE
-        : ed4TargetCriteria(metric.threshold, kpi?.higherIsBetter);
+        : ed4TargetCriteria(metric.threshold, higherIsBetterEd4(data, metric.metricId));
     const core = kpi?.isCore ? (defaultCore ? FIXED_26_CORE_DEFAULT_CELL : EX_3_1_CORE_CELL) : ED4_DASH;
     return [metric.metricId, metric.name, criteria, core];
   });

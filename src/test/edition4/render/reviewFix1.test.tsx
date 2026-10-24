@@ -41,3 +41,25 @@ describe("지적 1 — 평가 전 초안(문제 목록 없음)의 6절은 판 3 
     expect(text).toContain("\n권고 항목은 자동 서술 생성 연동 시 표시됩니다.\n");
   });
 });
+
+describe("지적 2 — 평가 전 초안 3.1 합격 기준 방향은 지표 정의(낮을수록 좋음)에서", () => {
+  it("bc_strong 초안: Log Loss(M19) 는 '≤ 0.100'(저장된 metricList passCriteria·판 3 초안과 같음)", () => {
+    const draft = draftReport("bc_strong");
+    expect(draft.kpiResults).toHaveLength(0);
+    expect(draft.metricList.find((m) => m.metricId === "M19")?.passCriteria).toBe("≤ 0.100");
+    const lines = between(screenText(draft), "선택 지표와 합격 기준", "3.2 시험항목과 산정식");
+    expect(lines).toContain("| M19 | Log Loss | ≤ 0.100 | —");
+    expect(lines).toContain("| M1 | Accuracy | ≥ 0.950 | —");
+    expect(lines.filter((l) => /^\| M\d/.test(l))).toHaveLength(8);
+  });
+
+  it("yeast_strong 초안: 낮을수록 좋은 지표는 모두 ≤", () => {
+    const draft = draftReport("yeast_strong");
+    const lines = between(screenText(draft), "선택 지표와 합격 기준", "3.2 시험항목과 산정식").filter((l) => /^\| M\d/.test(l));
+    expect(lines.length).toBeGreaterThan(0);
+    for (const metric of draft.metricList.filter((m) => m.threshold !== null && !["M21", "M22"].includes(m.metricId))) {
+      const row = lines.find((l) => l.startsWith(`| ${metric.metricId} |`));
+      expect(row?.split(" | ")[2]).toBe(metric.passCriteria);
+    }
+  });
+});
