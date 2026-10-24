@@ -74,14 +74,29 @@ function SingleMatrixChart({ data, figureOnly = false }: ConfusionMatrixChartPro
 
       <div className="flex flex-col md:flex-row gap-6 items-start justify-between">
         {/* 행렬 셀 그리드 */}
+        {/*
+          판 3 모양: 칸 폭 고정(110~140px) — 클래스가 많으면 카드보다 넓어진다(판 3 보관본 정답이 지키므로 그대로).
+          그림만(판 4 4.4): 칸 폭을 카드 폭에 맞춰 나눈다(minmax(0, 1fr)) — 10클래스도 화면 가로 스크롤·인쇄 열 잘림 없이 모든 칸이 들어간다.
+        */}
         <div
-          className="inline-grid gap-2 text-sm"
-          style={{ gridTemplateColumns: `100px repeat(${labels.length}, minmax(110px, 140px))` }}
+          className={figureOnly ? "grid w-full min-w-0 gap-1 text-sm" : "inline-grid gap-2 text-sm"}
+          data-cm-fit={figureOnly ? "container" : undefined}
+          style={{
+            gridTemplateColumns: figureOnly
+              ? `minmax(48px, 100px) repeat(${labels.length}, minmax(0, 1fr))`
+              : `100px repeat(${labels.length}, minmax(110px, 140px))`,
+          }}
         >
           {/* Header row */}
           <div />
           {labels.map((label) => (
-            <div key={label} className="py-2 text-center text-xs font-bold text-slate-600 bg-slate-50 rounded border border-slate-100">
+            <div
+              key={label}
+              className={cn(
+                "py-2 text-center text-xs font-bold text-slate-600 bg-slate-50 rounded border border-slate-100",
+                figureOnly && "min-w-0 px-0.5 text-[10px] leading-tight [overflow-wrap:anywhere]",
+              )}
+            >
               Predicted: {label}
             </div>
           ))}
@@ -89,7 +104,12 @@ function SingleMatrixChart({ data, figureOnly = false }: ConfusionMatrixChartPro
           {/* Data rows */}
           {matrix.map((row, ri) => (
             <div key={`row-${ri}`} className="contents">
-              <div className="flex items-center justify-end pr-3 py-2 text-xs font-bold text-slate-600 bg-slate-50 rounded border border-slate-100">
+              <div
+                className={cn(
+                  "flex items-center justify-end pr-3 py-2 text-xs font-bold text-slate-600 bg-slate-50 rounded border border-slate-100",
+                  figureOnly && "min-w-0 pr-1 text-right text-[10px] leading-tight [overflow-wrap:anywhere]",
+                )}
+              >
                 Actual: {labels[ri]}
               </div>
               {row.map((count, ci) => {
@@ -101,6 +121,7 @@ function SingleMatrixChart({ data, figureOnly = false }: ConfusionMatrixChartPro
                     className={cn(
                       "flex flex-col items-center justify-center rounded-lg py-4 px-2 text-center border shadow-xs transition-transform hover:scale-[1.02]",
                       isDiag ? "text-emerald-950 border-emerald-300" : "text-rose-950 border-rose-200",
+                      figureOnly && "min-w-0 px-0.5 py-2",
                     )}
                     style={{
                       backgroundColor: isDiag

@@ -118,6 +118,57 @@ describe("M21 그림 — 판 4 는 영어 머리글 없이 그림만(S6 질문 3
   });
 });
 
+/** 그림의 행렬 격자(칸 폭 정하는 grid). */
+const gridOf = (root: Element) => root.querySelector<HTMLElement>('div[style*="grid-template-columns"]');
+
+describe("M21 그림은 카드 폭 안에 들어간다(S6 스모크 발견 1 — 10클래스 화면 가로 스크롤·인쇄 열 잘림)", () => {
+  it.each(TAGS)("%s 판 4 4.4: 격자가 컨테이너 폭에 맞춰 나뉜다(고정 폭 칸 없음), 칸·건수 하나도 빠지지 않음", async (tag) => {
+    const { ReportSections } = await import("../../../components/report/ReportSections");
+    const { normalizeReportContent } = await import("../../../lib/report/normalizeReportContent");
+    const { MemoryRouter } = await import("react-router");
+    const view = render(
+      <MemoryRouter>
+        <ReportSections data={normalizeReportContent(loadEd4WithM21(tag, "final"))} />
+      </MemoryRouter>,
+    );
+    const figure = view.container.querySelector('[data-ed4-figure="M21"]')!;
+    const grids = [...figure.querySelectorAll<HTMLElement>('div[style*="grid-template-columns"]')];
+    expect(grids.length).toBeGreaterThan(0);
+    for (const grid of grids) {
+      expect(grid.dataset.cmFit).toBe("container");
+      expect(grid.classList.contains("w-full")).toBe(true);
+      expect(grid.classList.contains("inline-grid")).toBe(false);
+      const cols = grid.style.gridTemplateColumns;
+      expect(cols).toMatch(/repeat\(\d+, minmax\(0(px)?, 1fr\)\)/);
+      expect(cols).not.toContain("110px");
+    }
+    expect(cellCounts(figure)).toHaveLength(CELLS[tag]);
+    view.unmount();
+  });
+
+  it("10클래스 인쇄(발급본)도 같은 격자 — 열 10개, 칸 100개", async () => {
+    let cols = "";
+    let cells = -1;
+    await printText(loadEd4WithM21("digits_strong", "issued"), undefined, {
+      inspect: (root) => {
+        const fig = root.querySelector('[data-ed4-figure="M21"]')!;
+        cols = gridOf(fig)?.style.gridTemplateColumns ?? "";
+        cells = cellCounts(fig).length;
+      },
+    });
+    expect(cols).toMatch(/repeat\(10, minmax\(0(px)?, 1fr\)\)/);
+    expect(cells).toBe(100);
+  });
+
+  it("판 3 모양(옵션 없음)은 고정 폭 칸 그대로", () => {
+    const view = render(<ConfusionMatrixChart data={{ labels: ["benign", "malignant"], matrix: [[105, 2], [1, 63]], totalSamples: 171 }} />);
+    const grid = gridOf(view.container)!;
+    expect(grid.classList.contains("inline-grid")).toBe(true);
+    expect(grid.dataset.cmFit).toBeUndefined();
+    expect(grid.style.gridTemplateColumns).toBe("100px repeat(2, minmax(110px, 140px))");
+  });
+});
+
 describe("판 3 차트 부품은 판 3 모양 그대로(옵션 없음)", () => {
   it("머리글·요약 상자가 있다", () => {
     const view = render(<ConfusionMatrixChart data={{ labels: ["benign", "malignant"], matrix: [[105, 2], [1, 63]], totalSamples: 171 }} />);
