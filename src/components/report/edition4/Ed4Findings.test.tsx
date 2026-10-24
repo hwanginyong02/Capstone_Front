@@ -4,12 +4,14 @@
  * - 다중(digits_strong)·멀티(yeast_strong): 센티널 서술로 칸→자리 배치, 12(다중만), 15(멀티 7.3 빈 글·fixed), 화면 전용 칸 배지(다중 8.1).
  * - 대기·실패: 판 3 공용 자리표시 글. 픽스처에 없는 갈래(B18, 빈 글 자리표시, 11b, 여러 문단)는 복사본의 칸만 바꿔서.
  */
+import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { exampleBlock, exampleLines, printText, screenText, byNumberText, type ExampleLine } from "../../../test/edition4/render/renderEd4";
 import { loadEd4, loadEd4Issuance } from "../../../test/edition4/render/ed4Fixtures";
 import type { FinalReportData } from "../../../types/finalReport.types";
 import { NARRATIVE_FAILED_TEXT, NARRATIVE_PENDING_TEXT } from "../shared/narrativePlaceholder";
+import { Ed4Findings } from "./Ed4Findings";
 
 const NOTE = "※ 5절은 4절의 시험 결과를 해석한 참고 의견이며, 시험 결과에 해당하지 않습니다.";
 const SAME_SOURCE =
@@ -100,6 +102,16 @@ describe("다중(digits_strong) — 칸→자리, 12 는 5.3 서술 앞, 8.1 규
 
   it("인쇄 — 배지 없음", async () => {
     expect(section5(await printText(loadEd4("digits_strong", "issued")))).toEqual([...body, ...tail]);
+  });
+
+  it("부품 직접 — mode=print 면 배지 요소 자체를 그리지 않는다(print:hidden 에만 기대지 않음), screen 은 1개", () => {
+    const data = loadEd4("digits_strong", "issued");
+    const print = render(<Ed4Findings data={data} mode="print" />);
+    expect(print.container.textContent).not.toContain(BADGE);
+    print.unmount();
+    const screen = render(<Ed4Findings data={data} mode="screen" />);
+    expect(screen.container.textContent!.split(BADGE)).toHaveLength(2);
+    screen.unmount();
   });
 
   it("번호 열기(화면 본문) — 배지 있음", async () => {

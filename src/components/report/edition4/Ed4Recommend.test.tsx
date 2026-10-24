@@ -4,12 +4,14 @@
  * - 다중·멀티: 6.1/6.2 가름(recommend_section), 권고 표 행 정확값(우선순위 글자·"P2 · 판 4 이름"·권고·기대 효과).
  * - 대기·실패, B19(한쪽만 문제), 고정 문구 6(문제 0개), 번호 없는 권고, 9 칸 배지는 픽스처 복사본으로.
  */
+import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { byNumberText, exampleBlock, exampleLines, printText, screenText, type ExampleLine } from "../../../test/edition4/render/renderEd4";
 import { loadEd4, loadEd4Issuance } from "../../../test/edition4/render/ed4Fixtures";
 import type { FinalReportData } from "../../../types/finalReport.types";
 import { NARRATIVE_FAILED_TEXT, NARRATIVE_PENDING_TEXT } from "../shared/narrativePlaceholder";
+import { Ed4Recommend } from "./Ed4Recommend";
 
 const HEAD = "| 우선순위 | 대응 문제 번호 | 권고 | 기대 효과";
 const BADGE = "규칙 기반 문장";
@@ -196,6 +198,10 @@ describe("픽스처에 없는 갈래(복사본)", () => {
     expect(screen.slice(0, 3)).toEqual(["6. 개선 권고", BADGE, "6.1 데이터"]);
     expect(screen.filter((l) => l === BADGE)).toHaveLength(1);
     expect(section6(await printText(data))).not.toContain(BADGE);
+    // 부품 직접 — mode=print 면 배지 요소 자체가 없다(print:hidden 에만 기대지 않음).
+    const print = render(<Ed4Recommend data={data} mode="print" />);
+    expect(print.container.textContent).not.toContain(BADGE);
+    print.unmount();
   });
 
   it("6.1·6.2 서술 빈 글(서술 끝남)은 판 3 자리표시 글", () => {
