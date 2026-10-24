@@ -26,10 +26,15 @@ const ROUND_SPEC = resolve(__dirname, "../../../../NARRATIVE_ROUND/사실시트_
 const NEW_RUN_GOLDEN = resolve(__dirname, "../edition3/newRun/golden");
 const SHARED = ["fact_sheet_contract_ed4.json", "number_wording_ed4.json", "narrative_slots_ed4.json"] as const;
 
-/** 판 4 라운드 S2 ① 에 만든 바이트. 백엔드 tests/test_p4_contract_ed4.py 와 같은 값이다. */
+/**
+ * 판 4 라운드 S2 ① 에 만든 바이트. 백엔드 tests/test_p4_contract_ed4.py 와 같은 값이다.
+ * S2·S3 검토(2026-10-24)로 고침 — 명세: D1~D7 결정(decided), 판 4 전용 새 키 facts.weakest_class.f1_text, '임시' 글 걷음.
+ * 대조 표: target·latency·distinct 규칙과 줄, given 정수·지수 꼴, judged D1·여섯째 자리 줄, 조사 끝소리 모름·쉼표 정수 줄.
+ * 새 규칙·줄을 프론트 함수가 따라오기 전까지 이 파일의 표 시험 일부가 빨갛다(백엔드 인계 fix_BE.md '프론트가 할 일').
+ */
 const SHA256: Record<(typeof SHARED)[number], string> = {
-  "fact_sheet_contract_ed4.json": "33c36e58ad07f1ab01b5c821ebdd3c82ea777a8badd911e6c0cbfd371fa5c357",
-  "number_wording_ed4.json": "f377e7face2c1b3226a0d45fe4d9d527cd85b249de9fd7f54525590801e754ff",
+  "fact_sheet_contract_ed4.json": "b39895a5377c8d65d01973b5a65e58e0d3739424a509a3d27a0cc6cf4fe775c8",
+  "number_wording_ed4.json": "cd6e6ac860b7458d0922f7d4e8878dc44715e019106f2c9d5fa0a0e86c249338",
   "narrative_slots_ed4.json": "3c43ffa35357c8c7f4c8a30d182482a85dec51caefa872dc9e556ae51d5b7d35",
 };
 
