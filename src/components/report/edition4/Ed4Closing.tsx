@@ -1,18 +1,31 @@
 /**
- * 판 4 끝부분 — 부록 1 자리, 발급 이력, "— 끝 —".
- * 지금은 발급 이력 소제목(발급본에만 — 부록 B1)과 "— 끝 —"(늘)만 그린다(판 4 라운드 S4·S5 1단계 뼈대). 발급 이력 표는 2단계.
+ * 판 4 끝부분(갈래 b5) — 부록 1 자리, 발급 이력, "— 끝 —".
+ * - 발급 이력은 발급본에만(부록 B1 — `signature.history` 가 비어 있지 않을 때): 소제목 "발급 이력" + 표 "버전 | 발급일 | 비고"
+ *   (예시본 글자, 저장된 `signature.history` 그대로 — 발급일은 저장 글자).
+ * - "— 끝 —" 은 늘 찍는다.
  */
 import type { Ed4PartProps } from "./shared/ed4PartProps";
 import { Ed4TableTitle } from "./shared/Ed4Headings";
 import { Ed4Paragraph } from "./shared/Ed4Paragraph";
+import { Ed4Table } from "./shared/Ed4Table";
 import { EX_END_MARK, EX_HISTORY_TITLE } from "../../../lib/report/edition4/edition4Text";
+import { EX_HISTORY_COLUMNS } from "../../../lib/report/edition4/render/recommendText";
 
-export function Ed4Closing({ data, mode }: Ed4PartProps) {
-  const issued = (data.signature?.history ?? []).length > 0;
+export function Ed4Closing({ data }: Ed4PartProps) {
+  const history = data.signature?.history ?? [];
   return (
     <section data-ed4-part="Ed4Closing">
       {/* 부록 1(성적서 점검 결과) 자리 — 이번 라운드 범위 밖(심판 라운드에 부록 1 과 함께). 생기면 발급 이력 앞에 둔다. */}
-      {issued && <Ed4TableTitle>{EX_HISTORY_TITLE}</Ed4TableTitle>}
+      {history.length > 0 && (
+        <>
+          <Ed4TableTitle>{EX_HISTORY_TITLE}</Ed4TableTitle>
+          <Ed4Table
+            columns={EX_HISTORY_COLUMNS}
+            rows={history.map((h) => [h.version, h.issuedAt, h.note])}
+            rowKeys={history.map((h, i) => `${i}:${h.version}`)}
+          />
+        </>
+      )}
       <Ed4Paragraph className="mt-10 text-center">{EX_END_MARK}</Ed4Paragraph>
     </section>
   );
