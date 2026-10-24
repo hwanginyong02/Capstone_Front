@@ -51,6 +51,7 @@ import {
   FIXED_5_METRIC_RATIONALE,
   LIBRARY_DISPLAY_NAME,
 } from "./methodText";
+import { isIssuedEd4 } from "./issuance";
 
 /** 표의 한 줄(항목 | 내용). */
 export interface MethodItemRow {
@@ -237,7 +238,7 @@ export function verdictRuleParagraphsEd4(data: FinalReportData): [string, string
 
 /**
  * 3.5 단계별 수행 일시 표(부록 B8) — 1행 평가 의뢰일(`contractDate`, 없으면 시험 기간 시작), 2행 평가 수행 일시의 날짜(없으면 시험 기간
- * 끝), 3행 발급 일시(미발급이면 "(미발급)").
+ * 끝), 3행 발급 일시(미발급이면 "(미발급)" — 발급 판정은 `issuance.ts` 한 곳, 표지와 같은 기준).
  */
 export function scheduleRowsEd4(data: FinalReportData): string[][] {
   const { meta } = data;
@@ -245,7 +246,7 @@ export function scheduleRowsEd4(data: FinalReportData): string[][] {
   const dates = [
     meta.contractDate || meta.evaluationPeriod.from,
     evaluatedAt ? evaluatedAt.slice(0, 10) : meta.evaluationPeriod.to,
-    meta.issuedAt || B8_UNISSUED,
+    isIssuedEd4(data) && meta.issuedAt ? meta.issuedAt : B8_UNISSUED,
   ];
   return EX_3_5_SCHEDULE_STEPS.map(([step, work], i) => [step, work, dates[i]]);
 }

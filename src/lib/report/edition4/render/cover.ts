@@ -14,16 +14,15 @@ import {
   FIXED_22_ISSUE,
 } from "../edition4Text";
 import { COVER_INFO_LABEL, COVER_ISSUER_LINE, ISSUE_METHOD_AUTO } from "./coverText";
+import { isIssuedEd4 } from "./issuance";
 
 export interface CoverRow {
   label: string;
   value: string;
 }
 
-/** 발급본인가 — 문서 번호가 있으면 발급(판 3 `ReportCoverSection`·`SignatureSection` 과 같은 기준). */
-export function isIssuedEd4(data: FinalReportData): boolean {
-  return Boolean(data.meta.reportId);
-}
+/** 발급본인가 — 판정은 `issuance.ts` 한 곳(표지·3.5·발급 이력 공용). */
+export { isIssuedEd4 };
 
 /** 상태 줄 — 발급본 "[ 발급 완료 ]"(예시본), 미발급은 부록 B1 의 두 줄(상태 줄과 그 아래 안내). */
 export function coverStatusLines(data: FinalReportData): string[] {

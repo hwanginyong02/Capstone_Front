@@ -1,6 +1,6 @@
 /**
  * 판 4 끝부분(갈래 b5) — 부록 1 자리, 발급 이력, "— 끝 —".
- * - 발급 이력은 발급본에만(부록 B1 — `signature.history` 가 비어 있지 않을 때): 소제목 "발급 이력" + 표 "버전 | 발급일 | 비고"
+ * - 발급 이력은 발급본에만(부록 B1 — 발급 판정 `isIssuedEd4` 이고 `signature.history` 가 비어 있지 않을 때): 소제목 "발급 이력" + 표 "버전 | 발급일 | 비고"
  *   (예시본 글자, 저장된 `signature.history` 그대로 — 발급일은 저장 글자).
  * - "— 끝 —" 은 늘 찍는다.
  */
@@ -10,9 +10,10 @@ import { Ed4Paragraph } from "./shared/Ed4Paragraph";
 import { Ed4Table } from "./shared/Ed4Table";
 import { EX_END_MARK, EX_HISTORY_TITLE } from "../../../lib/report/edition4/edition4Text";
 import { EX_HISTORY_COLUMNS } from "../../../lib/report/edition4/render/recommendText";
+import { isIssuedEd4 } from "../../../lib/report/edition4/render/issuance";
 
 export function Ed4Closing({ data }: Ed4PartProps) {
-  const history = data.signature?.history ?? [];
+  const history = isIssuedEd4(data) ? (data.signature?.history ?? []) : [];
   return (
     <section data-ed4-part="Ed4Closing">
       {/* 부록 1(성적서 점검 결과) 자리 — 이번 라운드 범위 밖(심판 라운드에 부록 1 과 함께). 생기면 발급 이력 앞에 둔다. */}
