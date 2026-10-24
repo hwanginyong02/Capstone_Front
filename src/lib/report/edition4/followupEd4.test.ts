@@ -323,6 +323,33 @@ describe("U4 — 판 4 최약 클래스 문제 근거 f1 = f1_text(plain 과 다
     });
   });
 
+  it("D3 로 늘어난 f1_text 도 그대로 — 같은 원값의 판정 대상 지표가 없고 다른 클래스와 셋째 자리로 같으면 '0.9720'(D2·plain 이라면 '0.972')", () => {
+    // 후속 검토 지적: 위 사례는 f1_text 와 D2(같은 원값 지표의 value_text)가 같은 글자라, 근거 f1 을 D2·plain 으로 다시 내도 가리지 못했다.
+    // 대조 표 distinct class_table 줄의 digits_strong 숫자(최약 9 0.97196…, 5 0.97248…) — M4 원값은 어느 클래스와도 다르다.
+    const m4other = kpi({ metricId: "M4", name: "F1 Score", value: 0.98, threshold: 0.95, status: "pass" });
+    const d: ClassReportTable = {
+      rows: [
+        { label: "5", precision: 0.98, recall: 0.97, f1: 0.9724770642201835, support: 500 },
+        { label: "9", precision: 0.97, recall: 0.97, f1: 0.9719626168224299, support: 12 },
+      ],
+      averages: [],
+    };
+    const w = weakestClass(d, true, [m4other])!;
+    expect([w.label, w.low_support, w.f1_text, ed4Plain(w.f1)]).toEqual(["9", true, "0.9720", "0.972"]);
+    const p = buildProblemList({
+      kpiResults: [m4other],
+      taskType: "multiclass",
+      coreMetricIds: [],
+      thresholdGain: null,
+      imbalanceEffect: null,
+      facts: { weakest_class: w, distribution_shift: [] },
+      edition: 4,
+    }).find((x) => x.kind === "weakest_class")!;
+    expect((p.evidence as Json)["9"].f1).toBe("0.9720");
+    // 같은 표의 클래스별 F1(U2)과도 맞물린다 — 5 는 최약과 부딪쳐 넷째 자리.
+    expect(classF1TextEd4("5", 0.9724770642201835, { weakest: w, kpiResults: [m4other] })).toBe("0.9725");
+  });
+
   it("조립 배선 — bc_strong 판 4 run(M4 목표 0.977)의 사실 시트 최약 클래스 문제 근거도 같은 글자", () => {
     // bc_strong 의 malignant support 는 64(작은 표본 아님) — 응답 사본에서 support 를 12 로 줄여 문제 조건에 걸리게 한다.
     const evaluate = structuredClone(BC);
