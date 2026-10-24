@@ -42,13 +42,14 @@ vi.mock("../../lib/report/narrativeRequest", async (importOriginal) => {
   };
 });
 
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { FROZEN_NOW, GOLDEN_DIR, goldenNames, runNewReport, TAGS, TZ_PINNED, type Tag } from "../edition3/newRun/newRun.harness";
 
 type Json = any;
 const readJson = (path: string) => JSON.parse(readFileSync(path, "utf8"));
 const CONTRACT_ED4: Json = readJson(resolve(__dirname, "../contract/fact_sheet_contract_ed4.json"));
-const BACKEND_CSV = resolve(__dirname, "../../../../Capstone_Back/tests/data/bc_strong/bc_strong.csv");
+/** 원본 CSV — 저장소 안 사본(RPT-2026-0001 에 올린 파일 바이트 그대로, S6 ② 에서 옮김). */
+const BC_CSV = resolve(__dirname, "rpt0001/bc_strong.csv");
 
 interface Ed4Capture {
   stage1: Json;
@@ -145,8 +146,8 @@ describe("RPT-2026-0001 입력(bc_strong) 판 4 run — 저장 데이터의 판 
     expect(stage1().evalScope.version).toBe("v2.1");
   });
 
-  it.skipIf(!existsSync(BACKEND_CSV))("해시·크기 = 원본 CSV 에서 직접 계산한 값(백엔드 저장소의 bc_strong.csv)", () => {
-    const bytes = readFileSync(BACKEND_CSV) as unknown as Buffer;
+  it("해시·크기 = 원본 CSV 에서 직접 계산한 값(저장소 안 rpt0001/bc_strong.csv)", () => {
+    const bytes = readFileSync(BC_CSV) as unknown as Buffer;
     expect(stage1().datasetInfo.sourceFile).toEqual({
       sha256: createHash("sha256").update(bytes).digest("hex"),
       sizeBytes: bytes.length,

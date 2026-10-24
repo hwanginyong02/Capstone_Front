@@ -4,7 +4,8 @@
  * 감지된 클래스 목록·클래스 레이블 설명·해당 없음 칸·제공되지 않음 칸을, 복사 데이터로 B30·해시 없음·학습 데이터 예시 표를 본다.
  */
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
@@ -17,8 +18,8 @@ import { Ed4Target } from "./Ed4Target";
 const FIRST = "2. 시험 대상";
 const NEXT = "3. 시험 방법";
 const BC_SHA256 = "4ead9f2ccc8da32c0c3148f02ea6ff4e030c156d9873eeb99883df73f3a49f9d";
-/** 원본 CSV(라운드 폴더 — 저장소 밖이라 있을 때만 대조). */
-const BC_CSV = "/Users/minseokim/Capstone/P4_ROUND/실데이터/bc_strong/bc_strong.csv";
+/** 원본 CSV — 저장소 안 사본(RPT-2026-0001 에 올린 파일 바이트 그대로, S6 ② 에서 옮김). */
+const BC_CSV = resolve(__dirname, "../../../test/edition4/rpt0001/bc_strong.csv");
 
 const copy = (data: FinalReportData, change: (d: FinalReportData) => void): FinalReportData => {
   const d = structuredClone(data);
@@ -53,7 +54,7 @@ describe("2절 — bc_strong = 예시본 2절 블록(줄 전체·순서), 가림
     expect(rowOf(lines, "파일 크기")).toEqual(["파일 크기", "3,727바이트", "시스템 확인"]);
   });
 
-  it.skipIf(!existsSync(BC_CSV))("해시·크기 = 원본 CSV 에서 직접 계산한 값(라운드 폴더가 있을 때)", () => {
+  it("해시·크기 = 원본 CSV 에서 직접 계산한 값(저장소 안 사본)", () => {
     const bytes = readFileSync(BC_CSV);
     expect(createHash("sha256").update(bytes).digest("hex")).toBe(BC_SHA256);
     expect(bytes.length).toBe(3727);
