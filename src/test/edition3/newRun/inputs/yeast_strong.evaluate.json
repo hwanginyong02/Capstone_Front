@@ -1,0 +1,560 @@
+{
+ "results": {
+  "success_metrics": {
+   "derived_prediction": {
+    "method": "threshold_per_label",
+    "threshold": 0.5,
+    "source_columns": [
+     "score_Class1",
+     "score_Class2",
+     "score_Class3",
+     "score_Class4",
+     "score_Class5",
+     "score_Class6",
+     "score_Class7",
+     "score_Class8",
+     "score_Class9",
+     "score_Class10",
+     "score_Class11",
+     "score_Class12",
+     "score_Class13",
+     "score_Class14"
+    ],
+    "target_role": "pred_labels",
+    "label_order": [
+     "Class1",
+     "Class2",
+     "Class3",
+     "Class4",
+     "Class5",
+     "Class6",
+     "Class7",
+     "Class8",
+     "Class9",
+     "Class10",
+     "Class11",
+     "Class12",
+     "Class13",
+     "Class14"
+    ]
+   },
+   "M2": 0.5348087272430638,
+   "M3": 0.3676939960404305,
+   "M4": 0.39928109092676245,
+   "M15": 0.2093005140987693,
+   "M16": 0.15267175572519084,
+   "M17": 0.4946188399023731,
+   "M18": 0.036099073096213186,
+   "M23": 52.92307692307692,
+   "confusion_counts": {
+    "type": "per_class",
+    "rows": [
+     {
+      "label": "Class1",
+      "tp": 146,
+      "fp": 59,
+      "fn": 140,
+      "tn": 572
+     },
+     {
+      "label": "Class10",
+      "tp": 7,
+      "fp": 15,
+      "fn": 85,
+      "tn": 810
+     },
+     {
+      "label": "Class11",
+      "tp": 9,
+      "fp": 18,
+      "fn": 82,
+      "tn": 808
+     },
+     {
+      "label": "Class12",
+      "tp": 635,
+      "fp": 198,
+      "fn": 53,
+      "tn": 31
+     },
+     {
+      "label": "Class13",
+      "tp": 633,
+      "fp": 203,
+      "fn": 50,
+      "tn": 31
+     },
+     {
+      "label": "Class14",
+      "tp": 1,
+      "fp": 1,
+      "fn": 12,
+      "tn": 903
+     },
+     {
+      "label": "Class2",
+      "tp": 185,
+      "fp": 138,
+      "fn": 208,
+      "tn": 386
+     },
+     {
+      "label": "Class3",
+      "tp": 239,
+      "fp": 109,
+      "fn": 146,
+      "tn": 423
+     },
+     {
+      "label": "Class4",
+      "tp": 188,
+      "fp": 86,
+      "fn": 142,
+      "tn": 501
+     },
+     {
+      "label": "Class5",
+      "tp": 122,
+      "fp": 78,
+      "fn": 159,
+      "tn": 558
+     },
+     {
+      "label": "Class6",
+      "tp": 57,
+      "fp": 73,
+      "fn": 162,
+      "tn": 625
+     },
+     {
+      "label": "Class7",
+      "tp": 18,
+      "fp": 32,
+      "fn": 149,
+      "tn": 718
+     },
+     {
+      "label": "Class8",
+      "tp": 9,
+      "fp": 27,
+      "fn": 182,
+      "tn": 699
+     },
+     {
+      "label": "Class9",
+      "tp": 2,
+      "fp": 2,
+      "fn": 78,
+      "tn": 835
+     }
+    ]
+   },
+   "confusion_matrix": {
+    "type": "multilabel",
+    "labels": [
+     "Class1",
+     "Class10",
+     "Class11",
+     "Class12",
+     "Class13",
+     "Class14",
+     "Class2",
+     "Class3",
+     "Class4",
+     "Class5",
+     "Class6",
+     "Class7",
+     "Class8",
+     "Class9"
+    ],
+    "matrix": [
+     [
+      [
+       572,
+       59
+      ],
+      [
+       140,
+       146
+      ]
+     ],
+     [
+      [
+       810,
+       15
+      ],
+      [
+       85,
+       7
+      ]
+     ],
+     [
+      [
+       808,
+       18
+      ],
+      [
+       82,
+       9
+      ]
+     ],
+     [
+      [
+       31,
+       198
+      ],
+      [
+       53,
+       635
+      ]
+     ],
+     [
+      [
+       31,
+       203
+      ],
+      [
+       50,
+       633
+      ]
+     ],
+     [
+      [
+       903,
+       1
+      ],
+      [
+       12,
+       1
+      ]
+     ],
+     [
+      [
+       386,
+       138
+      ],
+      [
+       208,
+       185
+      ]
+     ],
+     [
+      [
+       423,
+       109
+      ],
+      [
+       146,
+       239
+      ]
+     ],
+     [
+      [
+       501,
+       86
+      ],
+      [
+       142,
+       188
+      ]
+     ],
+     [
+      [
+       558,
+       78
+      ],
+      [
+       159,
+       122
+      ]
+     ],
+     [
+      [
+       625,
+       73
+      ],
+      [
+       162,
+       57
+      ]
+     ],
+     [
+      [
+       718,
+       32
+      ],
+      [
+       149,
+       18
+      ]
+     ],
+     [
+      [
+       699,
+       27
+      ],
+      [
+       182,
+       9
+      ]
+     ],
+     [
+      [
+       835,
+       2
+      ],
+      [
+       78,
+       2
+      ]
+     ]
+    ],
+    "n_samples": 917,
+    "unit": "label_cell",
+    "cell_total": 12838
+   },
+   "class_report": {
+    "Class1": {
+     "precision": 0.7121951219512195,
+     "recall": 0.5104895104895105,
+     "f1-score": 0.594704684317719,
+     "support": 286.0
+    },
+    "Class10": {
+     "precision": 0.3181818181818182,
+     "recall": 0.07608695652173914,
+     "f1-score": 0.12280701754385964,
+     "support": 92.0
+    },
+    "Class11": {
+     "precision": 0.3333333333333333,
+     "recall": 0.0989010989010989,
+     "f1-score": 0.15254237288135594,
+     "support": 91.0
+    },
+    "Class12": {
+     "precision": 0.7623049219687875,
+     "recall": 0.9229651162790697,
+     "f1-score": 0.8349769888231426,
+     "support": 688.0
+    },
+    "Class13": {
+     "precision": 0.757177033492823,
+     "recall": 0.9267935578330894,
+     "f1-score": 0.8334430546412114,
+     "support": 683.0
+    },
+    "Class14": {
+     "precision": 0.5,
+     "recall": 0.07692307692307693,
+     "f1-score": 0.13333333333333333,
+     "support": 13.0
+    },
+    "Class2": {
+     "precision": 0.5727554179566563,
+     "recall": 0.4707379134860051,
+     "f1-score": 0.5167597765363129,
+     "support": 393.0
+    },
+    "Class3": {
+     "precision": 0.6867816091954023,
+     "recall": 0.6207792207792208,
+     "f1-score": 0.6521145975443383,
+     "support": 385.0
+    },
+    "Class4": {
+     "precision": 0.6861313868613139,
+     "recall": 0.5696969696969697,
+     "f1-score": 0.6225165562913907,
+     "support": 330.0
+    },
+    "Class5": {
+     "precision": 0.61,
+     "recall": 0.43416370106761565,
+     "f1-score": 0.5072765072765073,
+     "support": 281.0
+    },
+    "Class6": {
+     "precision": 0.43846153846153846,
+     "recall": 0.2602739726027397,
+     "f1-score": 0.32664756446991405,
+     "support": 219.0
+    },
+    "Class7": {
+     "precision": 0.36,
+     "recall": 0.10778443113772455,
+     "f1-score": 0.16589861751152074,
+     "support": 167.0
+    },
+    "Class8": {
+     "precision": 0.25,
+     "recall": 0.04712041884816754,
+     "f1-score": 0.07929515418502203,
+     "support": 191.0
+    },
+    "Class9": {
+     "precision": 0.5,
+     "recall": 0.025,
+     "f1-score": 0.047619047619047616,
+     "support": 80.0
+    },
+    "micro avg": {
+     "precision": 0.6841945288753799,
+     "recall": 0.5773275198768915,
+     "f1-score": 0.6262345249687021,
+     "support": 3899.0
+    },
+    "macro avg": {
+     "precision": 0.5348087272430638,
+     "recall": 0.3676939960404305,
+     "f1-score": 0.39928109092676245,
+     "support": 3899.0
+    },
+    "weighted avg": {
+     "precision": 0.6264790456677968,
+     "recall": 0.5773275198768915,
+     "f1-score": 0.57989892474509,
+     "support": 3899.0
+    },
+    "samples avg": {
+     "precision": 0.6771641481019889,
+     "recall": 0.5844826989319901,
+     "f1-score": 0.6004706671009833,
+     "support": 3899.0
+    }
+   },
+   "error_ratios": {
+    "unit": "label_cell",
+    "misclassified": 2687,
+    "boundary": {
+     "count": 637,
+     "ratio": 0.2371
+    },
+    "boundary_note": null,
+    "confident": {
+     "count": 431,
+     "ratio": 0.1604
+    },
+    "boundary_margin": 0.1,
+    "confident_level": 0.9,
+    "threshold": 0.5
+   },
+   "confidence_intervals": {
+    "M2": {
+     "low": 0.4602,
+     "high": 0.6055,
+     "method": "bootstrap",
+     "level": 0.95,
+     "n_resamples": 2000,
+     "seed": 4213
+    },
+    "M3": {
+     "low": 0.351,
+     "high": 0.387,
+     "method": "bootstrap",
+     "level": 0.95,
+     "n_resamples": 2000,
+     "seed": 4213
+    },
+    "M4": {
+     "low": 0.3763,
+     "high": 0.4252,
+     "method": "bootstrap",
+     "level": 0.95,
+     "n_resamples": 2000,
+     "seed": 4213
+    },
+    "M15": {
+     "low": 0.1998,
+     "high": 0.2185,
+     "method": "bootstrap",
+     "level": 0.95,
+     "n_resamples": 2000,
+     "seed": 4213
+    },
+    "M16": {
+     "low": 0.1308,
+     "high": 0.1774,
+     "method": "wilson",
+     "level": 0.95
+    },
+    "M17": {
+     "low": 0.4748,
+     "high": 0.5145,
+     "method": "bootstrap",
+     "level": 0.95,
+     "n_resamples": 2000,
+     "seed": 4213
+    },
+    "M18": {
+     "low": 0.03,
+     "high": 0.0437,
+     "method": "bootstrap",
+     "level": 0.95,
+     "n_resamples": 2000,
+     "seed": 4213
+    },
+    "M23": {
+     "low": 34.1974,
+     "high": 112.3625,
+     "method": "bootstrap_multinomial",
+     "level": 0.95,
+     "n_resamples": 2000,
+     "seed": 4213
+    }
+   },
+   "imbalance_effect": {
+    "level": "affected",
+    "display": {
+     "imbalance_ratio": "52.9231",
+     "accuracy_minus_macro_f1": null,
+     "majority_minus_minority_f1": "0.7016",
+     "accuracy": null,
+     "macro_f1": null,
+     "majority_f1": "0.835",
+     "minority_f1": "0.1333"
+    },
+    "imbalance_ratio": 52.9231,
+    "accuracy_minus_macro_f1": null,
+    "majority_minus_minority_f1": 0.7016,
+    "accuracy": null,
+    "macro_f1": null,
+    "majority_f1": 0.835,
+    "minority_f1": 0.1333,
+    "majority_class": "Class12",
+    "minority_class": "Class14"
+   }
+  },
+  "failed_metrics": {}
+ },
+ "environment": {
+  "libraries": {
+   "python": "3.12.7",
+   "scikit-learn": "1.9.0",
+   "pandas": "2.2.3",
+   "numpy": "2.5.1"
+  },
+  "evaluated_at": "2026-10-22T16:23:39+09:00"
+ },
+ "warnings": [
+  "예측 컬럼이 없어 레이블별 점수가 그 레이블의 결정 임계값 이상이면 그 레이블을 예측으로 썼습니다. 이렇게 만든 예측은 모델이 직접 낸 값이 아닙니다."
+ ],
+ "dropped_rows": 0,
+ "n_samples": 917,
+ "class_distribution": {
+  "Class1": 286,
+  "Class10": 92,
+  "Class11": 91,
+  "Class12": 688,
+  "Class13": 683,
+  "Class14": 13,
+  "Class2": 393,
+  "Class3": 385,
+  "Class4": 330,
+  "Class5": 281,
+  "Class6": 219,
+  "Class7": 167,
+  "Class8": 191,
+  "Class9": 80
+ }
+}

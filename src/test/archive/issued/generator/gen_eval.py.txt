@@ -1,0 +1,68 @@
+"""S0 스트림 A — 합성 판 3 픽스처용 검증·평가 응답을 운영 main 백엔드(a7d3168, git archive) 엔진으로 만든다.
+
+쓰는 법(운영 main 백엔드 사본 폴더에서): <venv>/bin/python -I <이 파일> <c_데이터 폴더> <출력 폴더>
+출력: <이름>.csv, <이름>.payload.json, <이름>.validate.json, <이름>.evaluate.json
+"""
+import json
+import sys
+from pathlib import Path
+
+import pandas as pd
+
+sys.path.insert(0, str(Path.cwd()))
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app.main import app  # noqa: E402
+
+DATA, OUT = Path(sys.argv[1]), Path(sys.argv[2])
+OUT.mkdir(parents=True, exist_ok=True)
+client = TestClient(app)
+
+
+def base(tag):
+    return pd.read_csv(DATA / f"{tag}.csv", dtype=str, keep_default_na=False), json.loads(
+        (DATA / f"{tag}.payload.json").read_text()
+    )
+
+
+def run(name, df, payload):
+    csv = OUT / f"{name}.csv"
+    df.to_csv(csv, index=False)
+    (OUT / f"{name}.payload.json").write_text(json.dumps(payload, ensure_ascii=False, indent=1))
+    files = {"file": (csv.name, csv.read_bytes(), "text/csv")}
+    for route, suffix in (("/api/validate-data", "validate"), ("/api/evaluate", "evaluate")):
+        r = client.post(route, files=files, data={"data": json.dumps(payload)})
+        assert r.status_code == 200, (name, route, r.status_code, r.text[:500])
+        (OUT / f"{name}.{suffix}.json").write_text(json.dumps(r.json(), ensure_ascii=False, indent=1))
+    sm = r.json()["results"]
+    print(name, sorted(sm["success_metrics"]), sm["failed_metrics"])
+
+
+# 1) 다중 + M21·M22 + 응답시간(latency) 컬럼 — digits_strong 에 지연시간 열을 결정적으로 붙인다.
+df, p = base("digits_strong")
+df["latency_ms"] = [f"{4 + (i * 37) % 53 / 10:.1f}" for i in range(len(df))]
+p["column_mappings"].append({"column": "latency_ms", "role": "latency", "sample_values": df["latency_ms"].head(3).tolist()})
+p["selected_metric_ids"] = p["selected_metric_ids"] + ["M21", "M22"]
+run("syn_multiclass_cm_latency", df, p)
+
+# 2) 이진 + M21·M22 (학습 분포를 기울여 분포 차이 문제를 만든다 — 프론트 입력 쪽)
+df, p = base("bc_strong")
+p["selected_metric_ids"] = p["selected_metric_ids"] + ["M21", "M22"]
+run("syn_binary_shift_cm", df, p)
+
+# 3) 판정 불가 — 핵심 지표 M9(AUROC)를 골랐지만 점수 열을 매핑하지 않았다(예측값만).
+df, p = base("bc_weak")
+df = df.drop(columns=["score_malignant"])
+p["column_mappings"] = [m for m in p["column_mappings"] if m["column"] != "score_malignant"]
+run("syn_binary_inconclusive", df, p)
+
+# 4) 멀티레이블 레이블별 임계값 — yeast_strong 에 레이블마다 다른 결정 임계값.
+df, p = base("yeast_strong")
+labels = [m["column"] for m in p["column_mappings"] if m["role"] == "score_per_label"]
+p["decision_threshold"] = {c: round(0.3 + (i % 4) * 0.1, 1) for i, c in enumerate(labels)}
+run("syn_multilabel_perlabel", df, p)
+
+# 5) 서술 대기 — bc_strong 그대로. 6) 서술 실패 — digits_weak 그대로.
+for name, tag in (("syn_narrative_pending", "bc_strong"), ("syn_narrative_failed", "digits_weak")):
+    df, p = base(tag)
+    run(name, df, p)

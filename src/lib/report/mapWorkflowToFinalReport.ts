@@ -38,10 +38,14 @@ import { normalizeIsoDate } from "../../utils/domain/isoDate";
 import type { ValidateDataResponseData } from "../../types/validation.types";
 import { mapValidationResultToReport } from "./mapValidationResultToReport";
 import { buildConclusion } from "./computeVerdict";
-import { REPORT_CONTENT_SCHEMA } from "./normalizeReportContent";
+import { usesSchema4 } from "./normalizeReportContent";
+import { newRunContentSchema } from "./reportEdition";
 import { resolveBeta, resolveTargetValue, TARGET_DIGITS } from "../../utils/domain/validation";
 import { formatTargetCriteria } from "./metricValueFormat";
 import { checkMaterialSelection } from "./materialCheck";
+import { isSameSourceRelation } from "./problemList";
+import { ed4TargetCriteria } from "./edition4/edition4Number";
+import { formulaEd4 } from "./edition4/metricFormulasEd4";
 import { imbalanceRatioOf } from "./buildDatasetDiagnosis";
 import type {
   BasicInfoFormData,
@@ -257,10 +261,23 @@ export function buildReportInput(state: ReportInputSource): MapWorkflowToReportI
   };
 }
 
+/** `mapWorkflowToFinalReport` 의 선택 인자. */
+export interface MapWorkflowToReportOptions {
+  /**
+   * 만들 성적서의 판(판 4 라운드 계획 2.2). 없으면 `newRunContentSchema()` — 앱 빌드의 판 플래그가 "4" 일 때만 4,
+   * 그 밖은 3(지금 동작). 판은 여기서 한 번 정해 `contentSchema` 에 찍고, 아래 함수들에는 그 값을 인자로 넘긴다.
+   */
+  contentSchema?: 3 | 4;
+}
+
 export function mapWorkflowToFinalReport(
   input: MapWorkflowToReportInput,
   validationResult?: ValidateDataResponseData | null,
+  options: MapWorkflowToReportOptions = {},
 ): FinalReportData {
+  // 판은 맨 위에서 한 번 — 아래는 이 값만 본다(판을 정하는 곳을 둘로 만들지 않는다).
+  const contentSchema = options.contentSchema ?? newRunContentSchema();
+  const edition4 = usesSchema4({ contentSchema });
   const resolvedTaskType: TaskType = resolveTaskType(input.taskType);
 
   // 데이터 검증 결과: 백엔드 /api/validate-data 응답이 있으면 실제 값으로 채우고,
@@ -275,7 +292,7 @@ export function mapWorkflowToFinalReport(
 
   const evalEnv = buildEvalEnv(input.basicInfo);
   const materials = input.composer ? buildReportMaterials(input.composer, resolvedTaskType) : undefined;
-  const materialCheck = materials && input.composer ? runMaterialCheck(input, validationResult, materials, evalEnv) : undefined;
+  const materialCheck = materials && input.composer ? runMaterialCheck(input, validationResult, materials, evalEnv, edition4) : undefined;
   // 3번 줄(클래스 중요도 → 평균 방식)이 미충족이면 5절 평균 방식 문장을 점검 결과의 문장으로 바꿔 찍는다.
   const printedMaterials =
     materials && materialCheck?.printed.averagingSentence
@@ -283,12 +300,12 @@ export function mapWorkflowToFinalReport(
       : materials;
 
   return {
-    contentSchema: REPORT_CONTENT_SCHEMA,
+    contentSchema,
     // 목표값을 찍는 자릿수(B10). 이 키가 없는 성적서는 종전 둘째 자리로 그린다.
     targetDigits: TARGET_DIGITS,
     // 판정과 어긋나 보이는 지표 값은 자릿수를 늘려 찍는다(S2). 이 키가 없는 성적서는 종전 셋째 자리로 그린다.
     judgedValueDigits: true,
-    meta: buildMeta(input, resolvedTaskType),
+    meta: buildMeta(input, resolvedTaskType, edition4),
     applicant: buildApplicant(input.basicInfo),
     performer: DEFAULT_PERFORMER,
     evalScope: buildEvalScope(input.basicInfo),
@@ -299,8 +316,8 @@ export function mapWorkflowToFinalReport(
     datasetDiagnosis: "",
     trainingDatasetInfo: buildTrainingDatasetInfo(input),
     evalEnv,
-    metricList: buildMetricList(resolvedTaskType, input.selectedMetricIds, input.metricDetails),
-    metricFormulas: buildMetricFormulas(resolvedTaskType, input.selectedMetricIds),
+    metricList: buildMetricList(resolvedTaskType, input.selectedMetricIds, input.metricDetails, edition4),
+    metricFormulas: buildMetricFormulas(resolvedTaskType, input.selectedMetricIds, edition4),
     dataValidation: mappedValidation ? mappedValidation.dataValidation : [],
     validationSummary: mappedValidation ? mappedValidation.summary : undefined,
     kpiResults: [],
@@ -353,6 +370,7 @@ function runMaterialCheck(
   validationResult: ValidateDataResponseData | null | undefined,
   materials: ReturnType<typeof buildReportMaterials>,
   evalEnv: EvalEnvironment,
+  edition4 = false,
 ) {
   const taskType: TaskType = resolveTaskType(input.taskType);
   const fromValidation = validationResult?.class_distribution;
@@ -374,12 +392,17 @@ function runMaterialCheck(
     imbalanceRatio: distribution ? imbalanceRatioOf(distribution) : null,
     distributionSource: distribution ? distributionSource : null,
     ack: input.materialCheckAck ?? null,
+    // 판 4 는 판 4 글과 표지 요약 줄. 주요 제약의 같은 출처는 판 4 문제 목록과 같은 판단 하나로.
+    ...(edition4 ? { edition: 4 as const, sameSource: isSameSourceRelation(input.composer) } : {}),
   });
 }
 
 // ---------- helpers ----------
 
-function buildMeta(input: MapWorkflowToReportInput, taskType: TaskType): FinalReportMeta {
+/** 판 4 표지 제목(대응표 21, 예시본 제목 그대로). 판 3 은 종전 "시험결과서". */
+export const EDITION4_TITLE = "기계학습 분류 성능 시험성적서";
+
+function buildMeta(input: MapWorkflowToReportInput, taskType: TaskType, edition4 = false): FinalReportMeta {
   const today = formatDate(new Date());
   // contractDate 는 이미 "YYYY-MM-DD" 문자열이다(E-09 — 직렬화 왕복 안전).
   // 저장소에 남아 있는 구 형식(Date 의 toJSON 결과)도 정규화해 받는다.
@@ -388,7 +411,7 @@ function buildMeta(input: MapWorkflowToReportInput, taskType: TaskType): FinalRe
   return {
     // 미발급(초안). 발급 시 백엔드 IssuanceOut 의 report_no / issued_at(KST)으로 채운다(P2-11).
     reportId: "",
-    title: "기계학습 분류 성능 시험결과서",
+    title: edition4 ? EDITION4_TITLE : "기계학습 분류 성능 시험결과서",
     issuedAt: "",
     evaluationPeriod: {
       from: contractDate ?? today,
@@ -562,6 +585,7 @@ function buildMetricList(
   taskType: TaskType,
   selectedMetricIds: string[],
   metricDetails: MetricDetailStateMap,
+  edition4 = false,
 ): MetricItem[] {
   if (selectedMetricIds.length === 0) {
     return [];
@@ -587,13 +611,23 @@ function buildMetricList(
         threshold: target,
         // 방향성(낮을수록 좋은 지표는 ≤)과 자릿수를 6절 표(MetricRow)와 같은 함수로 — 저장 문자열이라
         // 발급본은 그때 자릿수 그대로 남는다.
-        passCriteria: target !== null ? formatTargetCriteria(target, metric.higherIsBetter, TARGET_DIGITS) : "정보 제공",
+        // 판 4 run 은 목표값 표기 규칙(D1 — 넷째 자리 이상 목표는 받은 글자 그대로, `ed4TargetCriteria`)으로 — 표지·4.3 과 같은 함수.
+        passCriteria:
+          target === null
+            ? "정보 제공"
+            : edition4
+              ? ed4TargetCriteria(target, metric.higherIsBetter)
+              : formatTargetCriteria(target, metric.higherIsBetter, TARGET_DIGITS),
       };
     })
     .filter((item): item is MetricItem => item !== null);
 }
 
-function buildMetricFormulas(taskType: TaskType, selectedMetricIds: string[]): MetricFormula[] {
+/**
+ * 3.2 산정식 표. 판 4 run(`edition4`)은 산정식 글을 판 4 덮어쓰기 표(대응표 11, `edition4/metricFormulasEd4.ts`)로 바꿔 저장한다.
+ * 판 3 run 은 지금 글 그대로다.
+ */
+function buildMetricFormulas(taskType: TaskType, selectedMetricIds: string[], edition4 = false): MetricFormula[] {
   const ids = selectedMetricIds.length > 0 ? selectedMetricIds : [];
   if (ids.length === 0) return [];
 
@@ -603,11 +637,12 @@ function buildMetricFormulas(taskType: TaskType, selectedMetricIds: string[]): M
       if (!metric || !metric.supportedTaskTypes.includes(taskType)) return null;
 
       const displayId = getMetricDisplayId(metricId);
+      const formula = metric.formula || "—";
 
       return {
         metricId: displayId,
         name: metric.name,
-        formula: metric.formula || "—",
+        formula: edition4 ? formulaEd4(displayId, formula) : formula,
         description: metric.description,
         isCommon: !!metric.isCommon,
       };

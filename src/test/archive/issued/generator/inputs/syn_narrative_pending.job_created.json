@@ -1,0 +1,80 @@
+{
+ "job_id": "abecb1bd-26ae-4e33-af44-9fbfd867fbd7",
+ "status": "running",
+ "stage": "queued",
+ "benchmark_refs": [
+  {
+   "metric": "Accuracy",
+   "model_value": 0.9825,
+   "ref_low": 0.85,
+   "ref_high": 0.92,
+   "position": "above",
+   "direction": "higher",
+   "quality": "better",
+   "target_value": 0.95,
+   "target_position": "above",
+   "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+  },
+  {
+   "metric": "Precision",
+   "model_value": 0.9692,
+   "ref_low": 0.8,
+   "ref_high": 0.92,
+   "position": "above",
+   "direction": "higher",
+   "quality": "better",
+   "target_value": null,
+   "target_position": null,
+   "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+  },
+  {
+   "metric": "Recall",
+   "model_value": 0.9844,
+   "ref_low": 0.8,
+   "ref_high": 0.92,
+   "position": "above",
+   "direction": "higher",
+   "quality": "better",
+   "target_value": 0.97,
+   "target_position": "above",
+   "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+  },
+  {
+   "metric": "F1 Score",
+   "model_value": 0.9767,
+   "ref_low": 0.83,
+   "ref_high": 0.91,
+   "position": "above",
+   "direction": "higher",
+   "quality": "better",
+   "target_value": 0.95,
+   "target_position": "above",
+   "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+  },
+  {
+   "metric": "AUROC",
+   "model_value": 0.9993,
+   "ref_low": 0.85,
+   "ref_high": 0.95,
+   "position": "above",
+   "direction": "higher",
+   "quality": "better",
+   "target_value": 0.98,
+   "target_position": "above",
+   "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+  },
+  {
+   "metric": "AUPRC",
+   "model_value": 0.9988,
+   "ref_low": 0.8,
+   "ref_high": 0.93,
+   "position": "above",
+   "direction": "higher",
+   "quality": "better",
+   "target_value": null,
+   "target_position": null,
+   "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+  }
+ ],
+ "result": null
+}

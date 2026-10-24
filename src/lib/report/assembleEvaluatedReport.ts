@@ -37,7 +37,15 @@ import type { MapWorkflowToReportInput } from "./mapWorkflowToFinalReport";
 import { attachNearTarget, nearTargetNote } from "./nearTarget";
 import { noBenchmarkSentence } from "./benchmarkBaselines";
 import { MULTILABEL_IMBALANCE_DEFINITION } from "./narrativeSectionText";
-import { usesSchema3 } from "./normalizeReportContent";
+import { usesSchema3, usesSchema4 } from "./normalizeReportContent";
+import { attachJudgmentMargin, parseRawIntervalBounds } from "./edition4/judgmentMargin";
+import { buildDistributionEd4 } from "./edition4/distributionEd4";
+import { derivationStatementEd4 } from "./edition4/edition4Text";
+import { parseEngineVersion, parseImbalanceRawEd4, parseSourceFile } from "./edition4/factSheetEd4";
+import { buildThresholdTableEd4, parseF1ThresholdGainEd4 } from "./edition4/thresholdGainEd4";
+import { buildCoverResultRows, buildVerdictEd4 } from "./edition4/verdictEd4";
+import { imbalanceRatioOf } from "./buildDatasetDiagnosis";
+import type { Edition4Values } from "../../types/finalReport.types";
 import { buildProblemList, parseF1ThresholdGain, parseImbalanceEffect } from "./problemList";
 
 /** 조립에 쓰는 워크플로우 값. 훅은 스토어와 `buildReportInput` 결과에서 그대로 꺼내 넘긴다. */
@@ -75,6 +83,8 @@ export function assembleEvaluatedReport(
   result: any,
   inputs: EvaluatedReportInputs,
 ): AssembledEvaluatedReport {
+  // 판은 run 에 찍힌 값 하나만 읽는다(맨 위에서 한 번 — 판 4 라운드 계획 2.2). 아래 판 4 갈래는 모두 이 값을 받는다.
+  const edition4 = usesSchema4(baseReport);
   const success_metrics = result.results.success_metrics || {};
   // 계산 실패 지표({metricId: 에러문자열}). value 0/fail 위장 대신 'unavailable' 처리(D4).
   const failed_metrics = result.results.failed_metrics || {};
@@ -163,11 +173,16 @@ export function assembleEvaluatedReport(
   const confidenceIntervals = parseConfidenceIntervals(success_metrics.confidence_intervals);
   // 아슬아슬(설계 D12) — 판정 대상 지표에 margin·nearTarget 을 붙인다(`computeVerdict.ts` 한 곳의 식).
   // 8.3 한 줄은 지금 만들어 저장한다. 아슬아슬 지표가 없으면 키를 두지 않는다.
-  const updatedKpiResults = attachNearTarget(
+  const withNearTarget = attachNearTarget(
     attachConfidenceIntervals(kpiResultsWithoutCi, confidenceIntervals),
   );
+  // 판 4 판정 여유(대응표 24) — 반올림 전 신뢰구간이 목표를 포함하는지(구간이 없으면 3%). 판 3 의 nearTarget 은 그대로 둔다.
+  const updatedKpiResults = edition4
+    ? attachJudgmentMargin(withNearTarget, parseRawIntervalBounds(success_metrics.confidence_intervals))
+    : withNearTarget;
   const ciNote = confidenceIntervalNote(updatedKpiResults, confidenceIntervals);
-  const nearNote = nearTargetNote(updatedKpiResults);
+  // 고정 문구 18(3% 근소 문장)은 판 3 글이다 — 판 4 는 4.3 판정 여유 열이 대신하므로 만들지도 싣지도 않는다(D49 ④).
+  const nearNote = edition4 ? null : nearTargetNote(updatedKpiResults);
 
   // 2. 오차 행렬(Confusion Matrix) 치환
   let confusionMatrix = null;
@@ -322,7 +337,12 @@ export function assembleEvaluatedReport(
     confidenceIntervals,
     fixedSentences: [],
     nSamples,
+    edition4,
   });
+  // 판 4 전용 파서 — 평가 응답의 반올림 전 값(S1). 판 3 파서(`parseF1ThresholdGain`·`parseImbalanceEffect`)는 그대로다.
+  // 문제 근거(D6)와 사실 시트가 같은 값에서 같은 함수로 판 4 글자를 찍는다.
+  const thresholdGainRaw = edition4 ? parseF1ThresholdGainEd4(success_metrics.f1_threshold_gain, thresholdGain) : null;
+  const imbalanceRaw = edition4 ? parseImbalanceRawEd4(success_metrics.imbalance_effect, imbalanceEffect) : null;
   const problems = buildProblemList({
     kpiResults: updatedKpiResults,
     taskType: taskTypeResolved,
@@ -331,13 +351,15 @@ export function assembleEvaluatedReport(
     imbalanceEffect,
     facts: factsWithoutSentences,
     composer: inputs.composer,
+    edition: edition4 ? 4 : 3,
+    ...(edition4 ? { thresholdGainRaw, imbalanceRaw } : {}),
   });
 
   // 7.2 고정 문구 12(9절 "정답 라벨 주의"와 같은 판정)와 8.2 고정 문구 11a·11b. 의뢰자 답은
   // client_inputs 로 이미 AI 에 가므로 사실 시트에 따로 싣지 않는다.
   const labelSentence = labelCautionSentence(inputs.composer);
   const sourceSentence = sourceRelationSentence(inputs.composer);
-  const errorRatioText = errorRatios ? errorRatioSentence(errorRatios, taskTypeResolved) : null;
+  const errorRatioText = errorRatios ? errorRatioSentence(errorRatios, taskTypeResolved, { edition4 }) : null;
   // 8.1 표 아래 고정 문구 16 — 고른 서술 지표 중 내부 참조 기준치가 없는 것(사용자 결정 5). 8.1 표는 작업 생성
   // 응답으로 오므로 기준표 이름 사본으로 지금 계산해 저장하고 사실 시트에도 싣는다(백엔드는 되풀이하지 않는다).
   // 판 3 전용 고정 문장(16·7)은 판 3 바탕일 때만 — 판 1·2 화면은 이 문장을 찍지 않으므로, 실으면 AI 가 "성적서가
@@ -347,7 +369,14 @@ export function assembleEvaluatedReport(
 
   // 7~9절에 코드가 찍을 고정 문장 — AI·템플릿은 같은 숫자를 되풀이하지 않고 해석만 쓴다(생-12).
   const fixedSentences: FixedSentenceFact[] = [
-    ...(derivedPrediction ? [{ id: "9", section: "7.1", text: derivationStatement(derivedPrediction, { legacyParticle: !schema3 }) }] : []),
+    // 판 4 는 9번을 판 4 합니다체 글로(3.3 첫 항목과 같은 글). 칸 이름(7.1)은 그대로다.
+    ...(derivedPrediction
+      ? [{
+          id: "9",
+          section: "7.1",
+          text: edition4 ? derivationStatementEd4(derivedPrediction) : derivationStatement(derivedPrediction, { legacyParticle: !schema3 }),
+        }]
+      : []),
     ...(errorRatioText ? [{ id: "17", section: "7.1", text: errorRatioText }] : []),
     // 7.2 고정 문구 7 — 멀티레이블 불균형 비율 정의(화면 InterpretSection 이 판 3 멀티레이블에 늘 찍는다).
     ...(schema3 && taskTypeResolved === "multilabel" ? [{ id: "7", section: "7.2", text: MULTILABEL_IMBALANCE_DEFINITION }] : []),
@@ -365,6 +394,7 @@ export function assembleEvaluatedReport(
     const metric = METRICS.find((m) => getMetricDisplayId(m.id) === r.metricId);
     if (metric?.additionalFields?.includes("beta")) betas[r.metricId] = resolveBeta(inputs.metricDetails);
   }
+
 
   const factSheet = fitFactSheet(
     buildFactSheet({
@@ -390,8 +420,36 @@ export function assembleEvaluatedReport(
       problems,
       betas,
       facts: { ...factsWithoutSentences, fixed_sentences: fixedSentences },
+      ...(edition4 ? { edition4: { thresholdGainRaw, imbalanceRaw } } : {}),
     }),
   );
+
+  // 판 4 생성값(S3 ⑥) — 판 4 run 에만. 판정·판정 여유·분포 차는 위에서 정한 값을 읽기만 한다. 4.5 표는 자르기 전 사실에서.
+  const edition4Values: Edition4Values | null = edition4
+    ? (() => {
+        const verdict = buildVerdictEd4(factsWithoutSentences.verdict_detail, updatedKpiResults);
+        // 4.5 불균형 비율은 M23 원값(고르지 않았으면 엔진 불균형 영향의 원값, 그것도 없으면 분포로 계산).
+        const imbalanceRaw45 =
+          imbalanceRatio ?? imbalanceRaw?.imbalance_ratio ?? imbalanceRatioOf(resolvedClassDistribution);
+        return {
+          coverResultRows: buildCoverResultRows(verdict, updatedKpiResults),
+          verdict,
+          thresholdTable:
+            thresholdGain && thresholdGainRaw
+              ? buildThresholdTableEd4(thresholdGainRaw, thresholdGain, updatedKpiResults, derivedPrediction)
+              : null,
+          distribution: buildDistributionEd4({
+            taskType: taskTypeResolved,
+            classDistribution: resolvedClassDistribution,
+            nSamples: datasetSize,
+            imbalanceRatio: imbalanceRaw45 ?? null,
+            imbalanceEffect,
+            facts: factsWithoutSentences,
+            composer: inputs.composer,
+          }),
+        };
+      })()
+    : null;
 
   // ── Stage 1: 서술과 무관한 결정론적 결과(KPI·차트·규칙 verdict).
   //    interpretation/recommendation* 은 baseReport 의 빈 기본값 유지, narrativeSource 미설정.
@@ -402,11 +460,17 @@ export function assembleEvaluatedReport(
     datasetInfo: {
       ...baseReport.datasetInfo,
       sampleCount: datasetSize ?? baseReport.datasetInfo.sampleCount,
+      // 판 4 2.2 파일 해시·크기 — 판 4 run 에만 키(응답에 없으면 null → 그릴 때 "—").
+      ...(edition4 ? { sourceFile: parseSourceFile(result.source_file) } : {}),
     },
     meta: { ...baseReport.meta, derivedPrediction },
     // 평가를 실제로 수행한 환경(라이브러리 버전·수행 시각). 종전에는 프론트
-    // 상수를 인쇄해 실제와 무관한 값이 성적서에 남았다(F-09).
-    evalEnv: { ...baseReport.evalEnv, environment: result.environment ?? undefined },
+    // 상수를 인쇄해 실제와 무관한 값이 성적서에 남았다(F-09). 판 4 run 은 평가 엔진 버전도(없으면 null).
+    evalEnv: {
+      ...baseReport.evalEnv,
+      environment: result.environment ?? undefined,
+      ...(edition4 ? { engineVersion: parseEngineVersion(result.engine_version) } : {}),
+    },
     // 전처리 경고를 버리지 않는다(D-16). 결측 제외·확률합 이상·파생 예측
     // 같은 사실이 여기에만 실려 온다.
     evaluationWarnings: Array.isArray(result.warnings) ? result.warnings : [],
@@ -429,6 +493,7 @@ export function assembleEvaluatedReport(
     datasetDiagnosis,
     charts: { confusionMatrix, rocCurve, prCurve },
     latency: latencyStats,
+    ...(edition4Values ? { edition4Values } : {}),
   };
 
   return { stage1Report, factSheet };

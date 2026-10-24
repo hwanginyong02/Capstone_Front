@@ -46,7 +46,7 @@ Capstone_Front/
 │   │   ├── test-items/        # 지표와 합격 기준
 │   │   ├── data-validation/   # 검증
 │   │   ├── workflow/          # 여러 화면이 함께 쓰는 안내 (생성 전 안내, 백엔드 안내, 파일 다시 올리기)
-│   │   ├── report/            # 📊 최종 성적서 렌더링 (layout/ · sections/ · shared/)
+│   │   ├── report/            # 📊 최종 성적서 렌더링 (layout/ · sections/ · shared/ — 판 1~3, edition4/ — 판 4, §6.6)
 │   │   ├── workspaces/        # 워크스페이스 목록/상세용 컴포넌트
 │   │   ├── landing/           # 랜딩 페이지 섹션 컴포넌트
 │   │   ├── ui/                # 🧩 공통 원시(primitive) 컴포넌트 (shadcn/ui 기반)
@@ -60,7 +60,7 @@ Capstone_Front/
 │   ├── lib/                   # 백엔드 계약·외부 연동(API)·리포트 도메인 로직 계층
 │   │   ├── apiBase.ts         # API base URL 헬퍼
 │   │   ├── mapping/           # 프론트↔백엔드 역할 변환 (translateRoleToBackend/Frontend)
-│   │   ├── report/            # 성적서 조립·평가 로직 + 코로케이션된 테스트
+│   │   ├── report/            # 성적서 조립·평가 로직 + 코로케이션된 테스트 (edition4/ — 판 4 순수 함수, §6.6)
 │   │   └── upload/            # 업로드 파일 크기 한도
 │   ├── pages/                 # 라우팅 단위 페이지 (Assembler 역할)
 │   │   ├── report/            # Report, ReportPrint, ReportByNumber(번호로 열기)
@@ -68,7 +68,9 @@ Capstone_Front/
 │   ├── styles/                # 글로벌 스타일 (fonts.css, index.css, landing.css, tailwind.css, theme.css)
 │   ├── test/                  # 테스트 설정과 저장소 전체 검사
 │   │   ├── archive/           # 옛 판 성적서 정답 파일·스냅샷 (손으로 고치지 않는다, §6.3)
-│   │   ├── contract/          # 사실 시트 계약 사본 (백엔드와 같아야 함, §6.2)
+│   │   ├── contract/          # 사실 시트 계약 사본 (백엔드와 같아야 함, §6.2 · 판 4 사본 *_ed4.json §6.6)
+│   │   ├── edition3/          # 판 3 새 성적서 정답 (손으로 고치지 않는다, §6.6)
+│   │   ├── edition4/          # 판 4 시험 자료 — 고정 문구 사본·예시본 사본·렌더 픽스처 (§6.6)
 │   │   ├── noPrivateDocLinks.test.ts  # 저장소 밖 개인 문서 링크 금지
 │   │   ├── noStockColors.test.ts      # 토큰 대신 쓴 stock 색 금지
 │   │   └── setup.ts, smoke.test.tsx …
@@ -125,11 +127,11 @@ Capstone_Front/
 
 > 2026-10, AI 서술 설계 구현 라운드. 백엔드 쪽(작업 번호·장별 생성·칸별 검사·규칙 문장·결정 번호 Dnn 의 뜻)은 백엔드 저장소 `docs/ARCHITECTURE.md` §10, 평가 응답과 클래스 표기는 같은 문서 §9 에 있다. 여기서는 프론트가 하는 일만 적는다.
 
-한 줄 요약: **평가는 한 번, 서술은 작업 번호로 기다린다.** 서술이 끝나야(done) 완성본이 되고, 그 전에는 인쇄·PDF·발급이 잠긴다. 성적서 데이터에는 판 번호(`contentSchema`)가 찍혀 있어, 이미 발급한 옛 판은 발급 당시 모양 그대로 그린다.
+한 줄 요약: **평가는 한 번, 서술은 작업 번호로 기다린다.** 서술이 끝나야(done) 완성본이 되고, 그 전에는 인쇄·PDF·발급이 잠긴다. 성적서 데이터에는 판 번호(`contentSchema`)가 찍혀 있어, 이미 발급한 옛 판은 발급 당시 모양 그대로 그린다. 새 성적서는 기본이 판 3 이고, 판 4(목차를 대상·방법·결과·소견·권고로 다시 묶은 판)는 빌드 환경변수로 켠다(§6.6).
 
 ### 6.1 흐름 — run 을 만들 때부터 완성본까지
 
-1. **평가 요청 스냅샷**(`lib/report/evaluationRequest.ts`): 검증 화면에서 "다음"을 눌러 run 을 만들 때 평가 요청 본문·조립 입력·모델 정보와 **파일 지문**(이름·바이트·마지막 수정 시각)을 run 에 얼린다. 성적서 화면은 지금 입력이 아니라 이 스냅샷으로만 평가한다. 가진 파일의 지문이 다르거나 파일이 없으면 "이 평가의 파일을 다시 올려 주세요", 스냅샷이 없는 옛 run 은 "다시 평가", 없는 id 는 "찾을 수 없음". 판 번호(`REPORT_CONTENT_SCHEMA`)도 이때 성적서 데이터에 찍힌다(`mapWorkflowToFinalReport`).
+1. **평가 요청 스냅샷**(`lib/report/evaluationRequest.ts`): 검증 화면에서 "다음"을 눌러 run 을 만들 때 평가 요청 본문·조립 입력·모델 정보와 **파일 지문**(이름·바이트·마지막 수정 시각)을 run 에 얼린다. 성적서 화면은 지금 입력이 아니라 이 스냅샷으로만 평가한다. 가진 파일의 지문이 다르거나 파일이 없으면 "이 평가의 파일을 다시 올려 주세요", 스냅샷이 없는 옛 run 은 "다시 평가", 없는 id 는 "찾을 수 없음". 판 번호(`contentSchema`)도 이때 성적서 데이터에 찍힌다(`mapWorkflowToFinalReport` 가 `reportEdition.newRunContentSchema()` 로 정한다 — 기본 3, 판 4 는 §6.6).
 2. **성적서 화면 `/report/:id`**(`hooks/useReportData.ts`) — 효과가 둘이다.
    - **평가 효과**: 의존성은 run id·서술 상태·평가할 파일뿐이다(run 객체를 넣으면 저장할 때마다 평가와 유료 서술 작업이 되풀이된다). 서술을 아직 시작하지 않은 run 만 `POST /api/evaluate` → 조립(6.2) → `POST /api/narrative/jobs` 를 부르고, 1단계 성적서(지표·차트·8.1 표, 서술 없음)와 서술 상태 pending(작업 번호·다시 만들기용 요청)을 **한 번에** 저장한다. 같은 run 의 평가는 **모듈 단위로 한 번만** 돈다(`evaluationsInFlight`) — `main.tsx` 가 `React.StrictMode` 라 개발 중에는 효과가 두 번 돌고, 인쇄 탭·두 화면이 같은 run 을 열 수도 있기 때문이다.
    - **서술 효과**: pending 이고 작업 번호가 있으면 `GET /api/narrative/jobs/{id}` 로 조회만 한다(`lib/report/narrativeJobApi.ts`). 진행 단계(대기·생성 중·검사 중·다시 만드는 중)는 컴포넌트 상태에만 두고, **저장소에는 끝 상태(pending/done/failed)만** 쓴다.
@@ -161,9 +163,10 @@ Capstone_Front/
 |---|---|---|
 | 1 | 판 표시가 없는 데이터(운영 main `d38890d` 이 발급한 것) | 발급 당시 그대로. 파생 예측 문장은 6.0 일러두기 자리, 목표값 없음은 `threshold: 0` 으로 적혀 있어 그릴 때만 `null` 로 읽는다 |
 | 2 | 목표값 없음을 `null` 로 적기 시작한 판(서술 라운드 앞의 dev — 운영 main 에는 배포되지 않았다) | 서술 라운드 앞 dev 가 그리던 모양. 판 1 과 같은 것은 1.4 의 'LLM 생성 소견에 대한 면책' 항목·서명란·표지의 AI 표현·장 단위 배지뿐이고, 판 1 전용 분기(`legacyLayout`, 아래)의 main 모양은 따르지 않는다 — 1.4 는 세부 줄 목록, 1.1 빈 FAX·홈페이지 줄 없음·'평가 의뢰일', 2절 시험 대상 모델 표, 8절 '통과율 (참고)' 등. 파생 예측 문장은 7.1 앞. 칸별 출처는 있지만 판 3 의 새 모양은 없음 |
-| 3 | 지금(`REPORT_CONTENT_SCHEMA = 3`) | 아래 목록 |
+| 3 | 기본값(`REPORT_CONTENT_SCHEMA = 3`). 판 플래그를 켜지 않은 앱이 만드는 새 성적서 | 아래 목록 |
+| 4 | 판 플래그(`VITE_REPORT_EDITION=4`)를 켠 앱이 만든 새 성적서(`EDITION4_CONTENT_SCHEMA = 4`). 아직 운영에서 켜지 않았다 | 판 3 섹션 부품을 쓰지 않고 따로 그린다 — 표지, 1 시험 개요 · 2 시험 대상 · 3 시험 방법 · 4 시험 결과(4.1~4.8) · 5 분석 소견 · 6 개선 권고, 발급 이력, "— 끝 —". §6.6 |
 
-- **판 술어**: `isLegacyLayout` = 판 1(`< 2`), `usesSchema3` = 판 3 이상. 판 비교는 지금 상수가 아니라 **그 뜻이 생긴 판 번호**에 박는다 — 상수를 올릴 때 옛 분기가 따라 움직이지 않게. 판 2 보관본에도 `narrativeSections` 가 있으므로 키가 있는지가 아니라 판으로 가른다. 섹션 부품은 모두 `schema3` prop 을 받는다(화면·인쇄 양쪽).
+- **판 술어**: `isLegacyLayout` = 판 1(`< 2`), `usesSchema3` = 판 3 이상(판 4 에도 참이다), `usesSchema4` = 판 4 이상. 판 3 만 가르려면 `usesSchema3` 과 `usesSchema4` 를 함께 본다. 판 비교는 지금 상수가 아니라 **그 뜻이 생긴 판 번호**에 박는다 — 상수를 올릴 때 옛 분기가 따라 움직이지 않게. 판 2 보관본에도 `narrativeSections` 가 있으므로 키가 있는지가 아니라 판으로 가른다. 섹션 부품은 모두 `schema3` prop 을 받는다(화면·인쇄 양쪽).
 - **`legacyLayout` prop** — 판 1 전용 운영 main 모양(`isLegacyLayout`, 화면 `ReportSections`·인쇄 `ReportPrint` 가 넘긴다). 받는 섹션: `CompanyInfoSection`(1.1 빈 FAX·홈페이지 줄과 '계약일자', 1.3 옛 용도 이름, 1.4 인라인 문장·세부 줄 없음), `EvalScopeSection`(2절 시험 대상 모델 표 없음), `DatasetSection`(학습 샘플 수 0개도 찍음, 예시 표 '정상/불량 데이터'), `ChartSection`(차트 없음 안내 옛 문장), `ConclusionSection`(8절 '종합 점수'와 그 정의). 섹션을 고칠 때 이 분기도 함께 본다.
 - **판 3 에서 생긴 것**:
   - 소절 번호(1.1 ~ 9.2, `SubsectionTitle`)와 7.3 추가 관찰(빈 글이면 고정 문구 15 "해당 없음").
@@ -212,3 +215,83 @@ AI·규칙 문장이 아니라 코드가 찍는 문장이다. 7~9절 문장은 �
 - **"모름 + 글"은 제공이 아니다.** 그 보고 항목은 "제공되지 않음"으로 세고, 글은 버리지 않고 "제공되지 않음 (의뢰자 제공: …)"으로 성적서에 찍고 AI 에도 보낸다(`reportMaterials.materialRowText`). 백엔드는 "제공되지 않음"으로 **시작**하는 값을 제공 아님으로 읽는다.
 - **점검 표 2.0**(`materialCheck.MATERIAL_CHECK_VERSION`): 이 셈 규칙과 칸 이름 변경(불균형 보정 → 편향 감소 노력)이 들어간 판. 1.0 으로 점검한 진행 중 run 에는 "다시 확인" 안내가 뜬다.
 - **셈 규칙 표 테스트** `lib/report/noteCountingRules.test.ts`: 경우마다 진행 점검(답함)·2층 제공·성적서 인쇄 글·AI 글 네 자리를 한 줄로 단정한다. 한 자리만 바뀌면 어긋나므로 규칙을 바꾸면 이 표부터 고친다.
+
+### 6.6 판 4 — 켜는 법과 정답
+
+> 2026-10, 판 4 구현 라운드. 백엔드 쪽(서술 요청의 `report_edition`, 평가 엔진 버전, 백엔드 정답 폴더)은 백엔드 저장소 `docs/ARCHITECTURE.md` §13 에 있다.
+
+한 줄 요약: **판 4 는 판 3 옆에 길을 하나 더 낸 것이다.** 판 3 을 그리는 코드는 그대로 두고, 판은 run 을 만들 때 한 곳에서만 정하며, 그 뒤 모든 단계는 찍힌 판만 따른다. 지금 기본값은 판 3 이고, 운영에서는 아직 켜지 않았다.
+
+**판을 정하는 곳은 한 군데다**
+
+- `lib/report/reportEdition.ts` 의 `newRunContentSchema()` 가 **호출될 때** `import.meta.env.VITE_REPORT_EDITION` 을 읽어, 값이 꼭 `"4"` 일 때만 4, 그 밖(변수 없음·빈 값·`"3"`·`"true"` …)은 3 을 돌려준다.
+- 이 함수를 부르는 곳은 `mapWorkflowToFinalReport`(옵션 `contentSchema` 를 주지 않았을 때의 기본값) 하나다. 여기서 정한 판이 성적서 데이터의 `contentSchema` 에 찍힌다.
+- 그 뒤(조립 `assembleEvaluatedReport`, 서술 요청 `buildNarrativeRequest`, 그리기, 발급)는 플래그를 다시 읽지 않고 찍힌 판(`usesSchema4`)만 본다. 그래서 플래그를 켰다 꺼도 이미 만든 run 은 만든 때의 판 그대로이고, 발급한 보관본도 찍힌 판으로 그린다(§6.3).
+- 정적 시험(`reportEdition.test.ts`)이 환경변수를 읽는 곳이 이 파일 하나뿐인지 지킨다. 테스트 기본값은 `vitest.config.ts` 의 `test.env: { VITE_REPORT_EDITION: "3" }` 와 `unstubEnvs: true` 로 고정한다 — 저장소의 `.env*` 값이 테스트 기본값을 바꾸지 못하고, 한 테스트에서 `vi.stubEnv` 로 켠 판 4 가 다음 테스트로 새지 않는다.
+
+**그리는 곳 — 입구 세 곳**
+
+판 4 데이터는 판 3 섹션 부품에 들어가지 않는다. 입구에서 `usesSchema4(data)` 일 때만 판 4 쪽으로 보낸다.
+
+| 입구 | 하는 일 |
+|---|---|
+| `components/report/ReportSections.tsx`(화면, 번호로 열기도 이것을 씀) | 맨 앞 한 줄에서 `<Edition4Report mode="screen" />` 로 보낸다 |
+| `pages/report/ReportPrint.tsx`(인쇄) | 찾을 수 없음·인쇄 불가 가드 뒤, 인쇄 준비 신호를 거는 `<div ref={containerRef}>` **안에서** 판 4 와 판 3 을 가른다. 맨 앞에서 return 하면 인쇄 준비 신호와 자동 인쇄가 멈춘다 |
+| `components/report/NarrativeRecordPanel.tsx`(화면 전용 "작성 기록") | 맨 위 한 줄에서 판 4 상자 `Ed4NarrativeRecord` 로 보낸다 |
+
+- 판 4 부품은 `components/report/edition4/` 에 있다. `Edition4Report` 가 화면·인쇄 공용이고(인쇄일 때만 묶음마다 페이지 나눔), 장별 부품(`Ed4Cover`·`Ed4Overview`·`Ed4Target`·`Ed4Method`·`Ed4ResultsCore`·`Ed4ResultsDetail`·`Ed4Findings`·`Ed4Recommend`·`Ed4Closing`)과 공용 부품(`shared/`)을 부른다. 부품 이름은 "Section" 으로 끝내지 않는다 — 화면↔인쇄 배선 시험이 그 이름을 소스에서 대조한다.
+- 판 4 순수 함수(문구 상수 `edition4Text.ts`, 숫자 표기, 판정 여유 `judgmentMargin.ts`, 칸→자리 대응표 `narrativeSlots.ts`, 4.4 임계값 표, 4.5 분포 표, 발급 판정 `render/issuance.ts` 등)는 `lib/report/edition4/` 에 있다. 판 3 과 같이 쓰는 잎 함수는 그대로 쓰고, 판 4 에서 글이 달라야 하면 판 4 쪽에 새 함수를 둔다.
+- 판 4 저장값(판정 여유 `judgmentMargin`, `edition4Values`, 파일 해시·크기 `sourceFile`, 평가 엔진 버전 `engineVersion` 등)은 판 4 run 에만 만든다. 판 3 run 의 데이터와 서술 요청에는 판 4 키가 하나도 없다(시험이 확인).
+- 서술 요청: `buildNarrativeRequest` 가 판 4 run 일 때만 최상위에 `report_edition: 4` 를 싣는다. 판 3 요청에는 이 키가 없다(백엔드 기본 3). 백엔드는 이 값 하나로만 판 4 규칙(절 번호·숫자 표기·지시문·규칙 문장)을 쓴다.
+- 부록 1(성적서 점검 결과) 자리는 비워 두었다(`Ed4Closing`). 판 4 를 켜기 전에 만든다(아래 목록).
+
+**판 4 켜는 법**
+
+1. **백엔드를 먼저 배포한다.** 판 4 를 아는 백엔드가 운영에 떠 있는지 `/health` 의 `commit` 으로 확인한 뒤에 프론트를 켠다. 옛 백엔드가 판 4 요청을 받으면:
+   - `report_edition` 을 모르는 칸이라 오류 없이 버린다 → 판 4 성적서에 판 3 절 번호·표기로 쓴 서술이 들어간다.
+   - 문제 종류 `same_source`(평가 데이터가 학습과 같은 출처)를 몰라 요청 전체를 422 로 돌려보낸다.
+   - 멀티레이블의 새 상태 값(`training_samples_not_provided`)을 몰라 `facts` 를 통째로 버린다.
+2. **Vercel 프로젝트 환경변수에 `VITE_REPORT_EDITION=4` 를 넣고 다시 배포한다.** Vite 는 이 값을 빌드 때 앱에 박으므로 값만 넣고 다시 빌드하지 않으면 바뀌지 않는다. 끄려면 값을 지우고(또는 `3`) 다시 배포한다 — 이미 만든 판 4 run 은 판 4 그대로 남는다. Render(백엔드)에는 판 플래그가 없다.
+3. 로컬에서 보려면 `VITE_REPORT_EDITION=4 pnpm dev` 처럼 띄운다.
+
+**켜기 전 확인 목록** — 판 4 라운드에서 남긴 것. 모두 정해져야 운영에서 켠다.
+
+- 문안 확정: 고정 문구 20(4.2 판정 근거 — 조건부 합격·불합격·판정 불가 갈래)과 21(표지 시험 결과 요약)은 초안 글로 구현했다(시험 이름에 "초안"). 부록 B31(핵심 지표가 없는 성적서의 4.2 판정 근거), B32(목표값 없는 핵심 지표의 표지 줄), B33(멀티레이블에서 학습 표본 수가 없을 때 4.5 비율 표 자리)도 초안이다.
+- ISO/IEC 17025 조항 번호와 연락처 표기를 정한다(판 4 본문에는 아직 없다). 지금은 판 4 금지어 시험이 "연락처" 를 막으므로, 넣기로 하면 그 시험도 함께 고친다.
+- 부록 1(성적서 점검 결과)을 만든다.
+- 서술 설계 v0.14 의 "코드 반영 대기" 두 건 — 종합 총평의 평균 방식 차이 서술에 걸린 M22 조건 풀기, 종합 총평의 "평가 데이터의 대표성과 한계" 항목(판 4 묶음과 따로 하는 서술 쪽 변경). 부록 1.3 이 "평가 데이터의 대표성 | 5.1" 을 전제한다.
+- 랜딩 `components/landing/ReportDemo.tsx` 는 판 3 글("시험결과서" 등)을 손으로 적은 정적 그림이라 플래그를 따라가지 않는다. 판 4 글로 바꿀지 정한다(랜딩의 다른 미리보기 `ScrollableReportPreview` 는 매퍼로 만들어 플래그를 따른다).
+- 판 4 화면에서 본 어색한 곳: 평가 전 초안(3.1 핵심 열·3.4 지정 없음, 4.2·4.4·4.6 빈 소절, 4.7·4.8 문장), 인쇄 1쪽 "의뢰자" 줄이 홀로 다음 쪽으로 넘어감, "판정 불가 (… 4개 중 4개 충족)" 문장, 다중 최약 클래스 F1 넷째 자리와 고정 문구 23 범위.
+- 백엔드 먼저 배포(위 1), Vercel 환경변수(위 2).
+- 정해져 반영된 것(S6 뒤 사용자 결정, 2026-10-24 — 목록에서 뺐다):
+  - 일부만 빠진 보고 항목은 표지·1.3·영향 줄에 "{항목 이름}(빠진 것: {빠진 줄})"(멀티레이블 "학습 데이터의 출처·크기·구성(빠진 것: 학습 클래스 분포)" — 1.3 과 2.3 의 어긋남 해결). 판정·점검 표 2.0 그대로(`materialCheck.ts`).
+  - 1,000 이상 정수 건수는 표 칸뿐 아니라 문장(고정 문구 17·4.5·백엔드 규칙 문장·폴백)에도 천 단위 쉼표 — 표와 문장의 쉼표 섞임 해결. 소수·지연시간(D4)·하이퍼파라미터 글자는 그대로(`ed4Count`, 대조 표 count 줄).
+  - 클래스 이름: 4.4 혼동 행렬 건수 표는 이름만, 최약·예측 편향·최다 오분류 쌍은 "이름(설명)", 설명에 괄호가 있으면 "이름[설명]", 숫자로 끝나는 이름은 4.5 분포 문장에서 "{이름}: {n}건"(`classNameEd4.ts`, 대조 표 class_name·name_count 줄) — digits 괄호 겹침·"1 55건" 해결.
+  - 4.3 "불합격 | 충분" 조합은 그대로(고정 문구 19 뜻 그대로).
+  - **영어 용어는 유지한다**(결정): M21 그림 축 글(Predicted/Actual), "Average 지표 세부 결과"·"Metric" 머리·"M11 — Macro Average", 4.1 "Argmax–y_pred 불일치", 산정식 기호(판 3 글 그대로). 판 4 글로 바꾸지 않는다.
+- 켠 뒤 판 4 로 발급한 보관본은 판 1~3 처럼 발급 당시 모양을 지켜야 한다. 판 4 렌더러를 고칠 때 이 점을 함께 본다.
+
+**평가 엔진 버전** — 판 4 3.5 "평가 엔진 버전" 칸은 평가 응답의 `engine_version`(백엔드 `app/evaluation/environment.py` 의 상수 `ENGINE_VERSION`, 첫 값 `1.0.0`)을 그대로 찍는다. 올리는 규칙은 백엔드 문서 §13. 프론트에는 버전 상수가 없다.
+
+**판 4 정답과 시험 자료**
+
+| 위치 | 무엇 | 다시 뜨는 법 |
+|---|---|---|
+| `src/test/edition4/fixedWording.ed4.json` | 판 4 고정 문구·예시본 글자·부록 B 문안 사본(설계 문서 고정 문구 rev 122·예시본 rev 84 에서 뽑음, sha256 이 `_about` 에) | 손으로 고치지 않는다. 설계 문서가 바뀌면 내보낸 글에서 스크립트로 다시 뽑고 상수(`edition4Text.ts`)를 같이 고친다 |
+| `src/test/edition4/rpt0001/example.md` | 예시본 사본(RPT-2026-0001 을 판 4 목차로 다시 묶은 목표 모양). 렌더 시험이 절·소절 블록을 뽑아 그린 글과 대조한다 | 손으로 고치지 않는다(sha256 이 고정 문구 사본의 `example_sha256` 과 같아야 한다) |
+| `src/test/edition4/render/fixtures/` | 판 4 렌더 픽스처 — 이진 `bc_strong`·다중 `digits_strong`·멀티레이블 `yeast_strong` 의 서술 대기(`pending`)·완료(`final`)·발급본(`issued`), `bc_strong` 서술 실패(`failed`) | `UPDATE_ED4_RENDER=1 npx vitest run src/test/edition4/render/generate.test.tsx`. 평소에는 다시 만든 글이 파일과 `toBe` 로 같은지만 본다. 다르면 생성값이 바뀐 것이니 이유를 적고 뜬다 |
+| `src/test/edition4/render/text/` | 판 4 그린 글 정답 — 세 입력 × (미발급 `final`, 발급본 `issued`) × 세 경로(화면·인쇄·번호 열기)의 글 전체 18개. `render/renderedText.test.tsx` 가 `toBe` 로 대조한다 | `UPDATE_ED4_TEXT=1 npx vitest run src/test/edition4/render/renderedText.test.tsx`(`-u` 로는 안 바뀜). 다시 떠도 되는 경우는 그 폴더 [`README.md`](../src/test/edition4/render/text/README.md) — 판 4 글이 바뀐다는 뜻이니 이유를 적고 diff 를 읽는다 |
+| `src/test/edition4/render/inputs/` | 픽스처를 만들 때 쓰는 서술 작업 응답(판 4 출처 글·예시본 서술 글) | 입력 — 고칠 일이 생기면 이유를 적는다 |
+| `src/test/edition4/evaluateNewKeys/` | 판 4 칸을 더한 새 백엔드 평가 응답. 이 응답으로도 플래그를 끈 새 성적서가 판 3 정답과 같은지 본다 | 그 폴더 [`README.md`](../src/test/edition4/evaluateNewKeys/README.md) |
+| `src/test/contract/*_ed4.json` | 판 4 서술 요청 계약 — 명세(`fact_sheet_contract_ed4.json`), 숫자·조사 대조 표(`number_wording_ed4.json`), 칸→자리 대응표(`narrative_slots_ed4.json`), 이진·다중·멀티 예시. 백엔드 `tests/contract/` 와 같은 바이트여야 한다 | 예시: `UPDATE_CONTRACT=1 npx vitest run src/test/edition4/contractExamplesEd4.test.tsx`(이름에 `ed4` 가 든 파일만 쓴다). 바뀐 이유를 적고 백엔드 사본과 두 저장소 시험의 sha256 을 함께 고친다 |
+
+- 판 4 금지어 시험(`render/forbiddenWords.test.tsx`)이 화면·인쇄·번호 열기 글에 이모지, "시험결과서", 판 3 절 번호 참조, 통과율 같은 판 3 말이 없는지 본다(작성 기록 상자는 뺀다).
+
+**판 3 정답 폴더는 고치지 않는다**
+
+판 4 코드가 판 3 을 한 글자도 바꾸지 않았는지 지키는 정답이다. 시험이 실패하면 **정답이 아니라 코드를 고친다.** 정답을 다시 떠야 통과한다면 그 변경이 판 3 을 바꿨다는 뜻이다. `vitest -u` 는 쓰지 않는다.
+
+- `src/test/archive/` — 판 1 정답(`main_d38890d/`), 판 2 스냅샷, 판 2·3 보관본 정답(`issued/` — 실제 판 3 발급본 6건과 합성 픽스처를 운영 main 코드로 그린 글, [`README.md`](../src/test/archive/issued/README.md)).
+- `src/test/edition3/newRun/` — 플래그를 끈 새 성적서의 저장 데이터와 서술 요청 본문 정답([`README.md`](../src/test/edition3/newRun/README.md)).
+- 판 3 계약 예시(`src/test/contract/` 의 `_ed4` 가 아닌 예시)는 sha256 으로 묶여 있고 `UPDATE_CONTRACT` 로도 쓰이지 않는다.
+- 두 정답 폴더(`archive/issued/golden/`, `edition3/newRun/golden/`)에는 `SHA256SUMS` 가 있어, 정답을 몰래 다시 뜨면 diff 에 드러난다.

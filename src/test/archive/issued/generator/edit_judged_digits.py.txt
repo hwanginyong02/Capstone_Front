@@ -1,0 +1,35 @@
+"""S0 보강 — 판정 자릿수 갈래(syn_binary_judged_digits)의 평가 응답을 syn_binary_shift_cm 응답에서 값만 바꿔 만든다.
+
+운영 main 백엔드 엔진은 실제 CSV 로 0.9696 같은 값을 내지 않으므로, 백엔드 평가 응답(`/api/evaluate`) 에서
+판정 대상 지표 세 개의 값과 신뢰구간만 손으로 바꾼다. 그 뒤(서술 요청 → 백엔드 서술 작업 → 프론트 저장 데이터 →
+정답 글)는 다른 합성 픽스처와 같은 실제 흐름을 탄다. 혼동 행렬·클래스 표(M21·M22)는 원래 응답 그대로다.
+
+쓰는 법: python3 -I <이 파일> <WORK 폴더>   (WORK 에 syn_binary_shift_cm.{csv,payload,validate,evaluate}.json 이 있어야 한다)
+"""
+import json
+import shutil
+import sys
+from pathlib import Path
+
+WORK = Path(sys.argv[1])
+SRC, DST = "syn_binary_shift_cm", "syn_binary_judged_digits"
+
+for ext in ("csv", "payload.json", "validate.json"):
+    shutil.copyfile(WORK / f"{SRC}.{ext}", WORK / f"{DST}.{ext}")
+
+ev = json.loads((WORK / f"{SRC}.evaluate.json").read_text())
+sm = ev["results"]["success_metrics"]
+ci = sm["confidence_intervals"]
+# (c) Accuracy 0.8497 — 목표 0.95 미달, 8.1 참조 범위 0.85~0.92 보다 낮음. 셋째 자리 "0.850" 은 범위 안으로 읽혀
+#     8.1 표만 넷째 자리로 늘린다(formatBenchmarkValue). 6.1 표는 "0.850"(목표 미달과 어긋나지 않음).
+sm["M1"] = 0.8497
+ci["M1"] = {**ci["M1"], "low": 0.7951, "high": 0.8912}
+# (a) Recall(핵심) 0.9696 — 목표 0.97 미달. 셋째 자리 "0.970" 은 충족으로 읽혀 넷째 자리 "0.9696".
+sm["M3"] = 0.9696
+ci["M3"] = {**ci["M3"], "low": 0.9031, "high": 0.9911}
+# (b) F1 0.949999 — 목표 0.95 미달. "0.950"·"0.9500"·"0.95000" 모두 충족으로 읽혀 여섯째 자리(MAX_VALUE_DIGITS)
+#     "0.949999" 까지 늘린다.
+sm["M4"] = 0.949999
+ci["M4"] = {**ci["M4"], "low": 0.9102, "high": 0.9811}
+(WORK / f"{DST}.evaluate.json").write_text(json.dumps(ev, ensure_ascii=False, indent=1))
+print("ok", DST)

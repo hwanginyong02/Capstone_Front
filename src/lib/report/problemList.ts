@@ -9,6 +9,12 @@
  *   불균형 영향(D20)은 백엔드 평가 엔진이 계산해 실어 보낸 값을 읽기만 한다.
  * - 목록은 생성 때 한 번 만들어 성적서 데이터에 저장한다 — 발급본은 나중에 기준이 바뀌어도 그대로다.
  *
+ * 판 4 run(`edition: 4`)은 판 4 갈래를 쓴다(대응표 16·25) — 이름 "핵심 지표 근소 합격", 그 조건은 판정 여유 "작음"
+ * (`KpiResult.judgmentMargin`), 종류 하나 더(같은 출처, LOW 맨 끝). 우선순위 저장값(HIGH/MEDIUM/LOW)은 판과 무관하게 그대로이고,
+ * 판 4 성적서는 그릴 때 `priorityLabelEd4` 로 높음·중간·낮음을 찍는다. 판 3 run 의 목록은 종전과 한 글자도 같다.
+ * 판 4 근거(evidence)의 숫자는 같은 사실 시트의 판 4 글자 칸과 같은 글자다(D6 — 지표 값 = value_text, 목표 = `ed4Target`,
+ * 마진 = margin_text, 임계값 조정은 엔진 칸 다섯만 판 4 글자로, 최약 클래스·분포 차·불균형은 그 사실 칸의 판 4 글자).
+ *
  * 최약 클래스·학습↔평가 분포 차이 두 종은 설계에 기준이 없어 새로 정했다(자체 설정, 설계 문서에 기록).
  * 두 종의 값은 서술용 파생값(`narrativeFacts.ts`)이 계산한 것을 받아 쓴다 — 사실 시트·D6 표와 같은 값(S4a).
  * 최약 클래스는 지표 선택과 무관하게 늘 본다(종전 "M22 를 골랐고" 조건 삭제 — 사용자 결정).
@@ -32,6 +38,11 @@ import {
   type NarrativeFacts,
 } from "./narrativeFacts";
 import { choiceLabel, type ReportComposerInput } from "./reportMaterials";
+import { MAX_PROBLEM_EVIDENCE_CHARS } from "./factSheetLimits";
+import { ed4Given, ed4Judged, ed4Plain, ed4Target } from "./edition4/edition4Number";
+import { imbalanceEffectEd4, type ImbalanceRawEd4 } from "./edition4/factSheetEd4";
+import { metricValueTextEd4, sameValueTextEd4 } from "./edition4/sameValueEd4";
+import { f1ThresholdGainTextsEd4, gainTextEd4, type F1ThresholdGainRawEd4 } from "./edition4/thresholdGainEd4";
 
 /** 종류별 우선순위·기본 이름·원천 절 → 권고 절. 이 순서가 번호 순서다(우선순위 순). */
 const KINDS: Array<{
@@ -51,6 +62,22 @@ const KINDS: Array<{
   { kind: "distribution_shift", priority: "LOW", title: "학습↔평가 분포 차이", source: "7.2", recommend: "9.1" },
   { kind: "label_caution", priority: "LOW", title: "정답 라벨 주의", source: "7.2", recommend: "9.1" },
 ];
+
+/**
+ * 판 4 의 종류 표(대응표 16·25) — 판 3 표에서 근소 합격 이름만 바꾸고(부록 A6), 같은 출처(J8)를 LOW 맨 끝에 더한다.
+ * 같은 출처는 8.2 칸(판 4 5.1 일반화 고정 문구 11a 자리)에서 드러나고 9.1 칸(판 4 6.1 데이터)에 권고한다.
+ */
+const KINDS_ED4: typeof KINDS = [
+  ...KINDS.map((k) => (k.kind === "core_near_target" ? { ...k, title: "핵심 지표 근소 합격" } : k)),
+  { kind: "same_source", priority: "LOW", title: "평가 데이터가 학습과 같은 출처", source: "8.2", recommend: "9.1" },
+];
+
+/** 판 4 성적서의 우선순위 표기(대응표 16, 부록 A6). 저장 코드값은 HIGH/MEDIUM/LOW 그대로다. */
+export const PRIORITY_LABEL_ED4: Record<Problem["priority"], string> = { HIGH: "높음", MEDIUM: "중간", LOW: "낮음" };
+
+export function priorityLabelEd4(priority: Problem["priority"]): string {
+  return PRIORITY_LABEL_ED4[priority];
+}
 
 /** 임계값 조정 여지 — 최대 F1 과 실제 F1 의 차이가 이 값 이상이면 문제다(D40). */
 export const THRESHOLD_GAIN_MIN = 0.1;
@@ -176,6 +203,22 @@ export function labelCautions(composer: ReportComposerInput | undefined): LabelC
   return out;
 }
 
+/**
+ * 평가 데이터가 학습 데이터와 같은 출처라고 의뢰자가 답했는가 — ⑦ 테스트 데이터 카드의 "학습 데이터와 출처 관계"가
+ * "같은 출처"(고정 문구 11a 의 조건, D33). 카드를 껐거나, 답이 없거나, "모름"이면 아니다.
+ *
+ * 판 4 의 같은 출처 문제(6.1)와 표지 주요 제약 줄(고정 문구 21)이 이 함수 하나를 본다. 8.2 고정 문구 11a 를 고르는 판 3 함수
+ * (`dataCautionPhrases.sourceRelationSentence`)와 결과가 같은지는 시험이 본다(그 판 3 함수는 고치지 않는다).
+ */
+export function isSameSourceRelation(composer: ReportComposerInput | undefined): boolean {
+  if (!composer?.cards.testData) return false;
+  const answer = composer.testData.testSourceRelation;
+  return !!answer && !answer.unknown && answer.text === "Same source";
+}
+
+/** 같은 출처 문제의 근거 칸 이름 — 의뢰자가 고른 답의 성적서 이름을 싣는다(정답 라벨 주의처럼 한국어 이름). */
+const SAME_SOURCE_EVIDENCE_KEY = "학습 데이터와의 관계";
+
 /** 편향 감소 노력에 "수행 안 함"을 골랐는지(불균형 영향 문제의 메모). 카드를 껐거나 "모름"이면 아니다. */
 function didNothingForImbalance(composer: ReportComposerInput | undefined): boolean {
   if (!composer?.cards.trainingData) return false;
@@ -200,6 +243,11 @@ export interface ProblemListInput {
   facts: Pick<NarrativeFacts, "weakest_class" | "distribution_shift">;
   /** 성적서 구성 카드의 값 — 학습 분포·편향 감소 노력·정답 라벨. 없으면 그 문제는 판단하지 않는다. */
   composer?: ReportComposerInput;
+  /** 성적서 판. 4 면 판 4 갈래(이름·근소 합격 조건·같은 출처·근거 글자). 없으면 3(지금 동작). */
+  edition?: 3 | 4;
+  /** 판 4 전용 — 평가 응답의 반올림 전 값(사실 시트 판 4 칸과 같은 입력). 근거 글자를 사실 시트와 같은 함수로 찍는다. */
+  thresholdGainRaw?: F1ThresholdGainRawEd4 | null;
+  imbalanceRaw?: ImbalanceRawEd4 | null;
 }
 
 type Found = { title?: string; evidence: Record<string, unknown>; note?: string | null };
@@ -208,13 +256,53 @@ function names(kpiResults: KpiResult[], metricIds: string[]): string[] {
   return metricIds.map((id) => kpiResults.find((r) => r.metricId === id)?.name ?? id);
 }
 
-function valueEvidence(kpiResults: KpiResult[], metricIds: string[]): Record<string, unknown> {
+function valueEvidence(kpiResults: KpiResult[], metricIds: string[], edition4 = false): Record<string, unknown> {
   return Object.fromEntries(
     metricIds.map((id) => {
       const r = kpiResults.find((item) => item.metricId === id)!;
-      return [r.name, { value: r.value, target: r.threshold }];
+      return [r.name, edition4 ? metricEvidenceEd4(r, {}) : { value: r.value, target: r.threshold }];
     }),
   );
+}
+
+/** 판 4 지표 근거 — value = value_text, target = `ed4Target`(D1), 그리고 덧붙인 칸(마진 글자 등). */
+function metricEvidenceEd4(r: KpiResult, extra: Record<string, unknown>): Record<string, unknown> {
+  return { value: metricValueTextEd4(r) ?? ed4Plain(r.value), target: r.threshold === null ? null : ed4Target(r.threshold), ...extra };
+}
+
+/** 판 4 최약 클래스 근거 — 사실 시트 weakest_class 의 판 4 글자(f1_text·share_text·gap_text, 매크로 F1 은 D2). */
+function weakestEvidenceEd4(
+  weakest: NonNullable<NarrativeFacts["weakest_class"]>,
+  kpiResults: KpiResult[],
+): Record<string, unknown> {
+  return {
+    f1: weakest.f1_text ?? ed4Plain(weakest.f1),
+    support: weakest.support,
+    share: weakest.share_text,
+    macro_f1: weakest.macro_f1 === null ? null : sameValueTextEd4(kpiResults, weakest.macro_f1),
+    gap_from_macro: weakest.gap_text,
+    low_support: weakest.low_support,
+  };
+}
+
+/**
+ * 판 4 임계값 조정 근거 — 판 3 엔진 칸 다섯(max_f1·current_f1·gain·best_threshold·notable)만 골라 사실 시트 판 4 글자로. 판 4 파서
+ * 결과(*_raw·best_recall …)는 펼치지 않는다. best_threshold 는 엔진 표기(늘 고정소수, D7), 없으면 `ed4Given`.
+ */
+function thresholdEvidenceEd4(
+  gain: F1ThresholdGain,
+  raw: F1ThresholdGainRawEd4 | null,
+  kpiResults: KpiResult[],
+): Record<string, unknown> {
+  const texts = raw ? f1ThresholdGainTextsEd4(raw, kpiResults, null) : null;
+  const out: Record<string, unknown> = {
+    max_f1: texts?.max_f1_text ?? ed4Plain(gain.max_f1),
+    current_f1: texts?.current_f1_text ?? ed4Plain(gain.current_f1),
+    gain: raw ? gainTextEd4(raw, gain) : ed4Judged(gain.gain, THRESHOLD_GAIN_MIN, true, gain.notable ?? gain.gain >= THRESHOLD_GAIN_MIN),
+    best_threshold: texts?.best_threshold_text ?? ed4Given(gain.best_threshold),
+  };
+  if (gain.notable !== undefined) out.notable = gain.notable;
+  return out;
 }
 
 const INCONCLUSIVE_CAUSE = {
@@ -223,9 +311,10 @@ const INCONCLUSIVE_CAUSE = {
   no_judged: "판정 대상 지표 없음",
 } as const;
 
-/** 최약 클래스 문제 — 표본이 작거나(30건·5% 미만) 매크로 F1 보다 0.10 이상 낮을 때만. 근거 키는 종전 그대로. */
-function weakestClassProblem(weakest: NarrativeFacts["weakest_class"]): Found | null {
+/** 최약 클래스 문제 — 표본이 작거나(30건·5% 미만) 매크로 F1 보다 0.10 이상 낮을 때만. 근거 키는 종전 그대로(판 4 는 판 4 글자). */
+function weakestClassProblem(weakest: NarrativeFacts["weakest_class"], kpiResults: KpiResult[], edition4 = false): Found | null {
   if (!weakest || !(weakest.low_support || weakest.far_below_macro)) return null;
+  if (edition4) return { title: weakest.label, evidence: { [weakest.label]: weakestEvidenceEd4(weakest, kpiResults) } };
   return {
     title: weakest.label,
     evidence: {
@@ -241,19 +330,65 @@ function weakestClassProblem(weakest: NarrativeFacts["weakest_class"]): Found | 
   };
 }
 
+/** 판 4 분포 차 근거 한 줄(사실 시트 판 4 글자 — 비율은 plain). */
+function shiftEvidenceEd4(r: NarrativeFacts["distribution_shift"][number]): Record<string, string> {
+  return { training_ratio: ed4Plain(r.training_ratio), evaluation_ratio: ed4Plain(r.evaluation_ratio), difference: r.difference_text };
+}
+
+/**
+ * 백엔드가 재는 길이 — 파이썬 `json.dumps(v, ensure_ascii=False)` 는 구분자가 ", "·": " 라 `JSON.stringify` 보다 길다. 그 모양으로
+ * 센다(문자열·숫자는 JSON 표기 그대로 — UTF-16 길이라 파이썬 글자 수보다 짧지 않다).
+ */
+function pythonJsonLength(value: unknown): number {
+  if (Array.isArray(value)) return 2 + value.reduce<number>((n, v, i) => n + pythonJsonLength(v) + (i > 0 ? 2 : 0), 0);
+  if (value !== null && typeof value === "object") {
+    return (
+      2 +
+      Object.entries(value).reduce<number>(
+        (n, [k, v], i) => n + JSON.stringify(k).length + 2 + pythonJsonLength(v) + (i > 0 ? 2 : 0),
+        0,
+      )
+    );
+  }
+  return JSON.stringify(value).length;
+}
+
+/** 근거 직렬화가 상한 안에 들도록 |차이| 가 큰 줄부터 고른다. 고른 줄은 원래 순서 그대로. 다 들어가면 그대로. */
+function fitShiftEvidence(flagged: NarrativeFacts["distribution_shift"]): NarrativeFacts["distribution_shift"] {
+  const size = (rows: NarrativeFacts["distribution_shift"]) =>
+    pythonJsonLength(Object.fromEntries(rows.map((r) => [r.label, shiftEvidenceEd4(r)])));
+  if (size(flagged) <= MAX_PROBLEM_EVIDENCE_CHARS) return flagged;
+  const order = [...flagged].sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference));
+  const kept = new Set<(typeof flagged)[number]>();
+  for (const r of order) {
+    kept.add(r);
+    if (size(flagged.filter((x) => kept.has(x))) > MAX_PROBLEM_EVIDENCE_CHARS) {
+      kept.delete(r);
+      break;
+    }
+  }
+  return flagged.filter((r) => kept.has(r));
+}
+
 /**
  * 학습↔평가 분포 차이 문제 — 어느 클래스든 |학습 비율 − 평가 비율| ≥ 10%p(flagged). 걸린 클래스만 적는다.
- * 차이의 절댓값 합은 2 를 넘지 못해 걸리는 클래스는 많아야 20개다 — 근거를 따로 자르지 않는다.
+ * 분포 합 분모면 차이의 절댓값 합은 2 를 넘지 못해 걸리는 클래스는 많아야 20개다 — 판 3 은 근거를 따로 자르지 않는다.
+ * 판 4 멀티레이블은 분모가 표본 수(S2·S3 검토 T3)라 이 상한이 없다 — 근거가 백엔드 상한(`MAX_PROBLEM_EVIDENCE_CHARS`)을 넘으면
+ * 차이가 큰 레이블부터 들어가는 만큼만 싣는다(넘으면 요청이 통째로 거절된다). 이름(title)은 `fitFactSheet` 가 자른다.
  */
-function distributionShiftProblem(rows: NarrativeFacts["distribution_shift"]): Found | null {
-  const flagged = rows.filter((r) => r.flagged);
+function distributionShiftProblem(rows: NarrativeFacts["distribution_shift"], edition4 = false): Found | null {
+  let flagged = rows.filter((r) => r.flagged);
   if (flagged.length === 0) return null;
+  if (edition4) flagged = fitShiftEvidence(flagged);
   return {
     title: flagged.map((r) => r.label).join(", "),
     evidence: Object.fromEntries(
       flagged.map((r) => [
         r.label,
-        { training_ratio: r.training_ratio, evaluation_ratio: r.evaluation_ratio, difference: r.difference },
+        // 판 4 는 사실 시트 판 4 글자(difference_text) — 비율은 plain.
+        edition4
+          ? shiftEvidenceEd4(r)
+          : { training_ratio: r.training_ratio, evaluation_ratio: r.evaluation_ratio, difference: r.difference },
       ]),
     ),
   };
@@ -265,13 +400,14 @@ function distributionShiftProblem(rows: NarrativeFacts["distribution_shift"]): F
  */
 export function buildProblemList(input: ProblemListInput): Problem[] {
   const { kpiResults, taskType, coreMetricIds, thresholdGain, imbalanceEffect, composer } = input;
+  const edition4 = input.edition === 4;
   const { verdict, reasons } = computeVerdict(kpiResults, taskType, coreMetricIds);
   const found: Partial<Record<ProblemKind, Found>> = {};
 
   if (reasons.coreFailed.length > 0) {
     found.core_fail = {
       title: names(kpiResults, reasons.coreFailed).join(", "),
-      evidence: valueEvidence(kpiResults, reasons.coreFailed),
+      evidence: valueEvidence(kpiResults, reasons.coreFailed, edition4),
     };
   }
 
@@ -293,21 +429,26 @@ export function buildProblemList(input: ProblemListInput): Problem[] {
   if (reasons.nonCoreFailed.length > 0) {
     found.noncore_fail = {
       title: names(kpiResults, reasons.nonCoreFailed).join(", "),
-      evidence: valueEvidence(kpiResults, reasons.nonCoreFailed),
+      evidence: valueEvidence(kpiResults, reasons.nonCoreFailed, edition4),
     };
   }
 
   // 핵심이고 합격인데 목표값과의 차이가 목표값의 3% 미만 — 판정은 `isNearTarget` 한 곳의 식이다.
+  // 판 4 는 판정 여유가 "작음"인 것(생성 때 저장한 `judgmentMargin` 하나 — 반올림 전 신뢰구간이 목표를 포함, 구간이 없으면 3%).
   // 핵심 여부는 판정과 같은 목록(coreMetricIds)으로 본다.
   const coreIds = new Set(coreMetricIds);
-  const near = kpiResults.filter((r) => coreIds.has(r.metricId) && r.status === "pass" && isNearTarget(r));
+  const isNear = edition4 ? (r: KpiResult) => r.judgmentMargin === "small" : isNearTarget;
+  const near = kpiResults.filter((r) => coreIds.has(r.metricId) && r.status === "pass" && isNear(r));
   if (near.length > 0) {
     found.core_near_target = {
       title: near.map((r) => r.name).join(", "),
       evidence: Object.fromEntries(
         near.map((r) => [
           r.name,
-          { value: r.value, target: r.threshold, margin: round4(computeMargin(r) ?? 0) },
+          edition4
+            ? // 마진은 사실 시트 margin_text 와 같은 함수(metricFieldsEd4 — judged(마진, 0, 충족)).
+              metricEvidenceEd4(r, { margin: ed4Judged(computeMargin(r) ?? 0, 0, true, r.status === "pass") })
+            : { value: r.value, target: r.threshold, margin: round4(computeMargin(r) ?? 0) },
         ]),
       ),
     };
@@ -315,23 +456,28 @@ export function buildProblemList(input: ProblemListInput): Problem[] {
 
   // 임계값 부적합은 엔진이 반올림 전 값으로 정한 notable 을 따른다(S2). 옛 응답(키 없음)만 4자리 gain 으로.
   if (taskType === "binary" && thresholdGain && (thresholdGain.notable ?? thresholdGain.gain >= THRESHOLD_GAIN_MIN)) {
-    found.threshold_tuning = { evidence: { ...thresholdGain } };
+    found.threshold_tuning = {
+      evidence: edition4
+        ? thresholdEvidenceEd4(thresholdGain, input.thresholdGainRaw ?? null, kpiResults)
+        : { ...thresholdGain },
+    };
   }
 
   if (imbalanceEffect?.level === "affected") {
     found.imbalance_effect = {
       title: `다수 ${imbalanceEffect.majority_class} · 소수 ${imbalanceEffect.minority_class}`,
-      evidence: { ...imbalanceEffect },
+      // 판 4 는 사실 시트 imbalance_effect 와 같은 판 4 display(키 이름은 판 3 그대로).
+      evidence: edition4 ? { ...imbalanceEffectEd4(imbalanceEffect, input.imbalanceRaw ?? null, kpiResults) } : { ...imbalanceEffect },
       note: didNothingForImbalance(composer)
         ? "의뢰자가 편향 감소 노력을 '수행 안 함'으로 밝혔다."
         : null,
     };
   }
 
-  const weakest = weakestClassProblem(input.facts.weakest_class);
+  const weakest = weakestClassProblem(input.facts.weakest_class, kpiResults, edition4);
   if (weakest) found.weakest_class = weakest;
 
-  const shift = distributionShiftProblem(input.facts.distribution_shift);
+  const shift = distributionShiftProblem(input.facts.distribution_shift, edition4);
   if (shift) found.distribution_shift = shift;
 
   const cautions = labelCautions(composer);
@@ -342,7 +488,15 @@ export function buildProblemList(input: ProblemListInput): Problem[] {
     };
   }
 
-  return KINDS.filter(({ kind }) => found[kind]).map(({ kind, priority, title, source, recommend }, i) => {
+  // 판 3 에 나오지 않게 하는 곳은 종류 표 하나다(판 3 표 KINDS 에 same_source 가 없다) — 여기서 판을 다시 보지 않는다
+  // (두 겹으로 막으면 한쪽이 틀려도 시험이 초록이다).
+  if (isSameSourceRelation(composer)) {
+    found.same_source = {
+      evidence: { [SAME_SOURCE_EVIDENCE_KEY]: choiceLabel("testData", "testSourceRelation", "Same source") },
+    };
+  }
+
+  return (edition4 ? KINDS_ED4 : KINDS).filter(({ kind }) => found[kind]).map(({ kind, priority, title, source, recommend }, i) => {
     const hit = found[kind]!;
     return {
       id: `P${i + 1}`,

@@ -158,6 +158,15 @@ describe("목적별 점검 미리보기와 추천 (재료 선택 점검 6절)", 
     expect(screen.getByText(/지금 매핑으로 계산할 수 없습니다/)).toBeInTheDocument();
   });
 
+  it("안내가 가리키는 성적서 자리 — 판 3(기본) 1.4, 새 run 이 판 4 면 1.3(S6 질문 7)", () => {
+    const note = () => screen.getByText(/부족한 점으로 적힙니다/).textContent!.replace(/\s+/g, " ").trim();
+    const { unmount } = render(<TestItems taskType="binary" selectedMetricIds={["M9"]} purposeLines={[unmetCurve]} />);
+    expect(note()).toBe("평가 관점에서 답한 내용에 맞는 지표가 있는지 봅니다. 맞지 않아도 진행할 수 있지만, 성적서 1.4에 부족한 점으로 적힙니다.");
+    unmount();
+    render(<TestItems taskType="binary" selectedMetricIds={["M9"]} purposeLines={[unmetCurve]} edition4 />);
+    expect(note()).toBe("평가 관점에서 답한 내용에 맞는 지표가 있는지 봅니다. 맞지 않아도 진행할 수 있지만, 성적서 1.3에 부족한 점으로 적힙니다.");
+  });
+
   it("맞는 줄에는 버튼이 없고, 줄이 없으면 카드를 그리지 않는다", () => {
     const { unmount } = render(
       <TestItems taskType="binary" selectedMetricIds={["M9", "M10"]} purposeLines={[{ ...unmetCurve, met: true }]} />,

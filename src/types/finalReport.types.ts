@@ -1,4 +1,7 @@
 import type { NarrativeFacts } from "../lib/report/narrativeFacts";
+import type { DistributionEd4 } from "../lib/report/edition4/distributionEd4";
+import type { ThresholdTableEd4 } from "../lib/report/edition4/thresholdGainEd4";
+import type { VerdictEd4 } from "../lib/report/edition4/verdictEd4";
 import type { TaskType } from "../data/evaluationData";
 import type { ConfusionMatrixData, ReportRecommendation } from "./report.types";
 import type { ValidationGroup } from "./validation.types";
@@ -95,6 +98,11 @@ export interface EvalEnvironment {
    * 없으면 종전 상수로 폴백한다(F-09, 결정 4).
    */
   environment?: { libraries: Record<string, string>; evaluated_at: string };
+  /**
+   * 3.5 평가 엔진 버전(평가 응답 `engine_version` — 백엔드 코드의 버전 번호, 판 4 라운드 정해진 것 4). **판 4 run 에만** 키가
+   * 있다. 응답에 값이 없으면(옛 백엔드) null 이고 그릴 때 "—". 모델 버전(`evalScope.version`)과 다르다.
+   */
+  engineVersion?: string | null;
 }
 
 export interface ClassLabelInfo {
@@ -111,6 +119,11 @@ export interface DatasetInfo {
   classLabels: string[];
   classLabelDescriptions?: ClassLabelInfo[];
   fileName: string;
+  /**
+   * 2.2 파일 해시(SHA-256, 소문자 64자)·크기(바이트) — 평가 응답 `source_file`(백엔드가 업로드 원본 바이트로 계산). **판 4 run 에만**
+   * 키가 있다. 응답에 없으면(옛 백엔드) null 이고 그릴 때 "—". 업로드 파일 지문(`evaluationRequest.file`)과 다르다.
+   */
+  sourceFile?: { sha256: string; sizeBytes: number } | null;
 }
 
 export interface DatasetSampleRow {
@@ -251,7 +264,9 @@ export type ProblemKind =
   | "imbalance_effect"
   | "weakest_class"
   | "distribution_shift"
-  | "label_caution";
+  | "label_caution"
+  /** 판 4 에만(J8, D22·D33) — 평가 데이터가 학습 데이터와 같은 출처. 판 3 run 에는 나오지 않는다. */
+  | "same_source";
 
 /**
  * 9절 권고가 대응하는 문제 하나(`problemList.ts`). 생성 때 만들어 저장한다 — AI 사실 시트에도 이 모양
@@ -349,6 +364,17 @@ export interface KpiResult {
    */
   margin?: number;
   nearTarget?: boolean;
+  /**
+   * 판정 여유(판 4 — 고정 문구 19, `edition4/judgmentMargin.ts`). 반올림 전 95% 신뢰구간이 목표값을 포함하면 "small"(작음),
+   * 구간이 없으면 목표값과의 차이가 목표값의 3% 미만일 때 "small", 그 밖은 "ample"(충분). 판 4 run 의 판정 대상 지표에만
+   * 붙는다(없으면 4.3 "—"). 판 3 의 `nearTarget` 과 뜻이 다르다 — 판 4 의 판정 여유 자리는 모두 이 칸 하나를 읽는다.
+   */
+  judgmentMargin?: "small" | "ample";
+  /**
+   * 신뢰구간의 반올림 전 경계(평가 응답 `low_raw`·`high_raw`). 판 4 run 에서 `ci` 가 붙은 지표에만, 응답에 값이 있을 때만
+   * 붙는다. `ci` 의 low·high 는 넷째 자리 그대로다.
+   */
+  ciRaw?: { low: number; high: number };
 }
 
 /** 지표 하나의 95% 신뢰구간. method 는 백엔드 표기 그대로(wilson·bootstrap_multinomial·bootstrap·delong·logit·normal). */
@@ -576,7 +602,27 @@ export interface FinalReportData {
    * 성적서(와 옛 입력 스냅샷으로 만든 성적서)에는 없고, 없으면 각 절이 종전처럼 그린다.
    */
   materialCheck?: MaterialCheckResult;
+  /**
+   * 판 4 생성값(판 4 라운드 S3 ⑥) — 평가 뒤에 만들어 저장하는 판 4 의 표·문장 재료. **판 4 run 에만** 있다(판 3 run 에는 키가 없다).
+   * 그릴 때 다시 계산하지 않는다 — 발급본은 나중에 규칙이 바뀌어도 그때 글 그대로다.
+   */
+  edition4Values?: Edition4Values;
   signature: SignatureData;
+}
+
+/** 판 4 생성값 — `assembleEvaluatedReport` 가 판 4 run 에만 만든다(`lib/report/edition4/`). */
+export interface Edition4Values {
+  /**
+   * 표지 시험 결과 요약의 종합 판정 줄과 핵심 지표 줄(고정 문구 21, 부록 B2·B3). 보고 항목·주요 제약 줄은 재료 점검의
+   * `materialCheck.printed.coverRows` 이고, 표지는 이 줄들 뒤에 그 줄을 잇는다.
+   */
+  coverResultRows: Array<{ label: string; value: string }>;
+  /** 4.2 종합 판정 표와 근거 문장(고정 문구 20, 부록 B12·B13). */
+  verdict: VerdictEd4;
+  /** 4.4 임계값 조정 여지 표. 이진·점수가 있을 때만, 아니면 null. */
+  thresholdTable: ThresholdTableEd4 | null;
+  /** 4.5 데이터 분포(분포·불균형 비율 문장, 학습·평가 비율 표 — 사실 시트 자르기 전 값). */
+  distribution: DistributionEd4;
 }
 
 /**
@@ -649,8 +695,13 @@ export interface MaterialCheckResult {
     purposeShortfalls: string[];
     /** 6.0 세 줄. */
     summary: Array<{ label: string; value: string; note: string }>;
-    /** 5절 평균 방식 문장을 바꿔 찍을 때(3번 줄 미충족, 다중 클래스). */
+    /** 5절 평균 방식 문장을 바꿔 찍을 때(3번 줄 미충족, 다중 클래스). 판 4 는 3.3 에 합니다체로. */
     averagingSentence?: string;
+    /**
+     * 판 4 표지 시험 결과 요약의 보고 항목·주요 제약 두 줄(고정 문구 21). 판 4 run 에만 있다. 종합 판정·핵심 지표 줄은 평가 뒤에
+     * 만들어 따로 저장한다.
+     */
+    coverRows?: Array<{ label: string; value: string }>;
   };
 }
 

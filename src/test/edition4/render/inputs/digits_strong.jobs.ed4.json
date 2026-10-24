@@ -1,0 +1,230 @@
+{
+  "$provenance": "판 4 렌더 시험 입력(digits_strong). benchmark_refs = 백엔드 build_benchmark_refs(edition=4)를 판 4 계약 예시 fact_sheet_multiclass_ed4.json 에 돌린 값. 서술 칸은 센티널 글, 권고 행은 그 요청의 문제마다 한 행(실제 문제 번호). 8.1 칸만 규칙 문장(fallback, 모델 없음).",
+  "created": {
+    "job_id": "job-ed4r-digits_strong",
+    "status": "running",
+    "stage": "queued",
+    "benchmark_refs": [
+      {
+        "metric": "Accuracy",
+        "model_value": 0.9889,
+        "ref_low": 0.8,
+        "ref_high": 0.9,
+        "position": "above",
+        "direction": "higher",
+        "quality": "better",
+        "target_value": 0.98,
+        "target_position": "above",
+        "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 자체 설정 기준이며, 도메인별로 상이할 수 있음)"
+      },
+      {
+        "metric": "Precision",
+        "model_value": 0.9889,
+        "ref_low": 0.78,
+        "ref_high": 0.89,
+        "position": "above",
+        "direction": "higher",
+        "quality": "better",
+        "target_value": null,
+        "target_position": null,
+        "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 자체 설정 기준이며, 도메인별로 상이할 수 있음)"
+      },
+      {
+        "metric": "Recall",
+        "model_value": 0.989,
+        "ref_low": 0.78,
+        "ref_high": 0.89,
+        "position": "above",
+        "direction": "higher",
+        "quality": "better",
+        "target_value": null,
+        "target_position": null,
+        "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 자체 설정 기준이며, 도메인별로 상이할 수 있음)"
+      },
+      {
+        "metric": "F1 Score",
+        "model_value": 0.9889,
+        "ref_low": 0.78,
+        "ref_high": 0.89,
+        "position": "above",
+        "direction": "higher",
+        "quality": "better",
+        "target_value": 0.98,
+        "target_position": "above",
+        "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 자체 설정 기준이며, 도메인별로 상이할 수 있음)"
+      }
+    ],
+    "result": null
+  },
+  "running": {
+    "job_id": "job-ed4r-digits_strong",
+    "status": "running",
+    "stage": "generating",
+    "failure": null,
+    "benchmark_refs": [
+      {
+        "metric": "Accuracy",
+        "model_value": 0.9889,
+        "ref_low": 0.8,
+        "ref_high": 0.9,
+        "position": "above",
+        "direction": "higher",
+        "quality": "better",
+        "target_value": 0.98,
+        "target_position": "above",
+        "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 자체 설정 기준이며, 도메인별로 상이할 수 있음)"
+      },
+      {
+        "metric": "Precision",
+        "model_value": 0.9889,
+        "ref_low": 0.78,
+        "ref_high": 0.89,
+        "position": "above",
+        "direction": "higher",
+        "quality": "better",
+        "target_value": null,
+        "target_position": null,
+        "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 자체 설정 기준이며, 도메인별로 상이할 수 있음)"
+      },
+      {
+        "metric": "Recall",
+        "model_value": 0.989,
+        "ref_low": 0.78,
+        "ref_high": 0.89,
+        "position": "above",
+        "direction": "higher",
+        "quality": "better",
+        "target_value": null,
+        "target_position": null,
+        "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 자체 설정 기준이며, 도메인별로 상이할 수 있음)"
+      },
+      {
+        "metric": "F1 Score",
+        "model_value": 0.9889,
+        "ref_low": 0.78,
+        "ref_high": 0.89,
+        "position": "above",
+        "direction": "higher",
+        "quality": "better",
+        "target_value": 0.98,
+        "target_position": "above",
+        "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 자체 설정 기준이며, 도메인별로 상이할 수 있음)"
+      }
+    ],
+    "result": null
+  },
+  "done": {
+    "job_id": "job-ed4r-digits_strong",
+    "status": "done",
+    "stage": "done",
+    "failure": null,
+    "benchmark_refs": [
+      {
+        "metric": "Accuracy",
+        "model_value": 0.9889,
+        "ref_low": 0.8,
+        "ref_high": 0.9,
+        "position": "above",
+        "direction": "higher",
+        "quality": "better",
+        "target_value": 0.98,
+        "target_position": "above",
+        "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 자체 설정 기준이며, 도메인별로 상이할 수 있음)"
+      },
+      {
+        "metric": "Precision",
+        "model_value": 0.9889,
+        "ref_low": 0.78,
+        "ref_high": 0.89,
+        "position": "above",
+        "direction": "higher",
+        "quality": "better",
+        "target_value": null,
+        "target_position": null,
+        "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 자체 설정 기준이며, 도메인별로 상이할 수 있음)"
+      },
+      {
+        "metric": "Recall",
+        "model_value": 0.989,
+        "ref_low": 0.78,
+        "ref_high": 0.89,
+        "position": "above",
+        "direction": "higher",
+        "quality": "better",
+        "target_value": null,
+        "target_position": null,
+        "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 자체 설정 기준이며, 도메인별로 상이할 수 있음)"
+      },
+      {
+        "metric": "F1 Score",
+        "model_value": 0.9889,
+        "ref_low": 0.78,
+        "ref_high": 0.89,
+        "position": "above",
+        "direction": "higher",
+        "quality": "better",
+        "target_value": 0.98,
+        "target_position": "above",
+        "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 자체 설정 기준이며, 도메인별로 상이할 수 있음)"
+      }
+    ],
+    "result": {
+      "interpretation": {
+        "confusion_analysis": "〔7.1 칸 서술 — digits_strong〕",
+        "distribution_analysis": "〔7.2 칸 서술 — digits_strong〕",
+        "additional_observations": "〔7.3 칸 서술 — digits_strong〕"
+      },
+      "conclusion": {
+        "verdict": "PASS",
+        "benchmark": "〔8.1 칸 서술 — digits_strong〕",
+        "narrative": "〔8.2 칸 서술 — digits_strong〕",
+        "risks": "〔8.3 칸 서술 — digits_strong〕"
+      },
+      "recommendation_narrative": {
+        "data_quality": "〔9.1 칸 서술 — digits_strong〕",
+        "model_ops": "〔9.2 칸 서술 — digits_strong〕"
+      },
+      "recommendations": [
+        {
+          "priority": "MEDIUM",
+          "category": "〔P1 권고 분류〕",
+          "action": "〔P1 권고 — 9.2〕",
+          "expected_impact": "〔P1 기대 효과〕",
+          "problem_id": "P1"
+        },
+        {
+          "priority": "LOW",
+          "category": "〔P2 권고 분류〕",
+          "action": "〔P2 권고 — 9.1〕",
+          "expected_impact": "〔P2 기대 효과〕",
+          "problem_id": "P2"
+        },
+        {
+          "priority": "LOW",
+          "category": "〔P3 권고 분류〕",
+          "action": "〔P3 권고 — 9.1〕",
+          "expected_impact": "〔P3 기대 효과〕",
+          "problem_id": "P3"
+        }
+      ],
+      "section_sources": {
+        "7.1": "llm",
+        "7.2": "llm",
+        "7.3": "llm",
+        "8.1": "fallback",
+        "8.2": "llm",
+        "8.3": "llm",
+        "9": "llm"
+      },
+      "section_models": {
+        "7.1": "claude-sonnet-5-5",
+        "7.2": "claude-sonnet-5-5",
+        "7.3": "claude-sonnet-5-5",
+        "8.1": null,
+        "8.2": "claude-sonnet-5-5",
+        "8.3": "claude-sonnet-5-5",
+        "9": "claude-sonnet-5-5"
+      }
+    }
+  }
+}

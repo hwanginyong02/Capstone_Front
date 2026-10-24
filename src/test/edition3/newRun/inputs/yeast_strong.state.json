@@ -1,0 +1,438 @@
+{
+ "$provenance": "FIXTURES[yeast_strong] (c_build_requests.test.ts / c_view_fixtures.json) + yeast_strong.payload.json + RPT-2026 발급본 신청인·의뢰일",
+ "file": {
+  "name": "yeast_strong.csv",
+  "bytes": 123672,
+  "type": "text/csv",
+  "lastModified": 1792662000000
+ },
+ "workflow": {
+  "basicInfo": {
+   "companyName": "(주)시연고객",
+   "representative": "김시연",
+   "businessNumber": "123-45-67890",
+   "website": "",
+   "phone": "02-123-4567",
+   "fax": "",
+   "address": "서울특별시 노원구 공릉로 232",
+   "contractDate": "2026-10-22",
+   "reportPurpose": "external",
+   "reportPurposeNote": "공동 연구 기관 제출",
+   "projectName": "",
+   "projectAgency": "",
+   "projectNumber": "",
+   "versionName": "v3.0",
+   "modelName": "YeastFunc-OvR",
+   "modelPurpose": "효모 유전자의 발현·계통 특징으로 기능 범주(14개, 여러 개 가능)를 추정해 실험 대상 유전자를 추린다.",
+   "modelCategory": "생물정보 다중 레이블 분류",
+   "taskType": "multilabel",
+   "envOS": "",
+   "envCPU": "",
+   "envGPU": "",
+   "envMemory": "",
+   "envSoftware": ""
+  },
+  "taskType": "multilabel",
+  "selectedMetricIds": [
+   "M2",
+   "M3",
+   "M4",
+   "M15",
+   "M16",
+   "M17",
+   "M18",
+   "M23"
+  ],
+  "metricDetails": {
+   "M17": {
+    "id": "M17",
+    "name": "M17",
+    "description": "",
+    "targetValue": "0.45",
+    "beta": "",
+    "positiveClass": "",
+    "completed": true
+   },
+   "M15": {
+    "id": "M15",
+    "name": "M15",
+    "description": "",
+    "targetValue": "0.22",
+    "beta": "",
+    "positiveClass": "",
+    "completed": true
+   },
+   "M4": {
+    "id": "M4",
+    "name": "M4",
+    "description": "",
+    "targetValue": "0.45",
+    "beta": "",
+    "positiveClass": "",
+    "completed": true
+   }
+  },
+  "columnMapping": [
+   {
+    "originalName": "gene_id",
+    "sampleValues": [
+     "YG0000",
+     "YG0001",
+     "YG0002"
+    ],
+    "inferredRole": "id",
+    "confirmedRole": "id",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "true_labels",
+    "sampleValues": [
+     "Class7|Class8|Class12|Class13",
+     "Class3|Class4",
+     "Class2|Class3|Class12|Class13"
+    ],
+    "inferredRole": "y_true",
+    "confirmedRole": "y_true",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "score_Class1",
+    "sampleValues": [
+     "0.3653",
+     "0.0251",
+     "0.3896"
+    ],
+    "inferredRole": "prob_label_*",
+    "confirmedRole": "prob_label_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "score_Class2",
+    "sampleValues": [
+     "0.2834",
+     "0.2161",
+     "0.515"
+    ],
+    "inferredRole": "prob_label_*",
+    "confirmedRole": "prob_label_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "score_Class3",
+    "sampleValues": [
+     "0.0936",
+     "0.8314",
+     "0.2243"
+    ],
+    "inferredRole": "prob_label_*",
+    "confirmedRole": "prob_label_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "score_Class4",
+    "sampleValues": [
+     "0.3823",
+     "0.7494",
+     "0.1686"
+    ],
+    "inferredRole": "prob_label_*",
+    "confirmedRole": "prob_label_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "score_Class5",
+    "sampleValues": [
+     "0.6505",
+     "0.1395",
+     "0.57"
+    ],
+    "inferredRole": "prob_label_*",
+    "confirmedRole": "prob_label_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "score_Class6",
+    "sampleValues": [
+     "0.3255",
+     "0.0388",
+     "0.4115"
+    ],
+    "inferredRole": "prob_label_*",
+    "confirmedRole": "prob_label_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "score_Class7",
+    "sampleValues": [
+     "0.28",
+     "0.0599",
+     "0.0741"
+    ],
+    "inferredRole": "prob_label_*",
+    "confirmedRole": "prob_label_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "score_Class8",
+    "sampleValues": [
+     "0.3221",
+     "0.1674",
+     "0.1611"
+    ],
+    "inferredRole": "prob_label_*",
+    "confirmedRole": "prob_label_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "score_Class9",
+    "sampleValues": [
+     "0.0422",
+     "0.2592",
+     "0.2613"
+    ],
+    "inferredRole": "prob_label_*",
+    "confirmedRole": "prob_label_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "score_Class10",
+    "sampleValues": [
+     "0.0059",
+     "0.2165",
+     "0.2193"
+    ],
+    "inferredRole": "prob_label_*",
+    "confirmedRole": "prob_label_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "score_Class11",
+    "sampleValues": [
+     "0.0194",
+     "0.1634",
+     "0.3343"
+    ],
+    "inferredRole": "prob_label_*",
+    "confirmedRole": "prob_label_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "score_Class12",
+    "sampleValues": [
+     "0.9044",
+     "0.4849",
+     "0.6499"
+    ],
+    "inferredRole": "prob_label_*",
+    "confirmedRole": "prob_label_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "score_Class13",
+    "sampleValues": [
+     "0.8958",
+     "0.4593",
+     "0.5948"
+    ],
+    "inferredRole": "prob_label_*",
+    "confirmedRole": "prob_label_*",
+    "modified": false,
+    "warnings": []
+   },
+   {
+    "originalName": "score_Class14",
+    "sampleValues": [
+     "0.0018",
+     "0.0015",
+     "0.0002"
+    ],
+    "inferredRole": "prob_label_*",
+    "confirmedRole": "prob_label_*",
+    "modified": false,
+    "warnings": []
+   }
+  ],
+  "metadata": {
+   "positive_class": null,
+   "negative_class": null,
+   "positive_class_ambiguous": false,
+   "detected_classes": [],
+   "detected_labels": [
+    "Class1",
+    "Class2",
+    "Class3",
+    "Class4",
+    "Class5",
+    "Class6",
+    "Class7",
+    "Class8",
+    "Class9",
+    "Class10",
+    "Class11",
+    "Class12",
+    "Class13",
+    "Class14"
+   ],
+   "class_distribution": {}
+  },
+  "decisionThreshold": 0.5,
+  "classLabelDescriptions": {
+   "Class1": "대사",
+   "Class2": "에너지",
+   "Class12": "세포 운명"
+  },
+  "trainingExampleFiles": [],
+  "trainingUnsuitableExampleFiles": [],
+  "composerCards": {
+   "trainingData": true,
+   "testData": true,
+   "groundTruth": true,
+   "modelEnv": true
+  },
+  "composerMetrics": {
+   "coreMetrics": {
+    "choices": [
+     "M17",
+     "M15"
+    ]
+   },
+   "metricRationale": {
+    "text": "Degree of overlap",
+    "note": "한 유전자의 기능 범주를 일부라도 맞히면 실험 후보로 쓸 수 있다."
+   }
+  },
+  "composerPerspective": {
+   "classPriority": {
+    "text": "All equal"
+   },
+   "usageMode": {
+    "text": "Batch",
+    "note": "주 1회 새 유전자 목록을 한꺼번에 돌린다."
+   }
+  },
+  "composerTrainingData": {
+   "trainingDatasetName": {
+    "text": "Mulan yeast 학습 분할"
+   },
+   "trainingDataSource": {
+    "text": "Elisseeff & Weston(2001) 공개 데이터"
+   },
+   "trainingVolume": {
+    "entries": [
+     {
+      "key": "Training",
+      "value": "1500"
+     },
+     {
+      "key": "Validation",
+      "value": "0"
+     }
+    ]
+   },
+   "channelEffects": {
+    "choices": [
+     "None known"
+    ]
+   },
+   "imbalanceHandling": {
+    "choices": [
+     "Did nothing"
+    ],
+    "note": "레이블별 빈도 차이가 크지만(최대 50배 이상) 그대로 학습했다."
+   },
+   "preprocessingMatch": {
+    "text": "Same"
+   }
+  },
+  "composerTestData": {
+   "testDataSource": {
+    "text": "Mulan 표준 시험 분할(917건)"
+   },
+   "testSourceRelation": {
+    "text": "Same source"
+   }
+  },
+  "composerGroundTruth": {
+   "labelAuthor": {
+    "text": "Domain experts",
+    "note": "MIPS 기능 분류 데이터베이스 주석"
+   },
+   "labelReview": {
+    "text": "Several reviewers"
+   },
+   "labelReviewerCount": {
+    "text": "3"
+   },
+   "labelAgreementKind": {
+    "text": "Not measured"
+   }
+  },
+  "composerModelEnv": {
+   "algorithm": {
+    "text": "레이블별 로지스틱 회귀(One-vs-Rest)"
+   },
+   "hyperparameters": {
+    "entries": [
+     {
+      "key": "C",
+      "value": "0.3"
+     },
+     {
+      "key": "max_iter",
+      "value": "3000"
+     }
+    ]
+   },
+   "runtimeEnv": {
+    "entries": [
+     {
+      "key": "Operating system",
+      "value": "Ubuntu 22.04"
+     },
+     {
+      "key": "CPU",
+      "value": "AMD EPYC 16핵"
+     },
+     {
+      "key": "GPU",
+      "value": "없음"
+     },
+     {
+      "key": "Memory",
+      "value": "64GB"
+     },
+     {
+      "key": "Software",
+      "value": "Python 3.11"
+     }
+    ]
+   },
+   "gpuUsage": {
+    "entries": [
+     {
+      "key": "Training",
+      "value": "No"
+     },
+     {
+      "key": "Inference",
+      "value": "No"
+     }
+    ]
+   }
+  }
+ }
+}

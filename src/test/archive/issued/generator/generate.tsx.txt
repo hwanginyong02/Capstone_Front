@@ -1,0 +1,591 @@
+/**
+ * S0 스트림 A — 판 2·3 보관본 정답 글과 합성 판 3 픽스처를 **운영 main(58d99ea) 코드**로 뜬다.
+ *
+ * 이 저장소의 테스트가 아니다(확장자 .txt). 운영 main 사본(`git archive origin/main`, node_modules 링크)의 `src/` 에
+ * `gen_s0.test.tsx` 로 두고 S0_MODE 별로 돌린다(자세한 순서는 같은 폴더 README.md).
+ *
+ * - S0_MODE=requests  합성 명세마다 실제 `/report/:id` 화면 흐름(평가 → 서술 작업 만들기)을 돌려 서술 작업 요청 본문을
+ *                  `<WORK>/<이름>.narrative_request.json` 으로 쓴다(작업 만들기는 503 으로 멈춘다).
+ * - S0_MODE=fixtures  같은 흐름을 다시 돌려 백엔드가 준 작업 응답(`<이름>.job_created.json`·`.job_view.json`)으로 끝까지
+ *                  간 run 의 저장 데이터를 `<OUT>/<이름>.json`, 서술 상태를 `<OUT>/<이름>.narrative.json` 으로 쓴다.
+ * - S0_MODE=golden    픽스처마다 네 경로(화면 본문·인쇄·번호로 연 페이지 전체·/report/:id 페이지)를 그려 `<OUT>/*.txt`.
+ *
+ * 환경변수: WORK(백엔드 응답 폴더), ISSUED(src/test/archive/issued), ARCHIVE(src/test/archive), OUT.
+ * OUT 이 저장소의 정답 폴더(`issued/golden`)나 픽스처 폴더(`issued`)면 아무것도 쓰지 않고 멈춘다 — 정답은 늘 저장소 밖
+ * 작업 폴더에 뜨고, 바이트 비교 뒤 손으로 옮긴다(README "다시 만드는 법").
+ */
+import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { resolve } from "node:path";
+
+const getReportContent = vi.fn();
+const getIssuance = vi.fn();
+vi.mock("./lib/report/issuanceApi", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./lib/report/issuanceApi")>();
+  return {
+    ...actual,
+    getReportContent: (...a: unknown[]) => getReportContent(...a),
+    getIssuance: (...a: unknown[]) => getIssuance(...a),
+  };
+});
+
+import { ReportSections } from "./components/report/ReportSections";
+import { Report } from "./pages/report/Report";
+import { ReportPrint } from "./pages/report/ReportPrint";
+import { ReportByNumber } from "./pages/report/ReportByNumber";
+import { applyIssuance } from "./lib/report/issuanceApi";
+import { normalizeReportContent } from "./lib/report/normalizeReportContent";
+import { buildReportInput, mapWorkflowToFinalReport } from "./lib/report/mapWorkflowToFinalReport";
+import { buildEvaluatePayload, buildEvaluationRequestSnapshot } from "./lib/report/evaluationRequest";
+import { resetReportDataForTests } from "./hooks/useReportData";
+import { useWorkflowStore } from "./utils/stores/useWorkflowStore";
+import { useWorkspaceStore } from "./utils/stores/useWorkspaceStore";
+import { DEFAULT_BASIC_INFO } from "./types/workflow.types";
+
+const MODE = process.env.S0_MODE ?? "";
+const WORK = process.env.WORK ?? "";
+const ISSUED = process.env.ISSUED ?? "";
+const ARCHIVE = process.env.ARCHIVE ?? "";
+const OUT = process.env.OUT ?? "";
+
+/** 정답·픽스처 폴더에 바로 쓰지 않는다(newRun 생성기의 `resolve(out) === GOLDEN_DIR` 와 같은 보호). */
+function guardOut(out: string) {
+  const target = resolve(out);
+  const issued = ISSUED ? resolve(ISSUED) : "";
+  const forbidden = issued ? [issued, resolve(issued, "golden")] : [];
+  if (forbidden.includes(target) || /[\\/]src[\\/]test[\\/]archive[\\/]issued(?:[\\/]golden)?[\\/]?$/.test(target)) {
+    throw new Error(`생성기: 정답·픽스처 폴더에 바로 쓰지 않는다 — OUT=${target}`);
+  }
+}
+if (MODE === "fixtures" || MODE === "golden") guardOut(OUT);
+
+/** 평가 시각 고정 — 실제 발급본 RPT-2026-0001 을 만든 때(2026-10-22 18:45 KST). */
+const NOW = new Date("2026-10-22T09:45:00Z");
+
+(globalThis as any).ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+
+/* ------------------------------------------------------------------ *
+ * 블록 글 — archiveLayout.test.tsx 와 같은 규칙
+ * ------------------------------------------------------------------ */
+const BLOCK = new Set(["H1", "H2", "H3", "H4", "H5", "P", "LI", "TR", "BLOCKQUOTE", "DT", "DD", "SECTION", "DIV", "TH", "TD"]);
+function blockText(nodes: Node[], options: { dropPrintHidden?: boolean } = {}): string {
+  const lines: string[] = [];
+  let current = "";
+  const flush = () => { const l = current.replace(/\s+/g, " ").trim(); if (l) lines.push(l); current = ""; };
+  const walk = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) { current += node.textContent ?? ""; return; }
+    if (!(node instanceof Element)) return;
+    if (node.tagName === "STYLE" || node.tagName === "SCRIPT") return;
+    if (options.dropPrintHidden && node.classList.contains("print:hidden")) return;
+    const block = BLOCK.has(node.tagName);
+    if (block) flush();
+    if (node.tagName === "TD" || node.tagName === "TH") { current += " | "; node.childNodes.forEach(walk); return; }
+    node.childNodes.forEach(walk);
+    if (block) flush();
+  };
+  nodes.forEach(walk);
+  flush();
+  return `${lines.join("\n")}\n`;
+}
+
+/* ------------------------------------------------------------------ *
+ * 합성 명세 — 지난 라운드 c_build_requests FIXTURES 에서 옮겨 고친 것
+ * ------------------------------------------------------------------ */
+const entries = (o: Record<string, string>) => ({ entries: Object.entries(o).map(([key, value]) => ({ key, value })) });
+const details = (targets: Record<string, string>) =>
+  Object.fromEntries(Object.entries(targets).map(([id, targetValue]) => [
+    id, { id, name: id, description: "", targetValue, beta: "", positiveClass: "", completed: true },
+  ]));
+
+const BASE: Record<string, any> = {
+  bc_strong: {
+    taskType: "binary",
+    targets: { M1: "0.95", M3: "0.97", M4: "0.95", M9: "0.98", M19: "0.1" },
+    basic: {
+      modelName: "BreastScreen-LR", versionName: "v2.1",
+      modelPurpose: "유방 종괴 세침흡인(FNA) 영상에서 뽑은 세포핵 특징으로 악성 여부를 가려, 판독 대기열의 우선순위를 정하는 데 쓴다.",
+      modelCategory: "의료 영상 보조 분류", reportPurpose: "external", reportPurposeNote: "의료기기 소프트웨어 사전 상담 자료로 제출",
+      envOS: "Ubuntu 22.04", envCPU: "Intel Xeon 8핵", envGPU: "", envMemory: "32GB", envSoftware: "Python 3.11, scikit-learn 1.5",
+    },
+    cards: { trainingData: true, testData: true, groundTruth: true, modelEnv: true },
+    metrics: { coreMetrics: { choices: ["M3"] } },
+    perspective: {
+      criticalErrorType: { text: "Missed (FN)", note: "악성을 놓치면 추가 검사와 치료가 늦어진다. 잘못 잡은 경우는 재판독으로 걸러진다." },
+      usageMode: { text: "Batch", note: "하루 판독분을 밤에 한 번에 돌린다." },
+    },
+    training: {
+      trainingDatasetName: { text: "Wisconsin Diagnostic Breast Cancer(WDBC) 학습 분할" },
+      trainingDataSource: { text: "위스콘신 대학 병원 FNA 판독 기록(공개 데이터)" },
+      trainingVolume: entries({ Training: "398", Validation: "0" }),
+      trainingClassVolume: entries({ malignant: "148", benign: "250" }),
+      channelEffects: { choices: ["None known"] },
+      imbalanceHandling: { choices: ["Did nothing"], note: "클래스 비율(약 4:6)이 크게 기울지 않아 따로 맞추지 않았다." },
+      preprocessingMatch: { text: "Same" },
+    },
+    test: {
+      testDataSource: { text: "같은 데이터의 30% 층화 분할(학습에 쓰지 않음)" },
+      testSourceRelation: { text: "Same source", note: "같은 병원·같은 장비에서 나온 기록이다." },
+    },
+    truth: {
+      labelAuthor: { text: "Domain experts", note: "조직검사로 확진한 병리 진단 결과" },
+      labelReview: { text: "Several reviewers" },
+      labelReviewerCount: { text: "2" },
+      labelAgreementKind: { text: "Cohen's kappa" },
+      labelAgreementValue: { text: "0.92" },
+    },
+    env: {
+      algorithm: { text: "로지스틱 회귀(입력 표준화)" },
+      hyperparameters: entries({ C: "0.5", max_iter: "2000", solver: "lbfgs" }),
+      runtimeEnv: entries({ "Operating system": "Ubuntu 22.04", CPU: "Intel Xeon 8핵", GPU: "없음", Memory: "32GB", Software: "Python 3.11, scikit-learn 1.5" }),
+      gpuUsage: entries({ Training: "No", Inference: "No" }),
+    },
+    classDescriptions: { malignant: "악성 종양", benign: "양성 종양" },
+  },
+  bc_weak: {
+    taskType: "binary",
+    targets: { M1: "0.9", M3: "0.9", M4: "0.85", M9: "0.9" },
+    basic: {
+      modelName: "QuickScreen-NB", versionName: "v0.3",
+      modelPurpose: "검진 센터에서 세포 특징 두 가지만으로 악성 의심 건을 먼저 골라낸다.",
+      modelCategory: "", reportPurpose: "internal", reportPurposeNote: "",
+      envOS: "", envCPU: "", envGPU: "", envMemory: "", envSoftware: "",
+    },
+    cards: { trainingData: true, testData: false, groundTruth: false, modelEnv: false },
+    metrics: {},
+    perspective: {
+      criticalErrorType: { text: "Missed (FN)" },
+      usageMode: { text: "Real-time", note: "검진 직후 화면에 바로 띄운다." },
+    },
+    training: {
+      trainingDatasetName: { text: "WDBC 학습 분할" },
+      trainingDataSource: { text: "공개 데이터" },
+      trainingVolume: { ...entries({ Training: "398", Validation: "" }), unknownKeys: ["Validation"] },
+      trainingClassVolume: { unknown: true },
+      channelEffects: { choices: ["None known"] },
+      imbalanceHandling: { unknown: true, note: "담당자가 바뀌어 기록을 찾지 못했다." },
+    },
+    test: {},
+    truth: {},
+    env: {},
+    classDescriptions: {},
+  },
+  digits_strong: {
+    taskType: "multiclass",
+    targets: { M1: "0.98", M4: "0.98", M6: "0.05" },
+    basic: {
+      modelName: "DigitReader-SVC", versionName: "v1.4.0",
+      modelPurpose: "우편물 봉투의 손글씨 우편번호 숫자 한 자리씩을 읽어 자동 분류기에 넘긴다.",
+      modelCategory: "필기 숫자 인식", reportPurpose: "project", reportPurposeNote: "",
+      envOS: "", envCPU: "", envGPU: "", envMemory: "", envSoftware: "",
+    },
+    cards: { trainingData: true, testData: true, groundTruth: true, modelEnv: true },
+    metrics: { coreMetrics: { choices: ["M1", "M4"] } },
+    perspective: {
+      classPriority: { text: "All equal", note: "어느 숫자를 틀려도 오배송 한 건이다." },
+      usageMode: { text: "Real-time" },
+    },
+    training: {
+      trainingDatasetName: { text: "UCI 손글씨 숫자(8×8) 학습 분할" },
+      trainingDataSource: { text: "UCI 기계학습 저장소" },
+      trainingVolume: entries({ Training: "1257", Validation: "0" }),
+      trainingClassVolume: entries({ "0": "124", "1": "127", "2": "124", "3": "128", "4": "127", "5": "127", "6": "127", "7": "125", "8": "122", "9": "126" }),
+      channelEffects: { choices: ["Different collectors"], note: "필기자 43명 중 학습·평가에 같은 사람이 섞여 있다." },
+      imbalanceHandling: { choices: ["Balanced the counts"] },
+      preprocessingMatch: { text: "Same" },
+    },
+    test: {
+      testDataSource: { text: "같은 데이터의 30% 층화 분할" },
+      testSourceRelation: { text: "Same source" },
+    },
+    truth: {
+      labelAuthor: { text: "Recorded outcomes", note: "필기자에게 적게 한 숫자를 그대로 정답으로 씀" },
+      labelReview: { text: "One reviewer" },
+    },
+    env: {
+      algorithm: { text: "서포트 벡터 머신(RBF 커널)" },
+      hyperparameters: entries({ C: "3", kernel: "rbf", gamma: "scale" }),
+      runtimeEnv: entries({ "Operating system": "macOS 15", CPU: "Apple M3", GPU: "없음", Memory: "16GB", Software: "Python 3.12" }),
+      gpuUsage: entries({ Training: "No", Inference: "No" }),
+    },
+    classDescriptions: { "0": "숫자 0", "1": "숫자 1", "7": "숫자 7(가로줄 없는 필체 포함)" },
+  },
+  digits_weak: {
+    taskType: "multiclass",
+    targets: { M1: "0.9", M4: "0.85" },
+    basic: {
+      modelName: "DigitReader-Tree", versionName: "v0.1",
+      modelPurpose: "",
+      modelCategory: "", reportPurpose: "internal", reportPurposeNote: "",
+      envOS: "", envCPU: "", envGPU: "", envMemory: "", envSoftware: "",
+    },
+    cards: { trainingData: true, testData: false, groundTruth: true, modelEnv: false },
+    metrics: {},
+    perspective: {
+      classPriority: { text: "Larger classes first" },
+      usageMode: { text: "Batch" },
+    },
+    training: {
+      trainingDatasetName: { text: "손글씨 숫자 학습 분할" },
+      trainingDataSource: { text: "UCI" },
+      trainingVolume: entries({ Training: "1257", Validation: "0" }),
+      trainingClassVolume: { unknown: true },
+      channelEffects: { choices: ["Other (free text)"], otherText: "스캐너가 두 종류" },
+      imbalanceHandling: { choices: ["Did nothing"] },
+    },
+    test: {},
+    truth: {
+      labelAuthor: { unknown: true, note: "외주 업체가 붙였다고 들었으나 확인하지 못함" },
+      labelReview: { text: "No review" },
+    },
+    env: {},
+    classDescriptions: {},
+  },
+  yeast_strong: {
+    taskType: "multilabel",
+    targets: { M17: "0.45", M15: "0.22", M4: "0.45" },
+    basic: {
+      modelName: "YeastFunc-OvR", versionName: "v3.0",
+      modelPurpose: "효모 유전자의 발현·계통 특징으로 기능 범주(14개, 여러 개 가능)를 추정해 실험 대상 유전자를 추린다.",
+      modelCategory: "생물정보 다중 레이블 분류", reportPurpose: "external", reportPurposeNote: "공동 연구 기관 제출",
+      envOS: "", envCPU: "", envGPU: "", envMemory: "", envSoftware: "",
+    },
+    cards: { trainingData: true, testData: true, groundTruth: true, modelEnv: true },
+    metrics: {
+      coreMetrics: { choices: ["M17", "M15"] },
+      metricRationale: { text: "Degree of overlap", note: "한 유전자의 기능 범주를 일부라도 맞히면 실험 후보로 쓸 수 있다." },
+    },
+    perspective: {
+      classPriority: { text: "All equal" },
+      usageMode: { text: "Batch", note: "주 1회 새 유전자 목록을 한꺼번에 돌린다." },
+    },
+    training: {
+      trainingDatasetName: { text: "Mulan yeast 학습 분할" },
+      trainingDataSource: { text: "Elisseeff & Weston(2001) 공개 데이터" },
+      trainingVolume: entries({ Training: "1500", Validation: "0" }),
+      channelEffects: { choices: ["None known"] },
+      imbalanceHandling: { choices: ["Did nothing"], note: "레이블별 빈도 차이가 크지만(최대 50배 이상) 그대로 학습했다." },
+      preprocessingMatch: { text: "Same" },
+    },
+    test: {
+      testDataSource: { text: "Mulan 표준 시험 분할(917건)" },
+      testSourceRelation: { text: "Same source" },
+    },
+    truth: {
+      labelAuthor: { text: "Domain experts", note: "MIPS 기능 분류 데이터베이스 주석" },
+      labelReview: { text: "Several reviewers" },
+      labelReviewerCount: { text: "3" },
+      labelAgreementKind: { text: "Not measured" },
+    },
+    env: {
+      algorithm: { text: "레이블별 로지스틱 회귀(One-vs-Rest)" },
+      hyperparameters: entries({ C: "0.3", max_iter: "3000" }),
+      runtimeEnv: entries({ "Operating system": "Ubuntu 22.04", CPU: "AMD EPYC 16핵", GPU: "없음", Memory: "64GB", Software: "Python 3.11" }),
+      gpuUsage: entries({ Training: "No", Inference: "No" }),
+    },
+    classDescriptions: { Class1: "대사", Class2: "에너지", Class12: "세포 운명" },
+  },
+};
+
+interface SynSpec {
+  name: string;
+  base: keyof typeof BASE;
+  /** 서술 작업의 끝 — done(백엔드 작업 응답), pending(조회가 계속 진행 중), failed(백엔드가 실패를 알림). */
+  end: "done" | "pending" | "failed";
+  edit?: (b: any) => void;
+}
+
+const SYN: SynSpec[] = [
+  { name: "syn_multiclass_cm_latency", base: "digits_strong", end: "done" },
+  {
+    name: "syn_binary_shift_cm", base: "bc_strong", end: "done",
+    // 학습 분포를 기울인다(평가 약 37:63 ↔ 학습 10:90) — 9절 분포 차이 문제.
+    edit: (b) => { b.training.trainingClassVolume = entries({ malignant: "40", benign: "358" }); },
+  },
+  {
+    name: "syn_binary_inconclusive", base: "bc_weak", end: "done",
+    // 핵심 지표를 AUROC(M9)로 골랐지만 점수 열을 매핑하지 않아 산출되지 않는다 → 판정 불가.
+    edit: (b) => { b.metrics = { coreMetrics: { choices: ["M9"] } }; },
+  },
+  { name: "syn_multilabel_perlabel", base: "yeast_strong", end: "done" },
+  { name: "syn_narrative_pending", base: "bc_strong", end: "pending" },
+  { name: "syn_narrative_failed", base: "digits_weak", end: "failed" },
+  // 판정 자릿수 갈래 — 평가 응답만 손으로 바꿨다(generator/edit_judged_digits.py.txt): M1 0.8497(8.1 범위 끝, 4자리),
+  // M3 0.9696(목표 0.97 미달, 4자리), M4 0.949999(목표 0.95 미달, 6자리 = MAX_VALUE_DIGITS).
+  { name: "syn_binary_judged_digits", base: "bc_strong", end: "done" },
+];
+
+const BACK_TO_FRONT: Record<string, Record<string, string>> = {
+  binary: { sample_id: "id", y_true: "y_true", y_pred: "y_pred", score_positive: "score", latency: "latency" },
+  multiclass: { sample_id: "id", y_true: "y_true", y_pred: "y_pred", prob_per_class: "prob_class_*", latency: "latency" },
+  multilabel: { sample_id: "id", true_labels: "y_true", pred_labels: "y_pred", score_per_label: "prob_label_*", latency: "latency" },
+};
+
+const readJson = (path: string) => JSON.parse(readFileSync(path, "utf8"));
+
+const RUN_ID = "run-s0-synthetic";
+
+/** 검증 화면 "다음" 과 같은 순서로 run 을 만든다(DataValidation.handleNext). */
+function seedSynthetic(spec: SynSpec) {
+  const b = structuredClone(BASE[spec.base]);
+  spec.edit?.(b);
+  const payload = readJson(`${WORK}/${spec.name}.payload.json`);
+  const validation = readJson(`${WORK}/${spec.name}.validate.json`);
+  const csv = readFileSync(`${WORK}/${spec.name}.csv`);
+  const file = new File([csv], `${spec.name}.csv`, { type: "text/csv", lastModified: 1_761_126_000_000 });
+  const roles = BACK_TO_FRONT[b.taskType];
+  const columnMapping = payload.column_mappings.map((m: any) => ({
+    originalName: m.column, sampleValues: m.sample_values, inferredRole: roles[m.role], confirmedRole: roles[m.role],
+    modified: false, warnings: [],
+  }));
+  useWorkflowStore.getState().resetWorkflow();
+  useWorkflowStore.setState({
+    basicInfo: {
+      ...DEFAULT_BASIC_INFO, companyName: "(주)시연고객", representative: "김시연", businessNumber: "123-45-67890",
+      phone: "02-123-4567", address: "서울특별시 노원구 공릉로 232", contractDate: "2026-10-22", ...b.basic, taskType: b.taskType,
+    },
+    taskType: b.taskType,
+    selectedMetricIds: payload.selected_metric_ids,
+    metricDetails: details(b.targets),
+    uploadedFile: { name: file.name, size: `${(file.size / 1024).toFixed(1)} KB`, type: "text/csv" },
+    rawFile: file,
+    trainingExampleFiles: [],
+    trainingUnsuitableExampleFiles: [],
+    columnMapping,
+    classLabelDescriptions: b.classDescriptions,
+    metadata: payload.metadata,
+    decisionThreshold: payload.decision_threshold,
+    validationResult: validation,
+    composerCards: b.cards,
+    composerMetrics: b.metrics,
+    composerPerspective: b.perspective,
+    composerTrainingData: b.training,
+    composerTestData: b.test,
+    composerGroundTruth: b.truth,
+    composerModelEnv: b.env,
+  } as any);
+  const state = useWorkflowStore.getState();
+  // 프론트가 보낼 평가 요청이 백엔드 응답을 만든 요청과 같아야 한다.
+  expect(buildEvaluatePayload(state as any)).toEqual(payload);
+  const first = mapWorkflowToFinalReport(buildReportInput(state), validation).materialCheck;
+  state.setMaterialCheckAck(
+    first && first.warningIds.length > 0
+      ? { at: new Date().toISOString(), version: first.version, warningIds: [...first.warningIds] }
+      : null,
+  );
+  const workflowSnapshot = buildReportInput(useWorkflowStore.getState());
+  const reportData = mapWorkflowToFinalReport(workflowSnapshot, validation);
+  useWorkflowStore.setState({ lastRunId: RUN_ID });
+  useWorkspaceStore.setState({
+    workspaces: [], activeWorkspaceId: "ws-1",
+    evaluationRuns: [{
+      id: RUN_ID, workspaceId: "ws-1", modelName: b.basic.modelName, versionName: reportData.evalScope.version,
+      reportId: reportData.meta.reportId, workflowSnapshot, reportData, createdAt: NOW.toISOString(),
+      evaluationRequest: buildEvaluationRequestSnapshot(useWorkflowStore.getState()),
+    } as any],
+  });
+}
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+
+function stubFlow(spec: SynSpec, mode: "requests" | "fixtures", seen: { request?: unknown }) {
+  const evaluate = readJson(`${WORK}/${spec.name}.evaluate.json`);
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    const method = (init?.method ?? "GET").toUpperCase();
+    if (method === "POST" && /\/api\/evaluate$/.test(url)) return json(evaluate);
+    if (method === "POST" && /\/api\/narrative\/jobs$/.test(url)) {
+      seen.request = JSON.parse(String(init!.body));
+      if (mode === "requests") return json({ detail: "멈춤" }, 503);
+      return json(readJson(`${WORK}/${spec.name}.job_created.json`));
+    }
+    if (method === "GET" && /\/api\/narrative\/jobs\/[^/]+$/.test(url)) {
+      const created = readJson(`${WORK}/${spec.name}.job_created.json`);
+      if (spec.end === "done") return json(readJson(`${WORK}/${spec.name}.job_view.json`));
+      if (spec.end === "pending") {
+        return json({ job_id: created.job_id, status: "running", stage: "generating", failure: null, benchmark_refs: created.benchmark_refs, result: null });
+      }
+      return json({ job_id: created.job_id, status: "failed", stage: "failed", failure: "error", benchmark_refs: created.benchmark_refs, result: null });
+    }
+    throw new Error(`생성기: 모르는 요청 ${method} ${url}`);
+  }));
+}
+
+function renderReport(id = RUN_ID) {
+  return render(
+    <MemoryRouter initialEntries={[`/report/${id}`]}>
+      <Routes><Route path="/report/:id" element={<Report />} /></Routes>
+    </MemoryRouter>,
+  );
+}
+
+function runOf(id = RUN_ID) {
+  return useWorkspaceStore.getState().evaluationRuns.find((r) => r.id === id)!;
+}
+
+function resetStores() {
+  resetReportDataForTests();
+  localStorage.clear();
+  useWorkflowStore.getState().resetWorkflow();
+  useWorkspaceStore.setState({ workspaces: [], evaluationRuns: [], activeWorkspaceId: null });
+}
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"], now: NOW });
+  resetStores();
+  getReportContent.mockReset();
+  getIssuance.mockReset();
+  vi.stubGlobal("print", vi.fn());
+});
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+  resetStores();
+});
+
+describe.runIf(MODE === "requests")("서술 요청 본문", () => {
+  it.each(SYN)("$name", async (spec) => {
+    seedSynthetic(spec);
+    const seen: { request?: unknown } = {};
+    stubFlow(spec, "requests", seen);
+    const view = renderReport();
+    await waitFor(() => expect(runOf().narrative?.status).toBe("failed"), { timeout: 10000 });
+    view.unmount();
+    writeFileSync(`${WORK}/${spec.name}.narrative_request.json`, JSON.stringify(seen.request, null, 1));
+  });
+});
+
+describe.runIf(MODE === "fixtures")("합성 판 3 픽스처", () => {
+  it.each(SYN)("$name", async (spec) => {
+    seedSynthetic(spec);
+    const seen: { request?: unknown } = {};
+    stubFlow(spec, "fixtures", seen);
+    const view = renderReport();
+    if (spec.end === "done") {
+      await waitFor(() => expect(runOf().narrative?.status).toBe("done"), { timeout: 10000 });
+    } else if (spec.end === "failed") {
+      await waitFor(() => expect(runOf().narrative?.status).toBe("failed"), { timeout: 10000 });
+    } else {
+      await waitFor(() => expect(runOf().narrative?.status).toBe("pending"), { timeout: 10000 });
+      await waitFor(() => expect(view.container.textContent).toContain("생성 중"));
+    }
+    view.unmount();
+    // 백엔드에 보낸 요청과 같은 요청이어야 한다(결정적).
+    expect(seen.request).toEqual(readJson(`${WORK}/${spec.name}.narrative_request.json`));
+    const run = runOf();
+    expect(run.reportData.contentSchema).toBe(3);
+    writeFileSync(`${OUT}/${spec.name}.json`, `${JSON.stringify(run.reportData, null, 2)}\n`);
+    writeFileSync(`${OUT}/${spec.name}.narrative.json`, `${JSON.stringify(run.narrative, null, 2)}\n`);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * 정답 글
+ * ------------------------------------------------------------------ */
+interface Target {
+  name: string;
+  content: any;
+  issuance: any | null;
+  /** 번호로 연 화면의 서버 응답(내용 제외). */
+  stored: { reportNo: string; version: string; issuedAt: string; contentHash: string };
+  /** /report/:id 페이지 상태. 없으면 그리지 않는다. */
+  page: null | { reportData: any; narrative: any };
+}
+
+/** 서술 완료·미발급(머리 줄에 발급 버튼·PDF 가 켜진) /report/:id 페이지를 그리는 픽스처. */
+const DRAFT_DONE_PAGES = ["syn_binary_shift_cm", "syn_binary_judged_digits", "schema2_binary"];
+
+function targets(): Target[] {
+  const list: Target[] = [];
+  for (let n = 1; n <= 6; n += 1) {
+    const no = `RPT-2026-000${n}`;
+    const raw = readFileSync(`${ISSUED}/${no}.content.json`, "utf8");
+    const issuance = readJson(`${ISSUED}/${no}.issuance.json`);
+    const content = JSON.parse(raw);
+    list.push({
+      name: no, content, issuance,
+      stored: { reportNo: no, version: issuance.version, issuedAt: issuance.issuedAt, contentHash: createHash("sha256").update(raw, "utf8").digest("hex") },
+      page: { reportData: applyIssuance(content, issuance), narrative: { status: "done", jobId: `job-${no}` } },
+    });
+  }
+  const fake = { reportNo: "RPT-2026-0001", version: "v1.0", issuedAt: "2026-10-01T03:00:00+00:00", contentHash: "a".repeat(64) };
+  for (const name of ["schema3_binary", "schema3_binary_pass", "schema2_binary", "schema2_multiclass_noproblems"]) {
+    const content = readJson(`${ARCHIVE}/${name}.json`);
+    const page = DRAFT_DONE_PAGES.includes(name) ? { reportData: content, narrative: { status: "done", jobId: `job-${name}` } } : null;
+    list.push({ name, content, issuance: null, stored: fake, page });
+  }
+  for (const spec of SYN) {
+    const content = readJson(`${ISSUED}/${spec.name}.json`);
+    const narrative = readJson(`${ISSUED}/${spec.name}.narrative.json`);
+    list.push({
+      name: spec.name, content, issuance: null, stored: fake,
+      page: spec.end !== "done" || DRAFT_DONE_PAGES.includes(spec.name) ? { reportData: content, narrative } : null,
+    });
+  }
+  return list;
+}
+
+describe.runIf(MODE === "golden")("정답 글", () => {
+  it.each(MODE === "golden" ? targets() : [])("$name", async (t) => {
+    // (a) 화면 본문
+    const a = render(<MemoryRouter><ReportSections data={normalizeReportContent(structuredClone(t.content))} /></MemoryRouter>);
+    writeFileSync(`${OUT}/${t.name}.sections.txt`, blockText([a.container]));
+    a.unmount();
+
+    // (b) 인쇄 — 저장된 완성본(발급본은 발급 기록을 덧입힌 것)
+    const printed = t.issuance ? applyIssuance(structuredClone(t.content), t.issuance) : structuredClone(t.content);
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => { throw new Error(`인쇄: 요청 금지 ${String(input)}`); }));
+    useWorkspaceStore.setState({
+      workspaces: [], activeWorkspaceId: "ws-1",
+      evaluationRuns: [{ id: RUN_ID, workspaceId: "ws-1", modelName: "m", versionName: "v", reportId: printed.meta.reportId, workflowSnapshot: undefined as any, reportData: { ...printed, isEvaluated: true }, createdAt: NOW.toISOString(), narrative: { status: "done", jobId: "job-1" } } as any],
+    });
+    const p = render(
+      <MemoryRouter initialEntries={[`/report/${RUN_ID}/print`]}>
+        <Routes><Route path="/report/:id/print" element={<ReportPrint />} /></Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(p.container.querySelector("[data-pdf-ready]")).not.toBeNull());
+    await waitFor(() => expect((globalThis as any).print).toHaveBeenCalledTimes(1));
+    writeFileSync(`${OUT}/${t.name}.print.txt`, blockText([p.container.querySelector("[data-pdf-ready]")!], { dropPrintHidden: true }));
+    p.unmount();
+    resetStores();
+
+    // (c) 번호로 연 페이지 전체(머리 상자·작성 기록 포함)
+    getReportContent.mockResolvedValue({ ...t.stored, content: structuredClone(t.content) });
+    getIssuance.mockResolvedValue(t.issuance ? structuredClone(t.issuance) : null);
+    const c = render(
+      <MemoryRouter initialEntries={[`/report/no/${t.stored.reportNo}`]}>
+        <Routes><Route path="/report/no/:reportNo" element={<ReportByNumber />} /></Routes>
+      </MemoryRouter>,
+    );
+    await screen.findByRole("heading", { level: 1 });
+    writeFileSync(`${OUT}/${t.name}.byNumber.txt`, blockText([c.container]));
+    c.unmount();
+
+    // (d) /report/:id 페이지
+    if (t.page) {
+      const { reportData, narrative } = t.page;
+      vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = (init?.method ?? "GET").toUpperCase();
+        if (narrative.status === "pending" && method === "GET" && /\/api\/narrative\/jobs\/[^/]+$/.test(url)) {
+          return json({ job_id: narrative.jobId, status: "running", stage: "generating", failure: null, benchmark_refs: [], result: null });
+        }
+        throw new Error(`페이지: 요청 금지 ${method} ${url}`);
+      }));
+      useWorkspaceStore.setState({
+        workspaces: [], activeWorkspaceId: "ws-1",
+        evaluationRuns: [{ id: RUN_ID, workspaceId: "ws-1", modelName: "m", versionName: "v", reportId: reportData.meta.reportId, workflowSnapshot: undefined as any, reportData: structuredClone(reportData), createdAt: NOW.toISOString(), narrative: structuredClone(narrative) } as any],
+      });
+      const d = renderReport();
+      await screen.findByRole("heading", { level: 1 });
+      if (narrative.status === "pending") await waitFor(() => expect(d.container.textContent).toContain("생성 중"));
+      writeFileSync(`${OUT}/${t.name}.page.txt`, blockText([d.container]));
+      d.unmount();
+    }
+    expect(existsSync(`${OUT}/${t.name}.byNumber.txt`)).toBe(true);
+  });
+});

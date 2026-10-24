@@ -12,6 +12,7 @@
 import { Info, RefreshCw } from "lucide-react";
 import { METRICS } from "../../data/evaluationData";
 import { MATERIAL_CHECK_VERSION, isMaterialCheckOutdated } from "../../lib/report/materialCheck";
+import { ed4RecheckMessage, ed4RuleTail } from "../../lib/report/edition4/render/recordLines";
 import { COMPOSER_CARDS, fieldOfLeaf, getCard, isLeafReceived, stepOfLeaf } from "../../data/reportComposer";
 import { getStepDefinition } from "../../data/workflowSteps";
 import type { MaterialCheckItem, MaterialCheckLine, MaterialCheckResult } from "../../types/finalReport.types";
@@ -143,13 +144,15 @@ interface MaterialCheckNoticeProps {
    * "입력 화면에서 고치기"(지연시간이면 "컬럼 매핑에서 고치기")도 보인다. 계산은 검증 화면이 한다.
    */
   canFixInInput?: (target: Extract<MaterialCheckTarget, { kind: "card" }>) => boolean;
+  /** 새 성적서가 판 4 로 만들어질 것인가(검증 화면이 미리 만든 성적서의 판) — 참이면 기록 문장이 판 4 글(부록 B28). */
+  edition4?: boolean;
 }
 
 const LINK = "text-sm text-foreground-secondary underline underline-offset-4 hover:text-foreground";
 const BOX = "flex flex-col overflow-hidden rounded-md border border-border";
 const BOX_HEAD = "flex flex-wrap items-center justify-between gap-x-4 gap-y-1 bg-muted px-4 py-2";
 
-export function MaterialCheckNotice({ check, onFix, canFixInInput = () => false }: MaterialCheckNoticeProps) {
+export function MaterialCheckNotice({ check, onFix, canFixInInput = () => false, edition4 = false }: MaterialCheckNoticeProps) {
   if (check.warningIds.length === 0) return null;
   const missing = check.reporting.items.filter((item) => !item.provided);
   const unmet = check.purpose.lines.filter((line) => !line.met);
@@ -184,8 +187,8 @@ export function MaterialCheckNotice({ check, onFix, canFixInInput = () => false 
         성적서에 부족하게 표시될 항목이 있습니다.
       </p>
       <p className="mt-1 text-sm text-foreground-secondary">
-        진행은 막지 않습니다. "다음"을 누르면 이 안내를 확인하고 진행한 것으로 성적서 6.0에 기록됩니다
-        (점검 표 {check.version}).
+        진행은 막지 않습니다. "다음"을 누르면 이 안내를 확인하고{" "}
+        {edition4 ? ed4RuleTail(check.version) : `진행한 것으로 성적서 6.0에 기록됩니다 (점검 표 ${check.version}).`}
       </p>
 
       {missing.length > 0 && (
@@ -251,10 +254,12 @@ export function MaterialCheckNotice({ check, onFix, canFixInInput = () => false 
  * 검증 화면의 "다음"은 **지금 워크플로 입력**으로 새 run 을 만든다. 그래서 "다음을 누르면 다시 만든다"는 이 run 이
  * 지금 흐름의 run(`lastRunId`)일 때만 참이다(`inCurrentFlow`). 워크스페이스에서 연 다른 run 이면 사실만 알린다.
  */
-export function materialCheckOutdatedMessage(storedVersion: string, inCurrentFlow = true): string {
+export function materialCheckOutdatedMessage(storedVersion: string, inCurrentFlow = true, edition4 = false): string {
+  // 판 4 run 은 자리(B29)와 낱말("입력 점검 규칙", S6 질문 1)이 판 4 — 판 3 문장은 아래 그대로.
+  if (edition4) return ed4RecheckMessage(storedVersion, MATERIAL_CHECK_VERSION, inCurrentFlow);
   return (
     `점검 표가 바뀌어(${storedVersion} → ${MATERIAL_CHECK_VERSION}) 다시 확인이 필요합니다. ` +
-    "이 평가의 재료 선택 점검(표지·1.4·6.0)은 옛 점검 표로 만든 것입니다. " +
+    `이 평가의 재료 선택 점검(표지·1.4·6.0)은 옛 점검 표로 만든 것입니다. ` +
     (inCurrentFlow
       ? "데이터 검증 화면에서 생성 전 안내를 다시 보고 \"다음\"을 누르면 새 점검 표로 성적서를 다시 만듭니다."
       : "이 평가는 지금 진행 중인 평가 흐름의 결과가 아니어서, 새 점검 표를 적용하려면 같은 입력으로 평가를 새로 해야 합니다.")
@@ -269,20 +274,23 @@ export function MaterialCheckOutdatedNotice({
   check,
   active,
   inCurrentFlow = true,
+  edition4 = false,
 }: {
   check: { version: string } | null | undefined;
   active: boolean;
   /** 이 run 이 지금 워크플로 흐름의 run(`lastRunId`)인가 — 아니면 "다음을 누르면 다시 만든다" 대신 사실 문장. */
   inCurrentFlow?: boolean;
+  /** 판 4 run 이면 점검 결과 자리를 판 4 절 번호로(부록 B29), "점검 표" 낱말을 "입력 점검 규칙"으로(S6 질문 1). */
+  edition4?: boolean;
 }) {
   if (!active || !isMaterialCheckOutdated(check)) return null;
   return (
     <section
-      aria-label="점검 표 변경 안내"
+      aria-label={edition4 ? "입력 점검 규칙 변경 안내" : "점검 표 변경 안내"}
       className="mb-6 flex items-start gap-2 rounded-lg border border-warning-border bg-warning-subtle px-5 py-4 text-sm text-warning-strong"
     >
       <RefreshCw className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-      <p>{materialCheckOutdatedMessage(check!.version, inCurrentFlow)}</p>
+      <p>{materialCheckOutdatedMessage(check!.version, inCurrentFlow, edition4)}</p>
     </section>
   );
 }
