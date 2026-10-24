@@ -10,10 +10,8 @@
  */
 import type { KpiResult } from "../../../types/finalReport.types";
 import { isJudged } from "../computeVerdict";
-import { formatTargetCriteria } from "../metricValueFormat";
 import type { MetricRef, NarrativeFacts } from "../narrativeFacts";
-import { TARGET_DIGITS } from "../../../utils/domain/validation";
-import { ed4Judged } from "./edition4Number";
+import { ed4Judged, ed4TargetCriteria } from "./edition4Number";
 import {
   COVER_CORE_ROW,
   COVER_CORE_UNAVAILABLE,
@@ -107,9 +105,9 @@ export function buildVerdictEd4(detail: VerdictDetail, kpiResults: KpiResult[]):
   };
 }
 
-/** 합격 기준 칸("≥ 0.970") — 3.1·4.3 과 같은 함수·자릿수(고정 문구 23 셋째 자리). */
+/** 합격 기준 칸("≥ 0.970", 넷째 자리 목표는 "≥ 0.8124") — 3.1·4.3 과 같은 함수(`ed4TargetCriteria`, D1). */
 function criteria(r: KpiResult): string | null {
-  return r.threshold === null ? null : formatTargetCriteria(r.threshold, r.higherIsBetter, TARGET_DIGITS);
+  return r.threshold === null ? null : ed4TargetCriteria(r.threshold, r.higherIsBetter);
 }
 
 /**

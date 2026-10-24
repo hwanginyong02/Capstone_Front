@@ -96,12 +96,14 @@ describe("판 3 요청에는 판 4 키가 하나도 없다(null 키 금지)", ()
       .map((f) => [`edition3/newRun/golden/${f}`, readJson(resolve(NEW_RUN_GOLDEN, f))] as [string, Json]),
   ];
 
-  it("판 4 키 목록은 report_edition 으로 시작하고, facts 안의 판 4 키는 하나뿐이다", () => {
+  it("판 4 키 목록은 report_edition 으로 시작하고, facts 안의 판 4 키는 둘이다(분포 차 글자·최약 클래스 F1 글자)", () => {
     expect(ED4_ONLY.length).toBeGreaterThanOrEqual(10);
     expect(new Set(ED4_ONLY).size).toBe(ED4_ONLY.length);
     expect(ED4_ONLY[0]).toBe("report_edition");
+    // S2·S3 검토 D2·D3 으로 facts.weakest_class.f1_text 가 더해졌다(명세 원칙 'facts 안 판 4 키 둘').
     expect(ED4_ONLY.filter((p) => p.includes(".facts."))).toEqual([
       "fact_sheet.facts.distribution_shift[].evaluation_minus_training_text",
+      "fact_sheet.facts.weakest_class.f1_text",
     ]);
   });
 
@@ -179,6 +181,31 @@ function refPercentPoint(text: string): string {
 
 const refSignedCount = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : "0");
 
+/** 가장 짧은 십진 표기를 고정소수로 — 원값으로 되돌아오는 가장 적은 자릿수(String 의 지수 꼴을 거치지 않는다). */
+function refGiven(value: number): string {
+  for (let d = 0; d <= 20; d += 1) {
+    const text = value.toFixed(d);
+    if (Number(text) === value) return text;
+  }
+  throw new Error(`표기할 수 없는 값 ${value}`);
+}
+
+function refTarget(value: number): string {
+  const given = refGiven(value);
+  const decimals = given.includes(".") ? given.split(".")[1].length : 0;
+  if (decimals <= 3) return unneg(value.toFixed(3));
+  if (decimals <= 6) return unneg(given);
+  return unneg(value.toFixed(6));
+}
+
+function refDistinct(value: number, others: number[]): string {
+  const rivals = others.filter((o) => o.toFixed(6) !== value.toFixed(6));
+  for (let d = 3; d <= 6; d += 1) {
+    if (rivals.every((o) => o.toFixed(d) !== value.toFixed(d))) return unneg(value.toFixed(d));
+  }
+  return unneg(value.toFixed(6));
+}
+
 function refNumber(c: Json): string {
   switch (c.rule) {
     case "plain":
@@ -196,13 +223,31 @@ function refNumber(c: Json): string {
     case "signed_count":
       return refSignedCount(c.value);
     case "given":
-      return String(c.value);
+      return refGiven(c.value);
+    case "target":
+      return refTarget(c.value);
+    case "latency":
+      return unneg(Number(c.value).toFixed(2));
+    case "distinct":
+      return refDistinct(c.value, c.others);
     default:
       throw new Error(`모르는 규칙 ${c.rule}`);
   }
 }
 
-const RULES = ["plain", "judged", "signed_judged", "ci_bound", "percent", "percent_point", "signed_count", "given"];
+const RULES = [
+  "plain",
+  "judged",
+  "signed_judged",
+  "ci_bound",
+  "percent",
+  "percent_point",
+  "signed_count",
+  "given",
+  "target",
+  "latency",
+  "distinct",
+];
 
 describe("판 4 숫자 표기 대조 표(백엔드와 같은 표)", () => {
   it("규칙마다 여러 줄이 있고, 함수 이름 약속은 명세와 같다", () => {
@@ -260,7 +305,9 @@ describe("판 4 숫자 표기 대조 표(백엔드와 같은 표)", () => {
 function existingJosa(c: Json): string | null {
   if (c.pair === "과/와") return josaWaGwa(c.word);
   if (c.pair === "은/는") return josaEunNeun(c.word);
-  if (c.pair === "으로/로") return josaEuroRo(c.word);
+  // 판 3 josaEuroRo 에는 '끝소리 모름' 갈래가 없다(모르면 "로") — 판 4 josa 의 "(으)로" 줄(S2·S3 검토 T14 로 더한 'Σ')은 판 3 함수가
+  // 맡던 줄이 아니다. 판 3 함수는 얼린 출력이라 고치지 않는다.
+  if (c.pair === "으로/로") return String(c.source).startsWith("끝소리를 모르는 말") ? null : josaEuroRo(c.word);
   if (c.pair === "을/를" && c.kind === "number") return josaEulReul(c.word);
   return null;
 }

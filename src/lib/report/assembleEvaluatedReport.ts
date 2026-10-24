@@ -339,6 +339,10 @@ export function assembleEvaluatedReport(
     nSamples,
     edition4,
   });
+  // 판 4 전용 파서 — 평가 응답의 반올림 전 값(S1). 판 3 파서(`parseF1ThresholdGain`·`parseImbalanceEffect`)는 그대로다.
+  // 문제 근거(D6)와 사실 시트가 같은 값에서 같은 함수로 판 4 글자를 찍는다.
+  const thresholdGainRaw = edition4 ? parseF1ThresholdGainEd4(success_metrics.f1_threshold_gain, thresholdGain) : null;
+  const imbalanceRaw = edition4 ? parseImbalanceRawEd4(success_metrics.imbalance_effect, imbalanceEffect) : null;
   const problems = buildProblemList({
     kpiResults: updatedKpiResults,
     taskType: taskTypeResolved,
@@ -348,6 +352,7 @@ export function assembleEvaluatedReport(
     facts: factsWithoutSentences,
     composer: inputs.composer,
     edition: edition4 ? 4 : 3,
+    ...(edition4 ? { thresholdGainRaw, imbalanceRaw } : {}),
   });
 
   // 7.2 고정 문구 12(9절 "정답 라벨 주의"와 같은 판정)와 8.2 고정 문구 11a·11b. 의뢰자 답은
@@ -390,9 +395,6 @@ export function assembleEvaluatedReport(
     if (metric?.additionalFields?.includes("beta")) betas[r.metricId] = resolveBeta(inputs.metricDetails);
   }
 
-  // 판 4 전용 파서 — 평가 응답의 반올림 전 값(S1). 판 3 파서(`parseF1ThresholdGain`·`parseImbalanceEffect`)는 그대로다.
-  const thresholdGainRaw = edition4 ? parseF1ThresholdGainEd4(success_metrics.f1_threshold_gain, thresholdGain) : null;
-  const imbalanceRaw = edition4 ? parseImbalanceRawEd4(success_metrics.imbalance_effect, imbalanceEffect) : null;
 
   const factSheet = fitFactSheet(
     buildFactSheet({

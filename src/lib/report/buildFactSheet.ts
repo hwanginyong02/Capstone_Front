@@ -317,7 +317,7 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
         }
       : (thresholdGain ?? null);
   const imbalanceFact =
-    edition4 && imbalanceEffect ? imbalanceEffectEd4(imbalanceEffect, edition4.imbalanceRaw) : (imbalanceEffect ?? null);
+    edition4 && imbalanceEffect ? imbalanceEffectEd4(imbalanceEffect, edition4.imbalanceRaw, kpiResults) : (imbalanceEffect ?? null);
 
   const hasDistribution = Object.keys(classDistribution).length > 0;
 

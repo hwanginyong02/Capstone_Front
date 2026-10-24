@@ -44,6 +44,7 @@ import { resolveBeta, resolveTargetValue, TARGET_DIGITS } from "../../utils/doma
 import { formatTargetCriteria } from "./metricValueFormat";
 import { checkMaterialSelection } from "./materialCheck";
 import { isSameSourceRelation } from "./problemList";
+import { ed4TargetCriteria } from "./edition4/edition4Number";
 import { formulaEd4 } from "./edition4/metricFormulasEd4";
 import { imbalanceRatioOf } from "./buildDatasetDiagnosis";
 import type {
@@ -315,7 +316,7 @@ export function mapWorkflowToFinalReport(
     datasetDiagnosis: "",
     trainingDatasetInfo: buildTrainingDatasetInfo(input),
     evalEnv,
-    metricList: buildMetricList(resolvedTaskType, input.selectedMetricIds, input.metricDetails),
+    metricList: buildMetricList(resolvedTaskType, input.selectedMetricIds, input.metricDetails, edition4),
     metricFormulas: buildMetricFormulas(resolvedTaskType, input.selectedMetricIds, edition4),
     dataValidation: mappedValidation ? mappedValidation.dataValidation : [],
     validationSummary: mappedValidation ? mappedValidation.summary : undefined,
@@ -584,6 +585,7 @@ function buildMetricList(
   taskType: TaskType,
   selectedMetricIds: string[],
   metricDetails: MetricDetailStateMap,
+  edition4 = false,
 ): MetricItem[] {
   if (selectedMetricIds.length === 0) {
     return [];
@@ -609,7 +611,13 @@ function buildMetricList(
         threshold: target,
         // 방향성(낮을수록 좋은 지표는 ≤)과 자릿수를 6절 표(MetricRow)와 같은 함수로 — 저장 문자열이라
         // 발급본은 그때 자릿수 그대로 남는다.
-        passCriteria: target !== null ? formatTargetCriteria(target, metric.higherIsBetter, TARGET_DIGITS) : "정보 제공",
+        // 판 4 run 은 목표값 표기 규칙(D1 — 넷째 자리 이상 목표는 받은 글자 그대로, `ed4TargetCriteria`)으로 — 표지·4.3 과 같은 함수.
+        passCriteria:
+          target === null
+            ? "정보 제공"
+            : edition4
+              ? ed4TargetCriteria(target, metric.higherIsBetter)
+              : formatTargetCriteria(target, metric.higherIsBetter, TARGET_DIGITS),
       };
     })
     .filter((item): item is MetricItem => item !== null);

@@ -12,6 +12,8 @@
  * 판 4 run(`edition: 4`)은 판 4 갈래를 쓴다(대응표 16·25) — 이름 "핵심 지표 근소 합격", 그 조건은 판정 여유 "작음"
  * (`KpiResult.judgmentMargin`), 종류 하나 더(같은 출처, LOW 맨 끝). 우선순위 저장값(HIGH/MEDIUM/LOW)은 판과 무관하게 그대로이고,
  * 판 4 성적서는 그릴 때 `priorityLabelEd4` 로 높음·중간·낮음을 찍는다. 판 3 run 의 목록은 종전과 한 글자도 같다.
+ * 판 4 근거(evidence)의 숫자는 같은 사실 시트의 판 4 글자 칸과 같은 글자다(D6 — 지표 값 = value_text, 목표 = `ed4Target`,
+ * 마진 = margin_text, 임계값 조정은 엔진 칸 다섯만 판 4 글자로, 최약 클래스·분포 차·불균형은 그 사실 칸의 판 4 글자).
  *
  * 최약 클래스·학습↔평가 분포 차이 두 종은 설계에 기준이 없어 새로 정했다(자체 설정, 설계 문서에 기록).
  * 두 종의 값은 서술용 파생값(`narrativeFacts.ts`)이 계산한 것을 받아 쓴다 — 사실 시트·D6 표와 같은 값(S4a).
@@ -36,6 +38,10 @@ import {
   type NarrativeFacts,
 } from "./narrativeFacts";
 import { choiceLabel, type ReportComposerInput } from "./reportMaterials";
+import { ed4Given, ed4Judged, ed4Plain, ed4Target } from "./edition4/edition4Number";
+import { imbalanceEffectEd4, type ImbalanceRawEd4 } from "./edition4/factSheetEd4";
+import { metricValueTextEd4, sameValueTextEd4 } from "./edition4/sameValueEd4";
+import { f1ThresholdGainTextsEd4, gainTextEd4, type F1ThresholdGainRawEd4 } from "./edition4/thresholdGainEd4";
 
 /** 종류별 우선순위·기본 이름·원천 절 → 권고 절. 이 순서가 번호 순서다(우선순위 순). */
 const KINDS: Array<{
@@ -236,8 +242,11 @@ export interface ProblemListInput {
   facts: Pick<NarrativeFacts, "weakest_class" | "distribution_shift">;
   /** 성적서 구성 카드의 값 — 학습 분포·편향 감소 노력·정답 라벨. 없으면 그 문제는 판단하지 않는다. */
   composer?: ReportComposerInput;
-  /** 성적서 판. 4 면 판 4 갈래(이름·근소 합격 조건·같은 출처). 없으면 3(지금 동작). */
+  /** 성적서 판. 4 면 판 4 갈래(이름·근소 합격 조건·같은 출처·근거 글자). 없으면 3(지금 동작). */
   edition?: 3 | 4;
+  /** 판 4 전용 — 평가 응답의 반올림 전 값(사실 시트 판 4 칸과 같은 입력). 근거 글자를 사실 시트와 같은 함수로 찍는다. */
+  thresholdGainRaw?: F1ThresholdGainRawEd4 | null;
+  imbalanceRaw?: ImbalanceRawEd4 | null;
 }
 
 type Found = { title?: string; evidence: Record<string, unknown>; note?: string | null };
@@ -246,13 +255,53 @@ function names(kpiResults: KpiResult[], metricIds: string[]): string[] {
   return metricIds.map((id) => kpiResults.find((r) => r.metricId === id)?.name ?? id);
 }
 
-function valueEvidence(kpiResults: KpiResult[], metricIds: string[]): Record<string, unknown> {
+function valueEvidence(kpiResults: KpiResult[], metricIds: string[], edition4 = false): Record<string, unknown> {
   return Object.fromEntries(
     metricIds.map((id) => {
       const r = kpiResults.find((item) => item.metricId === id)!;
-      return [r.name, { value: r.value, target: r.threshold }];
+      return [r.name, edition4 ? metricEvidenceEd4(r, {}) : { value: r.value, target: r.threshold }];
     }),
   );
+}
+
+/** 판 4 지표 근거 — value = value_text, target = `ed4Target`(D1), 그리고 덧붙인 칸(마진 글자 등). */
+function metricEvidenceEd4(r: KpiResult, extra: Record<string, unknown>): Record<string, unknown> {
+  return { value: metricValueTextEd4(r) ?? ed4Plain(r.value), target: r.threshold === null ? null : ed4Target(r.threshold), ...extra };
+}
+
+/** 판 4 최약 클래스 근거 — 사실 시트 weakest_class 의 판 4 글자(f1_text·share_text·gap_text, 매크로 F1 은 D2). */
+function weakestEvidenceEd4(
+  weakest: NonNullable<NarrativeFacts["weakest_class"]>,
+  kpiResults: KpiResult[],
+): Record<string, unknown> {
+  return {
+    f1: weakest.f1_text ?? ed4Plain(weakest.f1),
+    support: weakest.support,
+    share: weakest.share_text,
+    macro_f1: weakest.macro_f1 === null ? null : sameValueTextEd4(kpiResults, weakest.macro_f1),
+    gap_from_macro: weakest.gap_text,
+    low_support: weakest.low_support,
+  };
+}
+
+/**
+ * 판 4 임계값 조정 근거 — 판 3 엔진 칸 다섯(max_f1·current_f1·gain·best_threshold·notable)만 골라 사실 시트 판 4 글자로. 판 4 파서
+ * 결과(*_raw·best_recall …)는 펼치지 않는다. best_threshold 는 엔진 표기(늘 고정소수, D7), 없으면 `ed4Given`.
+ */
+function thresholdEvidenceEd4(
+  gain: F1ThresholdGain,
+  raw: F1ThresholdGainRawEd4 | null,
+  kpiResults: KpiResult[],
+): Record<string, unknown> {
+  const texts = raw ? f1ThresholdGainTextsEd4(raw, kpiResults, null) : null;
+  const out: Record<string, unknown> = {
+    max_f1: texts?.max_f1_text ?? ed4Plain(gain.max_f1),
+    current_f1: texts?.current_f1_text ?? ed4Plain(gain.current_f1),
+    gain: raw ? gainTextEd4(raw, gain) : ed4Judged(gain.gain, THRESHOLD_GAIN_MIN, true, gain.notable ?? gain.gain >= THRESHOLD_GAIN_MIN),
+    best_threshold: texts?.best_threshold_text ?? ed4Given(gain.best_threshold),
+  };
+  if (gain.notable !== undefined) out.notable = gain.notable;
+  return out;
 }
 
 const INCONCLUSIVE_CAUSE = {
@@ -261,9 +310,10 @@ const INCONCLUSIVE_CAUSE = {
   no_judged: "판정 대상 지표 없음",
 } as const;
 
-/** 최약 클래스 문제 — 표본이 작거나(30건·5% 미만) 매크로 F1 보다 0.10 이상 낮을 때만. 근거 키는 종전 그대로. */
-function weakestClassProblem(weakest: NarrativeFacts["weakest_class"]): Found | null {
+/** 최약 클래스 문제 — 표본이 작거나(30건·5% 미만) 매크로 F1 보다 0.10 이상 낮을 때만. 근거 키는 종전 그대로(판 4 는 판 4 글자). */
+function weakestClassProblem(weakest: NarrativeFacts["weakest_class"], kpiResults: KpiResult[], edition4 = false): Found | null {
   if (!weakest || !(weakest.low_support || weakest.far_below_macro)) return null;
+  if (edition4) return { title: weakest.label, evidence: { [weakest.label]: weakestEvidenceEd4(weakest, kpiResults) } };
   return {
     title: weakest.label,
     evidence: {
@@ -283,7 +333,7 @@ function weakestClassProblem(weakest: NarrativeFacts["weakest_class"]): Found | 
  * 학습↔평가 분포 차이 문제 — 어느 클래스든 |학습 비율 − 평가 비율| ≥ 10%p(flagged). 걸린 클래스만 적는다.
  * 차이의 절댓값 합은 2 를 넘지 못해 걸리는 클래스는 많아야 20개다 — 근거를 따로 자르지 않는다.
  */
-function distributionShiftProblem(rows: NarrativeFacts["distribution_shift"]): Found | null {
+function distributionShiftProblem(rows: NarrativeFacts["distribution_shift"], edition4 = false): Found | null {
   const flagged = rows.filter((r) => r.flagged);
   if (flagged.length === 0) return null;
   return {
@@ -291,7 +341,10 @@ function distributionShiftProblem(rows: NarrativeFacts["distribution_shift"]): F
     evidence: Object.fromEntries(
       flagged.map((r) => [
         r.label,
-        { training_ratio: r.training_ratio, evaluation_ratio: r.evaluation_ratio, difference: r.difference },
+        // 판 4 는 사실 시트 판 4 글자(difference_text) — 비율은 plain.
+        edition4
+          ? { training_ratio: ed4Plain(r.training_ratio), evaluation_ratio: ed4Plain(r.evaluation_ratio), difference: r.difference_text }
+          : { training_ratio: r.training_ratio, evaluation_ratio: r.evaluation_ratio, difference: r.difference },
       ]),
     ),
   };
@@ -310,7 +363,7 @@ export function buildProblemList(input: ProblemListInput): Problem[] {
   if (reasons.coreFailed.length > 0) {
     found.core_fail = {
       title: names(kpiResults, reasons.coreFailed).join(", "),
-      evidence: valueEvidence(kpiResults, reasons.coreFailed),
+      evidence: valueEvidence(kpiResults, reasons.coreFailed, edition4),
     };
   }
 
@@ -332,7 +385,7 @@ export function buildProblemList(input: ProblemListInput): Problem[] {
   if (reasons.nonCoreFailed.length > 0) {
     found.noncore_fail = {
       title: names(kpiResults, reasons.nonCoreFailed).join(", "),
-      evidence: valueEvidence(kpiResults, reasons.nonCoreFailed),
+      evidence: valueEvidence(kpiResults, reasons.nonCoreFailed, edition4),
     };
   }
 
@@ -348,7 +401,10 @@ export function buildProblemList(input: ProblemListInput): Problem[] {
       evidence: Object.fromEntries(
         near.map((r) => [
           r.name,
-          { value: r.value, target: r.threshold, margin: round4(computeMargin(r) ?? 0) },
+          edition4
+            ? // 마진은 사실 시트 margin_text 와 같은 함수(metricFieldsEd4 — judged(마진, 0, 충족)).
+              metricEvidenceEd4(r, { margin: ed4Judged(computeMargin(r) ?? 0, 0, true, r.status === "pass") })
+            : { value: r.value, target: r.threshold, margin: round4(computeMargin(r) ?? 0) },
         ]),
       ),
     };
@@ -356,23 +412,28 @@ export function buildProblemList(input: ProblemListInput): Problem[] {
 
   // 임계값 부적합은 엔진이 반올림 전 값으로 정한 notable 을 따른다(S2). 옛 응답(키 없음)만 4자리 gain 으로.
   if (taskType === "binary" && thresholdGain && (thresholdGain.notable ?? thresholdGain.gain >= THRESHOLD_GAIN_MIN)) {
-    found.threshold_tuning = { evidence: { ...thresholdGain } };
+    found.threshold_tuning = {
+      evidence: edition4
+        ? thresholdEvidenceEd4(thresholdGain, input.thresholdGainRaw ?? null, kpiResults)
+        : { ...thresholdGain },
+    };
   }
 
   if (imbalanceEffect?.level === "affected") {
     found.imbalance_effect = {
       title: `다수 ${imbalanceEffect.majority_class} · 소수 ${imbalanceEffect.minority_class}`,
-      evidence: { ...imbalanceEffect },
+      // 판 4 는 사실 시트 imbalance_effect 와 같은 판 4 display(키 이름은 판 3 그대로).
+      evidence: edition4 ? { ...imbalanceEffectEd4(imbalanceEffect, input.imbalanceRaw ?? null, kpiResults) } : { ...imbalanceEffect },
       note: didNothingForImbalance(composer)
         ? "의뢰자가 편향 감소 노력을 '수행 안 함'으로 밝혔다."
         : null,
     };
   }
 
-  const weakest = weakestClassProblem(input.facts.weakest_class);
+  const weakest = weakestClassProblem(input.facts.weakest_class, kpiResults, edition4);
   if (weakest) found.weakest_class = weakest;
 
-  const shift = distributionShiftProblem(input.facts.distribution_shift);
+  const shift = distributionShiftProblem(input.facts.distribution_shift, edition4);
   if (shift) found.distribution_shift = shift;
 
   const cautions = labelCautions(composer);

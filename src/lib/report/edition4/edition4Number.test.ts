@@ -10,12 +10,17 @@ import { formatJudgedValue, percentText } from "../judgedNumber";
 import { josa, type JosaPair } from "../koreanJosa";
 import {
   ed4CiBound,
+  ed4Distinct,
+  ed4Given,
   ed4Judged,
+  ed4Latency,
   ed4Percent,
   ed4PercentPoint,
   ed4Plain,
   ed4SignedCount,
   ed4SignedJudged,
+  ed4Target,
+  ed4TargetCriteria,
   MINUS_SIGN,
 } from "./edition4Number";
 
@@ -41,16 +46,34 @@ function produce(c: Json): string {
     case "signed_count":
       return ed4SignedCount(c.value);
     case "given":
-      return String(c.value);
+      return ed4Given(c.value);
+    case "target":
+      return ed4Target(c.value);
+    case "latency":
+      return ed4Latency(c.value);
+    case "distinct":
+      return ed4Distinct(c.value, c.others);
     default:
       throw new Error(`모르는 규칙 ${c.rule}`);
   }
 }
 
 describe("판 4 숫자 표기 — 공통 대조 표", () => {
-  it("표는 여덟 규칙을 모두 덮고, 프론트 함수 이름 약속이 이 파일의 함수와 같다", () => {
+  it("표는 열한 규칙을 모두 덮고, 프론트 함수 이름 약속이 이 파일의 함수와 같다", () => {
     expect(CASES.length).toBeGreaterThan(100);
-    const rules = ["plain", "judged", "signed_judged", "ci_bound", "percent", "percent_point", "signed_count", "given"];
+    const rules = [
+      "plain",
+      "judged",
+      "signed_judged",
+      "ci_bound",
+      "percent",
+      "percent_point",
+      "signed_count",
+      "given",
+      "target",
+      "latency",
+      "distinct",
+    ];
     expect(new Set(CASES.map((c) => c.rule))).toEqual(new Set(rules));
     const names = Object.fromEntries(
       Object.entries(TABLE.functions as Record<string, Json>)
@@ -65,7 +88,10 @@ describe("판 4 숫자 표기 — 공통 대조 표", () => {
       percent: "ed4Percent",
       percent_point: "ed4PercentPoint",
       signed_count: "ed4SignedCount",
-      given: "String",
+      given: "ed4Given",
+      target: "ed4Target",
+      latency: "ed4Latency",
+      distinct: "ed4Distinct",
     });
   });
 
@@ -146,7 +172,8 @@ describe("판 4 조사 — 공통 대조 표", () => {
     expect(josa("—", "이/가")).toBe("이(가)");
     expect(josa("", "을/를")).toBe("을(를)");
     expect(josa("*", "은/는")).toBe("은(는)");
-    expect(josa("#", "과/와")).toBe("과(와)");
+    // 과/와 만 없을 때 꼴이 앞이다 — 판 3 josaWaGwa·백엔드 wording.josa 와 같은 "와(과)"(S2·S3 검토 T14 로 "과(와)" 에서 고침).
+    expect(josa("#", "과/와")).toBe("와(과)");
     expect(josa("·", "으로/로")).toBe("(으)로");
   });
 

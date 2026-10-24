@@ -6,7 +6,9 @@
  * - 판정 대상 값은 판정과 어긋나 보이면 여섯째 자리까지 늘린다(`ed4Judged` — 판 3 `formatJudgedValue` 와 같은 규칙).
  * - 신뢰구간 경계는 찍힌 경계와 목표의 대소가 반올림 전과 같아질 때까지 늘린다(`ed4CiBound`, 0.9497).
  * - 백분율·%p·부호 있는 건수는 그릴 때만(`ed4Percent`·`ed4PercentPoint`·`ed4SignedCount`). 사실 시트 `*_text` 는 숫자 꼴만 싣는다.
- * - 의뢰자가 준 결정 임계값·판정 기준값은 늘이지도 끝 0 을 채우지도 않는다(`String(value)`).
+ * - 의뢰자가 준 결정 임계값·판정 기준값은 늘이지도 끝 0 을 채우지도 않는다(`ed4Given` — `String(value)` 와 같은 숫자, 지수 꼴 없이).
+ * - 합격 기준(목표값)은 셋째 자리 이하면 셋째 자리, 넷째~여섯째 자리면 받은 글자 그대로(`ed4Target`, D1).
+ * - 지연시간은 둘째 자리(`ed4Latency` — 4.8 표의 toFixed(2), D4). 최약 클래스 F1 은 다른 클래스와 달라 보일 때까지(`ed4Distinct`, D3).
  * - 음의 0 은 부호 없이("0.000"). 숫자 꼴 칸의 음수는 ASCII '-', 그리는 차이(%p·건수)의 음수는 U+2212.
  *
  * 판 3 잎 함수(`judgedNumber.ts` 의 `formatJudgedValue`·`judgedText`·`percentText` …)는 고치지 않는다 — 판 3 사실 시트는
@@ -97,4 +99,72 @@ export function ed4SignedCount(n: number): string {
   if (n > 0) return `+${n}`;
   if (n < 0) return `${MINUS_SIGN}${-n}`;
   return "0";
+}
+
+/**
+ * 가장 짧은 십진 표기(round-trip — `String(Number)` 와 같은 숫자)를 지수 꼴 없이. 1e-7 → "0.0000001", 1e21 → "1000…0",
+ * 1 → "1", 0.6166 → "0.6166". 백엔드 `_shortest`(repr)와 같은 숫자다.
+ */
+function shortestDecimal(value: number): string {
+  const text = String(value);
+  const m = /^(-?)(\d)(?:\.(\d+))?e([+-]\d+)$/.exec(text);
+  if (!m) return text;
+  const [, sign, lead, frac = "", expText] = m;
+  const exp = Number(expText);
+  const digits = lead + frac;
+  if (exp < 0) return `${sign}0.${"0".repeat(-exp - 1)}${digits}`;
+  return `${sign}${digits.padEnd(exp + 1, "0")}`;
+}
+
+/**
+ * 의뢰자가 준 결정 임계값·판정 기준값 — 늘이지도 끝 0 을 채우지도 않는다(0.5·0.1·1.5). 정수 꼴은 소수점 없이(1·30),
+ * 지수 꼴은 쓰지 않는다(1e-7 → "0.0000001", D7·S2·S3 검토 T15 — 백엔드 `ed4_given` 과 같은 글자).
+ */
+export function ed4Given(value: number): string {
+  return shortestDecimal(value);
+}
+
+/**
+ * 합격 기준(목표값, D1 — 2026-10-24 사용자 승인). 받은 목표의 가장 짧은 십진 표기가 셋째 자리 이하면 `ed4Plain`(0.950),
+ * 넷째~여섯째 자리면 그 글자 그대로(0.8124 — 셋째 자리로 줄이면 넷째 자리 목표와 값의 판정이 어긋나 보인다), 일곱째 자리
+ * 이상이면 여섯째 자리로 반올림. 지수 꼴 없이(1e-5 → "0.00001"). 4.3 표·3.1·표지·문제 근거가 모두 이 함수다.
+ */
+export function ed4Target(threshold: number): string {
+  const text = shortestDecimal(threshold);
+  const decimals = text.includes(".") ? text.length - text.indexOf(".") - 1 : 0;
+  if (decimals <= VALUE_DIGITS) return ed4Plain(threshold);
+  if (decimals <= MAX_VALUE_DIGITS) return withoutNegativeZero(text);
+  return withoutNegativeZero(threshold.toFixed(MAX_VALUE_DIGITS));
+}
+
+/** 합격 기준 칸("≥ 0.970", "≤ 0.100", "≥ 0.8124") — 방향 기호 + `ed4Target`. 표지·3.1·4.3 이 같은 글자. */
+export function ed4TargetCriteria(threshold: number, higherIsBetter: boolean | undefined): string {
+  return `${higherIsBetter === false ? "≤" : "≥"} ${ed4Target(threshold)}`;
+}
+
+/** 지연시간 자릿수 — 4.8 표(판 3 `LatencySection` 의 toFixed(2))와 같다. */
+export const LATENCY_DIGITS = 2;
+
+/** 지연시간 — 둘째 자리, 끝 0 유지(12.345 → "12.35", 3 → "3.00"). 4.8 표·사실 보기·허용 목록이 같은 글자(D4). */
+export function ed4Latency(value: number): string {
+  return withoutNegativeZero(value.toFixed(LATENCY_DIGITS));
+}
+
+/**
+ * 최약 클래스 F1(D3) — 셋째 자리부터 여섯째 자리까지 늘려, 다른 클래스 F1(`others`) 가운데 여섯째 자리로도 같지 않은 것과
+ * 모두 달라 보이는 첫 표기. 여섯째 자리로 같은 클래스는 동점이라 늘리는 까닭이 되지 않는다(최약 클래스 고르기의 동점과
+ * 같은 기준 — `sameAtMaxDigits`). 0.97196 · [0.97248] → "0.9720", 0.5 · [0.5, 0.75] → "0.500".
+ */
+export function ed4Distinct(value: number, others: number[]): string {
+  const rivals = others.filter((o) => !sameAtMaxDigits(o, value));
+  for (let digits = VALUE_DIGITS; digits <= MAX_VALUE_DIGITS; digits += 1) {
+    const text = value.toFixed(digits);
+    if (rivals.every((o) => o.toFixed(digits) !== text)) return withoutNegativeZero(text);
+  }
+  return withoutNegativeZero(value.toFixed(MAX_VALUE_DIGITS));
+}
+
+/** 두 값이 여섯째 자리 표기로 같은가 — 판 4 최약 클래스 동점의 기준(백엔드 `weakest_ties` 판 4 와 같다, D3). */
+export function sameAtMaxDigits(a: number, b: number): boolean {
+  return a.toFixed(MAX_VALUE_DIGITS) === b.toFixed(MAX_VALUE_DIGITS);
 }

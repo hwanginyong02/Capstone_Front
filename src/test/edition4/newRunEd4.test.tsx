@@ -311,6 +311,11 @@ describe("RPT-2026-0001 입력(bc_strong) 판 4 run — 실제 서술 요청 본
   it("facts — 판 4 표기와 분포 차의 판 4 전용 칸(평가 − 학습)", () => {
     const f = req().fact_sheet.facts;
     expect([f.weakest_class.share_text, f.weakest_class.gap_text]).toEqual(["0.374", "0.005"]);
+    // 최약 클래스 F1 글자(D2) — 양성 클래스 malignant F1 = F1 Score(M4) 원값이라 M4 value_text 그대로. 키는 f1 바로 뒤.
+    const m4 = (req().fact_sheet.metrics as Json[]).find((m) => m.metric_id === "M4");
+    expect(f.weakest_class.f1).toBe(m4.value);
+    expect([f.weakest_class.f1_text, m4.value_text]).toEqual(["0.977", "0.977"]);
+    expect(Object.keys(f.weakest_class).slice(0, 3)).toEqual(["label", "f1", "f1_text"]);
     expect(f.declared_risk_errors.share_text).toBe("0.333");
     expect(f.precision_recall_gap.difference_text).toBe("-0.015");
     expect((f.distribution_shift as Json[]).map((r) => [r.label, r.difference_text, r.evaluation_minus_training_text])).toEqual([
@@ -420,6 +425,7 @@ const STAGE1_CHANGES: Record<Tag, string[]> = {
     ".narrativeFacts.distribution_shift[].evaluation_minus_training_text",
     ".narrativeFacts.fixed_sentences",
     ".narrativeFacts.precision_recall_gap.difference_text",
+    ".narrativeFacts.weakest_class.f1_text", // S2·S3 검토 D2·D3 — 판 4 전용 키
     ".narrativeFacts.weakest_class.gap_text",
     ".narrativeFacts.weakest_class.share_text",
     ".nearTargetNote",
@@ -441,6 +447,7 @@ const STAGE1_CHANGES: Record<Tag, string[]> = {
     ".narrativeFacts.distribution_shift[].difference_text",
     ".narrativeFacts.distribution_shift[].evaluation_minus_training_text",
     ".narrativeFacts.fixed_sentences",
+    ".narrativeFacts.weakest_class.f1_text", // S2·S3 검토 D2·D3 — 판 4 전용 키
     ".narrativeFacts.weakest_class.gap_text",
     ".narrativeFacts.weakest_class.share_text",
     ".nearTargetNote",
@@ -460,6 +467,7 @@ const STAGE1_CHANGES: Record<Tag, string[]> = {
     ".metricFormulas[].formula",
     ".narrativeFacts.fixed_sentences[].text",
     ".narrativeFacts.low_support_classes[].share_text",
+    ".narrativeFacts.weakest_class.f1_text", // S2·S3 검토 D2·D3 — 판 4 전용 키
     ".narrativeFacts.weakest_class.gap_text",
     ".narrativeFacts.weakest_class.share_text",
     ".problems",

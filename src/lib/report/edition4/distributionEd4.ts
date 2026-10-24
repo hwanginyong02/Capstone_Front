@@ -20,6 +20,14 @@ import { DISTRIBUTION_SENTENCE, fillTemplate, IMBALANCE_RATIO_SENTENCE } from ".
 const IMBALANCE_RATIO_MIN = 1.5;
 
 /**
+ * 건수의 천 단위 쉼표 — 로캘을 박는다('en-US', 2,500). 판 4 분포 문장은 생성 때 저장되는 값이라 브라우저 로캘(de-DE 면 2.500 — 판 4
+ * 숫자 규칙에서 점은 소수점)을 따르면 안 된다(S2·S3 검토 T8). 판 3 `buildDatasetDiagnosis` 의 같은 버릇은 얼린 출력이라 그대로다.
+ */
+export function countText(n: number): string {
+  return n.toLocaleString("en-US");
+}
+
+/**
  * 불균형 비율 표기(판 4). 엔진 판정이 있으면 1.5 와 비교한 판정(불균형 = level ≠ mild) 쪽으로 늘리고, 없으면 셋째 자리.
  * 4.5 문장과 사실 시트 `imbalance_effect.display.imbalance_ratio` 가 이 함수 하나를 쓴다.
  */
@@ -128,9 +136,9 @@ export function buildDistributionEd4(input: DistributionEd4Input): DistributionE
     // 판 3 3절과 같은 분모 — 멀티레이블은 표본 수(합이 100% 를 넘을 수 있다), 그 밖은 분포 합.
     const denominator = input.taskType === "multilabel" ? total : sum;
     const list = entries
-      .map(([label, n]) => `${label} ${n.toLocaleString()}건(${denominator > 0 ? percentOf(n / denominator) : "0.0%"})`)
+      .map(([label, n]) => `${label} ${countText(n)}건(${denominator > 0 ? percentOf(n / denominator) : "0.0%"})`)
       .join(", ");
-    distributionSentence = fillTemplate(DISTRIBUTION_SENTENCE, { total: total.toLocaleString(), 목록: list });
+    distributionSentence = fillTemplate(DISTRIBUTION_SENTENCE, { total: countText(total), 목록: list });
   }
   const irText = input.imbalanceRatio === null ? null : imbalanceRatioTextEd4(input.imbalanceRatio, input.imbalanceEffect);
   const { distribution_shift_status: status, distribution_shift: rows } = input.facts;

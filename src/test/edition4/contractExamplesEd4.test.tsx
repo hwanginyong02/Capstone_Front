@@ -50,13 +50,15 @@ const EXAMPLE_OF: Record<Tag, string> = {
  * 예시 세 파일의 sha256(판 4 라운드 S3 ⑧ 에 이 시험으로 뜬 바이트). 백엔드 tests/test_p4_contract_ed4.py 와 같은 값이다.
  * 이진은 S2 ① 의 임시 예시(손으로 고친 것)와 바이트까지 같았다 — 조립과 명세가 같은 글을 냈다는 뜻이다.
  * S2·S3 검토(2026-10-24)로 세 예시의 facts.weakest_class 에 f1_text 한 줄(f1 바로 다음 — 이진 0.977, 다중 0.9720, 멀티 0.048)을
- * 백엔드가 명세(D2·D3)대로 손으로 더했다. 조립이 이 칸을 만들 때까지 아래 '글자까지 같다' 시험은 빨갛다 — 만든 뒤 다시 뜬
- * 바이트가 이 sha 와 같아야 한다(다르면 조립이나 명세 중 하나가 틀림).
+ * 백엔드가 명세(D2·D3)대로 손으로 더했고, 조립이 이 칸을 만든 뒤 다시 뜬 f1_text 줄은 그 손 글자와 같았다.
+ * 같은 검토 D6(문제 근거 숫자도 판 4 글자 — 지표 근거 값 = value_text·목표 = ed4Target·마진 = margin_text, 최약 클래스 근거 =
+ * f1_text·share_text·gap_text·매크로 F1(D2), 불균형 근거 display = 판 4 표기)으로 세 예시의 problems[].evidence 가 바뀌어 다시 떴다
+ * (이진 core_near_target, 다중 core_near_target, 멀티 core_fail·imbalance_effect·weakest_class). 그 밖 바이트는 그대로.
  */
 const SHA256: Record<string, string> = {
-  "fact_sheet_binary_ed4.json": "55f98135ccbb95b028668a5fbd97c5b6f7616c9af800396f1f596ace79adac54",
-  "fact_sheet_multiclass_ed4.json": "8b6eff4fd54f1d9a20261f969f9eb36483d353ed505cf928914fda9f41997359",
-  "fact_sheet_multilabel_ed4.json": "226d4950d84f5aeb34182072021b8ef516be0c5aeb7b49a7c884dc0b767f385a",
+  "fact_sheet_binary_ed4.json": "0f7da6dfc88870aec7cb18c3a02204319df8487b4a9e058c344ade8dc0d63f69",
+  "fact_sheet_multiclass_ed4.json": "68277d563888fdc1fdb1f4c50a0cd373d264394026c0ede9e1c421bc91ef96a5",
+  "fact_sheet_multilabel_ed4.json": "260783d76d0cc4d876a2c7b22f18d2303977223ca32e55c58bc51c35d03d2d26",
 };
 
 const UPDATE = process.env.UPDATE_CONTRACT === "1";

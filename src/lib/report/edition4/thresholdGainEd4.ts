@@ -9,7 +9,7 @@
  * - 위험 쪽 지표(의뢰자 선언 FN → Recall(M3), FP → Precision(M2))의 목표 충족은 지금 값은 지표 판정(`status`) 그대로, F1 이
  *   가장 높은 임계값의 값은 반올림 전 값으로 같은 비교(`meetsTarget`)를 해서 정한다. 판정 대상이 아니면 null.
  * - 임계값 표기는 엔진이 정한 글자(`best_threshold_text`, 0.6166)를 그대로 옮긴다 — 프론트는 다시 계산하지 않는다.
- *   지금 결정 임계값은 의뢰자가 준 글자 그대로(`String`, 0.5).
+ *   지금 결정 임계값은 의뢰자가 준 글자 그대로(`ed4Given`, 0.5 — 지수 꼴 없이).
  * - 반올림 전 값이 없는 옛 백엔드 응답이면 넷째 자리 값(max_f1·current_f1·gain)에서 다시 찍는다(이중 반올림 — 켜는 라운드는
  *   백엔드 먼저 배포가 전제). 그 점의 Recall·Precision 이 없으면 그 줄은 비운다(null).
  */
@@ -18,7 +18,7 @@ import type { DerivedPredictionFact, F1ThresholdGain, KpiResult } from "../../..
 import { isJudged } from "../computeVerdict";
 import { meetsTarget } from "../judgedNumber";
 import type { RiskDirection } from "../narrativeFacts";
-import { ed4Judged, ed4Plain } from "./edition4Number";
+import { ed4Given, ed4Judged, ed4Plain } from "./edition4Number";
 
 /** 평가 응답 `f1_threshold_gain` 의 판 4 가 읽는 칸(반올림 전 값). 없는 칸은 null. */
 export interface F1ThresholdGainRawEd4 {
@@ -135,7 +135,7 @@ export function buildThresholdTableEd4(
     ? derivedPrediction.threshold
     : null;
   return {
-    current: threshold === null ? { kind: "submitted" } : { kind: "threshold", thresholdText: String(threshold) },
+    current: threshold === null ? { kind: "submitted" } : { kind: "threshold", thresholdText: ed4Given(threshold) },
     bestThresholdText: raw.bestThresholdText,
     rows: cells(raw, kpiResults).map((c) => ({
       metricId: c.metricId,

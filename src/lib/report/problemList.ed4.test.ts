@@ -128,8 +128,9 @@ describe("핵심 지표 근소 합격 — 판 4 는 판정 여유 '작음'(저�
       source_section: "8.3",
       recommend_section: "9.2",
     });
-    // 근거 숫자는 판 3 과 같은 모양(값·목표·넷째 자리 마진) — 판 4 표기로 바꾸지 않았다(인계 S3a).
-    expect(p.evidence).toEqual({ Recall: { value: 0.984375, target: 0.97, margin: 0.0144 } });
+    // 근거 숫자는 판 4 글자(S2·S3 검토 D6 — 종전 판 3 모양 {0.984375, 0.97, 0.0144} 에서 고침): 값 = value_text, 목표 = ed4Target,
+    // 마진 = margin_text(judged(0.014375, 0, 충족)).
+    expect(p.evidence).toEqual({ Recall: { value: "0.984", target: "0.970", margin: "0.014" } });
     expect(problemLabel(p)).toBe("P1 · 핵심 지표 근소 합격 (Recall)");
   });
 

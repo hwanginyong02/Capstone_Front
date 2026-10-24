@@ -12,7 +12,8 @@ import type { ImbalanceEffect, KpiResult } from "../../../types/finalReport.type
 import { isJudged } from "../computeVerdict";
 import { difference } from "../judgedNumber";
 import { imbalanceRatioTextEd4 } from "./distributionEd4";
-import { ed4CiBound, ed4Judged, ed4Plain } from "./edition4Number";
+import { ed4CiBound, ed4Judged } from "./edition4Number";
+import { sameValueTextEd4 } from "./sameValueEd4";
 import { ciContainsTarget } from "./judgmentMargin";
 
 /** 지표 한 줄의 판 4 칸 — 판 3 칸을 덮는 셋과 판 4 전용 둘. */
@@ -78,9 +79,14 @@ const IMBALANCE_GAP_MIN = 0.1;
 
 /**
  * 불균형 영향을 판 4 표기로. 판정 칸(level 등)과 숫자 칸은 그대로 두고 `display` 의 글자만 바꾼다 — 비율은
- * judged(1.5, 충족 = level ≠ mild), 두 차이는 judged(0.1, 충족 = 원값 ≥ 0.1, 부호 그대로), 네 값은 plain.
+ * judged(1.5, 충족 = level ≠ mild), 두 차이는 judged(0.1, 충족 = 원값 ≥ 0.1, 부호 그대로), 네 값은 plain. 다만 네 값 중 판정 대상
+ * 지표(`kpiResults`)와 같은 원값은 그 지표의 value_text(D2 — Accuracy 가 판정 대상이면 accuracy 칸은 4.3 과 같은 글자).
  */
-export function imbalanceEffectEd4(effect: ImbalanceEffect, raw: ImbalanceRawEd4 | null): ImbalanceEffect {
+export function imbalanceEffectEd4(
+  effect: ImbalanceEffect,
+  raw: ImbalanceRawEd4 | null,
+  kpiResults: KpiResult[] = [],
+): ImbalanceEffect {
   if (!effect.display || !raw) return effect;
   const gap = (v: number) => ed4Judged(v, IMBALANCE_GAP_MIN, true, difference(v, IMBALANCE_GAP_MIN) >= 0);
   const display: NonNullable<ImbalanceEffect["display"]> = { ...effect.display };
@@ -91,7 +97,7 @@ export function imbalanceEffectEd4(effect: ImbalanceEffect, raw: ImbalanceRawEd4
   // 네 값은 판 3 칸에 글자가 있을 때만 바꾼다(없거나 null 인 칸은 그대로 — 칸 집합이 판 3 과 같게).
   for (const key of ["accuracy", "macro_f1", "majority_f1", "minority_f1"] as const) {
     const value = raw[key];
-    if (typeof display[key] === "string" && value !== null) display[key] = ed4Plain(value);
+    if (typeof display[key] === "string" && value !== null) display[key] = sameValueTextEd4(kpiResults, value);
   }
   return { ...effect, display };
 }

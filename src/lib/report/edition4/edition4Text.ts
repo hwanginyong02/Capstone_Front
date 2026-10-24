@@ -7,8 +7,9 @@
  * 하나를 고른다(`josa`, 공통 대조 표 `number_wording_ed4.json`).
  */
 import { josa, type JosaPair } from "../koreanJosa";
+import { ed4Given } from "./edition4Number";
 
-/** 고정 문구 9(판 4) — 끝만 합니다체(부록 A8). 결정 임계값은 의뢰자가 준 글자 그대로(`String`). */
+/** 고정 문구 9(판 4) — 끝만 합니다체(부록 A8). 결정 임계값은 의뢰자가 준 글자 그대로(`ed4Given` — 지수 꼴 없이). */
 export const FIXED_9_THRESHOLD_ED4 = "본 평가의 예측값은 제출된 확률값에 결정 임계값 {threshold}을(를) 적용하여 산출하였습니다.";
 export const FIXED_9_PER_LABEL_ED4 = "본 평가의 예측값은 제출된 확률값에 레이블별 결정 임계값(아래 표)을 적용하여 산출하였습니다.";
 export const FIXED_9_ARGMAX_ED4 =
@@ -85,5 +86,6 @@ export function derivationStatementEd4(fact: { method: string; threshold: number
   if (fact.method === "threshold_per_label" && typeof fact.threshold === "object" && fact.threshold !== null) {
     return FIXED_9_PER_LABEL_ED4;
   }
-  return fillTemplate(FIXED_9_THRESHOLD_ED4, { threshold: String(fact.threshold) });
+  const threshold = typeof fact.threshold === "number" ? ed4Given(fact.threshold) : String(fact.threshold);
+  return fillTemplate(FIXED_9_THRESHOLD_ED4, { threshold });
 }

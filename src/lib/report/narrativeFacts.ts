@@ -27,7 +27,8 @@ import type { RawConfidenceInterval } from "./confidenceIntervals";
 import { cleanNumber, difference, factText, judgedText } from "./judgedNumber";
 import { REPORT_PURPOSE_LABEL } from "./reportConstants";
 import type { ReportComposerInput } from "./reportMaterials";
-import { ed4Judged, ed4Plain, ed4SignedJudged } from "./edition4/edition4Number";
+import { ed4Distinct, ed4Judged, ed4Plain, ed4SignedJudged, sameAtMaxDigits } from "./edition4/edition4Number";
+import { judgedValueTextEd4 } from "./edition4/sameValueEd4";
 
 export const FACTS_CONTRACT = "facts-1";
 
@@ -55,6 +56,11 @@ export interface MetricRef {
 export interface WeakestClassFact {
   label: string;
   f1: number;
+  /**
+   * 판 4 전용(계약 `facts.weakest_class.f1_text`, S2·S3 검토 D2·D3) — 판 3 run 에는 키가 없다. 판정 대상 지표와 같은 원값이면 그
+   * value_text(D2), 아니면 다른 클래스와 달라 보일 때까지 늘린 표기(`ed4Distinct`, D3).
+   */
+  f1_text?: string;
   support: number;
   share: number;
   share_text: string;
@@ -211,11 +217,20 @@ function isLowSupport(support: number, share: number): boolean {
  * 최약 클래스(서술 설계 D10) — 정답 클래스 중 F1 최저(같으면 엔진 순서 앞). 지표 선택과 무관하게 늘
  * 계산한다(사용자 결정). 정답 클래스가 둘 미만이면 견줄 클래스가 없어 null. 9절 문제 7 은
  * `low_support || far_below_macro` 일 때 이 값을 근거로 쓴다.
+ *
+ * 판 4(`edition4`)는 '같음'을 여섯째 자리 표기로 본다(D3 — 백엔드 `weakest_ties` 판 4 와 같은 기준): 최저 F1 과 여섯째 자리로
+ * 같은 클래스 가운데 엔진 순서 앞. 그리고 F1 의 판 4 글자 `f1_text` 를 `f1` 바로 뒤에 싣는다 — 판정 대상 지표(`kpiResults`)와
+ * 같은 원값이면 그 value_text(D2), 아니면 클래스별 표의 다른 클래스 F1 과 달라 보일 때까지 늘린 표기(D3). 4.4 최약 클래스 표의
+ * F1 칸도 이 글자다(그 판단은 여기 한 곳).
  */
-export function weakestClass(table: ClassReportTable | null | undefined, edition4 = false): WeakestClassFact | null {
+export function weakestClass(
+  table: ClassReportTable | null | undefined,
+  edition4 = false,
+  kpiResults: KpiResult[] = [],
+): WeakestClassFact | null {
   const truth = groundTruthRows(table);
   if (truth.length < 2) return null;
-  const weakest = weakestRow(truth);
+  const weakest = weakestRow(truth, edition4);
   if (!weakest) return null;
   const total = truth.reduce((sum, r) => sum + r.support!, 0);
   const support = weakest.support!;
@@ -223,9 +238,11 @@ export function weakestClass(table: ClassReportTable | null | undefined, edition
   const macro = averageRow(table, "매크로 평균")?.f1 ?? null;
   const gap = macro !== null ? difference(macro, weakest.f1!) : null;
   const farBelow = gap !== null && gap >= WEAKEST_F1_GAP;
+  const others = (table?.rows ?? []).filter((r) => r !== weakest && r.f1 !== null).map((r) => r.f1!);
   return {
     label: weakest.label,
     f1: weakest.f1!,
+    ...(edition4 ? { f1_text: judgedValueTextEd4(kpiResults, weakest.f1) ?? ed4Distinct(weakest.f1!, others) } : {}),
     support,
     share: cleanNumber(share),
     share_text: edition4
@@ -239,10 +256,13 @@ export function weakestClass(table: ClassReportTable | null | undefined, edition
   };
 }
 
-function weakestRow(rows: ClassReportRow[]): ClassReportRow | null {
-  return rows
+function weakestRow(rows: ClassReportRow[], edition4 = false): ClassReportRow | null {
+  const min = rows
     .filter((r) => r.f1 !== null)
-    .reduce<ClassReportRow | null>((min, r) => (min === null || r.f1! < min.f1! ? r : min), null);
+    .reduce<ClassReportRow | null>((low, r) => (low === null || r.f1! < low.f1! ? r : low), null);
+  // 판 4: 여섯째 자리로 최저와 같은 클래스는 동점 — 엔진 순서 앞(판 3 은 원값 그대로 비교, 바이트 불변).
+  if (!edition4 || min === null) return min;
+  return rows.find((r) => r.f1 !== null && sameAtMaxDigits(r.f1, min.f1!)) ?? min;
 }
 
 /** 작은 표본 클래스 — 정답 클래스 중 support < 30 또는 전체의 5% 미만, 엔진 순서. 정답 클래스가 둘 미만이면 []. */
@@ -454,7 +474,7 @@ export function averageGap(
   const reference =
     taskType === "multiclass"
       ? truth.reduce((max, r) => (r.support! > max.support! ? r : max))
-      : weakestRow(truth);
+      : weakestRow(truth, edition4); // 최약 클래스와 같은 고르기(판 4 는 여섯째 자리 동점 — D3)
   if (!reference) return null;
   return {
     kind: taskType === "multiclass" ? "macro_vs_weighted" : "macro_vs_micro",
@@ -633,7 +653,7 @@ export function buildNarrativeFacts(input: NarrativeFactsInput & { nSamples: num
     declarations: decl,
     verdict_detail: verdictDetail(kpiResults, taskType, input.coreMetricIds),
     error_totals: errorTotals(taskType, confusionCounts, input.nSamples),
-    weakest_class: weakestClass(classTable, edition4),
+    weakest_class: weakestClass(classTable, edition4, kpiResults),
     low_support_classes: lowSupportClasses(classTable, edition4),
     top_confusion_pairs: taskType === "multiclass" ? topConfusionPairs(confusion) : [],
     prediction_bias: predictionBias(taskType, confusion, confusionCounts),
