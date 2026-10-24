@@ -1,0 +1,164 @@
+{
+ "task_type": "multiclass",
+ "column_mappings": [
+  {
+   "column": "sample_id",
+   "role": "sample_id",
+   "sample_values": [
+    "DG0000",
+    "DG0001",
+    "DG0002"
+   ]
+  },
+  {
+   "column": "label",
+   "role": "y_true",
+   "sample_values": [
+    "0",
+    "6",
+    "1"
+   ]
+  },
+  {
+   "column": "pred",
+   "role": "y_pred",
+   "sample_values": [
+    "0",
+    "6",
+    "1"
+   ]
+  },
+  {
+   "column": "prob_0",
+   "role": "prob_per_class",
+   "sample_values": [
+    "1.0",
+    "0.0",
+    "0.0"
+   ]
+  },
+  {
+   "column": "prob_1",
+   "role": "prob_per_class",
+   "sample_values": [
+    "0.0",
+    "0.0",
+    "0.3514"
+   ]
+  },
+  {
+   "column": "prob_2",
+   "role": "prob_per_class",
+   "sample_values": [
+    "0.0",
+    "0.0424",
+    "0.3514"
+   ]
+  },
+  {
+   "column": "prob_3",
+   "role": "prob_per_class",
+   "sample_values": [
+    "0.0",
+    "0.0",
+    "0.0946"
+   ]
+  },
+  {
+   "column": "prob_4",
+   "role": "prob_per_class",
+   "sample_values": [
+    "0.0",
+    "0.0",
+    "0.0676"
+   ]
+  },
+  {
+   "column": "prob_5",
+   "role": "prob_per_class",
+   "sample_values": [
+    "0.0",
+    "0.0",
+    "0.0135"
+   ]
+  },
+  {
+   "column": "prob_6",
+   "role": "prob_per_class",
+   "sample_values": [
+    "0.0",
+    "0.9576",
+    "0.0541"
+   ]
+  },
+  {
+   "column": "prob_7",
+   "role": "prob_per_class",
+   "sample_values": [
+    "0.0",
+    "0.0",
+    "0.0405"
+   ]
+  },
+  {
+   "column": "prob_8",
+   "role": "prob_per_class",
+   "sample_values": [
+    "0.0",
+    "0.0",
+    "0.0135"
+   ]
+  },
+  {
+   "column": "prob_9",
+   "role": "prob_per_class",
+   "sample_values": [
+    "0.0",
+    "0.0",
+    "0.0135"
+   ]
+  }
+ ],
+ "selected_metric_ids": [
+  "M1",
+  "M2",
+  "M3",
+  "M4",
+  "M6",
+  "M11",
+  "M12",
+  "M23"
+ ],
+ "metadata": {
+  "positive_class": null,
+  "negative_class": null,
+  "positive_class_ambiguous": false,
+  "detected_classes": [
+   "0",
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "6",
+   "7",
+   "8",
+   "9"
+  ],
+  "detected_labels": [],
+  "class_distribution": {
+   "0": 54,
+   "1": 55,
+   "2": 53,
+   "3": 55,
+   "4": 54,
+   "5": 55,
+   "6": 54,
+   "7": 54,
+   "8": 52,
+   "9": 54
+  }
+ },
+ "beta": 1,
+ "decision_threshold": null
+}

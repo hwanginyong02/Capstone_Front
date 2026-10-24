@@ -28,7 +28,7 @@ import { buildClientInputs } from "../lib/report/reportMaterials";
 import { assembleEvaluatedReport } from "../lib/report/assembleEvaluatedReport";
 import { normalizeReportContent } from "../lib/report/normalizeReportContent";
 import type { NarrativeRequestPayload } from "../lib/report/buildFactSheet";
-import { fitNarrativePayload } from "../lib/report/factSheetFit";
+import { buildNarrativeRequest } from "../lib/report/narrativeRequest";
 import { sameFile, type FileFingerprint } from "../lib/report/evaluationRequest";
 import {
   createNarrativeJob,
@@ -213,12 +213,12 @@ async function evaluateAndStartNarrativeUnsafe(id: string, file: File): Promise<
         })
       : undefined;
 
+  // 서술 요청 조립은 한 곳(`buildNarrativeRequest` — 계약 시험과 같은 함수). 판 신호는 바탕 성적서의 찍힌 판으로만 정하고,
   // 본문이 백엔드 상한(2MB)에 가까우면 클래스 단위 칸을 비운다 — 413 으로 서술을 잃지 않게(유-11).
-  const payload: NarrativeRequestPayload = fitNarrativePayload({
-    task_type: resolveTaskType(snapshot.assemble.taskType),
-    report_purpose: baseReport.evalScope.reportPurposeKey,
-    fact_sheet: factSheet,
-    ...(clientInputs ? { client_inputs: clientInputs } : {}),
+  const payload: NarrativeRequestPayload = buildNarrativeRequest(baseReport, {
+    taskType: resolveTaskType(snapshot.assemble.taskType),
+    factSheet,
+    clientInputs,
   });
 
   const created = await createNarrativeJob(payload);

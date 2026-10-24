@@ -1,0 +1,116 @@
+{
+ "task_type": "multilabel",
+ "selected_metric_ids": [
+  "M2",
+  "M3",
+  "M4",
+  "M15",
+  "M16",
+  "M17",
+  "M18",
+  "M23"
+ ],
+ "execution_summary": [
+  {
+   "label": "Total validated rows",
+   "value": "917 rows",
+   "note": "업로드된 파일의 전체 행 수"
+  },
+  {
+   "label": "Valid prediction rows",
+   "value": "917 rows",
+   "note": "결측치 제거 후 평가에 사용될 행 수"
+  },
+  {
+   "label": "Excluded samples",
+   "value": "0 rows",
+   "note": "결측치·오류로 인해 제외된 행 수"
+  },
+  {
+   "label": "Selected metric count",
+   "value": "8 items",
+   "note": "선택된 메트릭: M2, M3, M4, M15, M16, M17, M18, M23"
+  },
+  {
+   "label": "Validation result",
+   "value": "Errors 0 / Warnings 0",
+   "note": "아래 상세 테이블 참조"
+  }
+ ],
+ "validation_details": [
+  {
+   "name": "Empty dataset (no data rows)",
+   "result": "917 rows",
+   "handling": "Stop evaluation",
+   "status": "pass",
+   "group": "common"
+  },
+  {
+   "name": "Missing required column",
+   "result": "None",
+   "handling": "Stop evaluation",
+   "status": "pass",
+   "group": "common"
+  },
+  {
+   "name": "Missing value",
+   "result": "None",
+   "handling": "Rows with missing values are excluded from evaluation",
+   "status": "pass",
+   "group": "common"
+  },
+  {
+   "name": "Duplicate ID",
+   "result": "None",
+   "handling": "Reported only — duplicate rows are still evaluated",
+   "status": "pass",
+   "group": "common"
+  },
+  {
+   "name": "Class mismatch",
+   "result": "N/A",
+   "handling": "Counted as a misclassification of the true class (rows are kept)",
+   "status": "pass",
+   "group": "common"
+  },
+  {
+   "name": "Excluded samples",
+   "result": "0 rows",
+   "handling": "Exclude only rows with missing or invalid values",
+   "status": "pass",
+   "group": "common"
+  },
+  {
+   "name": "Score range error",
+   "result": "0 rows",
+   "handling": "All score values within [0.0, 1.0]",
+   "status": "pass",
+   "group": "multilabel"
+  },
+  {
+   "name": "Label format mismatch",
+   "result": "None",
+   "handling": "Reported only — the row is parsed as having no labels",
+   "status": "pass",
+   "group": "multilabel"
+  }
+ ],
+ "error_count": 0,
+ "warning_count": 0,
+ "class_distribution": {
+  "Class1": 286,
+  "Class10": 92,
+  "Class11": 91,
+  "Class12": 688,
+  "Class13": 683,
+  "Class14": 13,
+  "Class2": 393,
+  "Class3": 385,
+  "Class4": 330,
+  "Class5": 281,
+  "Class6": 219,
+  "Class7": 167,
+  "Class8": 191,
+  "Class9": 80
+ }
+}

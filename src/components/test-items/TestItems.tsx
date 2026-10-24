@@ -26,6 +26,11 @@ import {
 interface TestItemsProps {
   taskType?: TaskType | "";
   /**
+   * 새 성적서가 판 4 로 만들어지는가(페이지가 `newRunContentSchema()` 로 정해 넘긴다). 목적별 점검 안내가 가리키는 성적서 자리가
+   * 판 4 는 1.3, 판 3 은 1.4 다(S6 질문 7). 넘기지 않으면 판 3.
+   */
+  edition4?: boolean;
+  /**
    * 고른 지표. 스토어의 값을 그대로 받는다 — 화면이 따로 들고 처음 그릴 때 비우던 종전 방식은
    * 검증에서 돌아올 때마다 고른 지표를 지웠다. 넘기지 않으면 화면 안에서만 든다(테스트).
    */
@@ -84,6 +89,7 @@ export function TestItems({
   notice,
   recommendedMetricIds,
   purposeLines = [],
+  edition4 = false,
 }: TestItemsProps) {
   const availableMetrics = useMemo(() => getAvailableMetrics(taskType), [taskType]);
   const resolvedTaskType = taskType || "";
@@ -216,8 +222,8 @@ export function TestItems({
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <p className="text-muted-foreground">
-                평가 관점에서 답한 내용에 맞는 지표가 있는지 봅니다. 맞지 않아도 진행할 수 있지만, 성적서
-                1.4에 부족한 점으로 적힙니다.
+                평가 관점에서 답한 내용에 맞는 지표가 있는지 봅니다. 맞지 않아도 진행할 수 있지만, 성적서{" "}
+                {edition4 ? "1.3" : "1.4"}에 부족한 점으로 적힙니다.
               </p>
               <ul aria-label="목적별 점검" className="flex flex-col">
                 {purposeLines.map((line) => {

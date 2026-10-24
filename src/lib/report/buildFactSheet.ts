@@ -22,6 +22,13 @@ import type { ConfusionMatrixData } from "../../types/report.types";
 import { computeMargin, isJudged, isNearTarget } from "./computeVerdict";
 import { cleanNumber, difference, formatJudgedValue, judgedText } from "./judgedNumber";
 import type { NarrativeFacts } from "./narrativeFacts";
+import { imbalanceEffectEd4, metricFieldsEd4, type ImbalanceRawEd4 } from "./edition4/factSheetEd4";
+import {
+  f1ThresholdGainTextsEd4,
+  gainTextEd4,
+  type F1ThresholdGainRawEd4,
+  type F1ThresholdGainTextsEd4,
+} from "./edition4/thresholdGainEd4";
 
 export interface FactSheetMetric {
   metric_id: string;
@@ -57,6 +64,9 @@ export interface FactSheetMetric {
   margin_text: string | null;
   /** 구간이 목표값을 포함하는가(S4a, D29) — 반올림 전 값으로. 판정 대상이고 구간이 있을 때만, 아니면 null. */
   ci_contains_target: boolean | null;
+  /** 판 4 전용(계약 edition4_only_keys) — 4.3 표와 같은 신뢰구간 경계 표기. 판 4 요청에는 모든 줄에 있고(없으면 null), 판 3 요청에는 키가 없다. */
+  ci_low_text?: string | null;
+  ci_high_text?: string | null;
 }
 
 export interface FactSheetPerClass {
@@ -90,8 +100,11 @@ export interface FactSheet {
   error_ratios: ErrorRatios | null;
   /** 6.0 에 찍은 신뢰구간 방식 한 줄(서술 참고용). 구간이 없는 성적서는 null. */
   ci_method_note: string | null;
-  /** 임계값 조정 여지(서술 설계 D40) — 백엔드 응답 모양 그대로. 이진·점수가 없으면 null. */
-  f1_threshold_gain: F1ThresholdGain | null;
+  /**
+   * 임계값 조정 여지(서술 설계 D40) — 백엔드 응답 모양 그대로. 이진·점수가 없으면 null. 판 4 요청은 gain_text 가 판 4 표기이고
+   * 판 4 전용 칸(그 점·지금의 R·P·F1 표기, 임계값 표기, 위험 쪽 지표)이 뒤에 붙는다.
+   */
+  f1_threshold_gain: (F1ThresholdGain & Partial<F1ThresholdGainTextsEd4>) | null;
   /** 불균형 영향(서술 설계 D20) — 백엔드 응답 모양 그대로. 계산하지 않았으면 null. */
   imbalance_effect: ImbalanceEffect | null;
   /**
@@ -120,6 +133,8 @@ export interface FactSheet {
 export interface NarrativeRequestPayload {
   task_type: string;
   report_purpose: string;
+  /** 성적서 양식 판 — 판 4 요청에만 4(`buildNarrativeRequest` 가 `usesSchema4(바탕 성적서)` 로만 싣는다). 판 3 요청에는 키가 없다. */
+  report_edition?: 4;
   fact_sheet: FactSheet;
   /**
    * 고객이 제공한 입력(서술 설계 D25). 회사·과제 정보는 넣지 않는다(D34).
@@ -173,6 +188,14 @@ export interface BuildFactSheetInput {
   betas?: Record<string, number>;
   /** 서술용 파생값(`buildNarrativeFacts`). 자르기는 `fitFactSheet` 가 한다. */
   facts?: NarrativeFacts | null;
+  /**
+   * 판 4 run 이면 판 4 칸의 재료(평가 응답의 반올림 전 값 — 판 4 전용 파서가 읽은 것). 없으면 판 3 사실 시트다(지금 동작).
+   * 판 4 의 근소(near_target)는 다시 계산하지 않고 지표 결과에 저장된 판정 여유(`judgmentMargin`)만 읽는다.
+   */
+  edition4?: {
+    thresholdGainRaw: F1ThresholdGainRawEd4 | null;
+    imbalanceRaw: ImbalanceRawEd4 | null;
+  };
 }
 
 function num(v: unknown): number | null {
@@ -243,6 +266,7 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
     problems,
     betas,
     facts,
+    edition4,
   } = input;
 
   // 지표: 목표값이 없으면(null) 정보 제공(info)으로 표기한다.
@@ -253,7 +277,7 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
     .map((r) => {
     const isInfoOnly = r.threshold === null;
     const margin = computeMargin(r);
-    return {
+    const row: FactSheetMetric = {
       metric_id: r.metricId,
       display_name: r.name,
       value: r.value,
@@ -279,7 +303,21 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
           ? difference(r.threshold, r.ci.low) >= 0 && difference(r.ci.high, r.threshold) >= 0
           : null,
     };
+    // 판 4: 근소·포함·마진 표기를 판 4 뜻·표기로 덮고 경계 표기 두 칸을 더한다(키 순서는 판 3 칸 뒤).
+    return edition4 ? { ...row, ...metricFieldsEd4(r, margin) } : row;
   });
+
+  const gainRaw = edition4?.thresholdGainRaw ?? null;
+  const thresholdGainFact =
+    edition4 && thresholdGain && gainRaw
+      ? {
+          ...thresholdGain,
+          gain_text: gainTextEd4(gainRaw, thresholdGain),
+          ...f1ThresholdGainTextsEd4(gainRaw, kpiResults, facts?.declarations.risk_direction ?? null),
+        }
+      : (thresholdGain ?? null);
+  const imbalanceFact =
+    edition4 && imbalanceEffect ? imbalanceEffectEd4(imbalanceEffect, edition4.imbalanceRaw, kpiResults) : (imbalanceEffect ?? null);
 
   const hasDistribution = Object.keys(classDistribution).length > 0;
 
@@ -300,8 +338,8 @@ export function buildFactSheet(input: BuildFactSheetInput): FactSheet {
       : null,
     error_ratios: errorRatios ?? null,
     ci_method_note: confidenceIntervalNote ?? null,
-    f1_threshold_gain: thresholdGain ?? null,
-    imbalance_effect: imbalanceEffect ?? null,
+    f1_threshold_gain: thresholdGainFact,
+    imbalance_effect: imbalanceFact,
     problems: problems ?? [],
     distribution: hasDistribution
       ? {

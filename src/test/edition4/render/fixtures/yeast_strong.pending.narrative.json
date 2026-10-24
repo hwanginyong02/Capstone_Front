@@ -1,0 +1,753 @@
+{
+  "input": {
+    "client_inputs": {
+      "class_label_descriptions": {
+        "Class1": "대사",
+        "Class12": "세포 운명",
+        "Class2": "에너지"
+      },
+      "core_metrics": [
+        "Hamming Loss",
+        "Jaccard Index"
+      ],
+      "declarations": {
+        "사용 방식": "배치 (의뢰자 제공: 주 1회 새 유전자 목록을 한꺼번에 돌린다.)",
+        "클래스 중요도": "모든 클래스가 동등"
+      },
+      "environment": {
+        "CPU": "AMD EPYC 16핵",
+        "GPU": "없음",
+        "메모리": "64GB",
+        "소프트웨어": "Python 3.11",
+        "알고리즘": "레이블별 로지스틱 회귀(One-vs-Rest)",
+        "운영체제": "Ubuntu 22.04",
+        "추론 가속": "아니오",
+        "하이퍼파라미터": {
+          "C": "0.3",
+          "max_iter": "3000"
+        },
+        "학습 가속": "아니오"
+      },
+      "ground_truth": {
+        "라벨 일치도": "측정 안 함",
+        "라벨러 수": "3명",
+        "정답 라벨 구축 방법": "전문가 수동 (의뢰자 제공: MIPS 기능 분류 데이터베이스 주석)",
+        "정답 라벨 신뢰성": "복수 라벨러 합의"
+      },
+      "metric_rationale": "겹치는 정도를 봄 (의뢰자 제공: 한 유전자의 기능 범주를 일부라도 맞히면 실험 후보로 쓸 수 있다.)",
+      "model": {
+        "모델 분류": "생물정보 다중 레이블 분류",
+        "모델 용도": "효모 유전자의 발현·계통 특징으로 기능 범주(14개, 여러 개 가능)를 추정해 실험 대상 유전자를 추린다.",
+        "모델명": "YeastFunc-OvR",
+        "버전": "v3.0"
+      },
+      "report_purpose_note": "공동 연구 기관 제출",
+      "test_data": {
+        "평가 데이터 출처": "Mulan 표준 시험 분할(917건)",
+        "학습 데이터와의 관계": "같은 출처"
+      },
+      "training_data": {
+        "검증 샘플 수": "0개",
+        "채널 효과": "알려진 것 없음",
+        "편향 감소 노력": "수행 안 함 (의뢰자 제공: 레이블별 빈도 차이가 크지만(최대 50배 이상) 그대로 학습했다.)",
+        "학습 데이터 출처": "Elisseeff & Weston(2001) 공개 데이터",
+        "학습 데이터셋명": "Mulan yeast 학습 분할",
+        "학습 샘플 수": "1,500개",
+        "학습 클래스 분포": "제공되지 않음",
+        "학습·평가 전처리 일치": "같음"
+      }
+    },
+    "fact_sheet": {
+      "ci_method_note": "판정 대상 지표의 95% 신뢰구간은 행 재표집 부트스트랩(2,000회, 시드 4213, 백분위 구간; M4, M15, M17)으로 산출하였습니다.",
+      "class_averages": [
+        {
+          "f1": 0.39928109092676245,
+          "label": "매크로 평균",
+          "precision": 0.5348087272430638,
+          "recall": 0.3676939960404305,
+          "support": 3899
+        },
+        {
+          "f1": 0.57989892474509,
+          "label": "가중 평균",
+          "precision": 0.6264790456677968,
+          "recall": 0.5773275198768915,
+          "support": 3899
+        },
+        {
+          "f1": 0.6262345249687021,
+          "label": "마이크로 평균",
+          "precision": 0.6841945288753799,
+          "recall": 0.5773275198768915,
+          "support": 3899
+        },
+        {
+          "f1": 0.6004706671009833,
+          "label": "샘플 평균",
+          "precision": 0.6771641481019889,
+          "recall": 0.5844826989319901,
+          "support": 3899
+        }
+      ],
+      "confusion": {
+        "labels": [
+          "Negative (전체 레이블 합계)",
+          "Positive (전체 레이블 합계)"
+        ],
+        "matrix": [
+          [
+            7900,
+            1039
+          ],
+          [
+            1648,
+            2251
+          ]
+        ],
+        "positive_class": null
+      },
+      "confusion_counts": [
+        {
+          "fn": 140,
+          "fp": 59,
+          "label": "Class1",
+          "tn": 572,
+          "tp": 146
+        },
+        {
+          "fn": 85,
+          "fp": 15,
+          "label": "Class10",
+          "tn": 810,
+          "tp": 7
+        },
+        {
+          "fn": 82,
+          "fp": 18,
+          "label": "Class11",
+          "tn": 808,
+          "tp": 9
+        },
+        {
+          "fn": 53,
+          "fp": 198,
+          "label": "Class12",
+          "tn": 31,
+          "tp": 635
+        },
+        {
+          "fn": 50,
+          "fp": 203,
+          "label": "Class13",
+          "tn": 31,
+          "tp": 633
+        },
+        {
+          "fn": 12,
+          "fp": 1,
+          "label": "Class14",
+          "tn": 903,
+          "tp": 1
+        },
+        {
+          "fn": 208,
+          "fp": 138,
+          "label": "Class2",
+          "tn": 386,
+          "tp": 185
+        },
+        {
+          "fn": 146,
+          "fp": 109,
+          "label": "Class3",
+          "tn": 423,
+          "tp": 239
+        },
+        {
+          "fn": 142,
+          "fp": 86,
+          "label": "Class4",
+          "tn": 501,
+          "tp": 188
+        },
+        {
+          "fn": 159,
+          "fp": 78,
+          "label": "Class5",
+          "tn": 558,
+          "tp": 122
+        },
+        {
+          "fn": 162,
+          "fp": 73,
+          "label": "Class6",
+          "tn": 625,
+          "tp": 57
+        },
+        {
+          "fn": 149,
+          "fp": 32,
+          "label": "Class7",
+          "tn": 718,
+          "tp": 18
+        },
+        {
+          "fn": 182,
+          "fp": 27,
+          "label": "Class8",
+          "tn": 699,
+          "tp": 9
+        },
+        {
+          "fn": 78,
+          "fp": 2,
+          "label": "Class9",
+          "tn": 835,
+          "tp": 2
+        }
+      ],
+      "derived_prediction": {
+        "method": "threshold_per_label",
+        "source_columns": [
+          "score_Class1",
+          "score_Class2",
+          "score_Class3",
+          "score_Class4",
+          "score_Class5",
+          "score_Class6",
+          "score_Class7",
+          "score_Class8",
+          "score_Class9",
+          "score_Class10",
+          "score_Class11",
+          "score_Class12",
+          "score_Class13",
+          "score_Class14"
+        ],
+        "threshold": 0.5
+      },
+      "distribution": {
+        "class_distribution": {
+          "Class1": 286,
+          "Class10": 92,
+          "Class11": 91,
+          "Class12": 688,
+          "Class13": 683,
+          "Class14": 13,
+          "Class2": 393,
+          "Class3": 385,
+          "Class4": 330,
+          "Class5": 281,
+          "Class6": 219,
+          "Class7": 167,
+          "Class8": 191,
+          "Class9": 80
+        },
+        "imbalance_ratio": 52.92307692307692
+      },
+      "dropped_rows": 0,
+      "error_ratios": {
+        "boundary": {
+          "count": 637,
+          "ratio": 0.2371
+        },
+        "boundary_margin": 0.1,
+        "boundary_note": null,
+        "confident": {
+          "count": 431,
+          "ratio": 0.1604
+        },
+        "confident_level": 0.9,
+        "misclassified": 2687,
+        "threshold": 0.5,
+        "unit": "label_cell"
+      },
+      "f1_threshold_gain": null,
+      "facts": {
+        "average_gap": {
+          "difference": 0.226953434,
+          "difference_text": "0.227",
+          "kind": "macro_vs_micro",
+          "macro_f1": 0.39928109092676245,
+          "other_f1": 0.6262345249687021,
+          "reference_class": {
+            "f1": 0.047619047619047616,
+            "label": "Class9",
+            "support": 80
+          }
+        },
+        "ci_available": true,
+        "ci_skipped": [],
+        "class_share_basis": "samples",
+        "contract": "facts-1",
+        "core_metrics_source": "client",
+        "declarations": {
+          "class_priority": "all_equal",
+          "risk_direction": null,
+          "usage_mode": "batch"
+        },
+        "declared_average": null,
+        "declared_risk_errors": null,
+        "distribution_shift": [],
+        "distribution_shift_status": "not_provided",
+        "error_totals": {
+          "misclassified": 2687,
+          "total": 12838,
+          "unit": "label_cell"
+        },
+        "fixed_sentences": [
+          {
+            "id": "9",
+            "section": "7.1",
+            "text": "본 평가의 예측값은 제출된 확률값에 결정 임계값 0.5를 적용하여 산출하였습니다."
+          },
+          {
+            "id": "17",
+            "section": "7.1",
+            "text": "확률이 있는 틀린 레이블 칸 2,687개 중 경계 오류(확률과 결정 임계값 0.5의 차가 0.1 미만)는 637개(23.7%), 확신 오류(틀린 쪽 확률 0.9 이상)는 431개(16.0%)이다."
+          },
+          {
+            "id": "7",
+            "section": "7.2",
+            "text": "다중 레이블에서 불균형 비율은 레이블 등장 빈도의 최다값 대 최소값의 비로 정의한다."
+          },
+          {
+            "id": "16",
+            "section": "8.1",
+            "text": "다음 지표는 내부 참조 기준치가 없어 벤치마크 비교를 하지 않았다: Precision, Recall, Exact Match Ratio, Distribution Diff (ML), Imbalance Ratio."
+          },
+          {
+            "id": "11a",
+            "section": "8.2",
+            "text": "평가 데이터는 학습 데이터와 동일한 출처에서 수집되었다. 본 결과는 동일 분포 내 성능을 나타내며, 다른 운영 환경에서의 일반화 성능을 보증하지 않는다."
+          }
+        ],
+        "low_support_classes": [
+          {
+            "label": "Class14",
+            "share": 0.014176663,
+            "share_text": "0.014",
+            "support": 13
+          }
+        ],
+        "n_classes": 14,
+        "omitted": {},
+        "positive_class": null,
+        "precision_recall_gap": null,
+        "prediction_bias": {
+          "rows": [
+            {
+              "actual": 3899,
+              "difference": -609,
+              "label": null,
+              "predicted": 3290
+            }
+          ],
+          "unit": "label_total"
+        },
+        "report_purpose_label": "외부 제출",
+        "selected_metrics": [
+          "M2",
+          "M3",
+          "M4",
+          "M15",
+          "M16",
+          "M17",
+          "M18",
+          "M23"
+        ],
+        "top_confusion_pairs": [],
+        "verdict_detail": {
+          "failed_core": [],
+          "failed_noncore": [
+            {
+              "display_name": "F1 Score",
+              "metric_id": "M4"
+            }
+          ],
+          "inconclusive_cause": null,
+          "inconclusive_metrics": [],
+          "judged_count": 3,
+          "passed_count": 2,
+          "unavailable_core": [],
+          "verdict": "CONDITIONAL_PASS"
+        },
+        "weakest_class": {
+          "f1": 0.047619047619047616,
+          "f1_text": "0.048",
+          "far_below_macro": true,
+          "gap_from_macro": 0.351662043,
+          "gap_text": "0.352",
+          "label": "Class9",
+          "low_support": false,
+          "macro_f1": 0.39928109092676245,
+          "share": 0.087241003,
+          "share_text": "0.087",
+          "support": 80
+        }
+      },
+      "imbalance_effect": {
+        "accuracy_minus_macro_f1": null,
+        "display": {
+          "accuracy_minus_macro_f1": null,
+          "imbalance_ratio": "52.923",
+          "majority_f1": "0.835",
+          "majority_minus_minority_f1": "0.702",
+          "minority_f1": "0.133"
+        },
+        "imbalance_ratio": 52.9231,
+        "level": "affected",
+        "majority_class": "Class12",
+        "majority_f1": 0.835,
+        "majority_minus_minority_f1": 0.7016,
+        "minority_class": "Class14",
+        "minority_f1": 0.1333
+      },
+      "latency": {
+        "available": false,
+        "mean": null,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "unit": "ms"
+      },
+      "metrics": [
+        {
+          "beta": null,
+          "ci_contains_target": null,
+          "ci_high": null,
+          "ci_high_text": null,
+          "ci_low": null,
+          "ci_low_text": null,
+          "display_name": "Precision",
+          "higher_is_better": true,
+          "is_core": false,
+          "margin": null,
+          "margin_text": null,
+          "metric_id": "M2",
+          "near_target": false,
+          "status": "info",
+          "threshold": null,
+          "value": 0.5348087272430638,
+          "value_text": null
+        },
+        {
+          "beta": null,
+          "ci_contains_target": null,
+          "ci_high": null,
+          "ci_high_text": null,
+          "ci_low": null,
+          "ci_low_text": null,
+          "display_name": "Recall",
+          "higher_is_better": true,
+          "is_core": false,
+          "margin": null,
+          "margin_text": null,
+          "metric_id": "M3",
+          "near_target": false,
+          "status": "info",
+          "threshold": null,
+          "value": 0.3676939960404305,
+          "value_text": null
+        },
+        {
+          "beta": null,
+          "ci_contains_target": false,
+          "ci_high": 0.4252,
+          "ci_high_text": "0.425",
+          "ci_low": 0.3763,
+          "ci_low_text": "0.376",
+          "display_name": "F1 Score",
+          "higher_is_better": true,
+          "is_core": false,
+          "margin": -0.050718909,
+          "margin_text": "-0.051",
+          "metric_id": "M4",
+          "near_target": false,
+          "status": "fail",
+          "threshold": 0.45,
+          "value": 0.39928109092676245,
+          "value_text": "0.399"
+        },
+        {
+          "beta": null,
+          "ci_contains_target": false,
+          "ci_high": 0.2185,
+          "ci_high_text": "0.218",
+          "ci_low": 0.1998,
+          "ci_low_text": "0.200",
+          "display_name": "Hamming Loss",
+          "higher_is_better": false,
+          "is_core": true,
+          "margin": 0.010699486,
+          "margin_text": "0.011",
+          "metric_id": "M15",
+          "near_target": false,
+          "status": "pass",
+          "threshold": 0.22,
+          "value": 0.2093005140987693,
+          "value_text": "0.209"
+        },
+        {
+          "beta": null,
+          "ci_contains_target": null,
+          "ci_high": null,
+          "ci_high_text": null,
+          "ci_low": null,
+          "ci_low_text": null,
+          "display_name": "Exact Match Ratio",
+          "higher_is_better": true,
+          "is_core": false,
+          "margin": null,
+          "margin_text": null,
+          "metric_id": "M16",
+          "near_target": false,
+          "status": "info",
+          "threshold": null,
+          "value": 0.15267175572519084,
+          "value_text": null
+        },
+        {
+          "beta": null,
+          "ci_contains_target": false,
+          "ci_high": 0.5145,
+          "ci_high_text": "0.515",
+          "ci_low": 0.4748,
+          "ci_low_text": "0.475",
+          "display_name": "Jaccard Index",
+          "higher_is_better": true,
+          "is_core": true,
+          "margin": 0.04461884,
+          "margin_text": "0.045",
+          "metric_id": "M17",
+          "near_target": false,
+          "status": "pass",
+          "threshold": 0.45,
+          "value": 0.4946188399023731,
+          "value_text": "0.495"
+        },
+        {
+          "beta": null,
+          "ci_contains_target": null,
+          "ci_high": null,
+          "ci_high_text": null,
+          "ci_low": null,
+          "ci_low_text": null,
+          "display_name": "Distribution Diff (ML)",
+          "higher_is_better": false,
+          "is_core": false,
+          "margin": null,
+          "margin_text": null,
+          "metric_id": "M18",
+          "near_target": false,
+          "status": "info",
+          "threshold": null,
+          "value": 0.036099073096213186,
+          "value_text": null
+        },
+        {
+          "beta": null,
+          "ci_contains_target": null,
+          "ci_high": null,
+          "ci_high_text": null,
+          "ci_low": null,
+          "ci_low_text": null,
+          "display_name": "Imbalance Ratio",
+          "higher_is_better": false,
+          "is_core": false,
+          "margin": null,
+          "margin_text": null,
+          "metric_id": "M23",
+          "near_target": false,
+          "status": "info",
+          "threshold": null,
+          "value": 52.92307692307692,
+          "value_text": null
+        }
+      ],
+      "n_samples": 917,
+      "per_class": [
+        {
+          "f1": 0.594704684317719,
+          "label": "Class1",
+          "precision": 0.7121951219512195,
+          "recall": 0.5104895104895105,
+          "support": 286
+        },
+        {
+          "f1": 0.12280701754385964,
+          "label": "Class10",
+          "precision": 0.3181818181818182,
+          "recall": 0.07608695652173914,
+          "support": 92
+        },
+        {
+          "f1": 0.15254237288135594,
+          "label": "Class11",
+          "precision": 0.3333333333333333,
+          "recall": 0.0989010989010989,
+          "support": 91
+        },
+        {
+          "f1": 0.8349769888231426,
+          "label": "Class12",
+          "precision": 0.7623049219687875,
+          "recall": 0.9229651162790697,
+          "support": 688
+        },
+        {
+          "f1": 0.8334430546412114,
+          "label": "Class13",
+          "precision": 0.757177033492823,
+          "recall": 0.9267935578330894,
+          "support": 683
+        },
+        {
+          "f1": 0.13333333333333333,
+          "label": "Class14",
+          "precision": 0.5,
+          "recall": 0.07692307692307693,
+          "support": 13
+        },
+        {
+          "f1": 0.5167597765363129,
+          "label": "Class2",
+          "precision": 0.5727554179566563,
+          "recall": 0.4707379134860051,
+          "support": 393
+        },
+        {
+          "f1": 0.6521145975443383,
+          "label": "Class3",
+          "precision": 0.6867816091954023,
+          "recall": 0.6207792207792208,
+          "support": 385
+        },
+        {
+          "f1": 0.6225165562913907,
+          "label": "Class4",
+          "precision": 0.6861313868613139,
+          "recall": 0.5696969696969697,
+          "support": 330
+        },
+        {
+          "f1": 0.5072765072765073,
+          "label": "Class5",
+          "precision": 0.61,
+          "recall": 0.43416370106761565,
+          "support": 281
+        },
+        {
+          "f1": 0.32664756446991405,
+          "label": "Class6",
+          "precision": 0.43846153846153846,
+          "recall": 0.2602739726027397,
+          "support": 219
+        },
+        {
+          "f1": 0.16589861751152074,
+          "label": "Class7",
+          "precision": 0.36,
+          "recall": 0.10778443113772455,
+          "support": 167
+        },
+        {
+          "f1": 0.07929515418502203,
+          "label": "Class8",
+          "precision": 0.25,
+          "recall": 0.04712041884816754,
+          "support": 191
+        },
+        {
+          "f1": 0.047619047619047616,
+          "label": "Class9",
+          "precision": 0.5,
+          "recall": 0.025,
+          "support": 80
+        }
+      ],
+      "problems": [
+        {
+          "evidence": {
+            "F1 Score": {
+              "target": "0.450",
+              "value": "0.399"
+            }
+          },
+          "id": "P1",
+          "kind": "noncore_fail",
+          "note": null,
+          "priority": "MEDIUM",
+          "recommend_section": "9.2",
+          "source_section": "8.2",
+          "title": "비핵심 지표 미달 (F1 Score)"
+        },
+        {
+          "evidence": {
+            "accuracy_minus_macro_f1": null,
+            "display": {
+              "accuracy_minus_macro_f1": null,
+              "imbalance_ratio": "52.923",
+              "majority_f1": "0.835",
+              "majority_minus_minority_f1": "0.702",
+              "minority_f1": "0.133"
+            },
+            "imbalance_ratio": 52.9231,
+            "level": "affected",
+            "majority_class": "Class12",
+            "majority_f1": 0.835,
+            "majority_minus_minority_f1": 0.7016,
+            "minority_class": "Class14",
+            "minority_f1": 0.1333
+          },
+          "id": "P2",
+          "kind": "imbalance_effect",
+          "note": "의뢰자가 편향 감소 노력을 '수행 안 함'으로 밝혔다.",
+          "priority": "MEDIUM",
+          "recommend_section": "9.1",
+          "source_section": "7.2",
+          "title": "불균형 영향 있음 (다수 Class12 · 소수 Class14)"
+        },
+        {
+          "evidence": {
+            "Class9": {
+              "f1": "0.048",
+              "gap_from_macro": "0.352",
+              "low_support": false,
+              "macro_f1": "0.399",
+              "share": "0.087",
+              "support": 80
+            }
+          },
+          "id": "P3",
+          "kind": "weakest_class",
+          "note": null,
+          "priority": "LOW",
+          "recommend_section": "9.1",
+          "source_section": "7.1·8.3",
+          "title": "최약 클래스 (Class9)"
+        },
+        {
+          "evidence": {
+            "학습 데이터와의 관계": "같은 출처"
+          },
+          "id": "P4",
+          "kind": "same_source",
+          "note": null,
+          "priority": "LOW",
+          "recommend_section": "9.1",
+          "source_section": "8.2",
+          "title": "평가 데이터가 학습과 같은 출처"
+        }
+      ],
+      "score": 66.7,
+      "verdict": "CONDITIONAL_PASS"
+    },
+    "report_edition": 4,
+    "report_purpose": "external",
+    "task_type": "multilabel"
+  },
+  "jobId": "job-ed4r-yeast_strong",
+  "startedAt": "2026-10-22T09:45:00.000Z",
+  "status": "pending"
+}

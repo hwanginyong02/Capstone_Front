@@ -11,7 +11,8 @@
  * 대신 `DataValidationSection.test.tsx` 의 배선 계약 테스트가 두 경로의 prop 집합을 대조한다.
  */
 import type { FinalReportData } from "../../types/finalReport.types";
-import { isLegacyLayout, usesSchema3 } from "../../lib/report/normalizeReportContent";
+import { isLegacyLayout, usesSchema3, usesSchema4 } from "../../lib/report/normalizeReportContent";
+import { Edition4Report } from "./edition4/Edition4Report";
 import { ReportCoverSection } from "./sections/ReportCoverSection";
 import { CompanyInfoSection } from "./sections/CompanyInfoSection";
 import { EvalScopeSection } from "./sections/EvalScopeSection";
@@ -28,6 +29,7 @@ import { RecommendSection } from "./sections/RecommendSection";
 import { SignatureSection } from "./sections/SignatureSection";
 
 export function ReportSections({ data }: { data: FinalReportData }) {
+  if (usesSchema4(data)) return <Edition4Report data={data} mode="screen" />;
   return (
     <>
       <ReportCoverSection meta={data.meta} performer={data.performer} materialCheck={data.materialCheck} schema3={usesSchema3(data)} />

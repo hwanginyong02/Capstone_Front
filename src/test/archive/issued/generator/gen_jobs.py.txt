@@ -1,0 +1,26 @@
+"""S0 스트림 A — 프론트(main)가 만든 서술 작업 요청 본문을 운영 main 백엔드(a7d3168)의 작업 경로에 넣는다.
+AI 키 없이 돌리므로 작업은 규칙 문장(fallback)으로 끝난다. 쓰는 법(백엔드 main 사본 폴더에서, AI 키 환경변수 없이):
+<venv>/bin/python -I <이 파일> <폴더>  → <이름>.job_created.json, <이름>.job_view.json
+"""
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path.cwd()))
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app.main import app  # noqa: E402
+
+WORK = Path(sys.argv[1])
+with TestClient(app) as client:
+  for req in sorted(WORK.glob("*.narrative_request.json")):
+      name = req.name.removesuffix(".narrative_request.json")
+      r = client.post("/api/narrative/jobs", json=json.loads(req.read_text()))
+      assert r.status_code == 200, (name, r.status_code, r.text[:300])
+      created = r.json()
+      (WORK / f"{name}.job_created.json").write_text(json.dumps(created, ensure_ascii=False, indent=1))
+      v = client.get(f"/api/narrative/jobs/{created['job_id']}")
+      assert v.status_code == 200, (name, v.status_code)
+      view = v.json()
+      (WORK / f"{name}.job_view.json").write_text(json.dumps(view, ensure_ascii=False, indent=1))
+      print(name, created["status"], view["status"], view["stage"], (view.get("result") or {}).get("section_sources"))

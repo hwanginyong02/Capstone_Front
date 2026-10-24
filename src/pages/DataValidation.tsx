@@ -25,6 +25,7 @@ import { layerOneGaps, screenRuleGaps, type LayerOneGap } from "../utils/domain/
 import { buildEvaluationRequestSnapshot } from "../lib/report/evaluationRequest";
 import { getCard, stepOfLeaf } from "../data/reportComposer";
 import type { MaterialCheckResult } from "../types/finalReport.types";
+import { usesSchema4 } from "../lib/report/normalizeReportContent";
 import type { FlowEntryState } from "../types/reportComposer.types";
 
 /** 평가 실행(성적서 생성) 중 발생한 예외를 사용자가 읽을 수 있는 문장으로 바꾼다. */
@@ -72,9 +73,12 @@ export function DataValidation() {
   // 생성 전 안내(재료 선택 점검 6절). 판정은 성적서를 만드는 같은 경로(매퍼 → checkMaterialSelection)
   // 의 결과를 읽기만 한다. 검증이 끝나야 IR 을 셀 분포가 생긴다.
   let materialCheck: MaterialCheckResult | undefined;
+  let newRunEdition4 = false; // 미리 만든 성적서에 찍힌 판(매퍼가 판 플래그로 정함) — 생성 전 안내 문장(부록 B28)
   if (gateReason === "ok") {
     try {
-      materialCheck = buildEvaluationResult()?.reportData?.materialCheck;
+      const preview = buildEvaluationResult()?.reportData;
+      materialCheck = preview?.materialCheck;
+      newRunEdition4 = !!preview && usesSchema4(preview);
     } catch {
       materialCheck = undefined; // 안내는 보조다 — 실패해도 "다음"의 오류 처리가 알린다.
     }
@@ -219,9 +223,15 @@ export function DataValidation() {
             <MaterialCheckOutdatedNotice
               check={lastRun?.reportData?.materialCheck}
               active={!!lastRun && !lastRun.reportId && !lastRun.reportData?.meta?.reportId}
+              edition4={!!lastRun?.reportData && usesSchema4(lastRun.reportData)}
             />
             {materialCheck && (
-              <MaterialCheckNotice check={materialCheck} onFix={handleFix} canFixInInput={canFixInInput} />
+              <MaterialCheckNotice
+                check={materialCheck}
+                onFix={handleFix}
+                canFixInInput={canFixInInput}
+                edition4={newRunEdition4}
+              />
             )}
             {/* 백엔드가 평가 데이터·매핑 단계에서 내려보낸 안내를 여기 합쳐 보여준다(B-03·B-04·A-12).
                 그 화면들에서 띄우면 사용자는 이미 다음 단계로 넘어간 뒤라 읽지 못한다. */}

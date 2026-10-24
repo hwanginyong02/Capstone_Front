@@ -1,0 +1,56 @@
+{
+ "job_id": "08ee481e-fc66-4479-8067-3d8ebeb19b83",
+ "status": "running",
+ "stage": "queued",
+ "benchmark_refs": [
+  {
+   "metric": "Accuracy",
+   "model_value": 0.9889,
+   "ref_low": 0.8,
+   "ref_high": 0.9,
+   "position": "above",
+   "direction": "higher",
+   "quality": "better",
+   "target_value": 0.98,
+   "target_position": "above",
+   "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+  },
+  {
+   "metric": "Precision",
+   "model_value": 0.9889,
+   "ref_low": 0.78,
+   "ref_high": 0.89,
+   "position": "above",
+   "direction": "higher",
+   "quality": "better",
+   "target_value": null,
+   "target_position": null,
+   "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+  },
+  {
+   "metric": "Recall",
+   "model_value": 0.989,
+   "ref_low": 0.78,
+   "ref_high": 0.89,
+   "position": "above",
+   "direction": "higher",
+   "quality": "better",
+   "target_value": null,
+   "target_position": null,
+   "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+  },
+  {
+   "metric": "F1 Score",
+   "model_value": 0.9889,
+   "ref_low": 0.78,
+   "ref_high": 0.89,
+   "position": "above",
+   "direction": "higher",
+   "quality": "better",
+   "target_value": 0.98,
+   "target_position": "above",
+   "source_note": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)"
+  }
+ ],
+ "result": null
+}

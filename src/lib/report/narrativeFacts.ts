@@ -10,8 +10,12 @@
  *   나온 클래스는 혼동행렬의 줄(0)·열로만 남고, 여기서는 예측 편향에만 실제 0 줄로 나온다.
  * - 기준과 비교되는 값은 숫자(반올림 전 값을 9자리로 정리)와 `*_text`(판정과 같은 쪽으로 읽히게 자릿수를
  *   늘린 표기 — `judgedText`)를 함께 싣는다. "넘었나"는 반올림 전 값과 `difference`(1e-10 보정)로 정한다.
+ * - 판 4 run(`edition4`)은 `*_text` 를 판 4 표기(셋째 자리·끝 0 유지 — `edition4/edition4Number.ts`, 공통 계약
+ *   `fact_sheet_contract_ed4.json` 의 edition4_notation)로 찍고, 분포 차 줄에 판 4 전용 칸(평가 − 학습)을 더한다. 판정(flagged·
+ *   far_below_macro·작은 몫)은 판과 무관하게 같은 식 하나다. 판 3 run 은 종전과 한 글자도 같다(기본값 = 판 3).
  */
 import type { TaskType } from "../../data/evaluationData";
+import { isEntryUnknown } from "../../data/reportComposer";
 import type {
   ClassReportRow,
   ClassReportTable,
@@ -24,6 +28,8 @@ import type { RawConfidenceInterval } from "./confidenceIntervals";
 import { cleanNumber, difference, factText, judgedText } from "./judgedNumber";
 import { REPORT_PURPOSE_LABEL } from "./reportConstants";
 import type { ReportComposerInput } from "./reportMaterials";
+import { ed4Distinct, ed4Judged, ed4Plain, ed4SignedJudged, sameAtMaxDigits } from "./edition4/edition4Number";
+import { judgedValueTextEd4 } from "./edition4/sameValueEd4";
 
 export const FACTS_CONTRACT = "facts-1";
 
@@ -51,6 +57,11 @@ export interface MetricRef {
 export interface WeakestClassFact {
   label: string;
   f1: number;
+  /**
+   * 판 4 전용(계약 `facts.weakest_class.f1_text`, S2·S3 검토 D2·D3) — 판 3 run 에는 키가 없다. 판정 대상 지표와 같은 원값이면 그
+   * value_text(D2), 아니면 다른 클래스와 달라 보일 때까지 늘린 표기(`ed4Distinct`, D3).
+   */
+  f1_text?: string;
   support: number;
   share: number;
   share_text: string;
@@ -76,6 +87,8 @@ export interface DistributionShiftRow {
   difference: number;
   difference_text: string;
   flagged: boolean;
+  /** 판 4 전용(계약 edition4_only_keys) — 평가 비율 − 학습 비율, signed_judged(0.1, 충족 = flagged). 판 3 run 에는 키가 없다. */
+  evaluation_minus_training_text?: string;
 }
 
 export interface NarrativeFacts {
@@ -143,7 +156,11 @@ export interface NarrativeFacts {
     recall: number | null;
     f1: number | null;
   } | null;
-  distribution_shift_status: "compared" | "not_provided" | "uncovered";
+  /**
+   * training_samples_not_provided 는 판 4 멀티레이블에만 — 학습 클래스 분포는 있으나 학습 표본 수가 없어(모름·빈 칸) 표본 수 분모의
+   * 학습 비율을 낼 수 없다(S2·S3 검토 T3, 2026-10-24 사용자 답). 부록 B16(학습 분포 없음)과 이유가 달라 따로 둔다.
+   */
+  distribution_shift_status: "compared" | "not_provided" | "uncovered" | "training_samples_not_provided";
   distribution_shift: DistributionShiftRow[];
   ci_available: boolean;
   ci_skipped: Array<{ metric_id: string; display_name: string; reason: string | null }>;
@@ -178,6 +195,8 @@ export interface NarrativeFactsInput {
   /** 엔진 신뢰구간 원본(생략 사유를 읽는다). 엔진이 보내지 않았으면 null. */
   confidenceIntervals: Record<string, RawConfidenceInterval> | null;
   fixedSentences: FixedSentenceFact[];
+  /** 판 4 run 인가(`usesSchema4(바탕 성적서)` — 조립이 맨 위에서 한 번 정한 값). 없으면 판 3. */
+  edition4?: boolean;
 }
 
 const has = (obj: object, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
@@ -203,43 +222,73 @@ function isLowSupport(support: number, share: number): boolean {
  * 최약 클래스(서술 설계 D10) — 정답 클래스 중 F1 최저(같으면 엔진 순서 앞). 지표 선택과 무관하게 늘
  * 계산한다(사용자 결정). 정답 클래스가 둘 미만이면 견줄 클래스가 없어 null. 9절 문제 7 은
  * `low_support || far_below_macro` 일 때 이 값을 근거로 쓴다.
+ *
+ * 판 4(`edition4`)는 '같음'을 여섯째 자리 표기로 본다(D3 — 백엔드 `weakest_ties` 판 4 와 같은 기준): 최저 F1 과 여섯째 자리로
+ * 같은 클래스 가운데 엔진 순서 앞. 그리고 F1 의 판 4 글자 `f1_text` 를 `f1` 바로 뒤에 싣는다 — 판정 대상 지표(`kpiResults`)와
+ * 같은 원값이면 그 value_text(D2), 아니면 클래스별 표의 다른 클래스 F1 과 달라 보일 때까지 늘린 표기(D3). 4.4 최약 클래스 표의
+ * F1 칸도 이 글자다(그 판단은 여기 한 곳).
+ *
+ * `sampleDenominator`(판 4 멀티레이블만 — 평가 표본 수, S6 질문 4): 주면 비율(share)·작은 몫 판정의 분모가 레이블 등장 합 대신 그
+ * 표본 수다(4.5 분포 문장·학습·평가 비율 표와 같은 분모). 0 이하면 등장 합으로 대신한다(`evaluationSampleDenominator`). 판 3·이진·
+ * 다중은 주지 않는다(종전 그대로).
  */
-export function weakestClass(table: ClassReportTable | null | undefined): WeakestClassFact | null {
+export function weakestClass(
+  table: ClassReportTable | null | undefined,
+  edition4 = false,
+  kpiResults: KpiResult[] = [],
+  sampleDenominator: number | null = null,
+): WeakestClassFact | null {
   const truth = groundTruthRows(table);
   if (truth.length < 2) return null;
-  const weakest = weakestRow(truth);
+  const weakest = weakestRow(truth, edition4);
   if (!weakest) return null;
-  const total = truth.reduce((sum, r) => sum + r.support!, 0);
+  const occurrences = truth.reduce((sum, r) => sum + r.support!, 0);
+  const total = sampleDenominator === null ? occurrences : evaluationSampleDenominator(sampleDenominator, occurrences);
   const support = weakest.support!;
   const share = support / total;
   const macro = averageRow(table, "매크로 평균")?.f1 ?? null;
   const gap = macro !== null ? difference(macro, weakest.f1!) : null;
   const farBelow = gap !== null && gap >= WEAKEST_F1_GAP;
+  const others = (table?.rows ?? []).filter((r) => r !== weakest && r.f1 !== null).map((r) => r.f1!);
   return {
     label: weakest.label,
     f1: weakest.f1!,
+    ...(edition4 ? { f1_text: judgedValueTextEd4(kpiResults, weakest.f1) ?? ed4Distinct(weakest.f1!, others) } : {}),
     support,
     share: cleanNumber(share),
-    share_text: judgedText(share, LOW_SHARE_MIN, !isLowShare(share)),
+    share_text: edition4
+      ? ed4Judged(share, LOW_SHARE_MIN, true, !isLowShare(share))
+      : judgedText(share, LOW_SHARE_MIN, !isLowShare(share)),
     macro_f1: macro,
     gap_from_macro: gap === null ? null : cleanNumber(gap),
-    gap_text: gap === null ? null : judgedText(gap, WEAKEST_F1_GAP, farBelow),
+    gap_text: gap === null ? null : edition4 ? ed4Judged(gap, WEAKEST_F1_GAP, true, farBelow) : judgedText(gap, WEAKEST_F1_GAP, farBelow),
     low_support: isLowSupport(support, share),
     far_below_macro: farBelow,
   };
 }
 
-function weakestRow(rows: ClassReportRow[]): ClassReportRow | null {
-  return rows
+function weakestRow(rows: ClassReportRow[], edition4 = false): ClassReportRow | null {
+  const min = rows
     .filter((r) => r.f1 !== null)
-    .reduce<ClassReportRow | null>((min, r) => (min === null || r.f1! < min.f1! ? r : min), null);
+    .reduce<ClassReportRow | null>((low, r) => (low === null || r.f1! < low.f1! ? r : low), null);
+  // 판 4: 여섯째 자리로 최저와 같은 클래스는 동점 — 엔진 순서 앞(판 3 은 원값 그대로 비교, 바이트 불변).
+  if (!edition4 || min === null) return min;
+  return rows.find((r) => r.f1 !== null && sameAtMaxDigits(r.f1, min.f1!)) ?? min;
 }
 
-/** 작은 표본 클래스 — 정답 클래스 중 support < 30 또는 전체의 5% 미만, 엔진 순서. 정답 클래스가 둘 미만이면 []. */
-export function lowSupportClasses(table: ClassReportTable | null | undefined): NarrativeFacts["low_support_classes"] {
+/**
+ * 작은 표본 클래스 — 정답 클래스 중 support < 30 또는 전체의 5% 미만, 엔진 순서. 정답 클래스가 둘 미만이면 [].
+ * `sampleDenominator` 는 `weakestClass` 와 같다(판 4 멀티레이블의 표본 수 분모, S6 질문 4).
+ */
+export function lowSupportClasses(
+  table: ClassReportTable | null | undefined,
+  edition4 = false,
+  sampleDenominator: number | null = null,
+): NarrativeFacts["low_support_classes"] {
   const truth = groundTruthRows(table);
   if (truth.length < 2) return [];
-  const total = truth.reduce((sum, r) => sum + r.support!, 0);
+  const occurrences = truth.reduce((sum, r) => sum + r.support!, 0);
+  const total = sampleDenominator === null ? occurrences : evaluationSampleDenominator(sampleDenominator, occurrences);
   return truth
     .filter((r) => isLowSupport(r.support!, r.support! / total))
     .map((r) => {
@@ -248,7 +297,9 @@ export function lowSupportClasses(table: ClassReportTable | null | undefined): N
         label: r.label,
         support: r.support!,
         share: cleanNumber(share),
-        share_text: judgedText(share, LOW_SHARE_MIN, !isLowShare(share)),
+        share_text: edition4
+          ? ed4Judged(share, LOW_SHARE_MIN, true, !isLowShare(share))
+          : judgedText(share, LOW_SHARE_MIN, !isLowShare(share)),
       };
     });
 }
@@ -384,6 +435,7 @@ export function declarations(
 export function declaredRiskErrors(
   risk: RiskDirection | null,
   counts: ConfusionCounts | null,
+  edition4 = false,
 ): NarrativeFacts["declared_risk_errors"] {
   if (risk !== "fn" && risk !== "fp") return null;
   const row = counts?.kind === "binary" ? counts.rows[0] : undefined;
@@ -396,7 +448,7 @@ export function declaredRiskErrors(
     count,
     total_errors: total,
     share: share === null ? null : cleanNumber(share),
-    share_text: share === null ? null : factText(share),
+    share_text: share === null ? null : edition4 ? ed4Plain(share) : factText(share),
   };
 }
 
@@ -404,6 +456,7 @@ export function declaredRiskErrors(
 export function precisionRecallGap(
   table: ClassReportTable | null,
   positiveClass: string | null,
+  edition4 = false,
 ): NarrativeFacts["precision_recall_gap"] {
   if (positiveClass === null) return null;
   const row = table?.rows.find((r) => r.label === positiveClass);
@@ -415,7 +468,7 @@ export function precisionRecallGap(
     precision: row.precision,
     recall: row.recall,
     difference: cleanNumber(gap),
-    difference_text: gap < 0 && magnitude !== "0" ? `-${magnitude}` : magnitude,
+    difference_text: edition4 ? ed4SignedJudged(gap, PR_GAP_MIN, flagged) : gap < 0 && magnitude !== "0" ? `-${magnitude}` : magnitude,
     flagged,
   };
 }
@@ -424,7 +477,11 @@ export function precisionRecallGap(
  * 평균 방식 사이의 차이(D17·D39) — 다중은 가중 − 매크로 F1 과 support 최대 정답 클래스(같으면 엔진 순서
  * 앞), 멀티는 마이크로 − 매크로 F1 과 F1 최저 레이블. 정답 클래스가 둘 미만이면 null.
  */
-export function averageGap(taskType: TaskType, table: ClassReportTable | null): NarrativeFacts["average_gap"] {
+export function averageGap(
+  taskType: TaskType,
+  table: ClassReportTable | null,
+  edition4 = false,
+): NarrativeFacts["average_gap"] {
   if (taskType === "binary") return null;
   const macro = averageRow(table, "매크로 평균")?.f1 ?? null;
   const other = averageRow(table, taskType === "multiclass" ? "가중 평균" : "마이크로 평균")?.f1 ?? null;
@@ -433,14 +490,14 @@ export function averageGap(taskType: TaskType, table: ClassReportTable | null): 
   const reference =
     taskType === "multiclass"
       ? truth.reduce((max, r) => (r.support! > max.support! ? r : max))
-      : weakestRow(truth);
+      : weakestRow(truth, edition4); // 최약 클래스와 같은 고르기(판 4 는 여섯째 자리 동점 — D3)
   if (!reference) return null;
   return {
     kind: taskType === "multiclass" ? "macro_vs_weighted" : "macro_vs_micro",
     macro_f1: macro,
     other_f1: other,
     difference: cleanNumber(difference(other, macro)),
-    difference_text: factText(difference(other, macro)),
+    difference_text: edition4 ? ed4Plain(difference(other, macro)) : factText(difference(other, macro)),
     reference_class: { label: reference.label, support: reference.support, f1: reference.f1 },
   };
 }
@@ -493,9 +550,31 @@ export function trainingCounts(composer: ReportComposerInput | undefined): Map<s
   return [...counts.values()].reduce((a, b) => a + b, 0) > 0 ? counts : null;
 }
 
-/** 클래스 → 비율(그 클래스 수 ÷ 전체 합). */
-function ratios(counts: Map<string, number>): Map<string, number> {
-  const total = [...counts.values()].reduce((a, b) => a + b, 0);
+/**
+ * 의뢰자가 준 학습 표본 수(⑥ "데이터 양"의 학습 칸). 카드를 껐거나, 학습 칸을 "모름"으로 골랐거나, 비었거나, 숫자가 아니거나,
+ * 0 이하면 null. 판 4 멀티레이블 학습 비율의 분모다(S2·S3 검토 T3).
+ */
+export function trainingSampleCount(composer: ReportComposerInput | undefined): number | null {
+  if (!composer?.cards.trainingData) return null;
+  const value = composer.trainingData.trainingVolume;
+  if (isEntryUnknown(value, "Training")) return null;
+  const raw = value?.entries?.find((entry) => entry.key === "Training")?.value.trim() ?? "";
+  if (raw === "") return null;
+  const parsed = Number(raw.replace(/[,\s]/g, ""));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+/**
+ * 판 4 멀티레이블의 평가 비율 분모 — 평가 표본 수(4.5 분포 문장과 같은 값: 0 이하면 레이블 등장 합으로 대신한다,
+ * `buildDistributionEd4` 와 같은 대체).
+ */
+export function evaluationSampleDenominator(nSamples: number | null | undefined, occurrenceTotal: number): number {
+  return typeof nSamples === "number" && nSamples > 0 ? nSamples : occurrenceTotal;
+}
+
+/** 클래스 → 비율(그 클래스 수 ÷ 분모). 분모를 주지 않으면 전체 합. */
+function ratios(counts: Map<string, number>, denominator?: number): Map<string, number> {
+  const total = denominator ?? [...counts.values()].reduce((a, b) => a + b, 0);
   return new Map([...counts].map(([k, v]) => [k, total > 0 ? v / total : 0]));
 }
 
@@ -503,10 +582,17 @@ function ratios(counts: Map<string, number>): Map<string, number> {
  * 학습↔평가 분포 차이(6절 dist_diff) — 대상은 평가 정답 클래스 ∪ 학습 칸. difference = 학습 비율 − 평가
  * 비율. 평가 데이터의 클래스가 학습 분포에 하나라도 없으면 견주지 않는다(B5② — uncovered). 9절 문제 8 은
  * flagged 인 클래스만 쓴다.
+ *
+ * 판 4 멀티레이블(`edition4` 이고 `multilabelSamples` 를 줌)은 분모가 표본 수다(S2·S3 검토 T3, 2026-10-24 사용자 답): 평가 비율 =
+ * 그 레이블이 붙은 평가 표본 / 평가 표본 수(`multilabelSamples` — 4.5 분포 문장과 같은 숫자, 합이 100% 를 넘을 수 있다), 학습 비율
+ * = 그 레이블이 붙은 학습 표본 / 의뢰자가 준 학습 표본 수(`trainingSampleCount`). 학습 표본 수가 없으면 비교하지 않는다
+ * (training_samples_not_provided). 판 3 과 이진·다중은 종전대로(분포 합 분모 — 이진·다중은 그 합이 곧 표본 수).
  */
 export function distributionShift(
   composer: ReportComposerInput | undefined,
   evaluation: Record<string, number>,
+  edition4 = false,
+  multilabelSamples: number | null = null,
 ): { status: NarrativeFacts["distribution_shift_status"]; rows: DistributionShiftRow[] } {
   const training = trainingCounts(composer);
   const evalCounts = new Map<string, number>();
@@ -516,11 +602,15 @@ export function distributionShift(
   }
   const evalTotal = [...evalCounts.values()].reduce((a, b) => a + b, 0);
   if (!training || evalTotal <= 0) return { status: "not_provided", rows: [] };
+  const sampleBasis = edition4 && multilabelSamples !== null;
+  const trainSamples = sampleBasis ? trainingSampleCount(composer) : null;
+  // 학습 비율을 낼 수 없으니 견주지 않는다 — uncovered 보다 먼저(그 표도 학습 칸에 비율이 필요하다).
+  if (sampleBasis && trainSamples === null) return { status: "training_samples_not_provided", rows: [] };
   if ([...evalCounts].some(([name, count]) => count > 0 && !training.has(name))) {
     return { status: "uncovered", rows: [] };
   }
-  const train = ratios(training);
-  const test = ratios(evalCounts);
+  const train = ratios(training, trainSamples ?? undefined);
+  const test = ratios(evalCounts, sampleBasis ? evaluationSampleDenominator(multilabelSamples, evalTotal) : undefined);
   const classes = [...new Set([...test.keys(), ...train.keys()])];
   const rows = classes.map((label) => {
     const t = train.get(label) ?? 0;
@@ -528,14 +618,19 @@ export function distributionShift(
     const gap = difference(t, e);
     const flagged = Math.abs(gap) >= DISTRIBUTION_SHIFT_MIN;
     const magnitude = judgedText(Math.abs(gap), DISTRIBUTION_SHIFT_MIN, flagged);
-    return {
+    const row: DistributionShiftRow = {
       label,
       training_ratio: cleanNumber(t),
       evaluation_ratio: cleanNumber(e),
       difference: cleanNumber(gap),
-      difference_text: gap < 0 && magnitude !== "0" ? `-${magnitude}` : magnitude,
+      difference_text: edition4
+        ? ed4SignedJudged(gap, DISTRIBUTION_SHIFT_MIN, flagged)
+        : gap < 0 && magnitude !== "0" ? `-${magnitude}` : magnitude,
       flagged,
     };
+    // 판 4 전용 — 4.5 표의 차이 열(평가 − 학습)과 같은 값. 부호만 반대인 같은 크기다.
+    if (edition4) row.evaluation_minus_training_text = ed4SignedJudged(difference(e, t), DISTRIBUTION_SHIFT_MIN, flagged);
+    return row;
   });
   return { status: "compared", rows };
 }
@@ -590,28 +685,37 @@ export function verdictDetail(
 /** 서술용 파생값 전체(자르기 전). 자르기(상한)는 `fitFactSheet` 가 한다. */
 export function buildNarrativeFacts(input: NarrativeFactsInput & { nSamples: number }): NarrativeFacts {
   const { taskType, kpiResults, classTable, confusion, confusionCounts, composer } = input;
+  const edition4 = input.edition4 === true;
   const decl = declarations(composer, taskType);
   const positiveClass = taskType === "binary" ? input.positiveClass : null;
   const truth = groundTruthRows(classTable);
-  const shift = distributionShift(composer, input.evaluationDistribution);
+  // 판 4 멀티레이블: 최약 레이블·작은 표본의 비율 분모 = 평가 표본 수(4.5 와 같은 분모, S6 질문 4). 판 3 은 레이블 등장 합 그대로.
+  // 표본 수가 0 이하(없음)면 4.5 처럼 등장 합으로 대신하고, 분모 이름(class_share_basis)도 그쪽으로 둔다.
+  const shareDenominator = edition4 && taskType === "multilabel" && input.nSamples > 0 ? input.nSamples : null;
+  const shift = distributionShift(
+    composer,
+    input.evaluationDistribution,
+    edition4,
+    taskType === "multilabel" ? input.nSamples : null,
+  );
   return {
     contract: FACTS_CONTRACT,
     positive_class: positiveClass,
     n_classes: truth.length > 0 ? truth.length : null,
-    class_share_basis: taskType === "multilabel" ? "label_occurrences" : "samples",
+    class_share_basis: taskType === "multilabel" && shareDenominator === null ? "label_occurrences" : "samples",
     report_purpose_label: input.reportPurpose ? REPORT_PURPOSE_LABEL[input.reportPurpose] ?? null : null,
     core_metrics_source: input.coreMetricsSource,
     selected_metrics: kpiResults.map((r) => r.metricId),
     declarations: decl,
     verdict_detail: verdictDetail(kpiResults, taskType, input.coreMetricIds),
     error_totals: errorTotals(taskType, confusionCounts, input.nSamples),
-    weakest_class: weakestClass(classTable),
-    low_support_classes: lowSupportClasses(classTable),
+    weakest_class: weakestClass(classTable, edition4, kpiResults, shareDenominator),
+    low_support_classes: lowSupportClasses(classTable, edition4, shareDenominator),
     top_confusion_pairs: taskType === "multiclass" ? topConfusionPairs(confusion) : [],
     prediction_bias: predictionBias(taskType, confusion, confusionCounts),
-    declared_risk_errors: taskType === "binary" ? declaredRiskErrors(decl.risk_direction, confusionCounts) : null,
-    precision_recall_gap: taskType === "binary" ? precisionRecallGap(classTable, positiveClass) : null,
-    average_gap: averageGap(taskType, classTable),
+    declared_risk_errors: taskType === "binary" ? declaredRiskErrors(decl.risk_direction, confusionCounts, edition4) : null,
+    precision_recall_gap: taskType === "binary" ? precisionRecallGap(classTable, positiveClass, edition4) : null,
+    average_gap: averageGap(taskType, classTable, edition4),
     declared_average: declaredAverage(decl.class_priority, classTable),
     distribution_shift_status: shift.status,
     distribution_shift: shift.rows,

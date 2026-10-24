@@ -1,0 +1,1199 @@
+{
+  "contentSchema": 3,
+  "targetDigits": 3,
+  "judgedValueDigits": true,
+  "meta": {
+    "reportId": "",
+    "title": "기계학습 분류 성능 시험결과서",
+    "issuedAt": "",
+    "evaluationPeriod": {
+      "from": "2026-10-22",
+      "to": "2026-10-22"
+    },
+    "taskType": "multilabel",
+    "taskTypeLabel": "다중 레이블 분류",
+    "contractDate": "2026-10-22",
+    "derivedPrediction": {
+      "method": "threshold_per_label",
+      "threshold": {
+        "score_Class1": 0.3,
+        "score_Class2": 0.4,
+        "score_Class3": 0.5,
+        "score_Class4": 0.6,
+        "score_Class5": 0.3,
+        "score_Class6": 0.4,
+        "score_Class7": 0.5,
+        "score_Class8": 0.6,
+        "score_Class9": 0.3,
+        "score_Class10": 0.4,
+        "score_Class11": 0.5,
+        "score_Class12": 0.6,
+        "score_Class13": 0.3,
+        "score_Class14": 0.4
+      },
+      "source_columns": [
+        "score_Class1",
+        "score_Class2",
+        "score_Class3",
+        "score_Class4",
+        "score_Class5",
+        "score_Class6",
+        "score_Class7",
+        "score_Class8",
+        "score_Class9",
+        "score_Class10",
+        "score_Class11",
+        "score_Class12",
+        "score_Class13",
+        "score_Class14"
+      ],
+      "target_role": "pred_labels",
+      "label_order": [
+        "Class1",
+        "Class2",
+        "Class3",
+        "Class4",
+        "Class5",
+        "Class6",
+        "Class7",
+        "Class8",
+        "Class9",
+        "Class10",
+        "Class11",
+        "Class12",
+        "Class13",
+        "Class14"
+      ]
+    }
+  },
+  "applicant": {
+    "companyName": "(주)시연고객",
+    "representative": "김시연",
+    "businessNumber": "123-45-67890",
+    "contact": "02-123-4567",
+    "fax": "",
+    "homepage": "",
+    "address": "서울특별시 노원구 공릉로 232"
+  },
+  "performer": {
+    "orgName": "리트머스",
+    "evaluator": "자동 평가 엔진",
+    "contact": "—"
+  },
+  "evalScope": {
+    "purpose": "외부 제출 및 인증/심사기관 검토 목적으로 활용",
+    "targetModel": "YeastFunc-OvR",
+    "version": "v3.0",
+    "scope": "의뢰자가 제출한 평가 데이터셋을 기반으로 선택된 시험항목에 대해 정량적 성능 지표를 산출하고 합격 기준 충족 여부를 판정한다.",
+    "reportPurposeKey": "external",
+    "modelPurpose": "효모 유전자의 발현·계통 특징으로 기능 범주(14개, 여러 개 가능)를 추정해 실험 대상 유전자를 추린다.",
+    "modelCategory": "생물정보 다중 레이블 분류",
+    "purposeNote": "공동 연구 기관 제출"
+  },
+  "datasetInfo": {
+    "format": "정형 데이터 (CSV)",
+    "inputColumns": [
+      "gene_id",
+      "true_labels",
+      "score_Class1",
+      "score_Class2",
+      "score_Class3",
+      "score_Class4",
+      "score_Class5",
+      "score_Class6",
+      "score_Class7",
+      "score_Class8",
+      "score_Class9",
+      "score_Class10",
+      "score_Class11",
+      "score_Class12",
+      "score_Class13",
+      "score_Class14"
+    ],
+    "sampleCount": 917,
+    "taskTypeLabel": "다중 레이블 분류",
+    "classCount": 14,
+    "classLabels": [
+      "Class1",
+      "Class2",
+      "Class3",
+      "Class4",
+      "Class5",
+      "Class6",
+      "Class7",
+      "Class8",
+      "Class9",
+      "Class10",
+      "Class11",
+      "Class12",
+      "Class13",
+      "Class14"
+    ],
+    "classLabelDescriptions": [
+      {
+        "label": "Class1",
+        "description": "대사"
+      },
+      {
+        "label": "Class2",
+        "description": "에너지"
+      },
+      {
+        "label": "Class12",
+        "description": "세포 운명"
+      }
+    ],
+    "fileName": "syn_multilabel_perlabel.csv"
+  },
+  "datasetSamples": [],
+  "datasetDiagnosis": "평가 데이터셋은 총 917건이며, 클래스(레이블)별 분포는 Class1 286건(31.2%), Class10 92건(10.0%), Class11 91건(9.9%), Class12 688건(75.0%), Class13 683건(74.5%), Class14 13건(1.4%), Class2 393건(42.9%), Class3 385건(42.0%), Class4 330건(36.0%), Class5 281건(30.6%), Class6 219건(23.9%), Class7 167건(18.2%), Class8 191건(20.8%), Class9 80건(8.7%)이다. 클래스 불균형 비율(Imbalance Ratio)은 52.9231로 허용 기준(1.50 미만)을 벗어나며, 다수 레이블 'Class12(세포 운명)'와 소수 레이블 'Class14'의 F1 차이가 0.6961로 0.10 이상이어서 불균형에 따른 성능 지표 왜곡이 관찰되었다. 매크로 F1과 레이블별 지표를 우선 참고해야 한다.",
+  "trainingDatasetInfo": {
+    "name": "Mulan yeast 학습 분할",
+    "trainingSampleCount": 1500,
+    "validationSampleCount": 0,
+    "validExamples": [],
+    "edgeExamples": []
+  },
+  "evalEnv": {
+    "method": "서버 사이드 자동 연산 (Python 기반 metric 산출)",
+    "outputFormat": "성능 지표 수치 및 합격/불합격 판정 성적서 (PDF)",
+    "tools": [
+      "Python 3.11",
+      "scikit-learn 1.4.0",
+      "pandas 2.2.0",
+      "numpy 1.26.0"
+    ],
+    "systemSpec": {
+      "os": "Ubuntu 22.04",
+      "cpu": "AMD EPYC 16핵",
+      "gpu": "없음",
+      "memory": "64GB",
+      "software": "Python 3.11"
+    },
+    "environment": {
+      "libraries": {
+        "python": "3.12.7",
+        "scikit-learn": "1.9.0",
+        "pandas": "2.2.3",
+        "numpy": "2.5.1"
+      },
+      "evaluated_at": "2026-10-24T01:55:45+09:00"
+    }
+  },
+  "metricList": [
+    {
+      "metricId": "M2",
+      "name": "Precision",
+      "threshold": null,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M3",
+      "name": "Recall",
+      "threshold": null,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M4",
+      "name": "F1 Score",
+      "threshold": 0.45,
+      "passCriteria": "≥ 0.450"
+    },
+    {
+      "metricId": "M15",
+      "name": "Hamming Loss",
+      "threshold": 0.22,
+      "passCriteria": "≤ 0.220"
+    },
+    {
+      "metricId": "M16",
+      "name": "Exact Match Ratio",
+      "threshold": null,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M17",
+      "name": "Jaccard Index",
+      "threshold": 0.45,
+      "passCriteria": "≥ 0.450"
+    },
+    {
+      "metricId": "M18",
+      "name": "Distribution Diff (ML)",
+      "threshold": null,
+      "passCriteria": "정보 제공"
+    },
+    {
+      "metricId": "M23",
+      "name": "Imbalance Ratio",
+      "threshold": null,
+      "passCriteria": "정보 제공"
+    }
+  ],
+  "metricFormulas": [
+    {
+      "metricId": "M2",
+      "name": "Precision",
+      "formula": "binary: TP/(TP+FP) · 그 외: 클래스별 TP/(TP+FP) 의 macro 평균",
+      "description": "양성으로 예측한 것 중 실제 양성인 비율입니다.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M3",
+      "name": "Recall",
+      "formula": "binary: TP/(TP+FN) · 그 외: 클래스별 TP/(TP+FN) 의 macro 평균",
+      "description": "실제 양성 중 모델이 찾아낸 비율입니다.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M4",
+      "name": "F1 Score",
+      "formula": "binary: 2PR/(P+R) · 그 외: 클래스별 F1 의 macro 평균(macro-P·macro-R 의 조화평균이 아님)",
+      "description": "정밀도와 재현율을 하나로 묶어 균형을 봅니다.",
+      "isCommon": true
+    },
+    {
+      "metricId": "M15",
+      "name": "Hamming Loss",
+      "formula": "∑ (y_true ≠ y_pred) / (Samples * Labels)",
+      "description": "멀티레이블에서 레이블 단위로 틀린 비율입니다.",
+      "isCommon": false
+    },
+    {
+      "metricId": "M16",
+      "name": "Exact Match Ratio",
+      "formula": "∑ (All_labels_match) / Samples",
+      "description": "모든 레이블이 정확히 맞은 표본의 비율입니다.",
+      "isCommon": false
+    },
+    {
+      "metricId": "M17",
+      "name": "Jaccard Index",
+      "formula": "|y_true ∩ y_pred| / |y_true ∪ y_pred|",
+      "description": "예측 레이블과 실제 레이블의 교집합을 합집합으로 나눈 값입니다.",
+      "isCommon": false
+    },
+    {
+      "metricId": "M18",
+      "name": "Distribution Diff (ML)",
+      "formula": "1 - cos(freq(y_true), freq(y_pred))",
+      "description": "실제 레이블 분포와 예측 레이블 분포를 비교합니다.",
+      "isCommon": false
+    },
+    {
+      "metricId": "M23",
+      "name": "Imbalance Ratio",
+      "formula": "max(class count) / min(class count)",
+      "description": "평가 데이터 자체의 클래스 균형을 봅니다.",
+      "isCommon": true
+    }
+  ],
+  "dataValidation": [
+    {
+      "checkName": "빈 데이터(행 없음)",
+      "status": "pass",
+      "detail": "917 건",
+      "group": "common"
+    },
+    {
+      "checkName": "필수 컬럼 누락",
+      "status": "pass",
+      "detail": "없음",
+      "group": "common"
+    },
+    {
+      "checkName": "누락값(NaN)",
+      "status": "pass",
+      "detail": "없음",
+      "group": "common"
+    },
+    {
+      "checkName": "중복 ID",
+      "status": "pass",
+      "detail": "없음",
+      "group": "common"
+    },
+    {
+      "checkName": "클래스 불일치",
+      "status": "pass",
+      "detail": "N/A",
+      "group": "common"
+    },
+    {
+      "checkName": "제외된 샘플 수",
+      "status": "pass",
+      "detail": "0 건",
+      "group": "common"
+    },
+    {
+      "checkName": "score 범위 오류",
+      "status": "pass",
+      "detail": "0 건",
+      "group": "multilabel"
+    },
+    {
+      "checkName": "레이블 형식 오류",
+      "status": "pass",
+      "detail": "없음",
+      "group": "multilabel"
+    }
+  ],
+  "validationSummary": {
+    "totalRows": 917,
+    "validRows": 917,
+    "excludedRows": 0
+  },
+  "kpiResults": [
+    {
+      "metricId": "M2",
+      "name": "Precision",
+      "value": 0.4712863625466085,
+      "threshold": null,
+      "status": "pass",
+      "higherIsBetter": true,
+      "isCore": false
+    },
+    {
+      "metricId": "M3",
+      "name": "Recall",
+      "value": 0.40718928073905225,
+      "threshold": null,
+      "status": "pass",
+      "higherIsBetter": true,
+      "isCore": false
+    },
+    {
+      "metricId": "M4",
+      "name": "F1 Score",
+      "value": 0.40896768261340055,
+      "threshold": 0.45,
+      "status": "fail",
+      "higherIsBetter": true,
+      "isCore": false,
+      "ci": {
+        "low": 0.3871,
+        "high": 0.4315,
+        "method": "bootstrap"
+      },
+      "margin": -0.0410323174,
+      "nearTarget": false
+    },
+    {
+      "metricId": "M15",
+      "name": "Hamming Loss",
+      "value": 0.2223087708365789,
+      "threshold": 0.22,
+      "status": "fail",
+      "higherIsBetter": false,
+      "isCore": true,
+      "ci": {
+        "low": 0.213,
+        "high": 0.2317,
+        "method": "bootstrap"
+      },
+      "margin": -0.0023087708,
+      "nearTarget": true
+    },
+    {
+      "metricId": "M16",
+      "name": "Exact Match Ratio",
+      "value": 0.12213740458015267,
+      "threshold": null,
+      "status": "pass",
+      "higherIsBetter": true,
+      "isCore": false
+    },
+    {
+      "metricId": "M17",
+      "name": "Jaccard Index",
+      "value": 0.4937162165351915,
+      "threshold": 0.45,
+      "status": "pass",
+      "higherIsBetter": true,
+      "isCore": true,
+      "ci": {
+        "low": 0.4753,
+        "high": 0.5118,
+        "method": "bootstrap"
+      },
+      "margin": 0.0437162165,
+      "nearTarget": false
+    },
+    {
+      "metricId": "M18",
+      "name": "Distribution Diff (ML)",
+      "value": 0.03221899990697308,
+      "threshold": null,
+      "status": "pass",
+      "higherIsBetter": false,
+      "isCore": false
+    },
+    {
+      "metricId": "M23",
+      "name": "Imbalance Ratio",
+      "value": 52.92307692307692,
+      "threshold": null,
+      "status": "pass",
+      "higherIsBetter": false,
+      "isCore": false
+    }
+  ],
+  "charts": {
+    "confusionMatrix": null,
+    "rocCurve": null,
+    "prCurve": null
+  },
+  "latency": null,
+  "interpretation": {
+    "confusionAnalysis": "레이블별 혼동행렬을 합친 레이블 칸 12838칸 중 2854칸(22.2%)이 틀렸다. 있어야 할 레이블을 놓친 칸(FN)은 1500칸, 없는 레이블을 붙인 칸(FP)은 1354칸이다. 오류(FP+FN)가 가장 많은 세 레이블은 Class2(에너지) FP 230칸·FN 127칸, Class5 FP 183칸·FN 110칸, Class12(세포 운명) FP 172칸·FN 106칸이다. 예측한 레이블은 모두 3753개, 실제 레이블은 3899개로, 레이블을 실제보다 146개 적게 붙였다. F1 이 가장 낮은 레이블은 F1 0.0394인 Class8이며, 표본은 191건으로 레이블 등장의 4.9%이다. 매크로 F1 과의 차이는 0.3696이다. 이 레이블은 레이블 등장의 5% 미만이고, 매크로 F1 보다 0.1 이상 낮다. 그 밖에 표본이 작은 레이블은 Class10 92건, Class11 91건, Class14 13건, Class7 167건, Class9 80건이다. 확률이 있는 오분류 가운데 경계 오류가 확신 오류보다 많다. 경계 오류는 결정 경계 가까이에서 갈린 오류로, 경계에 가까운 사례의 판단에 따라 결과가 달라질 수 있는 오류다.",
+    "distributionAnalysis": "평가 데이터셋은 총 917건이며, 레이블별 등장 분포는 Class1(대사) 286건(31.2%), Class10 92건(10.0%), Class11 91건(9.9%), Class12(세포 운명) 688건(75.0%), Class13 683건(74.5%), Class14 13건(1.4%), Class2(에너지) 393건(42.9%), Class3 385건(42.0%), Class4 330건(36.0%), Class5 281건(30.6%), Class6 219건(23.9%), Class7 167건(18.2%), Class8 191건(20.8%), Class9 80건(8.7%)이다(한 표본에 레이블이 여럿일 수 있어 비율을 모두 더하면 전체를 넘을 수 있다). 불균형 비율(52.9231)이 1.5 이상이어서 불균형이 있고, 다수 레이블(Class12(세포 운명))과 소수 레이블(Class14)의 F1 차이(0.6961)가 기준(0.1) 이상이어서 불균형에 따른 성능 지표 왜곡이 관찰되었다. 소수 레이블은 표본이 적어 수치가 흔들리기 쉬우므로 성능 지표 해석에 유의가 필요하다.",
+    "additionalObservations": ""
+  },
+  "conclusion": {
+    "verdict": "FAIL",
+    "score": 33.3,
+    "judgedCount": 3,
+    "benchmark": "내부 참조 기준과 비교하면 참조 범위에 비해 미흡한 지표는 F1 Score(0.409, 참조 범위 0.7~0.85), Hamming Loss(0.222, 참조 범위 0.05~0.2), Jaccard Index(0.494, 참조 범위 0.65~0.82)이다. 비교 기준은 내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)이다. 목표값이 참조 범위보다 낮은 지표는 F1 Score(목표 0.45), Jaccard Index(목표 0.45)이고, 목표값이 참조 범위보다 높은 지표는 Hamming Loss(목표 0.22)이다.",
+    "narrative": "핵심 지표가 목표에 미달하여 종합 판정은 '최종 불합격'이다(미달한 핵심 지표: Hamming Loss(0.222, 목표 0.22)). 핵심이 아닌 지표 중에도 목표에 미달한 지표가 있다(목표 미달 지표: F1 Score(0.409, 목표 0.45)). 참고로 목표값이 설정된 지표 3개 중 1개가 목표를 충족하였다(통과율 33.3%). 95% 신뢰구간이 목표값을 포함하는 지표는 Hamming Loss(구간 0.213~0.232, 목표 0.22)로, 표본 변동에 따라 해당 지표의 판정이 달라질 수 있다. 그 밖에 신뢰구간을 산출한 지표(F1 Score, Jaccard Index)는 구간이 목표값과 떨어져 있다. Hamming Loss의 값은 0.222, Exact Match Ratio의 값은 0.1221이다. Hamming Loss는 레이블 칸 단위로 틀린 비율이고 Exact Match Ratio는 모든 레이블을 맞힌 표본의 비율이어서, 두 값으로 칸 단위 오류와 표본 단위 완전 일치를 나누어 볼 수 있다. 의뢰자가 밝힌 모델 용도는 '효모 유전자의 발현·계통 특징으로 기능 범주(14개, 여러 개 가능)를 추정해 실험 대상 유전자를 추린다.'이다.",
+    "risks": "목표에 미달한 지표가 있어 해당 영역의 성능 저하 위험이 존재한다(목표 미달 지표: F1 Score(0.409, 목표 0.45), Hamming Loss(0.222, 목표 0.22)). F1 이 가장 낮은 레이블은 F1 0.0394인 Class8이다. 목표값에 근소한 차이로 미달한 지표는 표본이 달라지면 충족으로 바뀔 수도 있어, 그 판정은 표본 변동에 민감하다.",
+    "benchmarkRefs": [
+      {
+        "metric": "F1 Score",
+        "modelValue": 0.409,
+        "refLow": 0.7,
+        "refHigh": 0.85,
+        "quality": "worse",
+        "direction": "higher",
+        "sourceNote": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)",
+        "targetValue": 0.45,
+        "targetPosition": "below"
+      },
+      {
+        "metric": "Hamming Loss",
+        "modelValue": 0.2223,
+        "refLow": 0.05,
+        "refHigh": 0.2,
+        "quality": "worse",
+        "direction": "lower",
+        "sourceNote": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)",
+        "targetValue": 0.22,
+        "targetPosition": "above"
+      },
+      {
+        "metric": "Jaccard Index",
+        "modelValue": 0.4937,
+        "refLow": 0.65,
+        "refHigh": 0.82,
+        "quality": "worse",
+        "direction": "higher",
+        "sourceNote": "내부 참조 기준치 v1 (공개 벤치마크 평균이 아닌 사내 합의 보수 기준이며, 도메인별로 상이할 수 있음)",
+        "targetValue": 0.45,
+        "targetPosition": "below"
+      }
+    ]
+  },
+  "recommendationNarrative": {
+    "dataQuality": "데이터 측면에서 지목된 문제는 P3(불균형 영향 있음 (다수 Class12 · 소수 Class14)), P4(최약 클래스 (Class8))이며, 9절 권고표의 해당 항목에 따른 보완 후 재평가를 권고한다.",
+    "modelOps": "모델 측면에서 지목된 문제는 P1(핵심 지표 미달 (Hamming Loss)), P2(비핵심 지표 미달 (F1 Score))이며, 9절 권고표의 해당 항목에 따른 개선 후 재평가를 권고한다."
+  },
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "category": "핵심 지표 개선",
+      "action": "미달한 핵심 지표의 오분류 사례를 분석하고 재학습·데이터 보강·결정 임계값 재조정을 검토한 뒤 재평가한다",
+      "expectedImpact": "핵심 지표 충족 여부 재확인 및 종합 판정 개선 근거 확보",
+      "problemId": "P1"
+    },
+    {
+      "priority": "MEDIUM",
+      "category": "보조 지표 개선",
+      "action": "미달한 비핵심 지표가 운영 목적에 주는 영향을 검토하고, 필요하면 재학습·결정 임계값 조정으로 보완한다",
+      "expectedImpact": "보조 지표 미달에 따른 운영 위험 감소",
+      "problemId": "P2"
+    },
+    {
+      "priority": "MEDIUM",
+      "category": "데이터 균형",
+      "action": "의뢰자가 편향 감소 노력을 수행하지 않았다고 밝혔으므로, 소수 클래스 데이터를 보강하거나 클래스 가중치·재표집으로 불균형을 완화한 뒤 재평가한다",
+      "expectedImpact": "소수 클래스 성능 개선 및 불균형에 의한 성능 왜곡 축소",
+      "problemId": "P3"
+    },
+    {
+      "priority": "LOW",
+      "category": "취약 클래스 보강",
+      "action": "성능이 가장 낮은 클래스의 데이터를 추가 수집하고 오분류 사례를 분석해 보강한다",
+      "expectedImpact": "취약 클래스 성능 개선 및 클래스 간 성능 편차 축소",
+      "problemId": "P4"
+    }
+  ],
+  "signature": {
+    "issuer": "",
+    "signedAt": "",
+    "history": []
+  },
+  "materials": {
+    "declarations": [
+      {
+        "label": "클래스 중요도",
+        "value": "모든 클래스가 동등"
+      },
+      {
+        "label": "사용 방식",
+        "value": "배치 (의뢰자 제공: 주 1회 새 유전자 목록을 한꺼번에 돌린다.)"
+      }
+    ],
+    "metricRationale": "겹치는 정도를 봄 (의뢰자 제공: 한 유전자의 기능 범주를 일부라도 맞히면 실험 후보로 쓸 수 있다.)",
+    "training": [
+      {
+        "label": "학습 데이터셋명",
+        "value": "Mulan yeast 학습 분할",
+        "item": 1
+      },
+      {
+        "label": "학습 데이터 출처",
+        "value": "Elisseeff & Weston(2001) 공개 데이터",
+        "item": 1
+      },
+      {
+        "label": "학습 샘플 수",
+        "value": "1,500개",
+        "item": 1
+      },
+      {
+        "label": "검증 샘플 수",
+        "value": "0개",
+        "item": 1
+      },
+      {
+        "label": "학습 클래스 분포",
+        "value": null,
+        "item": 1
+      },
+      {
+        "label": "채널 효과",
+        "value": "알려진 것 없음",
+        "item": 9
+      },
+      {
+        "label": "편향 감소 노력",
+        "value": "수행 안 함 (의뢰자 제공: 레이블별 빈도 차이가 크지만(최대 50배 이상) 그대로 학습했다.)",
+        "item": 3
+      },
+      {
+        "label": "학습·평가 전처리 일치",
+        "value": "같음"
+      }
+    ],
+    "test": [
+      {
+        "label": "평가 데이터 출처",
+        "value": "Mulan 표준 시험 분할(917건)",
+        "item": 2
+      },
+      {
+        "label": "학습 데이터와의 관계",
+        "value": "같은 출처",
+        "item": 2
+      }
+    ],
+    "groundTruth": [
+      {
+        "label": "정답 라벨 구축 방법",
+        "value": "전문가 수동 (의뢰자 제공: MIPS 기능 분류 데이터베이스 주석)",
+        "item": 4
+      },
+      {
+        "label": "정답 라벨 신뢰성",
+        "value": "복수 라벨러 합의",
+        "item": 5
+      },
+      {
+        "label": "라벨러 수",
+        "value": "3명",
+        "item": 5
+      },
+      {
+        "label": "라벨 일치도",
+        "value": "측정 안 함",
+        "item": 5
+      }
+    ],
+    "environment": [
+      {
+        "label": "학습 가속",
+        "value": "아니오",
+        "item": 11
+      },
+      {
+        "label": "추론 가속",
+        "value": "아니오",
+        "item": 11
+      }
+    ],
+    "hyperparameters": {
+      "algorithm": "레이블별 로지스틱 회귀(One-vs-Rest)",
+      "rows": [
+        {
+          "name": "C",
+          "value": "0.3"
+        },
+        {
+          "name": "max_iter",
+          "value": "3000"
+        }
+      ]
+    }
+  },
+  "materialCheck": {
+    "version": "2.0",
+    "reporting": {
+      "total": 12,
+      "provided": 10,
+      "items": [
+        {
+          "item": 1,
+          "name": "학습 데이터의 출처·크기·구성",
+          "impact": "평가 결과를 학습 데이터와 견주어 해석할 수 있는지",
+          "provided": false,
+          "missing": [
+            "학습 클래스 분포"
+          ]
+        },
+        {
+          "item": 2,
+          "name": "평가 데이터 출처",
+          "impact": "평가 데이터가 용도를 대표하는지",
+          "provided": true,
+          "missing": []
+        },
+        {
+          "item": 3,
+          "name": "편향 감소 노력",
+          "impact": "데이터 편향을 분석하고 줄였는지",
+          "provided": true,
+          "missing": []
+        },
+        {
+          "item": 4,
+          "name": "정답 라벨 구축 방법",
+          "impact": "정답 라벨을 얼마나 믿을 수 있는지",
+          "provided": true,
+          "missing": []
+        },
+        {
+          "item": 5,
+          "name": "정답 라벨 신뢰성",
+          "impact": "정답 라벨의 오류가 성능 수치에 얼마나 섞였는지",
+          "provided": true,
+          "missing": []
+        },
+        {
+          "item": 6,
+          "name": "대표 작동 지점의 TP·FP 건수",
+          "impact": "오류 건수를 확인할 수 있는지",
+          "provided": true,
+          "missing": []
+        },
+        {
+          "item": 7,
+          "name": "추론 환경",
+          "impact": "결과가 어떤 하드웨어·소프트웨어에서 나왔는지",
+          "provided": true,
+          "missing": []
+        },
+        {
+          "item": 8,
+          "name": "추론 효율성(지연시간)",
+          "impact": "응답 속도가 용도에 맞는지",
+          "provided": false,
+          "missing": [
+            "지연시간 컬럼"
+          ]
+        },
+        {
+          "item": 9,
+          "name": "학습 데이터의 채널 효과",
+          "impact": "모델이 내용 대신 수집 방식을 배웠는지",
+          "provided": true,
+          "missing": []
+        },
+        {
+          "item": 10,
+          "name": "하이퍼파라미터",
+          "impact": "같은 조건으로 모델을 다시 만들거나 공정하게 비교할 수 있는지",
+          "provided": true,
+          "missing": []
+        },
+        {
+          "item": 11,
+          "name": "가속 사용",
+          "impact": "응답 시간이 어떤 조건에서 나온 값인지",
+          "provided": true,
+          "missing": []
+        },
+        {
+          "item": 12,
+          "name": "멀티레이블 지표 선택 기준",
+          "impact": "고른 지표가 무엇을 확인하기 위한 것인지",
+          "provided": true,
+          "missing": []
+        }
+      ]
+    },
+    "purpose": {
+      "applicable": 1,
+      "met": 1,
+      "lines": [
+        {
+          "id": "averaging",
+          "met": true,
+          "title": "클래스 중요도 → 평균 방식",
+          "declared": "모든 클래스가 동등",
+          "recommended": [
+            "M22"
+          ],
+          "shortfall": "의뢰자가 클래스 중요도를 \"모든 클래스가 동등\"으로 밝혔으나, 이에 맞는 매크로 평균 지표가 시험 항목에 없다."
+        }
+      ]
+    },
+    "warningIds": [
+      "reporting:1",
+      "reporting:8"
+    ],
+    "imbalanceRatio": 52.92307692307692,
+    "distributionSource": "validation",
+    "acknowledgement": {
+      "at": "2026-10-22T09:45:00.000Z",
+      "version": "2.0"
+    },
+    "printed": {
+      "cover": "ISO/IEC TS 4213:2022에 따라 평가. 일부 보고 항목 미제공(1.4 참조)",
+      "notProvided": "ISO/IEC TS 4213이 보고를 요구하는 항목 중 학습 데이터의 출처·크기·구성, 추론 효율성(지연시간)은 의뢰자로부터 제공받지 못해 기재하지 않았다. 따라서 본 결과서는 이 항목들에 대해 TS 4213의 보고 요구를 충족하지 않는다.",
+      "impacts": [
+        "학습 데이터의 출처·크기·구성: 평가 결과를 학습 데이터와 견주어 해석할 수 있는지 판단할 수 없다.",
+        "추론 효율성(지연시간): 응답 속도가 용도에 맞는지 판단할 수 없다."
+      ],
+      "purposeShortfalls": [],
+      "summary": [
+        {
+          "label": "보고 항목 제공",
+          "value": "12개 중 10개",
+          "note": "빠진 항목: 학습 데이터의 출처·크기·구성, 추론 효율성(지연시간) (1.4 참조)"
+        },
+        {
+          "label": "목적별 점검",
+          "value": "1줄 중 1줄 충족",
+          "note": "선언에 맞는 재료를 모두 갖춤"
+        },
+        {
+          "label": "생성 전 안내 확인",
+          "value": "확인 후 진행 (2026-10-22 18:45)",
+          "note": "점검 표 2.0"
+        }
+      ]
+    }
+  },
+  "evaluationWarnings": [
+    "예측 컬럼이 없어 레이블별 점수가 그 레이블의 결정 임계값 이상이면 그 레이블을 예측으로 썼습니다. 이렇게 만든 예측은 모델이 직접 낸 값이 아닙니다."
+  ],
+  "coreMetricsSource": "client",
+  "classReport": null,
+  "confusionCounts": {
+    "kind": "perClass",
+    "rows": [
+      {
+        "label": "Class1",
+        "tp": 187,
+        "fp": 148,
+        "fn": 99,
+        "tn": 483
+      },
+      {
+        "label": "Class10",
+        "tp": 13,
+        "fp": 29,
+        "fn": 79,
+        "tn": 796
+      },
+      {
+        "label": "Class11",
+        "tp": 9,
+        "fp": 18,
+        "fn": 82,
+        "tn": 808
+      },
+      {
+        "label": "Class12",
+        "tp": 582,
+        "fp": 172,
+        "fn": 106,
+        "tn": 57
+      },
+      {
+        "label": "Class13",
+        "tp": 677,
+        "fp": 228,
+        "fn": 6,
+        "tn": 6
+      },
+      {
+        "label": "Class14",
+        "tp": 1,
+        "fp": 4,
+        "fn": 12,
+        "tn": 900
+      },
+      {
+        "label": "Class2",
+        "tp": 266,
+        "fp": 230,
+        "fn": 127,
+        "tn": 294
+      },
+      {
+        "label": "Class3",
+        "tp": 239,
+        "fp": 109,
+        "fn": 146,
+        "tn": 423
+      },
+      {
+        "label": "Class4",
+        "tp": 152,
+        "fp": 57,
+        "fn": 178,
+        "tn": 530
+      },
+      {
+        "label": "Class5",
+        "tp": 171,
+        "fp": 183,
+        "fn": 110,
+        "tn": 453
+      },
+      {
+        "label": "Class6",
+        "tp": 76,
+        "fp": 113,
+        "fn": 143,
+        "tn": 585
+      },
+      {
+        "label": "Class7",
+        "tp": 18,
+        "fp": 32,
+        "fn": 149,
+        "tn": 718
+      },
+      {
+        "label": "Class8",
+        "tp": 4,
+        "fp": 8,
+        "fn": 187,
+        "tn": 718
+      },
+      {
+        "label": "Class9",
+        "tp": 4,
+        "fp": 23,
+        "fn": 76,
+        "tn": 814
+      }
+    ]
+  },
+  "errorRatios": {
+    "unit": "label_cell",
+    "misclassified": 2854,
+    "boundary": {
+      "count": 758,
+      "ratio": 0.2656
+    },
+    "boundary_note": null,
+    "confident": {
+      "count": 431,
+      "ratio": 0.151
+    },
+    "boundary_margin": 0.1,
+    "confident_level": 0.9,
+    "threshold": {
+      "score_Class1": 0.3,
+      "score_Class2": 0.4,
+      "score_Class3": 0.5,
+      "score_Class4": 0.6,
+      "score_Class5": 0.3,
+      "score_Class6": 0.4,
+      "score_Class7": 0.5,
+      "score_Class8": 0.6,
+      "score_Class9": 0.3,
+      "score_Class10": 0.4,
+      "score_Class11": 0.5,
+      "score_Class12": 0.6,
+      "score_Class13": 0.3,
+      "score_Class14": 0.4
+    }
+  },
+  "errorRatioSentence": "확률이 있는 틀린 레이블 칸 2854개 중 경계 오류(확률과 레이블별 결정 임계값의 차가 0.1 미만)는 758개(26.6%), 확신 오류(틀린 쪽 확률 0.9 이상)는 431개(15.1%)이다.",
+  "confidenceIntervalNote": "판정 대상 지표의 95% 신뢰구간은 행 재표집 부트스트랩(2,000회, 시드 4213, 백분위 구간; M4, M15, M17)으로 산출하였습니다.",
+  "nearTargetNote": "목표값과의 차이가 목표값의 3% 미만인 지표(근소 차이): Hamming Loss(M15) 0.222(목표 0.220 이하, 미달).",
+  "noBenchmarkSentence": "다음 지표는 내부 참조 기준치가 없어 벤치마크 비교를 하지 않았다: Precision, Recall, Exact Match Ratio, Distribution Diff (ML), Imbalance Ratio.",
+  "sourceRelationSentence": "평가 데이터는 학습 데이터와 동일한 출처에서 수집되었다. 본 결과는 동일 분포 내 성능을 나타내며, 다른 운영 환경에서의 일반화 성능을 보증하지 않는다.",
+  "problems": [
+    {
+      "id": "P1",
+      "kind": "core_fail",
+      "priority": "HIGH",
+      "title": "핵심 지표 미달 (Hamming Loss)",
+      "source_section": "8.2",
+      "recommend_section": "9.2",
+      "evidence": {
+        "Hamming Loss": {
+          "value": 0.2223087708365789,
+          "target": 0.22
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "P2",
+      "kind": "noncore_fail",
+      "priority": "MEDIUM",
+      "title": "비핵심 지표 미달 (F1 Score)",
+      "source_section": "8.2",
+      "recommend_section": "9.2",
+      "evidence": {
+        "F1 Score": {
+          "value": 0.40896768261340055,
+          "target": 0.45
+        }
+      },
+      "note": null
+    },
+    {
+      "id": "P3",
+      "kind": "imbalance_effect",
+      "priority": "MEDIUM",
+      "title": "불균형 영향 있음 (다수 Class12 · 소수 Class14)",
+      "source_section": "7.2",
+      "recommend_section": "9.1",
+      "evidence": {
+        "level": "affected",
+        "imbalance_ratio": 52.9231,
+        "accuracy_minus_macro_f1": null,
+        "majority_minus_minority_f1": 0.6961,
+        "majority_class": "Class12",
+        "minority_class": "Class14",
+        "majority_f1": 0.8072,
+        "minority_f1": 0.1111,
+        "display": {
+          "imbalance_ratio": "52.9231",
+          "accuracy_minus_macro_f1": null,
+          "majority_minus_minority_f1": "0.6961",
+          "majority_f1": "0.8072",
+          "minority_f1": "0.1111"
+        }
+      },
+      "note": "의뢰자가 편향 감소 노력을 '수행 안 함'으로 밝혔다."
+    },
+    {
+      "id": "P4",
+      "kind": "weakest_class",
+      "priority": "LOW",
+      "title": "최약 클래스 (Class8)",
+      "source_section": "7.1·8.3",
+      "recommend_section": "9.1",
+      "evidence": {
+        "Class8": {
+          "f1": 0.03940886699507389,
+          "support": 191,
+          "share": 0.04898692,
+          "macro_f1": 0.40896768261340055,
+          "gap_from_macro": 0.369558816,
+          "low_support": true
+        }
+      },
+      "note": null
+    }
+  ],
+  "narrativeFacts": {
+    "contract": "facts-1",
+    "positive_class": null,
+    "n_classes": 14,
+    "class_share_basis": "label_occurrences",
+    "report_purpose_label": "외부 제출",
+    "core_metrics_source": "client",
+    "selected_metrics": [
+      "M2",
+      "M3",
+      "M4",
+      "M15",
+      "M16",
+      "M17",
+      "M18",
+      "M23"
+    ],
+    "declarations": {
+      "risk_direction": null,
+      "class_priority": "all_equal",
+      "usage_mode": "batch"
+    },
+    "verdict_detail": {
+      "verdict": "FAIL",
+      "judged_count": 3,
+      "passed_count": 1,
+      "failed_core": [
+        {
+          "metric_id": "M15",
+          "display_name": "Hamming Loss"
+        }
+      ],
+      "failed_noncore": [
+        {
+          "metric_id": "M4",
+          "display_name": "F1 Score"
+        }
+      ],
+      "unavailable_core": [],
+      "inconclusive_cause": null,
+      "inconclusive_metrics": []
+    },
+    "error_totals": {
+      "unit": "label_cell",
+      "total": 12838,
+      "misclassified": 2854
+    },
+    "weakest_class": {
+      "label": "Class8",
+      "f1": 0.03940886699507389,
+      "support": 191,
+      "share": 0.04898692,
+      "share_text": "0.049",
+      "macro_f1": 0.40896768261340055,
+      "gap_from_macro": 0.369558816,
+      "gap_text": "0.3696",
+      "low_support": true,
+      "far_below_macro": true
+    },
+    "low_support_classes": [
+      {
+        "label": "Class10",
+        "support": 92,
+        "share": 0.023595794,
+        "share_text": "0.0236"
+      },
+      {
+        "label": "Class11",
+        "support": 91,
+        "share": 0.023339318,
+        "share_text": "0.0233"
+      },
+      {
+        "label": "Class14",
+        "support": 13,
+        "share": 0.003334188,
+        "share_text": "0.0033"
+      },
+      {
+        "label": "Class7",
+        "support": 167,
+        "share": 0.042831495,
+        "share_text": "0.0428"
+      },
+      {
+        "label": "Class8",
+        "support": 191,
+        "share": 0.04898692,
+        "share_text": "0.049"
+      },
+      {
+        "label": "Class9",
+        "support": 80,
+        "share": 0.020518082,
+        "share_text": "0.0205"
+      }
+    ],
+    "top_confusion_pairs": [],
+    "prediction_bias": {
+      "unit": "label_total",
+      "rows": [
+        {
+          "label": null,
+          "predicted": 3753,
+          "actual": 3899,
+          "difference": -146
+        }
+      ]
+    },
+    "declared_risk_errors": null,
+    "precision_recall_gap": null,
+    "average_gap": {
+      "kind": "macro_vs_micro",
+      "macro_f1": 0.40896768261340055,
+      "other_f1": 0.627025614218505,
+      "difference": 0.218057932,
+      "difference_text": "0.2181",
+      "reference_class": {
+        "label": "Class8",
+        "support": 191,
+        "f1": 0.03940886699507389
+      }
+    },
+    "declared_average": null,
+    "distribution_shift_status": "not_provided",
+    "distribution_shift": [],
+    "ci_available": true,
+    "ci_skipped": [],
+    "fixed_sentences": [
+      {
+        "id": "9",
+        "section": "7.1",
+        "text": "본 평가의 예측값은 제출된 확률값에 레이블별 결정 임계값(아래 표)을 적용하여 산출하였다."
+      },
+      {
+        "id": "17",
+        "section": "7.1",
+        "text": "확률이 있는 틀린 레이블 칸 2854개 중 경계 오류(확률과 레이블별 결정 임계값의 차가 0.1 미만)는 758개(26.6%), 확신 오류(틀린 쪽 확률 0.9 이상)는 431개(15.1%)이다."
+      },
+      {
+        "id": "7",
+        "section": "7.2",
+        "text": "다중 레이블에서 불균형 비율은 레이블 등장 빈도의 최다값 대 최소값의 비로 정의한다."
+      },
+      {
+        "id": "16",
+        "section": "8.1",
+        "text": "다음 지표는 내부 참조 기준치가 없어 벤치마크 비교를 하지 않았다: Precision, Recall, Exact Match Ratio, Distribution Diff (ML), Imbalance Ratio."
+      },
+      {
+        "id": "11a",
+        "section": "8.2",
+        "text": "평가 데이터는 학습 데이터와 동일한 출처에서 수집되었다. 본 결과는 동일 분포 내 성능을 나타내며, 다른 운영 환경에서의 일반화 성능을 보증하지 않는다."
+      },
+      {
+        "id": "18",
+        "section": "8.3",
+        "text": "목표값과의 차이가 목표값의 3% 미만인 지표(근소 차이): Hamming Loss(M15) 0.222(목표 0.220 이하, 미달)."
+      }
+    ],
+    "omitted": {}
+  },
+  "isEvaluated": true,
+  "narrativeModels": {
+    "9": null,
+    "7.1": null,
+    "7.2": null,
+    "7.3": null,
+    "8.1": null,
+    "8.2": null,
+    "8.3": null
+  },
+  "narrativeSource": "fallback",
+  "narrativeSections": {
+    "9": "fallback",
+    "7.1": "fallback",
+    "7.2": "fallback",
+    "7.3": "fixed",
+    "8.1": "fallback",
+    "8.2": "fallback",
+    "8.3": "fallback"
+  }
+}

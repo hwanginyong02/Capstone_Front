@@ -412,4 +412,49 @@ describe("buildNarrativeFacts — 갈래 배선", () => {
     expect(m.average_gap?.kind).toBe("macro_vs_weighted");
     expect(buildNarrativeFacts({ ...base, taskType: "multilabel", confusion: null }).class_share_basis).toBe("label_occurrences");
   });
+
+  /**
+   * S6 질문 4(2026-10-24 사용자 답 "추천대로"): 판 4 멀티레이블은 최약 레이블·작은 표본 비율의 분모가 평가 표본 수(4.5 와 같음).
+   * 레이블 a 300건·b 40건·c 20건(등장 합 360), 표본 수 200 — 판 3 은 등장 합 분모, 판 4 는 표본 수 분모.
+   */
+  describe("판 4 멀티레이블 — 최약 레이블·작은 표본 비율의 분모 = 표본 수(S6 질문 4)", () => {
+    const ml = {
+      ...base,
+      taskType: "multilabel" as const,
+      confusion: null,
+      classTable: table([row("a", 0.9, 300), row("b", 0.5, 40), row("c", 0.8, 20)], { "매크로 평균": 0.7333333333 }),
+    };
+
+    it("판 4: share = 40/200 = 0.2(작은 몫 아님), 작은 표본은 30건 미만 c 하나(20/200 = 10%), 분모 이름 samples", () => {
+      const f = buildNarrativeFacts({ ...ml, edition4: true });
+      expect(f.class_share_basis).toBe("samples");
+      expect(f.weakest_class).toMatchObject({ label: "b", support: 40, share: 0.2, share_text: "0.200", low_support: false });
+      expect(f.low_support_classes).toEqual([{ label: "c", support: 20, share: 0.1, share_text: "0.100" }]);
+    });
+
+    it("판 4: 표본 수 분모로 5% 미만이면 작은 몫(9/200 = 4.5%)", () => {
+      const t = table([row("a", 0.9, 300), row("b", 0.5, 9), row("c", 0.8, 40)], { "매크로 평균": 0.7333333333 });
+      const f = buildNarrativeFacts({ ...ml, classTable: t, edition4: true });
+      expect(f.weakest_class).toMatchObject({ label: "b", share: 0.045, share_text: "0.045", low_support: true });
+    });
+
+    it("판 3(기본): 등장 합 분모 그대로 — b share = 40/360(11.1%), 작은 표본은 c 하나(20건 < 30, 20/360 = 5.6%)", () => {
+      const f = buildNarrativeFacts(ml);
+      expect(f.class_share_basis).toBe("label_occurrences");
+      expect(f.weakest_class).toMatchObject({ label: "b", share: 0.111111111, share_text: "0.1111", low_support: false });
+      expect(f.low_support_classes.map((r) => [r.label, r.share])).toEqual([["c", 0.055555556]]);
+    });
+
+    it("판 4 이지만 표본 수가 없으면(0) 4.5 처럼 등장 합으로 대신하고 분모 이름도 label_occurrences", () => {
+      const f = buildNarrativeFacts({ ...ml, edition4: true, nSamples: 0 });
+      expect(f.class_share_basis).toBe("label_occurrences");
+      expect(f.weakest_class).toMatchObject({ share: 0.111111111, share_text: "0.111" });
+    });
+
+    it("판 4 이진·다중은 그대로(표본 수 분모 = 클래스 합)", () => {
+      const f = buildNarrativeFacts({ ...base, taskType: "multiclass", edition4: true, nSamples: 9999 });
+      expect(f.class_share_basis).toBe("samples");
+      expect(f.weakest_class).toMatchObject({ label: "0", share: 0.5 });
+    });
+  });
 });

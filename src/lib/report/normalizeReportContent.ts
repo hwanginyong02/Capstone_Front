@@ -34,6 +34,20 @@ export function usesSchema3(content: Pick<FinalReportData, "contentSchema">): bo
   return schemaOf(content) >= 3;
 }
 
+/**
+ * 판 4(목차 개편 — 대상·방법·결과·소견·권고)의 판 번호. 지금 판(`REPORT_CONTENT_SCHEMA`)은 3 그대로다 — 새 run 의 판은
+ * `reportEdition.newRunContentSchema()` 가 정한다(판 4 라운드 계획 2.1·2.2).
+ */
+export const EDITION4_CONTENT_SCHEMA = 4;
+
+/**
+ * 판 4 로 만들고 그리는 성적서인지(판 4 이상). 판 4 run 이 아니면 판 4 칸·글을 만들지 않는다. `usesSchema3` 은 "판 3 이상"이라
+ * 판 4 에도 참이다 — 판 3 만 가르려면 이 함수를 함께 본다.
+ */
+export function usesSchema4(content: Pick<FinalReportData, "contentSchema">): boolean {
+  return schemaOf(content) >= EDITION4_CONTENT_SCHEMA;
+}
+
 export function normalizeReportContent(content: FinalReportData): FinalReportData {
   if (schemaOf(content) >= 2) return content;
 

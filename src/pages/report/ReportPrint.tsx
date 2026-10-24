@@ -1,5 +1,5 @@
 import { useParams } from "react-router";
-import { isLegacyLayout, usesSchema3 } from "../../lib/report/normalizeReportContent";
+import { isLegacyLayout, usesSchema3, usesSchema4 } from "../../lib/report/normalizeReportContent";
 import { useStoredReport } from "../../hooks/useReportData";
 import { NotPrintableState, ReportNotFoundState } from "../../components/report/ReportStateNotices";
 import { usePrintOnReady } from "../../hooks/usePrintOnReady";
@@ -19,6 +19,7 @@ import { InterpretSection } from "../../components/report/sections/InterpretSect
 import { ConclusionSection } from "../../components/report/sections/ConclusionSection";
 import { RecommendSection } from "../../components/report/sections/RecommendSection";
 import { SignatureSection } from "../../components/report/sections/SignatureSection";
+import { Edition4Report } from "../../components/report/edition4/Edition4Report";
 
 export function ReportPrint() {
   const { id = "" } = useParams();
@@ -32,6 +33,7 @@ export function ReportPrint() {
   return (
     <PrintLayout>
       <div ref={containerRef}>
+        {usesSchema4(data) ? <Edition4Report data={data} mode="print" /> : (<>
         <ReportCoverSection meta={data.meta} performer={data.performer} materialCheck={data.materialCheck} schema3={usesSchema3(data)} />
         <CompanyInfoSection
           applicant={data.applicant}
@@ -132,6 +134,7 @@ export function ReportPrint() {
             schema3={usesSchema3(data)}
           />
         </PageBreak>
+        </>)}
       </div>
     </PrintLayout>
   );
