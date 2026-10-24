@@ -228,3 +228,35 @@ describe("2절 — 픽스처에 없는 갈래(복사 데이터)", () => {
     expect(lines.at(-1)).toBe("2.3 학습 데이터");
   });
 });
+
+describe("2.2 해시 칸 줄바꿈(S6 스모크 발견 3 — 인쇄 표가 오른쪽 여백을 넘던 것)", () => {
+  it("해시 칸만 break-all 로 감싸고 글은 64자 그대로, 다른 칸은 감싸지 않는다", () => {
+    const view = render(<Ed4Target data={loadEd4("bc_strong", "final")} mode="print" />);
+    const hashes = view.container.querySelectorAll("[data-ed4-hash]");
+    expect(hashes).toHaveLength(1);
+    expect(hashes[0].classList.contains("break-all")).toBe(true);
+    expect(hashes[0].textContent).toBe(BC_SHA256);
+    // 해시 줄의 '내용' 칸 안에 있다(항목 칸·출처 칸이 아님)
+    const cells = [...(hashes[0].closest("tr")?.querySelectorAll("td") ?? [])];
+    expect(cells).toHaveLength(3);
+    expect(cells[0].textContent).toBe("파일 해시(SHA-256)");
+    expect(cells[1].firstElementChild).toBe(hashes[0]);
+    expect(view.container.querySelectorAll(".break-all")).toHaveLength(1);
+    view.unmount();
+  });
+
+  it("2.2 표 '출처' 칸은 모두 줄바꿈 금지(한 글자씩 쌓이지 않게), 글은 그대로", () => {
+    const view = render(<Ed4Target data={loadEd4("bc_strong", "final")} mode="print" />);
+    const hashRow = view.container.querySelector("[data-ed4-hash]")!.closest("tr")!;
+    const rows = [...hashRow.closest("tbody")!.querySelectorAll("tr")];
+    expect(rows.length).toBeGreaterThan(5);
+    for (const tr of rows) {
+      const src = tr.querySelectorAll("td")[2].querySelector("[data-ed4-source]");
+      expect(src?.classList.contains("whitespace-nowrap")).toBe(true);
+      expect(["시스템 확인", "의뢰자 제공"]).toContain(src?.textContent);
+    }
+    // 다른 표(2.1 등)의 칸은 건드리지 않는다
+    expect(view.container.querySelectorAll("[data-ed4-source]")).toHaveLength(rows.length);
+    view.unmount();
+  });
+});
