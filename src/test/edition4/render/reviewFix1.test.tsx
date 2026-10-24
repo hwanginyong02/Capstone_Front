@@ -1,7 +1,12 @@
 /**
  * 판 4 렌더러 검토 지적 고침(fix1) — 검토자(rv1·rv3) 재현을 옮긴 시험. 평가 전 초안은 실제 매퍼 결과(`draftEd4.ts`)로 그린다.
  */
+import { render } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
+
+import { ReportSections } from "../../../components/report/ReportSections";
+import { Ed4Narrative } from "../../../components/report/edition4/shared/Ed4Paragraph";
 
 import { buildThresholdTableEd4, f1ThresholdGainTextsEd4, type F1ThresholdGainRawEd4 } from "../../../lib/report/edition4/thresholdGainEd4";
 import { coverIssuerLine } from "../../../lib/report/edition4/render/cover";
@@ -271,5 +276,29 @@ describe("지적 7 — 의뢰자·데이터 값 속 $&·$'·$$·$` 를 그대로
 
   it("숫자 칸도 함수 치환(파일 크기)", () => {
     expect(fileSizeText(loadEd4("bc_strong", "final"))).toBe("3,727바이트");
+  });
+});
+
+describe("지적 8 — 판 4 서술 문단의 홑 줄바꿈 보존(판 3 schema3 서술 문단과 같은 whitespace-pre-line)", () => {
+  it("Ed4Narrative: 빈 줄은 문단 나눔, 홑 줄바꿈은 문단 안에 남고 줄바꿈 보존 클래스", () => {
+    const view = render(<Ed4Narrative text={"첫 줄\n둘째 줄\n\n새 문단"} />);
+    const ps = Array.from(view.container.querySelectorAll("p"));
+    expect(ps.map((p) => p.textContent)).toEqual(["첫 줄\n둘째 줄", "새 문단"]);
+    for (const p of ps) expect(p.classList.contains("whitespace-pre-line")).toBe(true);
+    view.unmount();
+  });
+
+  it("성적서 화면: 5.1 서술(홑 줄바꿈 포함)의 문단이 줄바꿈 보존", () => {
+    const data = structuredClone(loadEd4("bc_strong", "final"));
+    data.conclusion.narrative = "판정 문장.\n둘째 줄 문장.";
+    const view = render(
+      <MemoryRouter>
+        <ReportSections data={data} />
+      </MemoryRouter>,
+    );
+    const p = Array.from(view.container.querySelectorAll("p")).find((el) => el.textContent === "판정 문장.\n둘째 줄 문장.");
+    expect(p).toBeTruthy();
+    expect(p!.classList.contains("whitespace-pre-line")).toBe(true);
+    view.unmount();
   });
 });
