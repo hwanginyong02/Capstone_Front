@@ -156,3 +156,105 @@ export const ED4_TITLE_NUMBERS: ReadonlyArray<Ed4TitleNumber> = (Object.keys(ED4
   const [b1, b2 = 0] = b.split(".").map(Number);
   return a1 - b1 || a2 - b2;
 });
+
+/* ------------------------------------------------------------------ *
+ * 렌더러(S4·S5) — 고정 문구(사본 `fixedWording.ed4.json` 의 fixed 키 = 이름 속 번호)
+ * 이미 다른 곳에 있는 것은 여기 두지 않는다: 3_significance = reportConstants.CONFIDENCE_INTERVAL_PREMISE,
+ * 2_3_cover_* = materialCheck.COVER_STANDARD_*, 2_2_not_provided_ed4 = materialCheck(printed.notProvided),
+ * 21_reporting·21_constraint = materialCheck(printed.coverRows), 3_2_M10_formula = metricFormulasEd4, 19_values = JUDGMENT_MARGIN_LABEL + "—".
+ * ------------------------------------------------------------------ */
+
+/** 고정 문구 10(판 4) — 3.4 판정 규칙 첫 문단. {core_metrics} = "Recall(M3)" 꼴. */
+export const FIXED_10_RULE_ED4 =
+  "목표값이 설정되고 산출에 성공한 지표를 판정 대상으로 하며, 핵심 지표는 의뢰자가 지정하였다({core_metrics}). 핵심 지표가 하나라도 목표에 미달하면 불합격, 핵심 지표가 산출되지 않았거나 판정 대상 지표가 없으면 판정 불가, 핵심 지표는 모두 충족하였으나 그 외 지표 중 미달이 있으면 조건부 합격, 모든 판정 대상 지표가 목표를 충족하면 합격으로 판정한다. 판정은 측정값을 목표값과 직접 비교하였으며 측정 불확도는 반영하지 않았다.";
+/** 고정 문구 10(판 4) — 3.4 둘째 문단(판정 여유·충족 수). */
+export const FIXED_10_MARGIN_PARAGRAPH_ED4 =
+  '95% 신뢰구간이 목표값을 포함하는 지표는 판정 여유가 작은 지표로 보고, 4.3의 판정 여유 열에 "작음"으로 표시한다. 신뢰구간이 없는 지표는 목표값과의 차이가 목표값의 3% 미만일 때 표시한다. 종합 판정에는 판정 대상 지표 가운데 목표를 충족한 수를 함께 적는다. 이 수는 참고이며 판정의 근거가 아니다.';
+/** 고정 문구 10 — 핵심 지표 출처 두 갈래(첫 문단 안의 그 문장을 이것으로 바꾼다). */
+export const FIXED_10_CORE_CLIENT = "핵심 지표는 의뢰자가 지정하였다({core_metrics}).";
+export const FIXED_10_CORE_DEFAULT = "핵심 지표는 분류 유형의 기본값을 의뢰자가 바꾸지 않고 사용하였다({core_metrics}).";
+/** 고정 문구 13(판 4) — 1.3 의뢰자 제공 정보 전제. */
+export const FIXED_13_ED4 =
+  "본 시험성적서는 의뢰자가 제공한 데이터와 정보를 바탕으로 작성되었다. 제공된 내용이 사실과 다르면 본 시험성적서의 결과와 해석은 유효하지 않다.";
+/** ※ 판 4 — 5절 머리 줄. */
+export const FIXED_NOTE_ED4 = "※ 5절은 4절의 시험 결과를 해석한 참고 의견이며, 시험 결과에 해당하지 않습니다.";
+/** 고정 문구 19 — 4.3 표 아래. */
+export const FIXED_19_NOTE =
+  '판정 여유 "작음"은 95% 신뢰구간이 합격 기준을 포함하거나, 신뢰구간이 없는 지표에서는 목표값과의 차이가 목표값의 3% 미만이라는 뜻입니다(3.4).';
+/** 고정 문구 22 — 표지 발급 문구(발급본에만, 부록 B1). */
+export const FIXED_22_ISSUE =
+  "본 시험성적서는 평가 시스템이 자동으로 발급한 문서이며, 발급 전에 사람이 승인하지 않았습니다. 의뢰자는 입력 내용을 확인하고 발급을 요청하였습니다.";
+/** 고정 문구 23 — 3.3 반올림 규칙. */
+export const FIXED_23_ROUNDING =
+  "본 시험성적서의 지표 산출 결과와 합격 기준은 원본 데이터에서 소수점 셋째 자리로 반올림 표기되었습니다. 다만 판정 대상 지표의 값 중 셋째 자리로 반올림하면 판정과 어긋나 보이는 값과, 신뢰구간 경계 중 반올림하면 목표값과 같아 보이는 값은 자릿수를 늘려 표기하였습니다. 결정 임계값은 그 값을 그대로 적용해도 같은 예측이 나오는 자릿수로 표기하였습니다. 소견 문장의 숫자도 같은 규칙을 따릅니다. 표기한 값끼리 계산한 차이는 반올림 때문에 끝자리가 다를 수 있습니다.";
+/** 고정 문구 24 — 4.5 끝. */
+export const FIXED_24_DISTRIBUTION = "불균형과 분포 차이가 성능에 준 영향은 5.3에서 해석합니다.";
+/** 고정 문구 25 — 3.5 시험 절차 일곱 단계(번호 포함 글 그대로). */
+export const FIXED_25_STEPS: ReadonlyArray<string> = [
+  "1. 의뢰 접수: 의뢰자가 평가 흐름을 구성하고 의뢰자 정보, 대상 모델, 선언, 지표와 합격 기준을 입력한다.",
+  "2. 데이터 업로드: 의뢰자가 추론 결과 파일(CSV 또는 JSON)을 올리고 정답·예측·확률 컬럼을 지정한다.",
+  "3. 데이터 점검: 시스템이 라벨 표기를 맞추고 필수 컬럼, 누락값, 중복 ID, 값의 범위를 검증한다(4.1).",
+  "4. 입력 점검: 시스템이 TS 4213 보고 항목과 선언에 필요한 항목을 점검하고, 부족한 항목을 의뢰자에게 안내한다(부록 1.2).",
+  "5. 지표 산출과 판정: 시스템이 선택된 지표와 95% 신뢰구간을 산출하고 판정 규칙(3.4)에 따라 판정한다.",
+  "6. 소견 작성과 점검: 시스템이 분석 소견과 권고를 작성하고 시험 데이터와 대조해 점검한다(부록 1.3).",
+  "7. 확인과 발급: 의뢰자가 입력 내용을 확인하고 발급을 요청하면, 시스템이 시험성적서(PDF)를 자동 발급한다. 발급 전에 사람이 승인하지 않는다.",
+];
+/** 고정 문구 26 — 표 위 출처 안내와 2.2 출처 열 값. */
+export const FIXED_26_PROVIDED_ALL = "다음 값은 모두 의뢰자가 제공하였습니다.";
+export const FIXED_26_PROVIDED_DESCRIPTION = "다음 설명은 의뢰자가 제공하였습니다.";
+export const FIXED_26_SPECIFIED_ALL = "다음 값은 모두 의뢰자가 지정하였습니다.";
+export const FIXED_26_SPECIFIED_DEFAULT_CORE =
+  "다음 값은 의뢰자가 지정하였습니다. 핵심 지표 열의 '기본값'은 의뢰자가 지정하지 않아 분류 유형의 기본값을 따른 것입니다.";
+export const FIXED_26_CORE_DEFAULT_CELL = "핵심(기본값)";
+export const FIXED_26_RECORDED = "다음 값은 평가 시스템이 기록하였습니다.";
+export const FIXED_26_SOURCE_CLIENT = "의뢰자 제공";
+export const FIXED_26_SOURCE_SYSTEM = "시스템 확인";
+/** 고정 문구 2.2(판 4) 의 이름표 — materialCheck 의 printed.notProvided 앞에 "{이름표}: " 로 붙인다. */
+export const FIXED_2_2_NOT_PROVIDED_LABEL = "제공되지 않은 정보";
+
+/* ------------------------------------------------------------------ *
+ * 렌더러 — 예시본 글자(부록 A "예시본에서 그대로 쓰는 글")
+ * ------------------------------------------------------------------ */
+export const EX_ISSUED_STATUS = "[ 발급 완료 ]";
+export const EX_END_MARK = "— 끝 —";
+export const EX_HISTORY_TITLE = "발급 이력";
+/** 4.4 임계값 표 머리·상승폭 문장. */
+export const EX_4_4_CURRENT_THRESHOLD = "현재 결정 임계값 {threshold}";
+export const EX_4_4_BEST_THRESHOLD = "F1이 가장 높은 결정 임계값 {threshold}";
+export const EX_4_4_GAIN = "F1의 최대 상승폭은 {gain}이다.";
+
+/* ------------------------------------------------------------------ *
+ * 렌더러 — 부록 B(승인된 후보). B2·B3·B12·B13·B31·B32 는 위(생성값), B6 은 metricFormulasEd4, B7 미충족은 materialCheck.
+ * ------------------------------------------------------------------ */
+export const B1_DRAFT_STATUS = "[ 초안 — 미발급 ]";
+export const B1_DRAFT_NOTICE = "평가 결과는 확정되었으나 아직 발급되지 않았습니다.";
+export const B1_UNISSUED = "(미발급)";
+export const B5_CRITERIA_REFERENCE = "없음(참고 지표)";
+export const B5_VERDICT_REFERENCE = "참고 지표";
+export const ED4_DASH = "—";
+export const B7_AVERAGING_MET = '다중 클래스 지표의 평균 방식은 {평균 방식}을 기준으로 합니다. 의뢰자가 클래스 중요도를 "{선언 값}"(으)로 밝혔기 때문입니다.';
+export const B8_UNISSUED = B1_UNISSUED;
+export const B9_GROUP_HEAD = "{묶음 이름} — {적용 설명} ({counts})";
+export const B9_COUNT_ERROR = "{n}건 오류";
+export const B9_COUNT_WARNING = "{n}건 경고";
+export const B9_COUNT_PASS = "{n}건 통과";
+export const B10_NO_SAMPLE_ID = "해당 없음 (샘플 ID 컬럼을 지정하지 않음)";
+export const B10_NO_SCORE = "해당 없음 (확률(score) 컬럼을 지정하지 않음)";
+export const B10_NO_ROLE = "해당 없음 ({역할} 컬럼을 지정하지 않음)";
+export const B11_LATENCY_STATS = "평균 {m}, p95 {p}, 최대 {x} ({n}건)";
+export const B11_ALL_BELOW_ONE = "모든 값 {n}건이 1 미만 (최대 {x})";
+export const B11_UNCHECKED = "확인하지 못함";
+export const B11_NON_NUMERIC = "숫자가 아닌 값이 있는 컬럼: {목록}";
+export const B14_UNMEASURABLE = "측정 불가";
+export const B15_SUBMITTED_PREDICTION = "현재 예측(제출된 예측값)";
+export const B16_NO_TRAINING_DISTRIBUTION = "제공되지 않음 — 학습 클래스 분포가 제공되지 않아 학습·평가 비율을 비교하지 않았다.";
+export const B17_NO_CURVES = "해당 없음 — ROC·PR 곡선은 이진 분류에서 확률(score) 컬럼이 있을 때 산출한다.";
+export const B18_NOT_APPLICABLE = "해당 없음";
+export const B25_RECORD_HEADER = "작성 기록";
+export const B25_RECORD_NOTE = "5·6절 칸마다 쓴 방식(화면에만 보이며 인쇄본에는 없습니다)";
+export const B27_PROGRESS_HEAD = "정성 서술(5·6절)을 만드는 중입니다 — {단계}.";
+export const B28_RULE_TAIL = "진행한 것으로 기록됩니다 (입력 점검 규칙 {v}).";
+export const B29_PLACES = "(표지·1.3·부록 1.2)";
+export const B30_NOT_PROVIDED = "제공되지 않음";
+/** 부록 B33(초안, 2026-10-24 승인) — 멀티레이블, 학습 표본 수 없음(저장 이유 코드 training_samples_not_provided). */
+export const B33_NO_TRAINING_SAMPLES_DRAFT = "제공되지 않음 — 학습 표본 수가 제공되지 않아 학습·평가 비율을 비교하지 않았다.";
