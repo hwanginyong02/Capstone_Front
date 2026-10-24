@@ -303,6 +303,25 @@ export function curveLines(charts: FinalReportData["charts"] | undefined, kpiRes
 
 export const NO_CURVES_TEXT = B17_NO_CURVES;
 
+/** 곡선 그림 한 점. */
+export interface CurvePointEd4 {
+  x: number;
+  y: number;
+}
+
+/**
+ * 4.7 곡선 그림의 점 배열 — ROC 는 x = FPR·y = TPR, PR 는 x = Recall·y = Precision(판 3 `RocCurveChart`·`PrCurveChart` 와 같은 축).
+ * 그 곡선이 없으면 null.
+ */
+export function curvePointsEd4(charts: FinalReportData["charts"] | undefined, kind: CurveLine["kind"]): CurvePointEd4[] | null {
+  if (kind === "roc") {
+    const roc = charts?.rocCurve;
+    return roc ? roc.fpr.map((x, i) => ({ x, y: roc.tpr[i] })) : null;
+  }
+  const pr = charts?.prCurve;
+  return pr ? pr.recall.map((x, i) => ({ x, y: pr.precision[i] })) : null;
+}
+
 /* ================= 4.8 응답시간 ================= */
 
 export interface LatencyView {

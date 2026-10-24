@@ -327,3 +327,30 @@ describe("rv2 지적 1 — 인쇄 입구(ReportPrint)가 판 4 를 mode=print �
     expect((await inspectPrint("bc_strong")).pageBreaks).toBe(6);
   });
 });
+
+describe("rv2 지적 2 — 4.7 곡선 그림의 점 배열(ROC x=FPR·y=TPR, PR x=Recall·y=Precision)", () => {
+  it("bc_strong: ROC 첫 점 (0, 0)·둘째 점 (0, 0.375)·끝 점 (1, 1), PR 첫 점 (0, 1)·끝 점 (1, 0.374…)", async () => {
+    const { curvePointsEd4 } = await import("../../../lib/report/edition4/render/resultsDetail");
+    const charts = loadEd4("bc_strong", "issued").charts;
+    const roc = curvePointsEd4(charts, "roc")!;
+    expect(roc).toHaveLength(charts.rocCurve!.fpr.length);
+    expect(roc.slice(0, 2)).toEqual([{ x: 0, y: 0 }, { x: 0, y: 0.375 }]);
+    expect(roc[roc.length - 2]).toEqual({ x: 0.9813084112149533, y: 1 });
+    const pr = curvePointsEd4(charts, "pr")!;
+    expect(pr.slice(0, 2)).toEqual([{ x: 0, y: 1 }, { x: 0.421875, y: 1 }]);
+    expect(pr[pr.length - 1]).toEqual({ x: 1, y: 0.3742690058479532 });
+    expect(curvePointsEd4({ ...charts, rocCurve: null }, "roc")).toBeNull();
+  });
+});
+
+it("rv2 지적 2 — 화면 4.7: 그림 부품이 받은 점이 제 곡선의 점(ROC 앞 두 점 (0,0)(0,0.375), PR (0,1)(0.421875,1))", () => {
+  const view = render(
+    <MemoryRouter>
+      <ReportSections data={loadEd4("bc_strong", "issued")} />
+    </MemoryRouter>,
+  );
+  const head = (kind: string) => JSON.parse(view.container.querySelector(`[data-ed4-curve="${kind}"]`)!.getAttribute("data-ed4-curve-head")!);
+  expect(head("roc")).toEqual([{ x: 0, y: 0 }, { x: 0, y: 0.375 }]);
+  expect(head("pr")).toEqual([{ x: 0, y: 1 }, { x: 0.421875, y: 1 }]);
+  view.unmount();
+});

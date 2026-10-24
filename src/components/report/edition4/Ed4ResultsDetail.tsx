@@ -19,12 +19,14 @@ import {
   confusionCountsTable,
   confusionPairsTable,
   curveLines,
+  curvePointsEd4,
   distributionView,
   latencyView,
   NO_CURVES_TEXT,
   predictionBiasTable,
   thresholdTable,
   weakestClassTable,
+  type CurvePointEd4,
   type DetailTable,
 } from "../../../lib/report/edition4/render/resultsDetail";
 import { ConfusionMatrixChart } from "../sections/ConfusionMatrixChart";
@@ -50,11 +52,15 @@ function DetailTableBlock({ table }: { table: DetailTable | null }) {
 }
 
 /** 곡선 그림(판 3 `RocCurveChart`·`PrCurveChart` 의 그림 부분 복사 — 제목 상자 없이). jsdom 에서는 크기가 0 이라 글이 없다. */
-function Ed4CurvePlot({ kind, data }: { kind: "roc" | "pr"; data: { x: number[]; y: number[] } }) {
-  const points = data.x.map((x, i) => ({ x, y: data.y[i] }));
+function Ed4CurvePlot({ kind, points }: { kind: "roc" | "pr"; points: CurvePointEd4[] }) {
   const roc = kind === "roc";
   return (
-    <div className="mt-2 h-[280px] min-h-[280px] w-full" data-ed4-curve={kind}>
+    // data-ed4-curve-head: 앞 두 점(시험이 축 배선을 본다 — jsdom 에서는 그림 크기가 0 이라 그림 글이 없다).
+    <div
+      className="mt-2 h-[280px] min-h-[280px] w-full"
+      data-ed4-curve={kind}
+      data-ed4-curve-head={JSON.stringify(points.slice(0, 2))}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={points} margin={{ top: 15, right: 25, bottom: 25, left: 25 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -127,17 +133,16 @@ export function Ed4ResultsDetail({ data }: Ed4PartProps) {
       {curves.length === 0 ? (
         <Ed4Paragraph>{NO_CURVES_TEXT}</Ed4Paragraph>
       ) : (
-        curves.map((c) => (
-          <div key={c.kind}>
-            <Ed4Paragraph>{c.title}</Ed4Paragraph>
-            {c.kind === "roc" && data.charts.rocCurve && (
-              <Ed4CurvePlot kind="roc" data={{ x: data.charts.rocCurve.fpr, y: data.charts.rocCurve.tpr }} />
-            )}
-            {c.kind === "pr" && data.charts.prCurve && (
-              <Ed4CurvePlot kind="pr" data={{ x: data.charts.prCurve.recall, y: data.charts.prCurve.precision }} />
-            )}
-          </div>
-        ))
+        curves.map((c) => {
+          // 점 배열(축 배선)은 순수 함수 `curvePointsEd4` 가 정한다 — 그림 부품은 받은 점을 그리기만.
+          const points = curvePointsEd4(data.charts, c.kind);
+          return (
+            <div key={c.kind}>
+              <Ed4Paragraph>{c.title}</Ed4Paragraph>
+              {points && <Ed4CurvePlot kind={c.kind} points={points} />}
+            </div>
+          );
+        })
       )}
 
       <Ed4SubsectionTitle number="4.8" />
