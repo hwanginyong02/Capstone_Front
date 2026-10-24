@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import type { FileFingerprint } from "../../lib/report/evaluationRequest";
 import { isRetryable, type NarrativeFailure, type NarrativeJobStage } from "../../lib/report/narrativeJobApi";
+import { ed4ProgressHeadBefore } from "../../lib/report/edition4/render/recordLines";
 
 /** 진행 단계 이름(화면용). */
 export const NARRATIVE_STAGE_LABEL: Record<NarrativeJobStage, string> = {
@@ -142,12 +143,15 @@ export function NarrativeStatusBanner({
   failure,
   retrying,
   onRetry,
+  edition4 = false,
 }: {
   phase: "none" | "pending" | "done" | "failed";
   stage: NarrativeJobStage | null;
   failure?: NarrativeFailure;
   retrying: boolean;
   onRetry: () => void;
+  /** 판 4 run 이면 띠 앞 글을 판 4 절 번호로(부록 B27). 판 3 글은 그대로. */
+  edition4?: boolean;
 }) {
   // 서버에 닿지 않았거나 기다리다 포기했으면 다시 만들기는 원래 작업부터 다시 본다 — 버튼 이름도 그렇게.
   const recheck = failure === "unreachable" || failure === "gave_up";
@@ -159,7 +163,7 @@ export function NarrativeStatusBanner({
       >
         <Loader2 className="size-4 animate-spin" />
         <span>
-          정성 서술(7·8·9절)을 만드는 중입니다 — <strong>{NARRATIVE_STAGE_LABEL[stage ?? "queued"]}</strong>. 아래
+          {edition4 ? ed4ProgressHeadBefore() : "정성 서술(7·8·9절)을 만드는 중입니다 — "}<strong>{NARRATIVE_STAGE_LABEL[stage ?? "queued"]}</strong>. 아래
           지표·차트는 이미 확정된 결과이며, 서술은 끝나는 대로 채워집니다. 그동안 인쇄·발급은 잠깁니다.
         </span>
       </div>
