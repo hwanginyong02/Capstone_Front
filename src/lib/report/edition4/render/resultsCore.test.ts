@@ -34,6 +34,12 @@ const kpi = (data: FinalReportData, id: string) => {
 describe("4.1 상세 칸 — 대응표 13(A7·B10·B11)", () => {
   it.each([
     ["171 건", "171건"],
+    // 표 칸 건수는 천 단위 쉼표(S6 질문 8)
+    ["1234 건", "1,234건"],
+    ["1,234 건", "1,234건"],
+    ["12 건 — 허용 범위 벗어남: [0, 1] (score_a), 1000 건 누락", "12건 — 허용 범위 벗어남: [0, 1] (score_a), 1,000건 누락"],
+    ["mean=12.34, p95=20.00, max=25.10 (n=12345)", "평균 12.34, p95 20.00, 최대 25.10 (12,345건)"],
+    ["All 1500 values < 1 (max=0.95)", "모든 값 1,500건이 1 미만 (최대 0.95)"],
     ["0 건", "0건"],
     ["3 건 — 허용 범위 벗어남: [0, 1] (score_malignant)", "3건 — 허용 범위 벗어남: [0, 1] (score_malignant)"],
     ["5 건 (표본 상위 100)", "5건 (표본 상위 100)"],
@@ -97,6 +103,9 @@ describe("4.1 요약 표·묶음 머리", () => {
       { checkName: "c", status: "warning", detail: "1 건", group: "latency" },
     ];
     expect(validationSummaryRowsEd4({ ...base, dataValidation: dv })[3][1]).toBe("오류 1건 / 경고 2건");
+    // 표의 수는 천 단위 쉼표(S6 질문 8)
+    const many: ValidationResult[] = Array.from({ length: 1000 }, (_, i) => ({ checkName: `w${i}`, status: "warning" as const, detail: "1 건", group: "latency" as const }));
+    expect(validationSummaryRowsEd4({ ...base, dataValidation: many })[3][1]).toBe("오류 0건 / 경고 1,000건");
   });
 
   it("묶음 머리: 모두 통과는 예시본 꼴, 경고·오류가 있으면 B9(오류·경고·통과 순, 0건은 뺌)", () => {
@@ -112,6 +121,10 @@ describe("4.1 요약 표·묶음 머리", () => {
       "다중 클래스 분류 검증 항목 — 분류 유형이 다중 클래스 분류인 경우 적용 (1건 오류, 2건 경고, 1건 통과)",
     );
     expect(validationGroupHeadEd4("multilabel", [fail])).toBe("다중 레이블 분류 검증 항목 — 분류 유형이 다중 레이블 분류인 경우 적용 (1건 오류)");
+    // 천 단위 쉼표(S6 질문 8)
+    expect(validationGroupHeadEd4("common", [...Array(1000).fill(fail), ...Array(1200).fill(warn), ...Array(1001).fill(pass)])).toBe(
+      "공통 검증 항목 — 모든 분류 유형에 공통 적용 (1,000건 오류, 1,200건 경고, 1,001건 통과)",
+    );
   });
 
   it("묶음 순서는 공통·다중·이진·멀티·응답시간, 빈 묶음은 뺌, 칸은 [이름, 결과 글자, 판 4 상세]", () => {
@@ -342,6 +355,9 @@ describe("M22 클래스별 표(판 4 표기)", () => {
     expect(classReportRowsEd4(table, [], null)).toEqual([["a", "—", "0.500", "—", "—"]]);
     const t2 = { rows: [{ label: "a", precision: 0.25, recall: 0.5, f1: 0.97249, support: 3 }], averages: [] };
     expect(classReportRowsEd4(t2, [], null)).toEqual([["a", "0.250", "0.500", "0.972", "3"]]);
+    // 표본 수는 천 단위 쉼표(S6 질문 8)
+    const t3 = { rows: [{ label: "a", precision: 0.25, recall: 0.5, f1: 0.5, support: 3899 }], averages: [{ label: "매크로 평균", precision: 0.25, recall: 0.5, f1: 0.5, support: 12345 }] };
+    expect(classReportRowsEd4(t3, [], null).map((r) => r[4])).toEqual(["3,899", "12,345"]);
   });
 
   it("showsClassReportEd4 — classReport 가 있고 줄이 있을 때만", () => {

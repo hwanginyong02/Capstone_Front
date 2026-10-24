@@ -19,9 +19,10 @@ import {
   TARGET_EVAL_LABEL,
   TARGET_MODEL_LABEL,
 } from "./targetText";
+import { ed4TableCount } from "./tableCount";
 
-/** 천 단위 쉼표(예시본 "3,727바이트" — 실행 환경 로캘과 무관하게). */
-const grouped = (n: number) => n.toLocaleString("en-US");
+/** 천 단위 쉼표(예시본 "3,727바이트" — 실행 환경 로캘과 무관하게). 표 칸 건수 공통 함수(S6 질문 8). */
+const grouped = ed4TableCount;
 
 /** 빈 글은 "제공되지 않음"으로(`materialRowText` 의 null 규칙). */
 const providedText = (value: string | null | undefined) => materialRowText({ value: value ? value : null });
@@ -87,7 +88,7 @@ export function evaluationDataRows(data: FinalReportData): Array<[string, string
     [L.sampleCount, SAMPLE_COUNT_TEXT.replace("{n}", () => grouped(info.sampleCount)), S],
     [L.taskType, info.taskTypeLabel, C],
     // 클래스 이름은 데이터 값 — 함수 치환으로(`$&`·`$'` 같은 글자가 치환 패턴으로 읽히지 않게).
-    [L.classes, CLASSES_TEXT.replace("{n}", () => String(info.classCount)).replace("{목록}", () => info.classLabels.join(", ")), S],
+    [L.classes, CLASSES_TEXT.replace("{n}", () => grouped(info.classCount)).replace("{목록}", () => info.classLabels.join(", ")), S],
     ...(data.materials?.test ?? []).map((row): [string, string, string] => [row.label, materialRowText(row), C]),
   ];
 }

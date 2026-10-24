@@ -3,7 +3,8 @@
  *
  * 저장값을 **읽기만** 한다(다시 계산하지 않음): `confusionCounts`·`errorRatioSentence`·`narrativeFacts`(최약 클래스·예측 편향·
  * 최다 오분류 쌍)·`edition4Values.thresholdTable`·`edition4Values.distribution`·`conclusion.benchmarkRefs`·`noBenchmarkSentence`·
- * `charts`·`latency`·`kpiResults`. 숫자 표기는 판 4 함수(`edition4Number`·`classF1TextEd4`·`sameValueTextEd4`).
+ * `charts`·`latency`·`kpiResults`. 숫자 표기는 판 4 함수(`edition4Number`·`classF1TextEd4`·`sameValueTextEd4`), 표 칸의 정수 건수는
+ * 천 단위 쉼표(`tableCount` — S6 질문 8).
  * 표 칸은 글자만(렌더 도구가 표 한 행을 한 줄로 뽑는다).
  */
 import type { TaskType } from "../../../../data/evaluationData";
@@ -32,9 +33,10 @@ import {
   FIXED_24_DISTRIBUTION,
   fillTemplate,
 } from "../edition4Text";
-import { ed4Latency, ed4Percent, ed4Plain, ed4SignedCount, ed4Target } from "../edition4Number";
+import { ed4Latency, ed4Percent, ed4Plain, ed4Target } from "../edition4Number";
 import { metricValueTextEd4, sameValueTextEd4 } from "../sameValueEd4";
 import type { ThresholdTableEd4 } from "../thresholdGainEd4";
+import { ed4TableCount, ed4TableSignedCount } from "./tableCount";
 import {
   BIAS_HEAD,
   ED3_BIAS_ALL_LABELS,
@@ -90,7 +92,7 @@ export function confusionCountsTable(counts: ConfusionCounts | null | undefined)
   return {
     title: EX_4_4_COUNTS_TITLE,
     columns: [binary ? EX_4_4_COUNTS_HEAD_BINARY : ED3_COUNTS_HEAD_PER_CLASS, ...EX_4_4_COUNTS_COLUMNS],
-    rows: counts.rows.map((r) => [r.label, String(r.tp), String(r.tn), String(r.fp), String(r.fn)]),
+    rows: counts.rows.map((r) => [r.label, ed4TableCount(r.tp), ed4TableCount(r.tn), ed4TableCount(r.fp), ed4TableCount(r.fn)]),
     notes: binary ? [] : [ED3_COUNTS_PER_CLASS_NOTE],
   };
 }
@@ -116,7 +118,7 @@ export function weakestClassTable(
       [
         classDisplayName(w.label, descriptions),
         f1,
-        String(w.support),
+        ed4TableCount(w.support),
         ed4Percent(w.share_text),
         w.gap_text ?? ED4_DASH,
         w.low_support ? EX_4_4_YES : EX_4_4_NO,
@@ -138,9 +140,9 @@ export function predictionBiasTable(
     columns: [BIAS_HEAD[bias.unit], ...EX_4_4_BIAS_COLUMNS],
     rows: bias.rows.map((r) => [
       r.label === null ? ED3_BIAS_ALL_LABELS : classDisplayName(r.label, descriptions),
-      String(r.predicted),
-      String(r.actual),
-      ed4SignedCount(r.difference),
+      ed4TableCount(r.predicted),
+      ed4TableCount(r.actual),
+      ed4TableSignedCount(r.difference),
     ]),
     notes: [],
   };
@@ -160,7 +162,7 @@ export function confusionPairsTable(
     columns: [...ED3_PAIRS_COLUMNS],
     rows: pairs.map((p) => [
       `${classDisplayName(p.actual, descriptions)} → ${classDisplayName(p.predicted, descriptions)}`,
-      String(p.count),
+      ed4TableCount(p.count),
       ed4Percent(ed4Plain(p.share_of_errors)),
     ]),
     notes: [],

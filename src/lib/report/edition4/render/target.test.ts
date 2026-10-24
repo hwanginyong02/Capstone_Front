@@ -88,6 +88,19 @@ describe("2.2 평가 데이터 표 — 칸과 출처 열", () => {
       "제공되지 않음 (의뢰자 제공: 모름)",
     ]);
   });
+
+  it("클래스 수·크기·샘플 수는 천 단위 쉼표(표의 수 — S6 질문 8)", () => {
+    const d = copy(bc, (x) => {
+      x.datasetInfo.classCount = 1200;
+      x.datasetInfo.classLabels = ["x"];
+      x.datasetInfo.sampleCount = 1000;
+      x.datasetInfo.sourceFile = { sha256: "c".repeat(64), sizeBytes: 1234567 };
+    });
+    const values = evaluationDataRows(d).map((r) => r[1]);
+    expect(values).toContain("1,200개 — 클래스 목록: x");
+    expect(values).toContain("1,000개");
+    expect(values).toContain("1,234,567바이트");
+  });
 });
 
 describe("2.1", () => {

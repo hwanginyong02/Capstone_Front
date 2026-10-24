@@ -29,6 +29,7 @@ import {
   JUDGMENT_MARGIN_LABEL,
 } from "../edition4Text";
 import { sameValueTextEd4 } from "../sameValueEd4";
+import { ed4TableCount, ed4TableCountText } from "./tableCount";
 import {
   A7_NOT_APPLICABLE,
   EX_4_1_COUNT,
@@ -58,7 +59,7 @@ import {
 
 /** 건수 칸 — "171건", "1,234건"(판 3 요약 표의 toLocaleString 과 같은 쉼표). */
 export function countCellEd4(n: number): string {
-  return fillTemplate(EX_4_1_COUNT, { n: n.toLocaleString("en-US") });
+  return fillTemplate(EX_4_1_COUNT, { n: ed4TableCount(n) });
 }
 
 /** 점수(확률) 역할 이름 — 백엔드 `validation_checks` 가 "N/A (no … mapped)" 에 넣는 이름 중 확률(score) 컬럼인 것. */
@@ -109,13 +110,14 @@ export function validationDetailEd4(detail: string): string {
   }
   if (text === "N/A") return A7_NOT_APPLICABLE;
   const stats = /^mean=([^,]+), p95=([^,]+), max=([^ ]+) \(n=(\d+)\)$/.exec(text);
-  if (stats) return fillTemplate(B11_LATENCY_STATS, { m: stats[1], p: stats[2], x: stats[3], n: stats[4] });
+  if (stats) return fillTemplate(B11_LATENCY_STATS, { m: stats[1], p: stats[2], x: stats[3], n: ed4TableCountText(stats[4]) });
   const below = /^All (\d+) values < 1 \(max=(.+)\)$/.exec(text);
-  if (below) return fillTemplate(B11_ALL_BELOW_ONE, { n: below[1], x: below[2] });
+  if (below) return fillTemplate(B11_ALL_BELOW_ONE, { n: ed4TableCountText(below[1]), x: below[2] });
   if (text === "Could not verify") return B11_UNCHECKED;
   const nonNumeric = /^Non-numeric values in (.+?) columns?$/.exec(text);
   if (nonNumeric) return fillTemplate(B11_NON_NUMERIC, { 목록: roleNameEd4(nonNumeric[1]) });
-  return text.replace(/(\d) 건/g, "$1건");
+  // "{n} 건" → "{n}건"(A7) + 표 칸의 건수는 천 단위 쉼표(S6 질문 8 — "1234 건" → "1,234건")
+  return text.replace(/(\d[\d,]*) 건/g, (_, digits: string) => `${ed4TableCountText(digits)}건`);
 }
 
 /**
@@ -134,7 +136,7 @@ export function validationSummaryRowsEd4(data: Pick<FinalReportData, "dataValida
     [EX_4_1_VALID, countCellEd4(valid), EX_4_1_VALID_NOTE],
     [EX_4_1_EXCLUDED, countCellEd4(excluded), EX_4_1_EXCLUDED_NOTE],
     ...(data.dataValidation.length > 0
-      ? [[EX_4_1_RESULT, fillTemplate(EX_4_1_RESULT_VALUE, { fail: String(fail), warning: String(warning) }), EX_4_1_RESULT_NOTE]]
+      ? [[EX_4_1_RESULT, fillTemplate(EX_4_1_RESULT_VALUE, { fail: ed4TableCount(fail), warning: ed4TableCount(warning) }), EX_4_1_RESULT_NOTE]]
       : []),
   ];
 }
@@ -147,9 +149,9 @@ export function validationGroupHeadEd4(group: ValidationGroup, items: ReadonlyAr
   const fail = count("fail");
   const warning = count("warning");
   const pass = count("pass");
-  if (fail > 0) parts.push(fillTemplate(B9_COUNT_ERROR, { n: String(fail) }));
-  if (warning > 0) parts.push(fillTemplate(B9_COUNT_WARNING, { n: String(warning) }));
-  if (pass > 0) parts.push(fillTemplate(B9_COUNT_PASS, { n: String(pass) }));
+  if (fail > 0) parts.push(fillTemplate(B9_COUNT_ERROR, { n: ed4TableCount(fail) }));
+  if (warning > 0) parts.push(fillTemplate(B9_COUNT_WARNING, { n: ed4TableCount(warning) }));
+  if (pass > 0) parts.push(fillTemplate(B9_COUNT_PASS, { n: ed4TableCount(pass) }));
   return fillTemplate(B9_GROUP_HEAD, { "묶음 이름": meta.label, "적용 설명": meta.description, counts: parts.join(", ") });
 }
 
@@ -248,7 +250,7 @@ export function showsClassReportEd4(data: Pick<FinalReportData, "classReport">):
 }
 
 const cellOr = (text: string | null) => text ?? ED4_DASH;
-const supportCell = (row: ClassReportRow) => (row.support === null ? ED4_DASH : String(row.support));
+const supportCell = (row: ClassReportRow) => (row.support === null ? ED4_DASH : ed4TableCount(row.support));
 
 /**
  * M22 클래스별 표 줄([클래스, Precision, Recall, F1, 표본 수]) — 클래스 줄 다음 평균 줄. 백엔드 판 4 사실 보기 클래스별 표와

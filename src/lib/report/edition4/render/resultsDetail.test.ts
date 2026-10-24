@@ -63,6 +63,11 @@ describe("4.4 혼동 행렬 건수", () => {
     expect(t.notes).toEqual(["클래스마다 그 클래스를 양성, 나머지를 음성으로 본 건수입니다."]);
   });
 
+  it("건수는 천 단위 쉼표(S6 질문 8)", () => {
+    const t = confusionCountsTable({ kind: "perClass", rows: [{ label: "a", tp: 1000, tn: 123456, fp: 999, fn: 2048 }] })!;
+    expect(t.rows).toEqual([["a", "1,000", "123,456", "999", "2,048"]]);
+  });
+
   it("없음·빈 줄 → null", () => {
     expect(confusionCountsTable(null)).toBeNull();
     expect(confusionCountsTable(undefined)).toBeNull();
@@ -119,6 +124,11 @@ describe("4.4 최약 클래스", () => {
     );
   });
 
+  it("표본 수는 천 단위 쉼표(S6 질문 8)", () => {
+    const t = weakestClassTable({ weakest_class: weakest({ support: 1234 }), class_share_basis: "samples" }, [], undefined)!;
+    expect(t.rows[0][2]).toBe("1,234");
+  });
+
   it("최약 클래스가 없으면 null", () => {
     expect(weakestClassTable({ weakest_class: null, class_share_basis: "samples" }, [], undefined)).toBeNull();
     expect(weakestClassTable(undefined, [], undefined)).toBeNull();
@@ -151,7 +161,16 @@ describe("4.4 예측 편향·최다 오분류 쌍", () => {
     expect(bin.title).toBe("예측 편향(예측 수 대 실제 수)");
     const ml = predictionBiasTable({ prediction_bias: { unit: "label_total", rows: [{ label: null, predicted: 3290, actual: 3899, difference: -609 }] } }, undefined)!;
     expect(ml.columns[0]).toBe("대상");
-    expect(ml.rows).toEqual([["전체 레이블", "3290", "3899", "−609"]]);
+    // 표의 수는 천 단위 쉼표(S6 질문 8) — 부호 규칙은 그대로
+    expect(ml.rows).toEqual([["전체 레이블", "3,290", "3,899", "−609"]]);
+    const big = predictionBiasTable(
+      { prediction_bias: { unit: "per_class", rows: [{ label: "x", predicted: 12000, actual: 10766, difference: 1234 }, { label: "y", predicted: 1000, actual: 2234, difference: -1234 }] } },
+      undefined,
+    )!;
+    expect(big.rows).toEqual([
+      ["x", "12,000", "10,766", "+1,234"],
+      ["y", "1,000", "2,234", "−1,234"],
+    ]);
     expect(predictionBiasTable({ prediction_bias: null }, undefined)).toBeNull();
     expect(predictionBiasTable({ prediction_bias: { unit: "per_class", rows: [] } }, undefined)).toBeNull();
   });
@@ -169,6 +188,10 @@ describe("4.4 예측 편향·최다 오분류 쌍", () => {
     expect(t.rows).toEqual([
       ["5 → 6", "1", "16.7%"],
       ["6 → 1(숫자 1)", "2", "33.4%"],
+    ]);
+    // 건수는 천 단위 쉼표(S6 질문 8)
+    expect(confusionPairsTable({ top_confusion_pairs: [{ actual: "a", predicted: "b", count: 1500, share_of_errors: 0.5 }] }, "multiclass", undefined)!.rows).toEqual([
+      ["a → b", "1,500", "50.0%"],
     ]);
     expect(confusionPairsTable(facts, "binary", undefined)).toBeNull();
     expect(confusionPairsTable(facts, "multilabel", undefined)).toBeNull();
