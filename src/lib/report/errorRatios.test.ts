@@ -120,3 +120,21 @@ describe("errorRatioSentence — 7.1 문장", () => {
     expect(errorRatioSentence(parsed(), "binary")).toBe(errorRatioSentence(parsed(), "binary"));
   });
 });
+
+describe("판 4 건수 쉼표(S6 뒤 사용자 결정 4 — 고정 문구 17)", () => {
+  const big = () =>
+    parsed({ unit: "label_cell", misclassified: 2687, boundary: { count: 1637, ratio: 0.6092 }, confident: { count: 1431, ratio: 0.5326 } });
+
+  it("판 4 는 1,000 이상 건수에 쉼표, 판 3 은 그대로", () => {
+    expect(errorRatioSentence(big(), "multilabel", { edition4: true })).toBe(
+      "확률이 있는 틀린 레이블 칸 2,687개 중 경계 오류(확률과 결정 임계값 0.5의 차가 0.1 미만)는 1,637개(60.9%), 확신 오류(틀린 쪽 확률 0.9 이상)는 1,431개(53.3%)이다.",
+    );
+    expect(errorRatioSentence(big(), "multilabel")).toBe(
+      "확률이 있는 틀린 레이블 칸 2687개 중 경계 오류(확률과 결정 임계값 0.5의 차가 0.1 미만)는 1637개(60.9%), 확신 오류(틀린 쪽 확률 0.9 이상)는 1431개(53.3%)이다.",
+    );
+  });
+
+  it("1,000 미만이면 판 4 도 같은 글", () => {
+    expect(errorRatioSentence(parsed(), "binary", { edition4: true })).toBe(errorRatioSentence(parsed(), "binary"));
+  });
+});

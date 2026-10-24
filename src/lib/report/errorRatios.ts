@@ -13,6 +13,7 @@
  */
 import type { TaskType } from "../../data/evaluationData";
 import type { ErrorRatioCount, ErrorRatios } from "../../types/finalReport.types";
+import { ed4Count } from "./edition4/edition4Number";
 
 function finite(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
@@ -102,8 +103,10 @@ function thresholdPhrase(threshold: ErrorRatios["threshold"]): string {
  * "확률이 있는 오분류 12건 중 경계 오류(확률과 결정 임계값 0.5의 차가 0.1 미만)는 5건(41.7%),
  *  확신 오류(틀린 쪽 확률 0.9 이상)는 2건(16.7%)이다."
  */
-export function errorRatioSentence(ratios: ErrorRatios, taskType: TaskType): string {
+export function errorRatioSentence(ratios: ErrorRatios, taskType: TaskType, options: { edition4?: boolean } = {}): string {
   const labelCell = ratios.unit === "label_cell";
+  // 판 4 는 건수에 천 단위 쉼표(S6 뒤 사용자 결정 4 — "틀린 레이블 칸 2,687개"). 판 3 은 그대로(얼린 출력).
+  const n = (count: number) => (options.edition4 ? ed4Count(count) : String(count));
   const counter = labelCell ? "개" : "건";
 
   if (ratios.misclassified === 0) {
@@ -117,10 +120,10 @@ export function errorRatioSentence(ratios: ErrorRatios, taskType: TaskType): str
   const margin = ratios.boundary_margin;
   const level = ratios.confident_level;
   const subject = labelCell ? "틀린 레이블 칸" : "오분류";
-  const head = `확률이 있는 ${subject} ${ratios.misclassified}${counter} 중 `;
+  const head = `확률이 있는 ${subject} ${n(ratios.misclassified)}${counter} 중 `;
 
   const confidentRule = multiclass ? `예측 클래스 확률 ${level} 이상` : `틀린 쪽 확률 ${level} 이상`;
-  const confident = `확신 오류(${confidentRule})는 ${ratios.confident.count}${counter}${percent(ratios.confident.ratio)}`;
+  const confident = `확신 오류(${confidentRule})는 ${n(ratios.confident.count)}${counter}${percent(ratios.confident.ratio)}`;
 
   if (ratios.boundary === null) {
     const why =
@@ -133,6 +136,6 @@ export function errorRatioSentence(ratios: ErrorRatios, taskType: TaskType): str
   const boundaryRule = multiclass
     ? `예측·정답 클래스 확률 차가 ${margin} 미만`
     : `확률과 ${thresholdPhrase(ratios.threshold)}의 차가 ${margin} 미만`;
-  const boundary = `경계 오류(${boundaryRule})는 ${ratios.boundary.count}${counter}${percent(ratios.boundary.ratio)}`;
+  const boundary = `경계 오류(${boundaryRule})는 ${n(ratios.boundary.count)}${counter}${percent(ratios.boundary.ratio)}`;
   return `${head}${boundary}, ${confident}이다.`;
 }

@@ -359,7 +359,7 @@ export function assembleEvaluatedReport(
   // client_inputs 로 이미 AI 에 가므로 사실 시트에 따로 싣지 않는다.
   const labelSentence = labelCautionSentence(inputs.composer);
   const sourceSentence = sourceRelationSentence(inputs.composer);
-  const errorRatioText = errorRatios ? errorRatioSentence(errorRatios, taskTypeResolved) : null;
+  const errorRatioText = errorRatios ? errorRatioSentence(errorRatios, taskTypeResolved, { edition4 }) : null;
   // 8.1 표 아래 고정 문구 16 — 고른 서술 지표 중 내부 참조 기준치가 없는 것(사용자 결정 5). 8.1 표는 작업 생성
   // 응답으로 오므로 기준표 이름 사본으로 지금 계산해 저장하고 사실 시트에도 싣는다(백엔드는 되풀이하지 않는다).
   // 판 3 전용 고정 문장(16·7)은 판 3 바탕일 때만 — 판 1·2 화면은 이 문장을 찍지 않으므로, 실으면 AI 가 "성적서가

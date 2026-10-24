@@ -458,6 +458,7 @@ const STAGE1_CHANGES: Record<Tag, string[]> = {
     ".contentSchema",
     ".datasetInfo.sourceFile",
     ".edition4Values",
+    ".errorRatioSentence", // S6 뒤 사용자 결정 4 — 고정 문구 17 "틀린 레이블 칸 2,687개"(건수 쉼표)
     ".evalEnv.engineVersion",
     ".kpiResults[].ciRaw",
     ".kpiResults[].judgmentMargin",
