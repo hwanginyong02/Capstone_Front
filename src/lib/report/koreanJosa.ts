@@ -69,7 +69,8 @@ export type JosaPair = "이/가" | "을/를" | "은/는" | "과/와" | "으로/�
 /**
  * 끼워 넣는 말(이름·숫자 글자) 뒤 조사 하나 — 판 4 라운드 공통 계약(`number_wording_ed4.json` 의 josa 줄, 백엔드
  * `wording.josa` 와 같은 표). 끝소리는 공통 규칙 `nameFinalSound`(따옴표·공백 건너뜀, "이름(설명)"은 괄호 앞 이름, 쉼표로 이은
- * 이름은 끝 글자라 저절로 마지막 이름, 숫자는 읽는 소리)로 고른다. 숫자는 **찍힌 글자**를 넘긴다 — 0.005로, 0.0046으로.
+ * 이름은 끝 글자라 저절로 마지막 이름, 숫자는 읽는 소리)로 고른다. 판 4 "이름[설명]"은 대괄호 앞 이름(`beforeSquareBracket`).
+ * 숫자는 **찍힌 글자**를 넘긴다 — 0.005로, 0.0046으로.
  *
  * - "으로/로"만 ㄹ 받침 뒤에도 "로"(1.672로·0.977로). 나머지 넷은 ㄹ 도 받침이다(0.977이·0.9497을).
  * - 읽는 소리를 모르면 두 꼴을 함께 적는다 — "이(가)"·"을(를)"·"은(는)"·"와(과)"·"(으)로". 과/와 만 없을 때 꼴이 앞이다 —
@@ -79,7 +80,7 @@ export type JosaPair = "이/가" | "을/를" | "은/는" | "과/와" | "으로/�
  */
 export function josa(word: string, pair: JosaPair): string {
   const [withFinal, withoutFinal] = pair.split("/") as [string, string];
-  const sound = nameFinalSound(word);
+  const sound = nameFinalSound(beforeSquareBracket(word));
   if (sound === null) {
     if (pair === "으로/로") return "(으)로";
     if (pair === "과/와") return "와(과)";
@@ -88,6 +89,28 @@ export function josa(word: string, pair: JosaPair): string {
   if (sound === "none") return withoutFinal;
   if (sound === "rieul" && pair === "으로/로") return withoutFinal;
   return withFinal;
+}
+
+/**
+ * 판 4 "이름[설명]"(설명에 괄호가 있을 때의 꼴 — S6 뒤 사용자 결정 5)은 대괄호 앞 이름으로 고른다 — "이름(설명)"의 괄호 규칙과
+ * 같은 방식(끝 따옴표·공백 건너뜀, 짝 맞는 '[' 를 찾음, 앞이 비면 대괄호 안 말). 판 4 `josa` 에만 붙인다 — 판 3 함수(`josaEunNeun`
+ * 등)와 공통 `nameFinalSound` 는 그대로(판 3 출력 동결). 백엔드 `wording_ed4.josa` 와 같은 대조 표(josa_cases).
+ */
+function beforeSquareBracket(word: string): string {
+  const text = (word ?? "").replace(/['"‘’“”」』\s]+$/, "");
+  if (!text.endsWith("]")) return word;
+  let depth = 0;
+  for (let i = text.length - 1; i >= 0; i -= 1) {
+    if (text[i] === "]") depth += 1;
+    else if (text[i] === "[") {
+      depth -= 1;
+      if (depth === 0) {
+        const before = text.slice(0, i);
+        return before.trim() ? beforeSquareBracket(before) : text.slice(i + 1, -1);
+      }
+    }
+  }
+  return word;
 }
 
 /** 대문자 약어 끝 글자의 이름 중 받침이 있는 것 — L 엘·M 엠·N 엔·R 알(R·L 은 ㄹ). */

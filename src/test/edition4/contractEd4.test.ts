@@ -38,10 +38,13 @@ const SHARED = ["fact_sheet_contract_ed4.json", "number_wording_ed4.json", "narr
  * 옮겨 적음, edition4_meaning 의 distribution_shift_status 줄도 같이. 대조 표·칸 대응표는 그대로.
  * S6 질문 4(2026-10-24 사용자 답 "추천대로")로 명세만 다시 고침 — 판 4 멀티레이블 최약 레이블·작은 표본 비율의 분모 = 표본 수:
  * edition4_meaning 에 class_share_basis·weakest_class.share·weakest_class.low_support·low_support_classes 네 줄, decided 에 한 줄.
+ * S6 뒤 사용자 결정 4·5(2026-10-24)로 대조 표만 다시 고침 — count 규칙과 줄(정수 건수 천 단위 쉼표), class_name·name_count 규칙과
+ * class_name_cases·name_count_cases(이름(설명)·이름[설명]·숫자로 끝나는 이름 "{이름}: {n}건"), josa_cases 에 '이름[설명]' 일곱 줄.
+ * 명세·칸 대응표는 그대로.
  */
 const SHA256: Record<(typeof SHARED)[number], string> = {
   "fact_sheet_contract_ed4.json": "f8516766cef76c0d504e21e78eb6cafe4edd6f1e6e7bedf373527d4477a80776",
-  "number_wording_ed4.json": "6d4659d849363ceac749108c19b9a41662b18ce6e1f02bdc30586f54142466fb",
+  "number_wording_ed4.json": "e138b9152a8305b59276baecdd438c4fbb5f3bb612c937d3cd7b628414d2b5fb",
   "narrative_slots_ed4.json": "3c43ffa35357c8c7f4c8a30d182482a85dec51caefa872dc9e556ae51d5b7d35",
 };
 
@@ -213,6 +216,18 @@ function refDistinct(value: number, others: number[]): string {
   return unneg(value.toFixed(6));
 }
 
+/** 정수 건수(S6 뒤 결정 4) — 끝에서 세 자리마다 쉼표. 로캘 함수를 쓰지 않는 기준 구현. */
+function refCount(value: number): string {
+  return String(value).replace(/\B(?=(\d{3})+$)/g, ",");
+}
+
+/** 클래스 이름(S6 뒤 결정 5) — 설명에 괄호가 있으면 대괄호. */
+function refClassName(label: string, description: string | null): string {
+  const d = (description ?? "").trim();
+  if (d === "") return label;
+  return d.includes("(") || d.includes(")") ? `${label}[${d}]` : `${label}(${d})`;
+}
+
 function refNumber(c: Json): string {
   switch (c.rule) {
     case "plain":
@@ -237,6 +252,8 @@ function refNumber(c: Json): string {
       return unneg(Number(c.value).toFixed(2));
     case "distinct":
       return refDistinct(c.value, c.others);
+    case "count":
+      return refCount(c.value);
     default:
       throw new Error(`모르는 규칙 ${c.rule}`);
   }
@@ -254,6 +271,7 @@ const RULES = [
   "target",
   "latency",
   "distinct",
+  "count",
 ];
 
 describe("판 4 숫자 표기 대조 표(백엔드와 같은 표)", () => {
@@ -310,6 +328,8 @@ describe("판 4 숫자 표기 대조 표(백엔드와 같은 표)", () => {
 
 /** 판 3 함수가 맡던 갈래(과/와·은/는·으로/로·숫자 뒤 을/를). 이/가와 이름 뒤 을/를은 판 3 함수가 없다. */
 function existingJosa(c: Json): string | null {
+  // 판 4 "이름[설명]"(S6 뒤 결정 5)은 판 4 josa 만 맡는다 — 판 3 출력에는 대괄호 꼴이 없고 판 3 함수는 고치지 않는다.
+  if (String(c.word).includes("[")) return null;
   if (c.pair === "과/와") return josaWaGwa(c.word);
   if (c.pair === "은/는") return josaEunNeun(c.word);
   // 판 3 josaEuroRo 에는 '끝소리 모름' 갈래가 없다(모르면 "로") — 판 4 josa 의 "(으)로" 줄(S2·S3 검토 T14 로 더한 'Σ')은 판 3 함수가
@@ -318,6 +338,23 @@ function existingJosa(c: Json): string | null {
   if (c.pair === "을/를" && c.kind === "number") return josaEulReul(c.word);
   return null;
 }
+
+describe("판 4 클래스 이름 대조 표(S6 뒤 결정 5, 백엔드와 같은 표)", () => {
+  it.each((TABLE.class_name_cases as Json[]).map((c) => [c.expected, c] as const))("%s", (_name, c) => {
+    expect(refClassName(c.label, c.description)).toBe(c.expected);
+  });
+
+  it.each((TABLE.name_count_cases as Json[]).map((c) => [c.expected, c] as const))("%s", (_name, c) => {
+    const digitEnd = /[0-9]$/.test(c.name);
+    expect(digitEnd ? `${c.name}: ${c.count}` : `${c.name} ${c.count}`).toBe(c.expected);
+  });
+
+  it("기준 구현은 비튼 기대값을 잡는다(괄호 ↔ 대괄호)", () => {
+    const bracketed = (TABLE.class_name_cases as Json[]).filter((c) => c.expected.includes("["));
+    expect(bracketed.length).toBeGreaterThanOrEqual(2);
+    for (const c of bracketed) expect(refClassName(c.label, c.description)).not.toBe(`${c.label}(${c.description})`);
+  });
+});
 
 describe("판 4 조사 대조 표(백엔드와 같은 표)", () => {
   const cases: Json[] = TABLE.josa_cases;

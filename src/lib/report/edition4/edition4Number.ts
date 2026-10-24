@@ -94,6 +94,15 @@ export function ed4PercentPoint(fractionText: string): string {
   return `${moved.negative ? MINUS_SIGN : "+"}${moved.body}%p`;
 }
 
+/**
+ * 정수 건수(S6 뒤 사용자 결정 4, 2026-10-24) — 1,000 이상이면 천 단위 쉼표(en-US 묶음: 1197 → "1,197", 2687 → "2,687"), 그 밖은
+ * 그대로(999 → "999"). 판 4 고객 글(표·문장·규칙 문장)의 건수가 모두 이 함수다(백엔드 `ed4_count` 와 같은 글자 — 대조 표 count 줄).
+ * 소수(지표·비율·지연시간 — D4)·하이퍼파라미터 글자·ID·연도·표준 번호는 건수가 아니라 쓰지 않는다. 로캘을 박는다(de-DE 면 "1.197").
+ */
+export function ed4Count(n: number): string {
+  return n.toLocaleString("en-US");
+}
+
 /** 정수 차이 — 양수 '+', 음수 U+2212, 0 은 부호 없음(4.4 예측 편향). 1 → "+1", -3 → "−3". */
 export function ed4SignedCount(n: number): string {
   if (n > 0) return `+${n}`;

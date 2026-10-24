@@ -8,8 +8,10 @@ import { describe, expect, it } from "vitest";
 
 import { formatJudgedValue, percentText } from "../judgedNumber";
 import { josa, type JosaPair } from "../koreanJosa";
+import { classNameEd4, nameCountEd4 } from "./classNameEd4";
 import {
   ed4CiBound,
+  ed4Count,
   ed4Distinct,
   ed4Given,
   ed4Judged,
@@ -53,13 +55,15 @@ function produce(c: Json): string {
       return ed4Latency(c.value);
     case "distinct":
       return ed4Distinct(c.value, c.others);
+    case "count":
+      return ed4Count(c.value);
     default:
       throw new Error(`모르는 규칙 ${c.rule}`);
   }
 }
 
 describe("판 4 숫자 표기 — 공통 대조 표", () => {
-  it("표는 열한 규칙을 모두 덮고, 프론트 함수 이름 약속이 이 파일의 함수와 같다", () => {
+  it("표는 열두 규칙을 모두 덮고, 프론트 함수 이름 약속이 이 파일의 함수와 같다", () => {
     expect(CASES.length).toBeGreaterThan(100);
     const rules = [
       "plain",
@@ -73,8 +77,11 @@ describe("판 4 숫자 표기 — 공통 대조 표", () => {
       "target",
       "latency",
       "distinct",
+      "count",
     ];
     expect(new Set(CASES.map((c) => c.rule))).toEqual(new Set(rules));
+    // count(S6 뒤 결정 4)는 functions 약속 밖이라 규칙 글에 함수 이름을 적었다 — 그 이름이 이 파일의 함수다.
+    expect(TABLE.rules.count).toContain("프론트 ed4Count(n)");
     const names = Object.fromEntries(
       Object.entries(TABLE.functions as Record<string, Json>)
         .filter(([k]) => rules.includes(k))
@@ -153,6 +160,42 @@ describe("판 4 숫자 표기 — 공통 대조 표", () => {
   it("숫자 꼴이 아닌 글자는 백분율로 옮기지 않는다", () => {
     expect(ed4Percent("—")).toBe("—");
     expect(ed4PercentPoint("abc")).toBe("abc");
+  });
+});
+
+describe("판 4 건수·클래스 이름 — 공통 대조 표(S6 뒤 사용자 결정 4·5)", () => {
+  it("건수는 1,000 이상만 쉼표 — 실행 로캘과 무관(en-US 묶음)", () => {
+    const counts = CASES.filter((c) => c.rule === "count");
+    expect(counts.length).toBeGreaterThanOrEqual(6);
+    expect(counts.filter((c) => c.value >= 1000).every((c) => c.expected.includes(","))).toBe(true);
+    expect(counts.filter((c) => c.value < 1000).some((c) => c.expected.includes(","))).toBe(false);
+    const original = Number.prototype.toLocaleString;
+    try {
+      // 로캘을 박지 않으면 de-DE 처럼 점으로 묶는 환경에서 "1.197" 이 된다 — en-US 를 넘기는지 본다.
+      Number.prototype.toLocaleString = function (this: number, locales?: Intl.LocalesArgument, options?: Intl.NumberFormatOptions) {
+        return original.call(this, locales ?? "de-DE", options);
+      };
+      expect(ed4Count(1197)).toBe("1,197");
+    } finally {
+      Number.prototype.toLocaleString = original;
+    }
+  });
+
+  it.each((TABLE.class_name_cases as Json[]).map((c) => [`${c.label} + ${c.description} → ${c.expected}`, c] as const))(
+    "이름 %s",
+    (_name, c) => {
+      expect(classNameEd4(c.label, c.description)).toBe(c.expected);
+    },
+  );
+
+  it.each((TABLE.name_count_cases as Json[]).map((c) => [c.expected, c] as const))("이름 뒤 건수 %s", (_name, c) => {
+    expect(nameCountEd4(c.name, c.count)).toBe(c.expected);
+  });
+
+  it("표에 대괄호 꼴·숫자 끝 이름이 실제로 있다(빈 갈래가 아니다)", () => {
+    expect((TABLE.class_name_cases as Json[]).some((c) => c.expected.includes("["))).toBe(true);
+    expect((TABLE.name_count_cases as Json[]).some((c) => c.expected.includes(": "))).toBe(true);
+    expect((TABLE.josa_cases as Json[]).filter((c) => String(c.word).includes("[")).length).toBeGreaterThanOrEqual(5);
   });
 });
 
