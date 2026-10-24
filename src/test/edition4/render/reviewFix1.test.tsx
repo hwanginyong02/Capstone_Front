@@ -127,3 +127,53 @@ describe("지적 3 — 같은 수는 같은 글자(4.3·4.4·4.6, 사실 시트)
     expect(at46.find((l) => l.startsWith("| Precision |"))?.split(" | ")[1]).toBe("0.969");
   });
 });
+
+describe("지적 4 — 평가 전 초안·랜딩의 빈 표와 4.1 모순", () => {
+  it("bc_strong 초안: 4.3 은 행 0개 표를 그리지 않는다(머리 행만 있는 표 없음)", () => {
+    const draft = draftReport("bc_strong");
+    const at43 = between(screenText(draft), "4.3 지표별 결과", "4.4 오분류");
+    expect(at43[0]).toBe("4.3 지표별 결과");
+    expect(at43.filter((l) => l.startsWith("|"))).toEqual([]);
+    // 평가 뒤에는 그대로 표가 있다.
+    const final43 = between(screenText(loadEd4("bc_strong", "final")), "4.3 지표별 결과", "4.4 오분류");
+    expect(final43[1]).toBe("| Metric ID | 시험항목 | 산출 결과 | 95% 신뢰구간 | 합격 기준 | 판정 | 판정 여유");
+  });
+
+  it("검증 결과가 없으면 4.1 요약 표에 '항목별 결과는 아래 표' 줄을 찍지 않는다(판 3 안내 글만)", () => {
+    const draft = draftReport("bc_strong");
+    draft.dataValidation = [];
+    const at41 = between(screenText(draft), "4.1 데이터 점검", "4.2 종합 판정");
+    expect(at41).toEqual([
+      "4.1 데이터 점검",
+      "| 항목 | 값 | 비고",
+      "| 총 평가 건수 | 171건 | 업로드 데이터 전체 행(row) 수 = 고유 ID 수",
+      "| 유효 예측 건수 | 171건 | 누락값·오류 제외 후 실제 metric 산출에 사용된 건수",
+      "| 제외된 샘플 수 | 0건 | 누락값/오류로 인해 평가에서 제외된 건수",
+      "데이터 검증 결과가 없습니다. (검증 단계를 수행한 평가에서만 표시됩니다.)",
+    ]);
+  });
+
+  it("검증 결과가 있으면 그 줄은 그대로(bc_strong 초안·발급본)", () => {
+    for (const data of [draftReport("bc_strong"), loadEd4("bc_strong", "issued")]) {
+      const at41 = between(screenText(data), "4.1 데이터 점검", "4.2 종합 판정");
+      expect(at41).toContain("| 데이터 검증 결과 | 오류 0건 / 경고 0건 | 항목별 결과는 아래 표");
+    }
+  });
+
+  it("학습 데이터 재료·정보가 하나도 없으면 2.3 은 판 3 글 '등록된 학습 데이터셋 정보가 없습니다.'", () => {
+    const draft = draftReport("bc_strong");
+    delete draft.materials;
+    delete draft.trainingDatasetInfo;
+    const at23 = between(screenText(draft), "2.3 학습 데이터", "3. 시험 방법");
+    expect(at23).toEqual(["2.3 학습 데이터", "등록된 학습 데이터셋 정보가 없습니다."]);
+    // 재료가 있으면 그 표(평가 전 초안도 같은 표)
+    const withMaterials = between(screenText(draftReport("bc_strong")), "2.3 학습 데이터", "3. 시험 방법");
+    expect(withMaterials).toContain("| 학습 샘플 수 | 398개");
+    expect(withMaterials).not.toContain("등록된 학습 데이터셋 정보가 없습니다.");
+    // 판 3 조건 그대로 — 옛 학습 데이터 정보만 있어도 안내 글은 찍지 않는다.
+    const legacyOnly = draftReport("bc_strong");
+    delete legacyOnly.materials;
+    expect(legacyOnly.trainingDatasetInfo).toBeTruthy();
+    expect(screenText(legacyOnly)).not.toContain("등록된 학습 데이터셋 정보가 없습니다.");
+  });
+});

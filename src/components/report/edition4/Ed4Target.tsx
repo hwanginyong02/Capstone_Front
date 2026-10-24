@@ -15,10 +15,12 @@ import {
   groundTruthRows,
   hyperparameterRows,
   modelRows,
+  showsNoTrainingInfo,
   trainingExamples,
   trainingRows,
 } from "../../../lib/report/edition4/render/target";
 import {
+  ED3_NO_TRAINING_INFO,
   TARGET_CLASS_DESCRIPTION_HEADERS,
   TARGET_CLASS_DESCRIPTION_TITLE,
   TARGET_ENVIRONMENT_TITLE,
@@ -88,6 +90,7 @@ export function Ed4Target({ data }: Ed4PartProps) {
       )}
 
       <Ed4SubsectionTitle number="2.3" />
+      {showsNoTrainingInfo(data) && <Ed4Paragraph>{ED3_NO_TRAINING_INFO}</Ed4Paragraph>}
       {training.length > 0 && (
         <>
           <Ed4Paragraph>{FIXED_26_PROVIDED_ALL}</Ed4Paragraph>

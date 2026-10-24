@@ -56,3 +56,6 @@ export const CLASS_DESCRIPTION_EMPTY = "설명 미입력";
 export const TRAINING_EXAMPLE_TITLE = "학습 데이터 예시";
 export const TRAINING_EXAMPLE_HEADERS = ["적합 예시", "부적합 예시"] as const;
 export const TRAINING_EXAMPLE_EMPTY = "등록된 {이름} 없음";
+
+/** 2.3 — 학습 데이터 재료도 옛 학습 데이터 정보도 없을 때(판 3 `DatasetSection` 3.1 글 그대로, 부록 A 치환 대상 낱말 없음). */
+export const ED3_NO_TRAINING_INFO = "등록된 학습 데이터셋 정보가 없습니다.";

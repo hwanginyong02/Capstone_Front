@@ -196,7 +196,9 @@ describe("픽스처에 없는 갈래(복사본)", () => {
     const data = clone(loadEd4("bc_strong", "final"));
     data.dataValidation = [];
     const lines = coreLines(screenText(data));
-    expect(lines).toContain("| 데이터 검증 결과 | 오류 0건 / 경고 0건 | 항목별 결과는 아래 표");
+    // '항목별 결과는 아래 표' 줄은 아래에 표가 없으니 뺀다(fix1 지적 4).
+    expect(lines.filter((l) => l.startsWith("| 데이터 검증 결과"))).toEqual([]);
+    expect(lines).toContain("| 제외된 샘플 수 | 0건 | 누락값/오류로 인해 평가에서 제외된 건수");
     expect(lines).toContain("데이터 검증 결과가 없습니다. (검증 단계를 수행한 평가에서만 표시됩니다.)");
     expect(lines.filter((l) => l.startsWith("| 검증 항목"))).toEqual([]);
   });

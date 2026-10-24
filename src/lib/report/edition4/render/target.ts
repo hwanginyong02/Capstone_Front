@@ -109,6 +109,11 @@ export function trainingRows(data: FinalReportData): CoverRow[] {
   return toRows(data.materials?.training ?? []);
 }
 
+/** 2.3 에 판 3 안내 글을 찍는가 — 판 3 `DatasetSection` 과 같은 조건(학습 데이터 재료도 옛 학습 데이터 정보도 없음). */
+export function showsNoTrainingInfo(data: FinalReportData): boolean {
+  return !data.materials && !data.trainingDatasetInfo;
+}
+
 /** 2.3 학습 데이터 예시 — 적합·부적합 예시 파일이 하나라도 있을 때만(판 3 과 같은 조건). 없으면 null. */
 export function trainingExamples(data: FinalReportData): { valid: UploadedFileInfo[]; edge: UploadedFileInfo[] } | null {
   const info = data.trainingDatasetInfo;
