@@ -51,7 +51,9 @@ export function institutionRows(data: FinalReportData): CoverRow[] {
 /** 1.2 목적 문단 — 모델명 뒤 을/를 은 따옴표로 감싼 이름의 읽는 소리로(`josa`). */
 export function purposeParagraph(data: FinalReportData): string {
   const model = data.evalScope.targetModel;
-  return PURPOSE_PARAGRAPH.replace("{모델}", model).replace("{조사}", josa(`"${model}"`, "을/를"));
+  // 한 번에 함수로 바꾼다 — 모델명 속 `$&`·`{조사}` 같은 글자가 치환 패턴·다음 자리로 읽히지 않게.
+  const values: Record<string, string> = { 모델: model, 조사: josa(`"${model}"`, "을/를") };
+  return PURPOSE_PARAGRAPH.replace(/\{(모델|조사)\}/g, (_whole, key: string) => values[key]);
 }
 
 /** 1.2 용도 표 — 첫 줄(머리 행) "용도 | {용도 이름}", 그다음 개요와 과제 칸(값이 있을 때). */

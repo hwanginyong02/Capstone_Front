@@ -4,6 +4,10 @@
 import { describe, expect, it } from "vitest";
 
 import { buildThresholdTableEd4, f1ThresholdGainTextsEd4, type F1ThresholdGainRawEd4 } from "../../../lib/report/edition4/thresholdGainEd4";
+import { coverIssuerLine } from "../../../lib/report/edition4/render/cover";
+import { purposeParagraph } from "../../../lib/report/edition4/render/overview";
+import { ed4RuleTail } from "../../../lib/report/edition4/render/recordLines";
+import { evaluationDataRows, fileSizeText } from "../../../lib/report/edition4/render/target";
 import { NO_PROBLEM_SENTENCE } from "../../../lib/report/reportConstants";
 import type { FinalReportData } from "../../../types/finalReport.types";
 import { draftReport } from "./draftEd4";
@@ -233,5 +237,39 @@ describe("지적 6 — 4.3 판정 칸 미달 지표는 판 3 같은 칸 글자 '
     const { resolve } = await import("node:path");
     const golden = readFileSync(resolve(__dirname, "../../archive/issued/golden/RPT-2026-0004.sections.txt"), "utf8");
     expect(golden.split("\n")).toContain("| 불합격");
+  });
+});
+
+describe("지적 7 — 의뢰자·데이터 값 속 $&·$'·$$·$` 를 그대로 찍는다(문자열 치환 특수 패턴)", () => {
+  const SPECIALS = ["Net$&X", "a$'b", "c$$d", "e$`f", "{조사}g", "h{목록}"];
+
+  it("rv3 dollarModel: 1.2 목적 문단 모델명, 2.2 클래스 목록 — 화면 글", () => {
+    const data = structuredClone(loadEd4("bc_strong", "final"));
+    data.evalScope.targetModel = "Net$&X";
+    data.datasetInfo.classLabels = ["a$'b", "c$$d", "e$`f"];
+    data.datasetInfo.classCount = 3;
+    const text = screenText(data);
+    const purpose = text.split("\n").find((l) => l.startsWith("본 시험성적서는 "));
+    expect(purpose?.startsWith('본 시험성적서는 "Net$&X"를 대상으로 ')).toBe(true);
+    expect(text).toContain("\n| 감지된 클래스 수 | 3개 — 클래스 목록: a$'b, c$$d, e$`f | 시스템 확인\n");
+  });
+
+  for (const value of SPECIALS) {
+    it(`값 ${value} — 순수 함수마다 받은 글자 그대로`, () => {
+      const data = structuredClone(loadEd4("bc_strong", "final"));
+      data.evalScope.targetModel = value;
+      data.datasetInfo.classLabels = [value, "z"];
+      data.performer.orgName = value;
+      expect(purposeParagraph(data)).toContain(`"${value}"`);
+      expect(purposeParagraph(data)).not.toMatch(/\{모델\}/);
+      const classes = evaluationDataRows(data).find((r) => r[0] === "감지된 클래스 수")!;
+      expect(classes[1]).toBe(`2개 — 클래스 목록: ${value}, z`);
+      expect(coverIssuerLine(data)).toBe(`발급 기관: ${value}`);
+      expect(ed4RuleTail(value)).toContain(`(입력 점검 규칙 ${value})`);
+    });
+  }
+
+  it("숫자 칸도 함수 치환(파일 크기)", () => {
+    expect(fileSizeText(loadEd4("bc_strong", "final"))).toBe("3,727바이트");
   });
 });

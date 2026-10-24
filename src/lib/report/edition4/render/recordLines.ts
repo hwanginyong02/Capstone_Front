@@ -53,7 +53,7 @@ export function ed4ProgressHeadBefore(): string {
 
 /** B28 — 판 4 생성 전 안내의 뒤 글("진행한 것으로 기록됩니다 (입력 점검 규칙 2.0)."). */
 export function ed4RuleTail(version: string): string {
-  return B28_RULE_TAIL.replace("{v}", version);
+  return B28_RULE_TAIL.replace("{v}", () => version);
 }
 
 /** B29 — 판 4 run 의 점검 표 재확인 안내에서 점검 결과가 찍히는 자리. */

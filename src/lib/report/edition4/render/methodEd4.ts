@@ -204,9 +204,10 @@ export function averagingSentenceEd4(data: FinalReportData): string | null {
   if (data.meta.taskType !== "multiclass" || !data.materials?.averagingSentence) return null;
   const materials = averagingMetMaterialsEd4(data);
   if (!materials) return null;
-  return B7_AVERAGING_MET.replace("{평균 방식}", materials.averaging).replace(
-    '"{선언 값}"(으)로',
-    `"${materials.declared}"${josa(materials.declared, "으로/로")}`,
+  // 한 번에 함수로 바꾼다 — 끼운 글자 속 `$&`·`{…}` 가 치환 패턴·다음 자리로 읽히지 않게.
+  const declared = `"${materials.declared}"${josa(materials.declared, "으로/로")}`;
+  return B7_AVERAGING_MET.replace(/\{평균 방식\}|"\{선언 값\}"\(으\)로/g, (whole) =>
+    whole === "{평균 방식}" ? materials.averaging : declared,
   );
 }
 
@@ -239,7 +240,7 @@ export function coreMetricsTextEd4(data: FinalReportData): string {
 /** 3.4 두 문단(고정 문구 10 판 4) — 핵심 지표 출처가 default 면 핵심 지표 문장을 10_core_default 로. */
 export function verdictRuleParagraphsEd4(data: FinalReportData): [string, string] {
   const rule =
-    data.coreMetricsSource === "default" ? FIXED_10_RULE_ED4.replace(FIXED_10_CORE_CLIENT, FIXED_10_CORE_DEFAULT) : FIXED_10_RULE_ED4;
+    data.coreMetricsSource === "default" ? FIXED_10_RULE_ED4.replace(FIXED_10_CORE_CLIENT, () => FIXED_10_CORE_DEFAULT) : FIXED_10_RULE_ED4;
   return [fillTemplate(rule, { core_metrics: coreMetricsTextEd4(data) }), FIXED_10_MARGIN_PARAGRAPH_ED4];
 }
 

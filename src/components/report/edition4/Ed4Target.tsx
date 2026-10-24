@@ -40,7 +40,7 @@ import { Ed4ItemTable, Ed4Table } from "./shared/Ed4Table";
 
 /** 예시 칸 하나 — 파일마다 (그림) + "파일명 · 크기", 쉼표로 잇는다. 없으면 "등록된 {이름} 없음". */
 function exampleCell(files: UploadedFileInfo[], name: string) {
-  if (files.length === 0) return TRAINING_EXAMPLE_EMPTY.replace("{이름}", name);
+  if (files.length === 0) return TRAINING_EXAMPLE_EMPTY.replace("{이름}", () => name);
   return files.map((file, i) => (
     <Fragment key={`${file.name}-${i}`}>
       {i > 0 && ", "}

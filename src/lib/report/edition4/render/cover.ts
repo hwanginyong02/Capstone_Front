@@ -36,7 +36,7 @@ export function coverStandardLine(data: FinalReportData): string | null {
 
 /** "발급 기관: {기관명}" — 대응표 31(기관명만). */
 export function coverIssuerLine(data: FinalReportData): string {
-  return COVER_ISSUER_LINE.replace("{기관}", data.performer.orgName);
+  return COVER_ISSUER_LINE.replace("{기관}", () => data.performer.orgName);
 }
 
 /** 고정 문구 22 — 발급본에만(부록 B1). 미발급이면 null. */

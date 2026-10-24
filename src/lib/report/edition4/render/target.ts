@@ -69,7 +69,7 @@ export function fileHashText(data: FinalReportData): string {
 /** 2.2 파일 크기 칸 — "3,727바이트", 없으면 "—". */
 export function fileSizeText(data: FinalReportData): string {
   const file = data.datasetInfo.sourceFile;
-  return file ? FILE_SIZE_TEXT.replace("{n}", grouped(file.sizeBytes)) : ED4_DASH;
+  return file ? FILE_SIZE_TEXT.replace("{n}", () => grouped(file.sizeBytes)) : ED4_DASH;
 }
 
 /** 2.2 평가 데이터 3열 표의 줄 — [항목, 내용, 출처]. */
@@ -84,9 +84,10 @@ export function evaluationDataRows(data: FinalReportData): Array<[string, string
     [L.size, fileSizeText(data), S],
     [L.format, info.format, S],
     [L.inputColumns, info.inputColumns.join(", "), S],
-    [L.sampleCount, SAMPLE_COUNT_TEXT.replace("{n}", grouped(info.sampleCount)), S],
+    [L.sampleCount, SAMPLE_COUNT_TEXT.replace("{n}", () => grouped(info.sampleCount)), S],
     [L.taskType, info.taskTypeLabel, C],
-    [L.classes, CLASSES_TEXT.replace("{n}", String(info.classCount)).replace("{목록}", info.classLabels.join(", ")), S],
+    // 클래스 이름은 데이터 값 — 함수 치환으로(`$&`·`$'` 같은 글자가 치환 패턴으로 읽히지 않게).
+    [L.classes, CLASSES_TEXT.replace("{n}", () => String(info.classCount)).replace("{목록}", () => info.classLabels.join(", ")), S],
     ...(data.materials?.test ?? []).map((row): [string, string, string] => [row.label, materialRowText(row), C]),
   ];
 }
