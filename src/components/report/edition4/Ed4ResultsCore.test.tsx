@@ -132,7 +132,7 @@ const YEAST_CORE = [
   "| Metric ID | 시험항목 | 산출 결과 | 95% 신뢰구간 | 합격 기준 | 판정 | 판정 여유",
   "| M2 | Precision | 0.535 | — | — | 참고 지표 | —",
   "| M3 | Recall | 0.368 | — | — | 참고 지표 | —",
-  "| M4 | F1 Score | 0.399 | [0.376, 0.425] | ≥ 0.450 | 미달 | 충분",
+  "| M4 | F1 Score | 0.399 | [0.376, 0.425] | ≥ 0.450 | 불합격 | 충분",
   "| M15 | Hamming Loss (핵심) | 0.209 | [0.200, 0.218] | ≤ 0.220 | 합격 | 충분",
   "| M16 | Exact Match Ratio | 0.153 | — | — | 참고 지표 | —",
   "| M17 | Jaccard Index (핵심) | 0.495 | [0.475, 0.515] | ≥ 0.450 | 합격 | 충분",
@@ -203,7 +203,7 @@ describe("픽스처에 없는 갈래(복사본)", () => {
     expect(lines.filter((l) => l.startsWith("| 검증 항목"))).toEqual([]);
   });
 
-  it("판정 미달·불합격 — 늘린 값, '미달', 저장된 4.2 판정·근거(초안 20번 글)", async () => {
+  it("판정 미달·불합격 — 늘린 값, 판정 칸 '불합격', 저장된 4.2 판정·근거(초안 20번 글)", async () => {
     const data = clone(loadEd4("bc_strong", "final"));
     setKpi(data, "M3", { value: 0.9696, status: "fail" });
     data.edition4Values!.verdict = {
@@ -216,7 +216,7 @@ describe("픽스처에 없는 갈래(복사본)", () => {
     };
     for (const [name, draw] of paths) {
       const lines = coreLines(await draw(data));
-      expect(lines, name).toContain("| M3 | Recall (핵심) | 0.9696 | [0.917, 0.997] | ≥ 0.970 | 미달 | 작음");
+      expect(lines, name).toContain("| M3 | Recall (핵심) | 0.9696 | [0.917, 0.997] | ≥ 0.970 | 불합격 | 작음");
       const at = lines.indexOf("| 종합 판정 | 판정 대상 지표 중 충족");
       expect(lines.slice(at + 1, at + 3), name).toEqual([
         "| 최종 불합격 | 5개 중 4개",

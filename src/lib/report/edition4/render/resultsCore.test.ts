@@ -163,16 +163,16 @@ describe("4.3 지표별 결과 한 줄", () => {
     ]);
   });
 
-  it("판정 미달 — 값은 판정과 어긋나 보이지 않게 늘린 판 4 표기, 판정 '미달'", () => {
+  it("판정 미달 — 값은 판정과 어긋나 보이지 않게 늘린 판 4 표기, 판정 칸 '불합격'(판 3 같은 칸 글자)", () => {
     const data = loadEd4("bc_strong", "final");
     const r: KpiResult = { ...kpi(data, "M3"), value: 0.9696, status: "fail", judgmentMargin: "small" };
-    expect(metricRowEd4(r, [r])).toEqual(["M3", "Recall (핵심)", "0.9696", "[0.917, 0.997]", "≥ 0.970", "미달", "작음"]);
+    expect(metricRowEd4(r, [r])).toEqual(["M3", "Recall (핵심)", "0.9696", "[0.917, 0.997]", "≥ 0.970", "불합격", "작음"]);
   });
 
   it("낮을수록 좋은 지표 미달 — '≤' 와 늘린 값", () => {
     const data = loadEd4("bc_strong", "final");
     const r: KpiResult = { ...kpi(data, "M19"), value: 0.1004, status: "fail" };
-    expect(metricRowEd4(r, [r]).slice(2, 6)).toEqual(["0.1004", "[0.033, 0.079]", "≤ 0.100", "미달"]);
+    expect(metricRowEd4(r, [r]).slice(2, 6)).toEqual(["0.1004", "[0.033, 0.079]", "≤ 0.100", "불합격"]);
   });
 
   it("측정 불가(B14) — 산출 결과·신뢰구간·판정 여유 '—', 합격 기준은 목표가 있으면 그 글자", () => {
@@ -261,7 +261,7 @@ describe("다중(digits_strong)·멀티(yeast_strong) 4.3", () => {
     expect(metricRowsEd4(loadEd4("yeast_strong", "final").kpiResults)).toEqual([
       ["M2", "Precision", "0.535", "—", "—", "참고 지표", "—"],
       ["M3", "Recall", "0.368", "—", "—", "참고 지표", "—"],
-      ["M4", "F1 Score", "0.399", "[0.376, 0.425]", "≥ 0.450", "미달", "충분"],
+      ["M4", "F1 Score", "0.399", "[0.376, 0.425]", "≥ 0.450", "불합격", "충분"],
       ["M15", "Hamming Loss (핵심)", "0.209", "[0.200, 0.218]", "≤ 0.220", "합격", "충분"],
       ["M16", "Exact Match Ratio", "0.153", "—", "—", "참고 지표", "—"],
       ["M17", "Jaccard Index (핵심)", "0.495", "[0.475, 0.515]", "≥ 0.450", "합격", "충분"],

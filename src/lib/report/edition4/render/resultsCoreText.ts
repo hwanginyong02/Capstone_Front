@@ -64,9 +64,12 @@ export const EX_4_2_COLUMNS = ["종합 판정", "판정 대상 지표 중 충족
 export const EX_4_3_COLUMNS = ["Metric ID", "시험항목", "산출 결과", "95% 신뢰구간", "합격 기준", "판정", "판정 여유"] as const;
 /** 핵심 지표 이름 뒤 표시(예시본 "Recall (핵심)"). */
 export const EX_4_3_CORE_SUFFIX = " (핵심)";
-/** 판정 칸(예시본 "합격", 대응표 10·17 — 이모지 없는 글자). 미달은 판 4 판정 규칙(고정 문구 10)의 낱말. */
+/**
+ * 판정 칸(예시본 "합격", 대응표 10·17 — 이모지 없는 글자). 미달 지표의 칸은 예시본에 없어 판 3 같은 칸의 글자(`PassBadge` fail
+ * "불합격", 판 3 정답 RPT-2026-0004 지표 표) — 표지 줄의 "충족/미달"(고정 문구 21)과는 다른 자리다.
+ */
 export const VERDICT_CELL_PASS = "합격";
-export const VERDICT_CELL_FAIL = "미달";
+export const VERDICT_CELL_FAIL = "불합격";
 /** 신뢰구간 칸(예시본 "[0.9497, 0.994]"). */
 export const EX_4_3_CI = "[{low}, {high}]";
 

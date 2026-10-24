@@ -206,3 +206,32 @@ describe("지적 5 — 고정 문구 19(4.3 표 아래)는 판정 대상 지표�
     });
   }
 });
+
+describe("지적 6 — 4.3 판정 칸 미달 지표는 판 3 같은 칸 글자 '불합격'(표지 21번 '충족/미달'은 그대로)", () => {
+  it("yeast_strong: 미달 지표 F1 Score 줄의 판정 칸은 '불합격', 4.2 판정 근거(고정 문구 20)의 '미달'은 그대로", () => {
+    const text = screenText(loadEd4("yeast_strong", "issued"));
+    expect(between(text, "4.2 종합 판정", "4.3 지표별 결과")).toContain(
+      "핵심 지표 Hamming Loss(M15), Jaccard Index(M17)는 목표를 충족하였으나 F1 Score(M4)가 목표에 미달하여, 3.4의 판정 규칙에 따라 조건부 합격으로 판정하였다.",
+    );
+    const at43 = between(text, "4.3 지표별 결과", "4.4 오분류");
+    expect(at43).toContain("| M4 | F1 Score | 0.399 | [0.376, 0.425] | ≥ 0.450 | 불합격 | 충분");
+    expect(at43.filter((l) => l.includes("| 미달 |"))).toEqual([]);
+  });
+
+  it("bc_fail_core: 핵심 지표 Recall 미달 줄", () => {
+    const data = structuredClone(loadEd4("bc_strong", "final"));
+    const recall = data.kpiResults.find((r) => r.metricId === "M3")!;
+    recall.value = 0.984375;
+    recall.threshold = 0.99;
+    recall.status = "fail";
+    const at43 = between(screenText(data), "4.3 지표별 결과", "4.4 오분류");
+    expect(at43).toContain("| M3 | Recall (핵심) | 0.984 | [0.917, 0.997] | ≥ 0.990 | 불합격 | 작음");
+  });
+
+  it("판 3 같은 칸 글자와 같다(판 3 정답 RPT-2026-0004 지표 표 칸)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const golden = readFileSync(resolve(__dirname, "../../archive/issued/golden/RPT-2026-0004.sections.txt"), "utf8");
+    expect(golden.split("\n")).toContain("| 불합격");
+  });
+});
