@@ -314,6 +314,32 @@ describe("4.6 참조 범위 비교", () => {
     expect(v.noBenchmark).toBe("다음 지표는 내부 참조 기준치가 없어 벤치마크 비교를 하지 않았다: Log Loss.");
   });
 
+  it("모델 값이 참조 범위 끝에 가까워도 자릿수를 늘리지 않는다 — 판 3 formatBenchmarkValue 규칙 안 씀(S6 질문 2, 사용자 답 '그대로')", () => {
+    const v = benchmarkView({
+      conclusion: {
+        benchmarkRefs: [
+          // 0.8497 < 0.85(범위보다 낮음) — 셋째 자리 "0.850" 은 범위 안처럼 보이지만 그대로(판 3 은 "0.8497")
+          ref({ metric: "Precision", quality: "worse", targetValue: null, targetPosition: null }),
+          // 0.92049 > 0.92(범위보다 높음) — "0.920" 그대로(판 3 은 "0.9205"). 판정 대상(목표 0.90 충족)이어도 judged 글자뿐
+          ref({ metric: "Accuracy", quality: "better", targetValue: 0.9, targetPosition: "within" }),
+          // 낮을수록 좋음: 0.04996 < 0.05(범위보다 낮음 = better) — "0.050" 그대로
+          ref({ metric: "Hamming Loss", direction: "lower", quality: "better", refLow: 0.05, refHigh: 0.2, targetValue: null, targetPosition: null }),
+        ],
+      } as never,
+      kpiResults: [
+        kpi({ metricId: "M2", name: "Precision", value: 0.8497 }),
+        kpi({ metricId: "M1", name: "Accuracy", value: 0.92049, threshold: 0.9, status: "pass" }),
+        kpi({ metricId: "M15", name: "Hamming Loss", value: 0.04996, higherIsBetter: false }),
+      ],
+      noBenchmarkSentence: undefined,
+    });
+    expect(v.table!.rows).toEqual([
+      ["Precision", "0.850", "0.85 ~ 0.92", "범위보다 낮음", "—", "—"],
+      ["Accuracy", "0.920", "0.85 ~ 0.92", "범위보다 높음", "0.900", "범위 안"],
+      ["Hamming Loss (낮을수록 좋음)", "0.050", "0.05 ~ 0.20", "범위보다 낮음", "—", "—"],
+    ]);
+  });
+
   it("better·낮을수록 좋음 → 범위보다 낮음", () => {
     const v = benchmarkView({
       conclusion: { benchmarkRefs: [ref({ metric: "Log Loss", direction: "lower", quality: "better", targetValue: null, targetPosition: null })] } as never,
