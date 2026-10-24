@@ -31,10 +31,13 @@ const SHARED = ["fact_sheet_contract_ed4.json", "number_wording_ed4.json", "narr
  * S2·S3 검토(2026-10-24)로 고침 — 명세: D1~D7 결정(decided), 판 4 전용 새 키 facts.weakest_class.f1_text, '임시' 글 걷음.
  * 대조 표: target·latency·distinct 규칙과 줄, given 정수·지수 꼴, judged D1·여섯째 자리 줄, 조사 끝소리 모름·쉼표 정수 줄.
  * 새 규칙·줄을 프론트 함수가 따라오기 전까지 이 파일의 표 시험 일부가 빨갛다(백엔드 인계 fix_BE.md '프론트가 할 일').
+ * 후속(2026-10-24)으로 명세·대조 표만 다시 고침 — 명세: 멀티레이블 4.5 학습·평가 비율의 분모 = 표본 수(T3 사용자 답, 새 상태
+ * training_samples_not_provided), D3 클래스별 표(function_names.class_f1), not_decided 에 B16 이유 질문. 대조 표: distinct 의
+ * class_table 줄 다섯(others = [최약 F1]). 칸 대응표는 그대로(백엔드 인계 fu_BE.md).
  */
 const SHA256: Record<(typeof SHARED)[number], string> = {
-  "fact_sheet_contract_ed4.json": "b39895a5377c8d65d01973b5a65e58e0d3739424a509a3d27a0cc6cf4fe775c8",
-  "number_wording_ed4.json": "cd6e6ac860b7458d0922f7d4e8878dc44715e019106f2c9d5fa0a0e86c249338",
+  "fact_sheet_contract_ed4.json": "d36af2ef0c3031213f2ff5de3360e0a76cc62f7b85c1aa23ba4fa4d3869fbb86",
+  "number_wording_ed4.json": "6d4659d849363ceac749108c19b9a41662b18ce6e1f02bdc30586f54142466fb",
   "narrative_slots_ed4.json": "3c43ffa35357c8c7f4c8a30d182482a85dec51caefa872dc9e556ae51d5b7d35",
 };
 
