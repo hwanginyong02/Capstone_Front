@@ -169,6 +169,13 @@ describe("4.3 지표별 결과 한 줄", () => {
     expect(metricRowEd4(r, [r])).toEqual(["M3", "Recall (핵심)", "0.9696", "[0.917, 0.997]", "≥ 0.970", "불합격", "작음"]);
   });
 
+  it("방향 칸이 없으면(higherIsBetter undefined) 높을수록 좋음으로 — 경계 미달 값 0.8496 / 목표 0.85(rv2 지적 4)", () => {
+    const data = loadEd4("bc_strong", "final");
+    const r: KpiResult = { ...kpi(data, "M3"), value: 0.8496, threshold: 0.85, status: "fail", judgmentMargin: "small" };
+    delete r.higherIsBetter;
+    expect(metricRowEd4(r, [r]).slice(2, 6)).toEqual(["0.8496", "[0.917, 0.997]", "≥ 0.850", "불합격"]);
+  });
+
   it("낮을수록 좋은 지표 미달 — '≤' 와 늘린 값", () => {
     const data = loadEd4("bc_strong", "final");
     const r: KpiResult = { ...kpi(data, "M19"), value: 0.1004, status: "fail" };
