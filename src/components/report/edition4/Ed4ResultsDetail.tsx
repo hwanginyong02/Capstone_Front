@@ -4,7 +4,7 @@
  * 표·문장 재료는 순수 함수(`lib/report/edition4/render/resultsDetail.ts`)가 저장값에서 읽어 만든다 — 이 부품은 그 결과를 예시본
  * 모양으로 놓기만 한다(다시 계산하지 않음). 화면·인쇄가 같은 부품이다(mode 로 가르는 것 없음).
  *
- * - 4.4: 혼동 행렬 건수 → 고정 문구 17(저장 문장) → M21 그림(골랐을 때) → 최약 클래스 → 예측 편향 → (다중) 최다 오분류 쌍 →
+ * - 4.4: 혼동 행렬 건수 → 고정 문구 17(저장 문장) → M21 그림(골랐을 때, 행렬 칸만 — 영어 머리글·요약 상자 없음) → 최약 클래스 → 예측 편향 → (다중) 최다 오분류 쌍 →
  *   임계값 조정 여지(표가 없으면 소제목째 없음).
  * - 4.5: 분포·(멀티 고정 문구 7)·불균형 문장 → 학습·평가 클래스 비율(표, 또는 B16·B33 문장) → 고정 문구 24.
  * - 4.6: 참조 범위 표 → ※ 출처 줄 → 기준 없는 지표 문장.
@@ -106,7 +106,8 @@ export function Ed4ResultsDetail({ data }: Ed4PartProps) {
       {data.errorRatioSentence && <Ed4Paragraph>{data.errorRatioSentence}</Ed4Paragraph>}
       {data.charts?.confusionMatrix && (
         <div className="mt-3" data-ed4-figure="M21">
-          <ConfusionMatrixChart data={data.charts.confusionMatrix} />
+          {/* 그림만 — 판 3 부품의 영어 머리글·요약 상자는 빼고(S6 질문 3), 판 3 부품의 판 3 모양은 그대로 */}
+          <ConfusionMatrixChart data={data.charts.confusionMatrix} figureOnly />
         </div>
       )}
       <DetailTableBlock table={weakestClassTable(facts, kpis, descriptions)} />

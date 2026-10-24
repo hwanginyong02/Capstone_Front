@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import type { FinalReportData } from "../../../types/finalReport.types";
 
 import { loadEd4, loadEd4Issuance, type Ed4Tag } from "./ed4Fixtures";
+import { loadEd4WithM21 } from "./m21Synthetic";
 import { byNumberText, printText, screenText } from "./renderEd4";
 
 const FORBIDDEN: Array<[name: string, pattern: RegExp]> = [
@@ -57,6 +58,12 @@ describe("판 4 금지어 — 세 경로(작성 기록 제외)", () => {
   it.each(TAGS)("%s 인쇄(발급본·미발급)", async (tag) => {
     expectClean(await printText(loadEd4(tag, "issued")));
     expectClean(await printText(loadEd4(tag, "final")));
+  });
+
+  // M21 을 고른 합성 데이터(픽스처 셋에는 M21 그림 갈래가 없다 — S6 질문 3)
+  it.each(TAGS)("%s + M21 그림: 화면(완료)·인쇄(발급본)", async (tag) => {
+    expectClean(screenText(loadEd4WithM21(tag, "final")));
+    expectClean(await printText(loadEd4WithM21(tag, "issued")));
   });
 
   it.each(TAGS)("%s 번호 열기(작성 기록 상자 뺌)", async (tag) => {
