@@ -177,3 +177,32 @@ describe("지적 4 — 평가 전 초안·랜딩의 빈 표와 4.1 모순", () =
     expect(screenText(legacyOnly)).not.toContain("등록된 학습 데이터셋 정보가 없습니다.");
   });
 });
+
+const FIXED_19 = '판정 여유 "작음"은 95% 신뢰구간이 합격 기준을 포함하거나, 신뢰구간이 없는 지표에서는 목표값과의 차이가 목표값의 3% 미만이라는 뜻입니다(3.4).';
+
+describe("지적 5 — 고정 문구 19(4.3 표 아래)는 판정 대상 지표가 있을 때만", () => {
+  it("bc_no_targets: 목표값을 모두 비워 판정 대상 0개(저장된 verdict.judgedCount 0)면 찍지 않는다", () => {
+    const data = structuredClone(loadEd4("bc_strong", "final"));
+    for (const r of data.kpiResults) r.threshold = null;
+    for (const m of data.metricList) m.threshold = null;
+    data.edition4Values!.verdict = { ...data.edition4Values!.verdict, verdict: "INCONCLUSIVE", judgedCount: 0, passedCount: 0, countText: "—" };
+    const at43 = between(screenText(data), "4.3 지표별 결과", "4.4 오분류");
+    expect(at43.filter((l) => /^\| M\d/.test(l))).toHaveLength(8);
+    expect(at43.every((l) => !/^\| M\d/.test(l) || l.endsWith("| —"))).toBe(true);
+    expect(at43).not.toContain(FIXED_19);
+  });
+
+  it("평가 전 초안(판정 값 없음)에도 찍지 않는다", () => {
+    expect(screenText(draftReport("bc_strong"))).not.toContain(FIXED_19);
+  });
+
+  for (const tag of ["bc_strong", "digits_strong", "yeast_strong"] as const) {
+    it(`${tag}: 판정 대상이 있으면 그대로(저장된 judgedCount = 판정 대상 지표 수 > 0)`, () => {
+      const data = loadEd4(tag, "final");
+      const judged = data.kpiResults.filter((r) => r.threshold !== null && r.status !== "unavailable").length;
+      expect(data.edition4Values!.verdict.judgedCount).toBe(judged);
+      expect(judged).toBeGreaterThan(0);
+      expect(between(screenText(data), "4.3 지표별 결과", "4.4 오분류")).toContain(FIXED_19);
+    });
+  }
+});

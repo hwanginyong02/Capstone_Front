@@ -7,6 +7,7 @@ import {
   classReportRowsEd4,
   metricRowsEd4,
   showsClassReportEd4,
+  showsFixed19Ed4,
   subMetricTablesEd4,
   validationGroupsEd4,
   validationSummaryRowsEd4,
@@ -64,7 +65,7 @@ export function Ed4ResultsCore({ data }: Ed4PartProps) {
           rowKeys={data.kpiResults.map((r) => r.metricId)}
         />
       )}
-      <Ed4Paragraph>{FIXED_19_NOTE}</Ed4Paragraph>
+      {showsFixed19Ed4(data) && <Ed4Paragraph>{FIXED_19_NOTE}</Ed4Paragraph>}
 
       {classReport && (
         <div data-ed4-class-report="">

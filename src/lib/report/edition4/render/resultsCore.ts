@@ -163,6 +163,14 @@ export function verdictBasisEd4(data: Pick<FinalReportData, "edition4Values">): 
  * 4.3 지표별 결과
  * ================================================================== */
 
+/**
+ * 고정 문구 19(4.3 표 아래 판정 여유 설명)를 찍는가 — 조건 "판정 대상 지표가 있을 때(J7)". 저장된 판정의 판정 대상 지표 수
+ * (`edition4Values.verdict.judgedCount`)를 읽는다(다시 세지 않음). 판정 값이 없으면(평가 전 초안) 찍지 않는다.
+ */
+export function showsFixed19Ed4(data: Pick<FinalReportData, "edition4Values">): boolean {
+  return (data.edition4Values?.verdict.judgedCount ?? 0) > 0;
+}
+
 /** M21(혼동행렬)·M22(클래스별 표) — 값이 없는 표 지표(부록 B5). */
 const isTableMetric = (r: KpiResult) => r.metricId === "M21" || r.metricId === "M22";
 
