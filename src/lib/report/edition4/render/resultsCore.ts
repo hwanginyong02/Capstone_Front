@@ -3,6 +3,7 @@
  * 표 칸 글자로 바꾸는 순수 함수. 판정·판정 여유·충족 수는 다시 계산하지 않는다(`edition4Values.verdict`, `kpiResults[].status`·
  * `judgmentMargin`·`ciRaw` 를 그대로 읽는다). 숫자는 판 4 표기 함수(`edition4Number`)와 같은 수 같은 글자(`sameValueEd4`·`classF1Ed4`)만 쓴다.
  */
+import { getColumnDisplay, type RequiredColumnCode } from "../../../../data/evaluationData";
 import type { ClassReportRow, ClassReportTable, FinalReportData, KpiResult, ValidationResult } from "../../../../types/finalReport.types";
 import type { ValidationGroup } from "../../../../types/validation.types";
 import { isJudged } from "../../computeVerdict";
@@ -64,8 +65,34 @@ export function countCellEd4(n: number): string {
 const SCORE_ROLES = new Set(["score", "score_positive", "score_per_label"]);
 
 /**
+ * 백엔드 역할 키(`validation_checks` 가 상세 글에 넣는 이름) → 매핑 화면의 역할 코드. 화면 이름표(`getColumnDisplay(code).label`
+ * — "정답 레이블"·"양성 클래스 점수"·"클래스별 확률"·"레이블별 확률" …)를 그대로 쓴다(S6 질문 5). "probability" 는 다중 클래스
+ * 확률 컬럼 검사의 글, "score" 는 이진 점수 컬럼 검사의 글이다. 모르는 키는 그대로 둔다.
+ */
+const ROLE_CODE_ED4: Readonly<Record<string, RequiredColumnCode>> = {
+  sample_id: "id",
+  y_true: "y_true",
+  true_labels: "y_true",
+  y_pred: "y_pred",
+  pred_labels: "y_pred",
+  score: "score",
+  score_positive: "score",
+  probability: "prob_class_*",
+  prob_per_class: "prob_class_*",
+  score_per_label: "prob_label_*",
+  latency: "latency",
+};
+
+/** 상세 칸에 찍는 역할 이름 — 매핑 화면의 한국어 이름표. 모르는 키는 그대로. */
+export function roleNameEd4(role: string): string {
+  const code = Object.prototype.hasOwnProperty.call(ROLE_CODE_ED4, role) ? ROLE_CODE_ED4[role] : undefined;
+  return code ? getColumnDisplay(code).label : role;
+}
+
+/**
  * 상세 칸 한 줄(대응표 13, 부록 A7·B10·B11) — 저장된 판 3 글(`mapValidationResultToReport` 가 한 번 바꾼 것)을 판 4 글로.
  * - "N/A (no sample_id mapped)" → B10 샘플 ID, "N/A (no score_positive|score_per_label mapped)" → B10 확률(score), 그 밖의 역할 → B10 {역할}
+ *   ({역할}·B11 {목록}은 매핑 화면의 한국어 이름표 — `roleNameEd4`, S6 질문 5)
  * - "N/A" → "해당 없음"(A7)
  * - 지연시간 통계 "mean=…, p95=…, max=… (n=…)" → B11, 단위 경고 "All n values < 1 (max=…)" → B11, "Could not verify" → B11,
  *   "Non-numeric values in … column(s)" → B11
@@ -78,7 +105,7 @@ export function validationDetailEd4(detail: string): string {
     const role = noRole[1];
     if (role === "sample_id") return B10_NO_SAMPLE_ID;
     if (SCORE_ROLES.has(role)) return B10_NO_SCORE;
-    return fillTemplate(B10_NO_ROLE, { 역할: role });
+    return fillTemplate(B10_NO_ROLE, { 역할: roleNameEd4(role) });
   }
   if (text === "N/A") return A7_NOT_APPLICABLE;
   const stats = /^mean=([^,]+), p95=([^,]+), max=([^ ]+) \(n=(\d+)\)$/.exec(text);
@@ -87,7 +114,7 @@ export function validationDetailEd4(detail: string): string {
   if (below) return fillTemplate(B11_ALL_BELOW_ONE, { n: below[1], x: below[2] });
   if (text === "Could not verify") return B11_UNCHECKED;
   const nonNumeric = /^Non-numeric values in (.+?) columns?$/.exec(text);
-  if (nonNumeric) return fillTemplate(B11_NON_NUMERIC, { 목록: nonNumeric[1] });
+  if (nonNumeric) return fillTemplate(B11_NON_NUMERIC, { 목록: roleNameEd4(nonNumeric[1]) });
   return text.replace(/(\d) 건/g, "$1건");
 }
 
