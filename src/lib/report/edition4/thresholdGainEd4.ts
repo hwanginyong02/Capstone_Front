@@ -5,7 +5,8 @@
  * - 평가 응답 `f1_threshold_gain` 의 새 칸(백엔드 S1: 그 점과 지금의 Recall·Precision, `*_raw`, `best_threshold_text`)은 이 판 4
  *   전용 파서만 읽는다. 판 3 파서 `problemList.parseF1ThresholdGain` 은 아는 키만 읽는 그대로 둔다(판 3 데이터에 새 칸이 새지 않게).
  * - 지금 값은 지표 결과(KPI) 값이다 — 같은 지표를 고르고 산출했으면 4.3 표와 같은 값·같은 글자(판정 대상이면 그 목표로
- *   `ed4Judged`, 아니면 `ed4Plain`). 고르지 않았으면 응답의 지금 값(`current_*_raw`)을 같은 규칙으로 찍는다.
+ *   `ed4Judged`, 아니면 같은 수 같은 글자 `sameValueTextEd4` — 판정 대상 지표와 같은 원값이면 그 글자, 아니면 셋째 자리, 정해진 것 7·D2).
+ *   고르지 않았으면 응답의 지금 값(`current_*_raw`)을 같은 규칙으로 찍는다.
  * - 위험 쪽 지표(의뢰자 선언 FN → Recall(M3), FP → Precision(M2))의 목표 충족은 지금 값은 지표 판정(`status`) 그대로, F1 이
  *   가장 높은 임계값의 값은 반올림 전 값으로 같은 비교(`meetsTarget`)를 해서 정한다. 판정 대상이 아니면 null.
  * - 임계값 표기는 엔진이 정한 글자(`best_threshold_text`, 0.6166)를 그대로 옮긴다 — 프론트는 다시 계산하지 않는다.
@@ -18,7 +19,8 @@ import type { DerivedPredictionFact, F1ThresholdGain, KpiResult } from "../../..
 import { isJudged } from "../computeVerdict";
 import { meetsTarget } from "../judgedNumber";
 import type { RiskDirection } from "../narrativeFacts";
-import { ed4Given, ed4Judged, ed4Plain } from "./edition4Number";
+import { ed4Given, ed4Judged } from "./edition4Number";
+import { sameValueTextEd4 } from "./sameValueEd4";
 
 /** 평가 응답 `f1_threshold_gain` 의 판 4 가 읽는 칸(반올림 전 값). 없는 칸은 null. */
 export interface F1ThresholdGainRawEd4 {
@@ -70,12 +72,12 @@ function metricName(metricId: string): string {
   return METRICS.find((m) => getMetricDisplayId(m.id) === metricId)?.name ?? metricId;
 }
 
-/** 한 지표의 값 글자 — 판정 대상이면 그 목표로 늘린 표기(충족은 `meets`), 아니면 셋째 자리. */
-function valueText(value: number, kpi: KpiResult | undefined, meets: boolean | null): string {
+/** 한 지표의 값 글자 — 판정 대상이면 그 목표로 늘린 표기(충족은 `meets`), 아니면 같은 수 같은 글자(4.3·4.6 과 같은 함수). */
+function valueText(value: number, kpi: KpiResult | undefined, meets: boolean | null, kpiResults: KpiResult[]): string {
   if (kpi && isJudged(kpi) && kpi.threshold !== null && meets !== null) {
     return ed4Judged(value, kpi.threshold, kpi.higherIsBetter !== false, meets);
   }
-  return ed4Plain(value);
+  return sameValueTextEd4(kpiResults, value);
 }
 
 /** 산출에 성공한 지표 결과(KPI) — 지금 값의 출처. */
@@ -95,7 +97,7 @@ function cells(raw: F1ThresholdGainRawEd4, kpiResults: KpiResult[]) {
     const kpi = computedKpi(kpiResults, metricId);
     const judged = kpi && isJudged(kpi) && kpi.threshold !== null ? kpi : undefined;
     const cell = (value: number | null, meets: boolean | null): Cell | null =>
-      value === null ? null : { value, text: valueText(value, judged, meets), meets };
+      value === null ? null : { value, text: valueText(value, judged, meets, kpiResults), meets };
     // 지금 값의 충족은 지표 판정 그대로(판정 지점을 둘로 두지 않는다), 그 점의 값은 같은 비교로.
     const now = cell(kpi ? kpi.value : raw[current], judged ? judged.status === "pass" : null);
     const bestValue = raw[best];

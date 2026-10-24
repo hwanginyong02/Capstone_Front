@@ -3,8 +3,11 @@
  */
 import { describe, expect, it } from "vitest";
 
+import { buildThresholdTableEd4, f1ThresholdGainTextsEd4, type F1ThresholdGainRawEd4 } from "../../../lib/report/edition4/thresholdGainEd4";
 import { NO_PROBLEM_SENTENCE } from "../../../lib/report/reportConstants";
+import type { FinalReportData } from "../../../types/finalReport.types";
 import { draftReport } from "./draftEd4";
+import { loadEd4 } from "./ed4Fixtures";
 import { screenText } from "./renderEd4";
 
 const after = (text: string, head: string) => text.slice(text.indexOf(`\n${head}\n`) + 1);
@@ -61,5 +64,66 @@ describe("지적 2 — 평가 전 초안 3.1 합격 기준 방향은 지표 정�
       const row = lines.find((l) => l.startsWith(`| ${metric.metricId} |`));
       expect(row?.split(" | ")[2]).toBe(metric.passCriteria);
     }
+  });
+});
+
+/**
+ * rv1 갈래 bc_p_eq_r_extend — Recall 목표 0.9842(넷째 자리 목표, 정해진 것 7), Precision 원값 = Recall 원값 0.984375(이진에서 FP = FN).
+ * Recall 은 판정 대상이라 늘린 표기 0.9844, Precision(참고 지표)은 같은 원값이니 같은 글자 0.9844 여야 한다(D2).
+ */
+function pEqRExtend(): { data: FinalReportData; raw: F1ThresholdGainRawEd4 } {
+  const data = structuredClone(loadEd4("bc_strong", "final"));
+  const recall = data.kpiResults.find((r) => r.metricId === "M3")!;
+  const precision = data.kpiResults.find((r) => r.metricId === "M2")!;
+  recall.threshold = 0.9842;
+  data.metricList.find((m) => m.metricId === "M3")!.threshold = 0.9842;
+  precision.value = recall.value;
+  expect(precision.threshold).toBeNull();
+  const raw: F1ThresholdGainRawEd4 = {
+    bestThresholdText: "0.6166",
+    maxF1: 0.984375,
+    currentF1: data.kpiResults.find((r) => r.metricId === "M4")!.value,
+    gain: 0.0076,
+    bestRecall: 0.984375,
+    bestPrecision: 0.984375,
+    currentRecall: recall.value,
+    currentPrecision: precision.value,
+  };
+  const ed3 = { max_f1: 0.9844, current_f1: 0.9767, gain: 0.0076, best_threshold: 0.6166, notable: false };
+  data.edition4Values!.thresholdTable = buildThresholdTableEd4(raw, ed3, data.kpiResults, data.meta.derivedPrediction);
+  return { data, raw };
+}
+
+describe("지적 3 — 같은 수는 같은 글자(4.3·4.4·4.6, 사실 시트)", () => {
+  it("bc_p_eq_r_extend: Precision 원값 0.984375 가 4.3·4.4(지금·F1 최대 칸)·4.6 에서 모두 0.9844", () => {
+    const { data } = pEqRExtend();
+    const text = screenText(data);
+    const at43 = between(text, "4.3 지표별 결과", "4.4 오분류");
+    expect(at43).toContain("| M3 | Recall (핵심) | 0.9844 | [0.917, 0.997] | ≥ 0.9842 | 합격 | 작음");
+    expect(at43).toContain("| M2 | Precision | 0.9844 | — | — | 참고 지표 | —");
+    const at44 = between(text, "4.4 오분류", "4.5 데이터 분포");
+    const precision44 = at44.filter((l) => l.startsWith("| Precision |"));
+    expect(precision44).toEqual(["| Precision | 0.9844 | 0.9844"]);
+    expect(at44.filter((l) => l.startsWith("| Recall |"))).toEqual(["| Recall | 0.9844 | 0.9844"]);
+    const at46 = between(text, "4.6 참조 범위 비교", "4.7 곡선");
+    const precision46 = at46.filter((l) => l.startsWith("| Precision |"));
+    expect(precision46).toHaveLength(1);
+    expect(precision46[0].split(" | ")[1]).toBe("0.9844");
+  });
+
+  it("사실 시트 *_text 가 4.4 표와 같은 글자(같은 cells)", () => {
+    const { data, raw } = pEqRExtend();
+    const sheet = f1ThresholdGainTextsEd4(raw, data.kpiResults, "fn");
+    const rows = data.edition4Values!.thresholdTable!.rows;
+    expect(sheet.current_precision_text).toBe("0.9844");
+    expect(sheet.best_precision_text).toBe("0.9844");
+    expect(rows.find((r) => r.metricId === "M2")).toMatchObject({ current: sheet.current_precision_text, best: sheet.best_precision_text });
+    expect(rows.find((r) => r.metricId === "M3")).toMatchObject({ current: sheet.current_recall_text, best: sheet.best_recall_text });
+    expect(rows.find((r) => r.metricId === "M4")).toMatchObject({ current: sheet.current_f1_text, best: sheet.max_f1_text });
+  });
+
+  it("같은 원값이 아니면 셋째 자리 그대로(bc_strong 4.6 Precision 0.969)", () => {
+    const at46 = between(screenText(loadEd4("bc_strong", "final")), "4.6 참조 범위 비교", "4.7 곡선");
+    expect(at46.find((l) => l.startsWith("| Precision |"))?.split(" | ")[1]).toBe("0.969");
   });
 });

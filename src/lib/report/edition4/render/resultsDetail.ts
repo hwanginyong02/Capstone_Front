@@ -230,12 +230,13 @@ export function distributionView(dist: DistributionEd4 | null | undefined, taskT
 
 /**
  * 모델 값 — KPI 원값을 판 4 표기로(계획 2.7: 0.98246 → 0.982, 백엔드 `modelValue`(넷째 자리) 쓰지 않음). 판정 대상이면 4.3 과 같은
- * judged 글자(`metricValueTextEd4`), 아니면 셋째 자리. 같은 이름의 산출된 지표가 없으면 "—".
+ * judged 글자(`metricValueTextEd4`), 아니면 같은 수 같은 글자(`sameValueTextEd4` — 판정 대상 지표와 같은 원값이면 그 글자, 아니면
+ * 셋째 자리, 정해진 것 7·D2 — 4.3 과 같은 함수). 같은 이름의 산출된 지표가 없으면 "—".
  */
 export function benchmarkModelValueTextEd4(ref: BenchmarkRef, kpiResults: KpiResult[]): string {
   const kpi = kpiResults.find((k) => k.name === ref.metric && k.status !== "unavailable");
   if (!kpi) return ED4_DASH;
-  return metricValueTextEd4(kpi) ?? ed4Plain(kpi.value);
+  return metricValueTextEd4(kpi) ?? sameValueTextEd4(kpiResults, kpi.value);
 }
 
 export interface BenchmarkView {
