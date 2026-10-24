@@ -283,6 +283,11 @@ describe("일부만 빠진 보고 항목 — '{항목 이름}(빠진 것: …)'(
     expect(p3.notProvided).toContain("항목 중 학습 데이터의 출처·크기·구성은 의뢰자로부터");
   });
 
+  it("빠진 줄이 여럿이면 '·'로 잇는다(추론 환경 다섯 칸 중 GPU·메모리)", () => {
+    const two = ed4(input({ systemSpec: { ...FULL_SPEC, gpu: "", memory: "" } }));
+    expect(two.printed.impacts).toEqual(["추론 환경(빠진 것: GPU·메모리): 결과가 어떤 하드웨어·소프트웨어에서 나왔는지 판단할 수 없다."]);
+  });
+
   it("통째로 빠진 항목·한 줄 항목·빠진 줄이 항목 이름 그 자체면 이름만", () => {
     const whole = ed4(input({ composer: { cards: { ...FULL_COMPOSER.cards, trainingData: false } }, latencyMapped: false }));
     expect(whole.printed.impacts.map((l) => l.split(":")[0])).toEqual(
