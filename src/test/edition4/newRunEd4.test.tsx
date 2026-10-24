@@ -463,6 +463,7 @@ const STAGE1_CHANGES: Record<Tag, string[]> = {
     ".kpiResults[].judgmentMargin",
     ".materialCheck.printed.cover",
     ".materialCheck.printed.coverRows",
+    ".materialCheck.printed.impacts[]", // S6 뒤 사용자 결정 2 — 일부만 빠진 학습 데이터 항목에 "(빠진 것: 학습 클래스 분포)"
     ".materialCheck.printed.notProvided",
     ".meta.title",
     ".metricFormulas[].formula",

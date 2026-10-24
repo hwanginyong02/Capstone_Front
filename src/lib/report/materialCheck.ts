@@ -155,14 +155,17 @@ function coverRowsEd4(
   ];
 }
 
-function reportingItems(input: MaterialCheckInput): MaterialCheckItem[] {
+/** 점검한 보고 항목 + 그 항목을 이루는 줄 수(`parts` — 저장하지 않는다, 판 4 "일부만 빠짐" 표기에만 쓴다). */
+type JudgedItem = MaterialCheckItem & { parts: number };
+
+function reportingItems(input: MaterialCheckInput): JudgedItem[] {
   const { materials, taskType } = input;
   const tagged = [...materials.training, ...materials.test, ...materials.groundTruth, ...materials.environment];
 
-  const judge = (item: number): { provided: boolean; missing: string[] } => {
+  const judge = (item: number): { provided: boolean; missing: string[]; parts: number } => {
     switch (item) {
       case 6:
-        return { provided: true, missing: [] }; // 시스템이 늘 계산한다(혼동행렬).
+        return { provided: true, missing: [], parts: 1 }; // 시스템이 늘 계산한다(혼동행렬).
       case 7: {
         const labels: Array<[keyof SystemSpec, string]> = [
           ["os", "운영체제"],
@@ -174,24 +177,32 @@ function reportingItems(input: MaterialCheckInput): MaterialCheckItem[] {
         const missing = labels
           .filter(([key]) => !input.systemSpec[key]?.trim() || input.systemSpec[key] === NOT_PROVIDED)
           .map(([, label]) => label);
-        return { provided: missing.length === 0, missing };
+        return { provided: missing.length === 0, missing, parts: labels.length };
       }
       case 8: // 사용 방식과 무관하게 센다.
-        return input.latencyMapped ? { provided: true, missing: [] } : { provided: false, missing: ["지연시간 컬럼"] };
+        return input.latencyMapped
+          ? { provided: true, missing: [], parts: 1 }
+          : { provided: false, missing: ["지연시간 컬럼"], parts: 1 };
       case 10: {
         const missing = [
           ...(materials.hyperparameters.algorithm === null ? ["알고리즘"] : []),
           ...(materials.hyperparameters.rows === null ? ["하이퍼파라미터"] : []),
         ];
-        return { provided: missing.length === 0, missing };
+        return { provided: missing.length === 0, missing, parts: 2 };
       }
       case 12:
-        return materials.metricRationale ? { provided: true, missing: [] } : { provided: false, missing: ["지표 선택 이유"] };
+        return materials.metricRationale
+          ? { provided: true, missing: [], parts: 1 }
+          : { provided: false, missing: ["지표 선택 이유"], parts: 1 };
       default: {
         // 여러 줄 항목은 모든 줄이 있어야 제공이다.
         const rows = tagged.filter((row) => row.item === item);
         const missing = rows.filter((row) => row.value === null).map((row) => row.label);
-        return { provided: rows.length > 0 && missing.length === 0, missing: rows.length > 0 ? missing : ["(입력 없음)"] };
+        return {
+          provided: rows.length > 0 && missing.length === 0,
+          missing: rows.length > 0 ? missing : ["(입력 없음)"],
+          parts: rows.length,
+        };
       }
     }
   };
@@ -202,6 +213,18 @@ function reportingItems(input: MaterialCheckInput): MaterialCheckItem[] {
     impact: def.impact,
     ...judge(def.item),
   }));
+}
+
+/**
+ * 판 4 성적서에 찍는 빠진 보고 항목 이름(S6 뒤 사용자 결정 2, 2026-10-24) — 여러 줄 항목이 일부만 빠졌으면(제공된 줄이 하나 이상)
+ * "{항목 이름}(빠진 것: {빠진 줄 라벨을 '·'로})"(yeast "학습 데이터의 출처·크기·구성(빠진 것: 학습 클래스 분포)"). 통째로 빠졌거나 한
+ * 줄짜리 항목, 빠진 줄이 항목 이름 그 자체이면(10번 "하이퍼파라미터") 이름만. 판정·경고 ID·점검 표 버전은 그대로라 저장하는
+ * `items` 에는 넣지 않고 찍는 글(표지 보고 항목 줄·1.3 제공되지 않은 정보·영향 줄)만 바뀐다. 판 3 은 이름만(얼린 출력).
+ */
+function printedItemNameEd4(item: JudgedItem): string {
+  const partial = item.missing.length > 0 && item.parts > item.missing.length;
+  const self = item.missing.length === 1 && item.missing[0] === item.name;
+  return partial && !self ? `${item.name}(빠진 것: ${item.missing.join("·")})` : item.name;
 }
 
 /** 선언의 선택값. 글만 쓴 답은 선택값이 없어 3층 줄을 만들지 않는다(`chosenText` — 1층은 선택 필수). */
@@ -283,7 +306,8 @@ function purposeLines(input: MaterialCheckInput, latencyProvided: boolean): Mate
 
 /** 재료 선택 점검(점검 표 2.0). */
 export function checkMaterialSelection(input: MaterialCheckInput): MaterialCheckResult {
-  const items = reportingItems(input);
+  const judged = reportingItems(input);
+  const items: MaterialCheckItem[] = judged.map(({ parts: _parts, ...item }) => item);
   const latencyProvided = items.find((item) => item.item === 8)?.provided ?? false;
   const lines = purposeLines(input, latencyProvided);
 
@@ -302,9 +326,12 @@ export function checkMaterialSelection(input: MaterialCheckInput): MaterialCheck
 
   const provided = items.length - missingItems.length;
   const names = missingItems.map((item) => item.name);
-  const lastName = names[names.length - 1] ?? "";
 
   const edition4 = input.edition === 4;
+  // 찍는 이름 — 판 4 는 일부만 빠진 항목에 빠진 줄을 덧붙인다(`printedItemNameEd4`). 진행 기록 요약(summary)은 판 3 자리라 이름만.
+  const missingJudged = judged.filter((item) => !item.provided);
+  const printedNames = edition4 ? missingJudged.map(printedItemNameEd4) : names;
+  const lastName = printedNames[printedNames.length - 1] ?? "";
   // 판 4 글(부록 A 치환 A1·A3·A4 — "시험성적서", "위 항목", "(1.3 참조)"). 3.3 평균 방식 문장은 안내문 자리라 합니다체(B7, A8).
   const report = edition4 ? "본 시험성적서는 위 항목에" : "본 결과서는 이 항목들에";
   const averagingRef = edition4 ? "없습니다(1.3 참조)" : "없다(1.4 참조)";
@@ -330,11 +357,11 @@ export function checkMaterialSelection(input: MaterialCheckInput): MaterialCheck
       ...(missingItems.length > 0
         ? {
             notProvided:
-              `ISO/IEC TS 4213이 보고를 요구하는 항목 중 ${names.join(", ")}${josaEunNeun(lastName)} 의뢰자로부터 ` +
+              `ISO/IEC TS 4213이 보고를 요구하는 항목 중 ${printedNames.join(", ")}${josaEunNeun(lastName)} 의뢰자로부터 ` +
               `제공받지 못해 기재하지 않았다. 따라서 ${report} 대해 TS 4213의 보고 요구를 충족하지 않는다.`,
           }
         : {}),
-      impacts: missingItems.map((item) => `${item.name}: ${item.impact} 판단할 수 없다.`),
+      impacts: missingItems.map((item, i) => `${printedNames[i]}: ${item.impact} 판단할 수 없다.`),
       purposeShortfalls: unmetLines.map((line) => line.shortfall),
       summary: [
         {
@@ -372,7 +399,7 @@ export function checkMaterialSelection(input: MaterialCheckInput): MaterialCheck
         ? {
             coverRows: coverRowsEd4(
               items.length,
-              names,
+              printedNames,
               { applicable: lines.length, met: lines.length - unmetLines.length },
               input.sameSource === true,
             ),

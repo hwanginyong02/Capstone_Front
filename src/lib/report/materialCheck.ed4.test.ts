@@ -133,7 +133,10 @@ describe("판 4 글 세 문장 — 고정 문구 사본과 글자 대조", () =>
 
   it("빠진 항목이 여럿이면 쉼표로 잇고 마지막 이름으로 은/는", () => {
     const many = ed4(input({ latencyMapped: false, systemSpec: { ...FULL_SPEC, gpu: "" } }));
-    expect(many.printed.notProvided).toMatch(/^ISO\/IEC TS 4213이 보고를 요구하는 항목 중 추론 환경, 추론 효율성\(지연시간\)은 의뢰자로부터/);
+    // 추론 환경은 다섯 줄 중 GPU 만 빠짐 → "추론 환경(빠진 것: GPU)"(S6 뒤 사용자 결정 2).
+    expect(many.printed.notProvided).toMatch(
+      /^ISO\/IEC TS 4213이 보고를 요구하는 항목 중 추론 환경\(빠진 것: GPU\), 추론 효율성\(지연시간\)은 의뢰자로부터/,
+    );
   });
 
   it("3.3 평균 방식 미충족(B7 미충족 글 — 안내문 자리라 합니다체, 1.3 참조)", () => {
@@ -246,5 +249,50 @@ describe("mapWorkflowToFinalReport 배선", () => {
     expect(check.printed.cover).toBe("ISO/IEC TS 4213:2022에 따라 평가. 일부 보고 항목 미제공(1.4 참조)");
     expect(check.printed).not.toHaveProperty("coverRows");
     expect(mapWorkflowToFinalReport(mapperInput("Same source")).materialCheck).toEqual(check);
+  });
+});
+
+describe("일부만 빠진 보고 항목 — '{항목 이름}(빠진 것: …)'(S6 뒤 사용자 결정 2, 판 4 만)", () => {
+  const without = (map: ComposerValueMap, key: string): ComposerValueMap => Object.fromEntries(Object.entries(map).filter(([k]) => k !== key));
+  const noClassVolume: Partial<ReportComposerInput> = { trainingData: without(FULL_COMPOSER.trainingData!, "trainingClassVolume") };
+  const partial = input({ composer: noClassVolume });
+
+  it("학습 데이터 줄 중 클래스 분포만 빠짐 → 표지·1.3·영향 줄에 빠진 줄 라벨", () => {
+    const four = ed4(partial);
+    const item = four.reporting.items.find((i) => i.item === 1)!;
+    expect(item.provided).toBe(false);
+    const name = `학습 데이터의 출처·크기·구성(빠진 것: ${item.missing.join("·")})`;
+    expect(item.missing).toEqual(["학습 클래스 분포"]);
+    expect(four.printed.coverRows![0].value).toBe(`TS 4213 보고 항목 11개 중 10개 제공 (빠진 항목: ${name}, 1.3)`);
+    expect(four.printed.notProvided).toBe(
+      `ISO/IEC TS 4213이 보고를 요구하는 항목 중 ${name}은 의뢰자로부터 제공받지 못해 기재하지 않았다. 따라서 본 시험성적서는 위 항목에 대해 TS 4213의 보고 요구를 충족하지 않는다.`,
+    );
+    expect(four.printed.impacts).toEqual([`${name}: 평가 결과를 학습 데이터와 견주어 해석할 수 있는지 판단할 수 없다.`]);
+  });
+
+  it("판정·경고 ID·저장 항목·버전·진행 기록 요약은 판 3 과 같고, 판 3 글은 이름만", () => {
+    const three = checkMaterialSelection(partial);
+    const four = ed4(partial);
+    const { printed: p3, ...judged3 } = three;
+    const { printed: p4, ...judged4 } = four;
+    expect(judged4).toEqual(judged3);
+    expect(four.warningIds).toEqual(["reporting:1"]);
+    expect(four.reporting.items.every((i) => !("parts" in i))).toBe(true);
+    expect(p4.summary).toEqual(p3.summary);
+    expect(p3.impacts).toEqual(["학습 데이터의 출처·크기·구성: 평가 결과를 학습 데이터와 견주어 해석할 수 있는지 판단할 수 없다."]);
+    expect(p3.notProvided).toContain("항목 중 학습 데이터의 출처·크기·구성은 의뢰자로부터");
+  });
+
+  it("통째로 빠진 항목·한 줄 항목·빠진 줄이 항목 이름 그 자체면 이름만", () => {
+    const whole = ed4(input({ composer: { cards: { ...FULL_COMPOSER.cards, trainingData: false } }, latencyMapped: false }));
+    expect(whole.printed.impacts.map((l) => l.split(":")[0])).toEqual(
+      expect.arrayContaining(["학습 데이터의 출처·크기·구성", "추론 효율성(지연시간)"]),
+    );
+    expect(whole.printed.notProvided).not.toContain("빠진 것");
+    const noHyper = ed4(input({ composer: { modelEnv: without(FULL_COMPOSER.modelEnv!, "hyperparameters") } }));
+    expect(noHyper.reporting.items.find((i) => i.item === 10)!.missing).toEqual(["하이퍼파라미터"]);
+    expect(noHyper.printed.impacts[0]).toMatch(/^하이퍼파라미터: /);
+    const noAlgo = ed4(input({ composer: { modelEnv: without(FULL_COMPOSER.modelEnv!, "algorithm") } }));
+    expect(noAlgo.printed.impacts[0]).toMatch(/^하이퍼파라미터\(빠진 것: 알고리즘\): /);
   });
 });
