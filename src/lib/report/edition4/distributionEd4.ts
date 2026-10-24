@@ -23,7 +23,8 @@ import {
   type NarrativeFacts,
 } from "../narrativeFacts";
 import type { ReportComposerInput } from "../reportMaterials";
-import { ed4Judged, ed4Percent, ed4PercentPoint, ed4Plain, ed4SignedJudged } from "./edition4Number";
+import { nameCountEd4 } from "./classNameEd4";
+import { ed4Count, ed4Judged, ed4Percent, ed4PercentPoint, ed4Plain, ed4SignedJudged } from "./edition4Number";
 import { DISTRIBUTION_SENTENCE, fillTemplate, IMBALANCE_RATIO_SENTENCE } from "./edition4Text";
 
 /** D20 의 불균형 기준(서술 설계 — 판 3 `BALANCED_IMBALANCE_RATIO` 와 같은 값). */
@@ -34,7 +35,7 @@ const IMBALANCE_RATIO_MIN = 1.5;
  * 숫자 규칙에서 점은 소수점)을 따르면 안 된다(S2·S3 검토 T8). 판 3 `buildDatasetDiagnosis` 의 같은 버릇은 얼린 출력이라 그대로다.
  */
 export function countText(n: number): string {
-  return n.toLocaleString("en-US");
+  return ed4Count(n);
 }
 
 /**
@@ -157,7 +158,8 @@ export function buildDistributionEd4(input: DistributionEd4Input): DistributionE
     // 판 3 3절과 같은 분모 — 멀티레이블은 표본 수(합이 100% 를 넘을 수 있다), 그 밖은 분포 합.
     const denominator = input.taskType === "multilabel" ? total : sum;
     const list = entries
-      .map(([label, n]) => `${label} ${countText(n)}건(${denominator > 0 ? percentOf(n / denominator) : "0.0%"})`)
+      // 이름만(설명 없이 — 예시본 "benign 107건(62.6%)"). 이름이 숫자로 끝나면 "1: 55건(10.2%)"(S6 뒤 사용자 결정 5).
+      .map(([label, n]) => nameCountEd4(label, `${countText(n)}건(${denominator > 0 ? percentOf(n / denominator) : "0.0%"})`))
       .join(", ");
     distributionSentence = fillTemplate(DISTRIBUTION_SENTENCE, { total: countText(total), 목록: list });
   }

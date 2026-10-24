@@ -132,12 +132,13 @@ describe("U1 — 멀티레이블 4.5 학습·평가 비율의 분모는 표본 �
 
   it("4.5 분포 문장과 비율 표가 같은 퍼센트(Class12 75.0%·Class13 74.5%)", () => {
     expect(dist.distributionSentence).toContain("평가 데이터셋은 총 917건이며,");
-    expect(dist.distributionSentence).toContain("Class12 688건(75.0%), Class13 683건(74.5%)");
+    // 이름이 숫자로 끝나면 "{이름}: {n}건"(S6 뒤 사용자 결정 5).
+    expect(dist.distributionSentence).toContain("Class12: 688건(75.0%), Class13: 683건(74.5%)");
     expect(dist.training.status).toBe("compared");
     expect(table.Class12).toMatchObject({ trainingText: "66.7%", evaluationText: "75.0%", differenceText: "+8.4%p" });
     expect(table.Class13).toMatchObject({ trainingText: "60.0%", evaluationText: "74.5%", differenceText: "+14.5%p" });
     // 표의 모든 평가 칸이 분포 문장의 퍼센트와 같다.
-    for (const r of dist.training.rows) expect(dist.distributionSentence).toContain(`${r.label} ${YEAST_EVAL[r.label]}건(${r.evaluationText})`);
+    for (const r of dist.training.rows) expect(dist.distributionSentence).toContain(`${r.label}: ${YEAST_EVAL[r.label]}건(${r.evaluationText})`);
   });
 
   it("레이블 등장 합 분모(종전 — Class12 688/3,899 = 17.6%)가 아니다", () => {

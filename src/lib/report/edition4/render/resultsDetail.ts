@@ -16,10 +16,10 @@ import type {
   KpiResult,
   LatencyStats,
 } from "../../../../types/finalReport.types";
-import { classDisplayName } from "../../../../components/report/shared/NarrativeFactTables";
 import { positionOfQuality } from "../../judgedNumber";
 import type { NarrativeFacts } from "../../narrativeFacts";
 import { classF1TextEd4 } from "../classF1Ed4";
+import { classDisplayNameEd4 } from "../classNameEd4";
 import type { DistributionEd4 } from "../distributionEd4";
 import {
   B15_SUBMITTED_PREDICTION,
@@ -99,7 +99,7 @@ export function confusionCountsTable(counts: ConfusionCounts | null | undefined)
 
 /**
  * 최약 클래스 표(F1 최저). F1 = `classF1TextEd4`(사실 시트 f1_text — 4.4·5절·사실 시트 같은 글자), 비율 = share_text 의 %(셋째
- * 자리 → 37.4%), 매크로 F1과의 차이 = gap_text. 클래스 이름 뒤 "(설명)". 멀티레이블은 단위 "레이블"(작업 유형으로 가름).
+ * 자리 → 37.4%), 매크로 F1과의 차이 = gap_text. 클래스 이름 뒤 "(설명)"(설명에 괄호가 있으면 "[설명]" — `classDisplayNameEd4`). 멀티레이블은 단위 "레이블"(작업 유형으로 가름).
  * 판 4 멀티레이블의 비율 분모는 4.5 와 같은 표본 수(S6 질문 4, `class_share_basis` "samples")라 분모 설명 줄이 없다. 분모가 레이블
  * 등장 합으로 저장된 run(그 전에 만든 판 4 run·표본 수 없음)만 판 3 분모 설명 줄을 붙인다.
  */
@@ -119,7 +119,7 @@ export function weakestClassTable(
     columns: [unit, ...EX_4_4_WEAKEST_COLUMNS],
     rows: [
       [
-        classDisplayName(w.label, descriptions),
+        classDisplayNameEd4(w.label, descriptions),
         f1,
         ed4TableCount(w.support),
         ed4Percent(w.share_text),
@@ -142,7 +142,7 @@ export function predictionBiasTable(
     title: EX_4_4_BIAS_TITLE,
     columns: [BIAS_HEAD[bias.unit], ...EX_4_4_BIAS_COLUMNS],
     rows: bias.rows.map((r) => [
-      r.label === null ? ED3_BIAS_ALL_LABELS : classDisplayName(r.label, descriptions),
+      r.label === null ? ED3_BIAS_ALL_LABELS : classDisplayNameEd4(r.label, descriptions),
       ed4TableCount(r.predicted),
       ed4TableCount(r.actual),
       ed4TableSignedCount(r.difference),
@@ -164,7 +164,7 @@ export function confusionPairsTable(
     title: fill(ED3_PAIRS_TITLE, "n", String(pairs.length)),
     columns: [...ED3_PAIRS_COLUMNS],
     rows: pairs.map((p) => [
-      `${classDisplayName(p.actual, descriptions)} → ${classDisplayName(p.predicted, descriptions)}`,
+      `${classDisplayNameEd4(p.actual, descriptions)} → ${classDisplayNameEd4(p.predicted, descriptions)}`,
       ed4TableCount(p.count),
       ed4Percent(ed4Plain(p.share_of_errors)),
     ]),
