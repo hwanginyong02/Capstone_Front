@@ -62,7 +62,7 @@ describe("판 4 데이터는 판 4 본문으로만 — 세 경로", () => {
   it.each(TAGS)("%s 번호 열기(ReportByNumber): 판 4 본문과 판 4 작성 기록 상자, 판 3 글·판 3 작성 기록 머리 없음", async (tag) => {
     const text = await byNumberText(loadEd4(tag, "final"), loadEd4Issuance(tag));
     expect(text).toContain("서버 보관본");
-    expectInOrder(text, ["작성 기록", loadEd4(tag, "final").meta.title, ...TITLE_LINES, "발급 이력", "— 끝 —"]);
+    expectInOrder(text, ["작성 기록 · 5·6절 칸마다 쓴 방식(화면에만 보이며 인쇄본에는 없습니다)", loadEd4(tag, "final").meta.title, ...TITLE_LINES, "발급 이력", "— 끝 —"]);
     for (const mark of EDITION3_MARKS) expect(text).not.toMatch(mark);
     expect(text).not.toContain("7·8·9절 칸마다");
   });
