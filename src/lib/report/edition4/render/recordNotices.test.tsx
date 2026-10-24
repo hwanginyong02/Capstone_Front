@@ -30,9 +30,10 @@ const ED4_RULE = '진행은 막지 않습니다. "다음"을 누르면 이 안�
 const ED3_RECHECK =
   "점검 표가 바뀌어(1.0 → 2.0) 다시 확인이 필요합니다. 이 평가의 재료 선택 점검(표지·1.4·6.0)은 옛 점검 표로 만든 것입니다. " +
   '데이터 검증 화면에서 생성 전 안내를 다시 보고 "다음"을 누르면 새 점검 표로 성적서를 다시 만듭니다.';
+// 판 4: 자리(B29) + "점검 표" → "입력 점검 규칙"(S6 질문 1, 조사 이/으로).
 const ED4_RECHECK =
-  "점검 표가 바뀌어(1.0 → 2.0) 다시 확인이 필요합니다. 이 평가의 재료 선택 점검(표지·1.3·부록 1.2)은 옛 점검 표로 만든 것입니다. " +
-  '데이터 검증 화면에서 생성 전 안내를 다시 보고 "다음"을 누르면 새 점검 표로 성적서를 다시 만듭니다.';
+  "입력 점검 규칙이 바뀌어(1.0 → 2.0) 다시 확인이 필요합니다. 이 평가의 재료 선택 점검(표지·1.3·부록 1.2)은 옛 입력 점검 규칙으로 만든 것입니다. " +
+  '데이터 검증 화면에서 생성 전 안내를 다시 보고 "다음"을 누르면 새 입력 점검 규칙으로 성적서를 다시 만듭니다.';
 
 /** 생성 전 안내 상자의 기록 문장(둘째 p). */
 function ruleSentence(): string {
@@ -79,12 +80,16 @@ describe("서술 진행 띠(B27)", () => {
 });
 
 describe("materialCheckOutdatedMessage 자리(B29)", () => {
-  it("판 4 면 '(표지·1.3·부록 1.2)', 판 3 은 그대로(두 갈래 모두)", () => {
+  it("판 4 면 '(표지·1.3·부록 1.2)'·'입력 점검 규칙', 판 3 은 그대로(두 갈래 모두)", () => {
     expect(materialCheckOutdatedMessage("1.0", true, true)).toBe(ED4_RECHECK);
     expect(materialCheckOutdatedMessage("1.0", true)).toBe(ED3_RECHECK);
-    expect(materialCheckOutdatedMessage("1.0", false, true)).toBe(
-      "점검 표가 바뀌어(1.0 → 2.0) 다시 확인이 필요합니다. 이 평가의 재료 선택 점검(표지·1.3·부록 1.2)은 옛 점검 표로 만든 것입니다. " +
+    expect(materialCheckOutdatedMessage("1.0", false)).toBe(
+      "점검 표가 바뀌어(1.0 → 2.0) 다시 확인이 필요합니다. 이 평가의 재료 선택 점검(표지·1.4·6.0)은 옛 점검 표로 만든 것입니다. " +
         "이 평가는 지금 진행 중인 평가 흐름의 결과가 아니어서, 새 점검 표를 적용하려면 같은 입력으로 평가를 새로 해야 합니다.",
+    );
+    expect(materialCheckOutdatedMessage("1.0", false, true)).toBe(
+      "입력 점검 규칙이 바뀌어(1.0 → 2.0) 다시 확인이 필요합니다. 이 평가의 재료 선택 점검(표지·1.3·부록 1.2)은 옛 입력 점검 규칙으로 만든 것입니다. " +
+        "이 평가는 지금 진행 중인 평가 흐름의 결과가 아니어서, 새 입력 점검 규칙을 적용하려면 같은 입력으로 평가를 새로 해야 합니다.",
     );
   });
 });
@@ -130,7 +135,13 @@ function renderPage(options: { previewSchema?: number; lastRunSchema?: number; l
   );
 }
 
-const recheckText = () => screen.getByRole("region", { name: "점검 표 변경 안내" }).textContent;
+/** 재확인 안내 — 판 4 run 이면 상자 이름도 "입력 점검 규칙 변경 안내"(S6 질문 1). 둘 중 하나만 있어야 한다. */
+const recheckText = () => {
+  const regions = screen.queryAllByRole("region", { name: /^(점검 표|입력 점검 규칙) 변경 안내$/ });
+  expect(regions).toHaveLength(1);
+  return regions[0].textContent;
+};
+const recheckName = () => screen.getByRole("region", { name: /변경 안내$/ }).getAttribute("aria-label");
 
 describe("검증 화면(DataValidation) — 판 4 안내 배선", () => {
   beforeEach(() => mockUseDataValidation.mockReset());
@@ -139,12 +150,14 @@ describe("검증 화면(DataValidation) — 판 4 안내 배선", () => {
     renderPage({ previewSchema: 4, lastRunSchema: 3 });
     expect(ruleSentence()).toBe(ED4_RULE);
     expect(recheckText()).toBe(ED3_RECHECK);
+    expect(recheckName()).toBe("점검 표 변경 안내");
   });
 
   it("새 성적서가 판 3 이고 마지막 run 이 판 4 이면: 재확인 안내만 판 4 자리", () => {
     renderPage({ previewSchema: 3, lastRunSchema: 4 });
     expect(ruleSentence()).toBe(ED3_RULE);
     expect(recheckText()).toBe(ED4_RECHECK);
+    expect(recheckName()).toBe("입력 점검 규칙 변경 안내");
   });
 
   it("판 표시가 없으면(옛 데이터) 둘 다 판 3 글", () => {

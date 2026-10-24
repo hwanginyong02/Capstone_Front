@@ -255,6 +255,11 @@ export const B25_RECORD_NOTE = "5·6절 칸마다 쓴 방식(화면에만 보이
 export const B27_PROGRESS_HEAD = "정성 서술(5·6절)을 만드는 중입니다 — {단계}.";
 export const B28_RULE_TAIL = "진행한 것으로 기록됩니다 (입력 점검 규칙 {v}).";
 export const B29_PLACES = "(표지·1.3·부록 1.2)";
+/**
+ * B29 낱말(S6 질문 1, 2026-10-24 사용자 답 "추천대로") — 판 4 run 의 재확인 안내는 "점검 표" 대신 B28 과 같은 "입력 점검 규칙".
+ * 조사는 받침 있는 말 뒤 꼴("규칙이"·"규칙으로").
+ */
+export const B29_RULE_NAME = "입력 점검 규칙";
 export const B30_NOT_PROVIDED = "제공되지 않음";
 /** 부록 B33(초안, 2026-10-24 승인) — 멀티레이블, 학습 표본 수 없음(저장 이유 코드 training_samples_not_provided). */
 export const B33_NO_TRAINING_SAMPLES_DRAFT = "제공되지 않음 — 학습 표본 수가 제공되지 않아 학습·평가 비율을 비교하지 않았다.";

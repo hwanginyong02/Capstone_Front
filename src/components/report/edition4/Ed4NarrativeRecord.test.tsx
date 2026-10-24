@@ -201,15 +201,16 @@ describe("/report/:id — 판 4 run 의 상자와 페이지 안내", () => {
     for (const mark of ED3_PLACE_MARKS) expect(outside).not.toMatch(mark);
   });
 
-  it("점검 표 재확인 안내(B29): 판 4 run 은 '(표지·1.3·부록 1.2)'", async () => {
+  it("점검 표 재확인 안내(B29): 판 4 run 은 '(표지·1.3·부록 1.2)'·'입력 점검 규칙'(S6 질문 1)", async () => {
     stubFetch();
     const base = loadEd4("bc_strong", "final");
     seedEd4({ ...base, materialCheck: { ...base.materialCheck!, version: "1.0" } }, { status: "done", jobId: "job-1" });
     renderReportPage();
-    const region = await screen.findByRole("region", { name: "점검 표 변경 안내" });
+    const region = await screen.findByRole("region", { name: "입력 점검 규칙 변경 안내" });
     expect(region.textContent).toBe(
-      "점검 표가 바뀌어(1.0 → 2.0) 다시 확인이 필요합니다. 이 평가의 재료 선택 점검(표지·1.3·부록 1.2)은 옛 점검 표로 만든 것입니다. " +
-        '데이터 검증 화면에서 생성 전 안내를 다시 보고 "다음"을 누르면 새 점검 표로 성적서를 다시 만듭니다.',
+      "입력 점검 규칙이 바뀌어(1.0 → 2.0) 다시 확인이 필요합니다. 이 평가의 재료 선택 점검(표지·1.3·부록 1.2)은 옛 입력 점검 규칙으로 만든 것입니다. " +
+        '데이터 검증 화면에서 생성 전 안내를 다시 보고 "다음"을 누르면 새 입력 점검 규칙으로 성적서를 다시 만듭니다.',
     );
+    expect(document.body.textContent).not.toMatch(/점검 표/);
   });
 });

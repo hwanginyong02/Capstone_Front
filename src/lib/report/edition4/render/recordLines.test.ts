@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import { loadEd4 } from "../../../../test/edition4/render/ed4Fixtures";
-import { ed4ProgressHeadBefore, ed4RecordLines, ED4_RECHECK_PLACES, ed4RuleTail } from "./recordLines";
+import { ed4ProgressHeadBefore, ed4RecheckMessage, ed4RecordLines, ED4_RECHECK_PLACES, ED4_RECHECK_RULE_NAME, ed4RuleTail } from "./recordLines";
 
 const MODEL = "claude-sonnet-5-5";
 
@@ -88,5 +88,17 @@ describe("화면 안내 글 조각(부록 B27~B29)", () => {
 
   it("B29 재확인 안내 자리", () => {
     expect(ED4_RECHECK_PLACES).toBe("(표지·1.3·부록 1.2)");
+  });
+
+  it("B29 재확인 안내 문장 — '점검 표' 대신 '입력 점검 규칙'(S6 질문 1), 두 갈래·버전 끼움", () => {
+    expect(ED4_RECHECK_RULE_NAME).toBe("입력 점검 규칙");
+    expect(ed4RecheckMessage("1.0", "2.0", true)).toBe(
+      "입력 점검 규칙이 바뀌어(1.0 → 2.0) 다시 확인이 필요합니다. 이 평가의 재료 선택 점검(표지·1.3·부록 1.2)은 옛 입력 점검 규칙으로 만든 것입니다. " +
+        '데이터 검증 화면에서 생성 전 안내를 다시 보고 "다음"을 누르면 새 입력 점검 규칙으로 성적서를 다시 만듭니다.',
+    );
+    expect(ed4RecheckMessage("1.5", "3.0", false)).toBe(
+      "입력 점검 규칙이 바뀌어(1.5 → 3.0) 다시 확인이 필요합니다. 이 평가의 재료 선택 점검(표지·1.3·부록 1.2)은 옛 입력 점검 규칙으로 만든 것입니다. " +
+        "이 평가는 지금 진행 중인 평가 흐름의 결과가 아니어서, 새 입력 점검 규칙을 적용하려면 같은 입력으로 평가를 새로 해야 합니다.",
+    );
   });
 });

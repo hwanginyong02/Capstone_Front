@@ -9,7 +9,7 @@
  */
 import { narrativeRecordLabel } from "../../../../components/report/NarrativeRecordPanel";
 import type { FinalReportData } from "../../../../types/finalReport.types";
-import { B27_PROGRESS_HEAD, B28_RULE_TAIL, B29_PLACES } from "../edition4Text";
+import { B27_PROGRESS_HEAD, B28_RULE_TAIL, B29_PLACES, B29_RULE_NAME } from "../edition4Text";
 import { B26_RECORD_LINES, edition4PlaceOfSlot, edition4TitleOfSlot } from "../narrativeSlots";
 
 export interface Ed4RecordLine {
@@ -58,3 +58,21 @@ export function ed4RuleTail(version: string): string {
 
 /** B29 — 판 4 run 의 점검 표 재확인 안내에서 점검 결과가 찍히는 자리. */
 export const ED4_RECHECK_PLACES = B29_PLACES;
+
+/** B29 — 판 4 run 의 재확인 안내에서 "점검 표" 자리에 쓰는 이름(S6 질문 1 — B28 과 같은 "입력 점검 규칙"). */
+export const ED4_RECHECK_RULE_NAME = B29_RULE_NAME;
+
+/**
+ * B29 — 판 4 run 의 재확인 안내 문장 전체. 판 3 문장(`materialCheckOutdatedMessage`)과 뼈대가 같고, 점검 결과 자리(B29_PLACES)와
+ * "점검 표" 낱말(→ "입력 점검 규칙", 조사 이/으로)만 다르다.
+ */
+export function ed4RecheckMessage(storedVersion: string, currentVersion: string, inCurrentFlow: boolean): string {
+  const rule = ED4_RECHECK_RULE_NAME;
+  return (
+    `${rule}이 바뀌어(${storedVersion} → ${currentVersion}) 다시 확인이 필요합니다. ` +
+    `이 평가의 재료 선택 점검${ED4_RECHECK_PLACES}은 옛 ${rule}으로 만든 것입니다. ` +
+    (inCurrentFlow
+      ? `데이터 검증 화면에서 생성 전 안내를 다시 보고 "다음"을 누르면 새 ${rule}으로 성적서를 다시 만듭니다.`
+      : `이 평가는 지금 진행 중인 평가 흐름의 결과가 아니어서, 새 ${rule}을 적용하려면 같은 입력으로 평가를 새로 해야 합니다.`)
+  );
+}

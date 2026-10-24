@@ -12,7 +12,7 @@
 import { Info, RefreshCw } from "lucide-react";
 import { METRICS } from "../../data/evaluationData";
 import { MATERIAL_CHECK_VERSION, isMaterialCheckOutdated } from "../../lib/report/materialCheck";
-import { ED4_RECHECK_PLACES, ed4RuleTail } from "../../lib/report/edition4/render/recordLines";
+import { ed4RecheckMessage, ed4RuleTail } from "../../lib/report/edition4/render/recordLines";
 import { COMPOSER_CARDS, fieldOfLeaf, getCard, isLeafReceived, stepOfLeaf } from "../../data/reportComposer";
 import { getStepDefinition } from "../../data/workflowSteps";
 import type { MaterialCheckItem, MaterialCheckLine, MaterialCheckResult } from "../../types/finalReport.types";
@@ -255,9 +255,11 @@ export function MaterialCheckNotice({ check, onFix, canFixInInput = () => false,
  * 지금 흐름의 run(`lastRunId`)일 때만 참이다(`inCurrentFlow`). 워크스페이스에서 연 다른 run 이면 사실만 알린다.
  */
 export function materialCheckOutdatedMessage(storedVersion: string, inCurrentFlow = true, edition4 = false): string {
+  // 판 4 run 은 자리(B29)와 낱말("입력 점검 규칙", S6 질문 1)이 판 4 — 판 3 문장은 아래 그대로.
+  if (edition4) return ed4RecheckMessage(storedVersion, MATERIAL_CHECK_VERSION, inCurrentFlow);
   return (
     `점검 표가 바뀌어(${storedVersion} → ${MATERIAL_CHECK_VERSION}) 다시 확인이 필요합니다. ` +
-    `이 평가의 재료 선택 점검${edition4 ? ED4_RECHECK_PLACES : "(표지·1.4·6.0)"}은 옛 점검 표로 만든 것입니다. ` +
+    `이 평가의 재료 선택 점검(표지·1.4·6.0)은 옛 점검 표로 만든 것입니다. ` +
     (inCurrentFlow
       ? "데이터 검증 화면에서 생성 전 안내를 다시 보고 \"다음\"을 누르면 새 점검 표로 성적서를 다시 만듭니다."
       : "이 평가는 지금 진행 중인 평가 흐름의 결과가 아니어서, 새 점검 표를 적용하려면 같은 입력으로 평가를 새로 해야 합니다.")
@@ -278,13 +280,13 @@ export function MaterialCheckOutdatedNotice({
   active: boolean;
   /** 이 run 이 지금 워크플로 흐름의 run(`lastRunId`)인가 — 아니면 "다음을 누르면 다시 만든다" 대신 사실 문장. */
   inCurrentFlow?: boolean;
-  /** 판 4 run 이면 점검 결과 자리를 판 4 절 번호로(부록 B29). */
+  /** 판 4 run 이면 점검 결과 자리를 판 4 절 번호로(부록 B29), "점검 표" 낱말을 "입력 점검 규칙"으로(S6 질문 1). */
   edition4?: boolean;
 }) {
   if (!active || !isMaterialCheckOutdated(check)) return null;
   return (
     <section
-      aria-label="점검 표 변경 안내"
+      aria-label={edition4 ? "입력 점검 규칙 변경 안내" : "점검 표 변경 안내"}
       className="mb-6 flex items-start gap-2 rounded-lg border border-warning-border bg-warning-subtle px-5 py-4 text-sm text-warning-strong"
     >
       <RefreshCw className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
