@@ -2,7 +2,8 @@
  * 판 4 종합 판정 글(S3 ⑥, 4절 표 "4.2 종합 판정 표 + 근거 문장"·"표지 시험 결과 요약 4줄") — 판정은 다시 하지 않고 판정 근거
  * (`verdictDetail` — `computeVerdict` 한 곳)와 저장된 판정 여유만 읽는다.
  *
- * 고정 문구 20 의 조건부 합격·불합격·판정 불가 글은 초안이다(판 4 를 켜기 전 확인 목록) — 시험 이름에 "초안".
+ * 고정 문구 20 의 조건부 합격·불합격·판정 불가 글은 초안이다(판 4 를 켜기 전 확인 목록) — 시험 이름에 "초안". 부록 B31(핵심
+ * 지표가 없는 성적서의 근거)·B32(목표값 없는 핵심 지표의 표지 줄)도 초안이다(2026-10-24 사용자 승인, 계획 부록 B 의 글을 옮겨 적음).
  */
 import { describe, expect, it } from "vitest";
 
@@ -101,11 +102,62 @@ describe("4.2 근거 문장 — 갈래", () => {
     expect(v.basis).toBe("판정 대상 지표 부재로 3.4의 판정 규칙에 따라 판정할 수 없었다.");
   });
 
-  it("핵심 지표가 없는 합격은 채울 이름이 없어 근거 문장을 두지 않는다(승인 글 없음)", () => {
-    const results = [kpi({ metricId: "M1", value: 0.99 })];
+  // 계획 부록 B31(초안, 2026-10-24 승인)의 글 — "합격: 판정 대상 지표 {N}개가 모두 목표를 충족하여, 3.4의 판정 규칙에 따라 합격으로
+  // 판정하였다. / 미달이 있으면: {미달 지표}이(가) 목표에 미달하여, 3.4의 판정 규칙에 따라 {판정}으로 판정하였다."
+  it("핵심 지표가 없는 합격(B31 초안) — 판정 대상 지표 수", () => {
+    const results = [kpi({ metricId: "M1", value: 0.99 }), kpi({ metricId: "M9", name: "AUROC", value: 0.99 }), kpi({ metricId: "M2", name: "Precision", threshold: null })];
     const v = verdictOf(results, []);
-    expect(v.verdict).toBe("PASS");
-    expect(v.basis).toBeNull();
+    expect([v.verdict, v.countText]).toEqual(["PASS", "2개 중 2개"]);
+    expect(v.basis).toBe("판정 대상 지표 2개가 모두 목표를 충족하여, 3.4의 판정 규칙에 따라 합격으로 판정하였다.");
+  });
+
+  it("핵심 지표가 없고 미달이 있으면(B31 초안) — 미달 지표를 B13 처럼 잇고 조사는 마지막 이름, 판정 글자 뒤 '으로'", () => {
+    const one = [kpi({ metricId: "M1", value: 0.99 }), kpi({ metricId: "M9", name: "AUROC", value: 0.9, threshold: 0.98, status: "fail" })];
+    const v = verdictOf(one, []);
+    expect([v.verdict, v.label]).toEqual(["CONDITIONAL_PASS", "조건부 합격"]);
+    expect(v.basis).toBe("AUROC(M9)가 목표에 미달하여, 3.4의 판정 규칙에 따라 조건부 합격으로 판정하였다.");
+    const two = [
+      kpi({ metricId: "M9", name: "AUROC", value: 0.9, threshold: 0.98, status: "fail" }),
+      kpi({ metricId: "M3", name: "Recall", value: 0.9, threshold: 0.97, status: "fail" }),
+      kpi({ metricId: "M1", value: 0.99 }),
+    ];
+    expect(verdictOf(two, []).basis).toBe("AUROC(M9), Recall(M3)이 목표에 미달하여, 3.4의 판정 규칙에 따라 조건부 합격으로 판정하였다.");
+  });
+
+  it("핵심 지표가 없는 성적서의 판정 불가는 기존 갈래(B13 '판정 대상 지표 부재')", () => {
+    const v = verdictOf([kpi({ metricId: "M2", name: "Precision", threshold: null })], []);
+    expect(v.basis).toBe("판정 대상 지표 부재로 3.4의 판정 규칙에 따라 판정할 수 없었다.");
+  });
+});
+
+describe("표지 요약 줄 — 목표값 없는 핵심 지표(B32 초안)", () => {
+  // 계획 부록 B32(초안, 2026-10-24 승인)의 글 — "핵심 지표: {이름} {값} (합격 기준 없음, 참고 지표, 4.3)".
+  it("값은 판정과 무관해 plain — 판정 불가(목표값 부재) 표지", () => {
+    const results = [kpi({ metricId: "M3", name: "Recall", value: 0.984375, threshold: null, isCore: true }), kpi({ metricId: "M1", value: 0.9696, threshold: 0.97, status: "fail" })];
+    const v = verdictOf(results, ["M3"]);
+    expect(v.verdict).toBe("INCONCLUSIVE");
+    expect(buildCoverResultRows(v, results)).toEqual([
+      { label: "종합 판정", value: "판정 불가 (판정 대상 지표 1개 중 0개 충족, 4.2)" },
+      { label: "핵심 지표", value: "Recall 0.984 (합격 기준 없음, 참고 지표, 4.3)" },
+    ]);
+  });
+
+  it("같은 원값의 판정 대상 지표가 있으면 그 글자(D2) — 0.9696 은 '0.970' 이 아니라 '0.9696'", () => {
+    const results = [
+      kpi({ metricId: "M3", name: "Recall", value: 0.9696, threshold: null, isCore: true }),
+      kpi({ metricId: "M1", value: 0.9696, threshold: 0.97, status: "fail" }),
+    ];
+    expect(buildCoverResultRows(verdictOf(results, ["M3"]), results)[1]).toEqual({
+      label: "핵심 지표",
+      value: "Recall 0.9696 (합격 기준 없음, 참고 지표, 4.3)",
+    });
+    const alone = [results[0]];
+    expect(buildCoverResultRows(verdictOf(alone, ["M3"]), alone)[1].value).toBe("Recall 0.970 (합격 기준 없음, 참고 지표, 4.3)");
+  });
+
+  it("목표값도 값도 없으면(산출 실패) 줄을 두지 않는다", () => {
+    const results = [kpi({ metricId: "M3", name: "Recall", value: 0, threshold: null, status: "unavailable", isCore: true }), kpi({ metricId: "M1" })];
+    expect(buildCoverResultRows(verdictOf(results, ["M3"]), results).map((r) => r.label)).toEqual(["종합 판정"]);
   });
 });
 

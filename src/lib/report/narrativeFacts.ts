@@ -15,6 +15,7 @@
  *   far_below_macro·작은 몫)은 판과 무관하게 같은 식 하나다. 판 3 run 은 종전과 한 글자도 같다(기본값 = 판 3).
  */
 import type { TaskType } from "../../data/evaluationData";
+import { isEntryUnknown } from "../../data/reportComposer";
 import type {
   ClassReportRow,
   ClassReportTable,
@@ -155,7 +156,11 @@ export interface NarrativeFacts {
     recall: number | null;
     f1: number | null;
   } | null;
-  distribution_shift_status: "compared" | "not_provided" | "uncovered";
+  /**
+   * training_samples_not_provided 는 판 4 멀티레이블에만 — 학습 클래스 분포는 있으나 학습 표본 수가 없어(모름·빈 칸) 표본 수 분모의
+   * 학습 비율을 낼 수 없다(S2·S3 검토 T3, 2026-10-24 사용자 답). 부록 B16(학습 분포 없음)과 이유가 달라 따로 둔다.
+   */
+  distribution_shift_status: "compared" | "not_provided" | "uncovered" | "training_samples_not_provided";
   distribution_shift: DistributionShiftRow[];
   ci_available: boolean;
   ci_skipped: Array<{ metric_id: string; display_name: string; reason: string | null }>;
@@ -534,9 +539,31 @@ export function trainingCounts(composer: ReportComposerInput | undefined): Map<s
   return [...counts.values()].reduce((a, b) => a + b, 0) > 0 ? counts : null;
 }
 
-/** 클래스 → 비율(그 클래스 수 ÷ 전체 합). */
-function ratios(counts: Map<string, number>): Map<string, number> {
-  const total = [...counts.values()].reduce((a, b) => a + b, 0);
+/**
+ * 의뢰자가 준 학습 표본 수(⑥ "데이터 양"의 학습 칸). 카드를 껐거나, 학습 칸을 "모름"으로 골랐거나, 비었거나, 숫자가 아니거나,
+ * 0 이하면 null. 판 4 멀티레이블 학습 비율의 분모다(S2·S3 검토 T3).
+ */
+export function trainingSampleCount(composer: ReportComposerInput | undefined): number | null {
+  if (!composer?.cards.trainingData) return null;
+  const value = composer.trainingData.trainingVolume;
+  if (isEntryUnknown(value, "Training")) return null;
+  const raw = value?.entries?.find((entry) => entry.key === "Training")?.value.trim() ?? "";
+  if (raw === "") return null;
+  const parsed = Number(raw.replace(/[,\s]/g, ""));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+/**
+ * 판 4 멀티레이블의 평가 비율 분모 — 평가 표본 수(4.5 분포 문장과 같은 값: 0 이하면 레이블 등장 합으로 대신한다,
+ * `buildDistributionEd4` 와 같은 대체).
+ */
+export function evaluationSampleDenominator(nSamples: number | null | undefined, occurrenceTotal: number): number {
+  return typeof nSamples === "number" && nSamples > 0 ? nSamples : occurrenceTotal;
+}
+
+/** 클래스 → 비율(그 클래스 수 ÷ 분모). 분모를 주지 않으면 전체 합. */
+function ratios(counts: Map<string, number>, denominator?: number): Map<string, number> {
+  const total = denominator ?? [...counts.values()].reduce((a, b) => a + b, 0);
   return new Map([...counts].map(([k, v]) => [k, total > 0 ? v / total : 0]));
 }
 
@@ -544,11 +571,17 @@ function ratios(counts: Map<string, number>): Map<string, number> {
  * 학습↔평가 분포 차이(6절 dist_diff) — 대상은 평가 정답 클래스 ∪ 학습 칸. difference = 학습 비율 − 평가
  * 비율. 평가 데이터의 클래스가 학습 분포에 하나라도 없으면 견주지 않는다(B5② — uncovered). 9절 문제 8 은
  * flagged 인 클래스만 쓴다.
+ *
+ * 판 4 멀티레이블(`edition4` 이고 `multilabelSamples` 를 줌)은 분모가 표본 수다(S2·S3 검토 T3, 2026-10-24 사용자 답): 평가 비율 =
+ * 그 레이블이 붙은 평가 표본 / 평가 표본 수(`multilabelSamples` — 4.5 분포 문장과 같은 숫자, 합이 100% 를 넘을 수 있다), 학습 비율
+ * = 그 레이블이 붙은 학습 표본 / 의뢰자가 준 학습 표본 수(`trainingSampleCount`). 학습 표본 수가 없으면 비교하지 않는다
+ * (training_samples_not_provided). 판 3 과 이진·다중은 종전대로(분포 합 분모 — 이진·다중은 그 합이 곧 표본 수).
  */
 export function distributionShift(
   composer: ReportComposerInput | undefined,
   evaluation: Record<string, number>,
   edition4 = false,
+  multilabelSamples: number | null = null,
 ): { status: NarrativeFacts["distribution_shift_status"]; rows: DistributionShiftRow[] } {
   const training = trainingCounts(composer);
   const evalCounts = new Map<string, number>();
@@ -558,11 +591,15 @@ export function distributionShift(
   }
   const evalTotal = [...evalCounts.values()].reduce((a, b) => a + b, 0);
   if (!training || evalTotal <= 0) return { status: "not_provided", rows: [] };
+  const sampleBasis = edition4 && multilabelSamples !== null;
+  const trainSamples = sampleBasis ? trainingSampleCount(composer) : null;
+  // 학습 비율을 낼 수 없으니 견주지 않는다 — uncovered 보다 먼저(그 표도 학습 칸에 비율이 필요하다).
+  if (sampleBasis && trainSamples === null) return { status: "training_samples_not_provided", rows: [] };
   if ([...evalCounts].some(([name, count]) => count > 0 && !training.has(name))) {
     return { status: "uncovered", rows: [] };
   }
-  const train = ratios(training);
-  const test = ratios(evalCounts);
+  const train = ratios(training, trainSamples ?? undefined);
+  const test = ratios(evalCounts, sampleBasis ? evaluationSampleDenominator(multilabelSamples, evalTotal) : undefined);
   const classes = [...new Set([...test.keys(), ...train.keys()])];
   const rows = classes.map((label) => {
     const t = train.get(label) ?? 0;
@@ -641,7 +678,12 @@ export function buildNarrativeFacts(input: NarrativeFactsInput & { nSamples: num
   const decl = declarations(composer, taskType);
   const positiveClass = taskType === "binary" ? input.positiveClass : null;
   const truth = groundTruthRows(classTable);
-  const shift = distributionShift(composer, input.evaluationDistribution, edition4);
+  const shift = distributionShift(
+    composer,
+    input.evaluationDistribution,
+    edition4,
+    taskType === "multilabel" ? input.nSamples : null,
+  );
   return {
     contract: FACTS_CONTRACT,
     positive_class: positiveClass,

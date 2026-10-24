@@ -38,6 +38,7 @@ import {
   type NarrativeFacts,
 } from "./narrativeFacts";
 import { choiceLabel, type ReportComposerInput } from "./reportMaterials";
+import { MAX_PROBLEM_EVIDENCE_CHARS } from "./factSheetLimits";
 import { ed4Given, ed4Judged, ed4Plain, ed4Target } from "./edition4/edition4Number";
 import { imbalanceEffectEd4, type ImbalanceRawEd4 } from "./edition4/factSheetEd4";
 import { metricValueTextEd4, sameValueTextEd4 } from "./edition4/sameValueEd4";
@@ -329,13 +330,56 @@ function weakestClassProblem(weakest: NarrativeFacts["weakest_class"], kpiResult
   };
 }
 
+/** 판 4 분포 차 근거 한 줄(사실 시트 판 4 글자 — 비율은 plain). */
+function shiftEvidenceEd4(r: NarrativeFacts["distribution_shift"][number]): Record<string, string> {
+  return { training_ratio: ed4Plain(r.training_ratio), evaluation_ratio: ed4Plain(r.evaluation_ratio), difference: r.difference_text };
+}
+
+/**
+ * 백엔드가 재는 길이 — 파이썬 `json.dumps(v, ensure_ascii=False)` 는 구분자가 ", "·": " 라 `JSON.stringify` 보다 길다. 그 모양으로
+ * 센다(문자열·숫자는 JSON 표기 그대로 — UTF-16 길이라 파이썬 글자 수보다 짧지 않다).
+ */
+function pythonJsonLength(value: unknown): number {
+  if (Array.isArray(value)) return 2 + value.reduce<number>((n, v, i) => n + pythonJsonLength(v) + (i > 0 ? 2 : 0), 0);
+  if (value !== null && typeof value === "object") {
+    return (
+      2 +
+      Object.entries(value).reduce<number>(
+        (n, [k, v], i) => n + JSON.stringify(k).length + 2 + pythonJsonLength(v) + (i > 0 ? 2 : 0),
+        0,
+      )
+    );
+  }
+  return JSON.stringify(value).length;
+}
+
+/** 근거 직렬화가 상한 안에 들도록 |차이| 가 큰 줄부터 고른다. 고른 줄은 원래 순서 그대로. 다 들어가면 그대로. */
+function fitShiftEvidence(flagged: NarrativeFacts["distribution_shift"]): NarrativeFacts["distribution_shift"] {
+  const size = (rows: NarrativeFacts["distribution_shift"]) =>
+    pythonJsonLength(Object.fromEntries(rows.map((r) => [r.label, shiftEvidenceEd4(r)])));
+  if (size(flagged) <= MAX_PROBLEM_EVIDENCE_CHARS) return flagged;
+  const order = [...flagged].sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference));
+  const kept = new Set<(typeof flagged)[number]>();
+  for (const r of order) {
+    kept.add(r);
+    if (size(flagged.filter((x) => kept.has(x))) > MAX_PROBLEM_EVIDENCE_CHARS) {
+      kept.delete(r);
+      break;
+    }
+  }
+  return flagged.filter((r) => kept.has(r));
+}
+
 /**
  * 학습↔평가 분포 차이 문제 — 어느 클래스든 |학습 비율 − 평가 비율| ≥ 10%p(flagged). 걸린 클래스만 적는다.
- * 차이의 절댓값 합은 2 를 넘지 못해 걸리는 클래스는 많아야 20개다 — 근거를 따로 자르지 않는다.
+ * 분포 합 분모면 차이의 절댓값 합은 2 를 넘지 못해 걸리는 클래스는 많아야 20개다 — 판 3 은 근거를 따로 자르지 않는다.
+ * 판 4 멀티레이블은 분모가 표본 수(S2·S3 검토 T3)라 이 상한이 없다 — 근거가 백엔드 상한(`MAX_PROBLEM_EVIDENCE_CHARS`)을 넘으면
+ * 차이가 큰 레이블부터 들어가는 만큼만 싣는다(넘으면 요청이 통째로 거절된다). 이름(title)은 `fitFactSheet` 가 자른다.
  */
 function distributionShiftProblem(rows: NarrativeFacts["distribution_shift"], edition4 = false): Found | null {
-  const flagged = rows.filter((r) => r.flagged);
+  let flagged = rows.filter((r) => r.flagged);
   if (flagged.length === 0) return null;
+  if (edition4) flagged = fitShiftEvidence(flagged);
   return {
     title: flagged.map((r) => r.label).join(", "),
     evidence: Object.fromEntries(
@@ -343,7 +387,7 @@ function distributionShiftProblem(rows: NarrativeFacts["distribution_shift"], ed
         r.label,
         // 판 4 는 사실 시트 판 4 글자(difference_text) — 비율은 plain.
         edition4
-          ? { training_ratio: ed4Plain(r.training_ratio), evaluation_ratio: ed4Plain(r.evaluation_ratio), difference: r.difference_text }
+          ? shiftEvidenceEd4(r)
           : { training_ratio: r.training_ratio, evaluation_ratio: r.evaluation_ratio, difference: r.difference },
       ]),
     ),

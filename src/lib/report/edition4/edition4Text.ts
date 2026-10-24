@@ -23,6 +23,18 @@ export const VERDICT_BASIS_FAIL_DRAFT = "핵심 지표 {미달 핵심 지표}이
 export const VERDICT_BASIS_INCONCLUSIVE_DRAFT = "{원인}(으)로 3.4의 판정 규칙에 따라 판정할 수 없었다.";
 /** 부록 B13 — 핵심 지표만 판정 대상인 합격. */
 export const VERDICT_BASIS_PASS_CORE_ONLY = "핵심 지표 {핵심 지표}이(가) 목표를 충족하여, 3.4의 판정 규칙에 따라 합격으로 판정하였다.";
+/**
+ * 부록 B31(초안, 2026-10-24 승인 — 판 4 를 켜기 전 확인 목록) — 핵심 지표가 하나도 없는 성적서의 4.2 판정 근거. {판정} 은 판정
+ * 글자(`VERDICT_BASIS_WORD`), 조사 (으)로 는 그 글자로 고른다.
+ */
+export const VERDICT_BASIS_PASS_NO_CORE_DRAFT = "판정 대상 지표 {N}개가 모두 목표를 충족하여, 3.4의 판정 규칙에 따라 합격으로 판정하였다.";
+export const VERDICT_BASIS_FAILED_NO_CORE_DRAFT = "{미달 지표}이(가) 목표에 미달하여, 3.4의 판정 규칙에 따라 {판정}(으)로 판정하였다.";
+/** 근거 문장 끝 "…(으)로 판정하였다" 의 판정 글자(고정 문구 20 의 "합격으로"·"조건부 합격으로"·"불합격으로"). */
+export const VERDICT_BASIS_WORD: Record<"PASS" | "CONDITIONAL_PASS" | "FAIL", string> = {
+  PASS: "합격",
+  CONDITIONAL_PASS: "조건부 합격",
+  FAIL: "불합격",
+};
 /** 부록 B13 — 판정 불가의 {원인}. */
 export const INCONCLUSIVE_CAUSE_NOT_COMPUTED = "핵심 지표 {이름}의 산출 실패";
 export const INCONCLUSIVE_CAUSE_NO_TARGET = "핵심 지표 {이름}의 목표값 부재";
@@ -47,6 +59,11 @@ export const COVER_VERDICT_ROW = "{판정} (판정 대상 지표 {N}개 중 {n}�
 export const COVER_CORE_ROW = "{이름} {값} (합격 기준 {기준}, {충족/미달}, 판정 여유 {작음/충분}, 4.3)";
 /** 부록 B2 — 판정 대상 0개. */
 export const COVER_VERDICT_NONE = "판정 불가 (판정 대상 지표 없음, 4.2)";
+/**
+ * 부록 B32(초안, 2026-10-24 승인 — 판 4 를 켜기 전 확인 목록) — 목표값이 없는 핵심 지표. 값은 판정과 무관해 plain(같은 원값의
+ * 판정 대상 지표가 있으면 그 글자 — D2).
+ */
+export const COVER_CORE_NO_TARGET_DRAFT = "{이름} {값} (합격 기준 없음, 참고 지표, 4.3)";
 /** 부록 B3 — 핵심 지표 측정 불가. */
 export const COVER_CORE_UNAVAILABLE = "{이름} 측정 불가 (합격 기준 {기준}, 4.3)";
 

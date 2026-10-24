@@ -6,12 +6,22 @@
  *   클래스를 찍는다. 학습·평가 비율과 차이는 사실 시트 `distribution_shift` 와 같은 함수(`distributionShift`)가 낸 값이다.
  * - 불균형 비율은 M23 원값(1.671875 → 1.672)이다. 엔진 판정(D20 `level`)이 있으면 사실 시트 `display.imbalance_ratio` 와 같은
  *   규칙(1.5 와 비교해 판정 쪽으로 늘림)이라 4.5 와 5.3 이 같은 글자를 쓴다.
+ * - 멀티레이블은 비율의 분모가 표본 수다(S2·S3 검토 T3, 2026-10-24 사용자 답) — 평가 = 그 레이블이 붙은 평가 표본 / 평가 표본 수
+ *   (분포 문장과 같은 숫자), 학습 = 그 레이블이 붙은 학습 표본 / 의뢰자가 준 학습 표본 수. 학습 표본 수가 없으면 표를 그리지 않는다
+ *   (training_samples_not_provided — 부록 B16 과 이유가 달라 B16 문장을 쓰지 않는다. 고객 문장은 아직 정해지지 않았다).
  * - 백분율은 셋째 자리 표기에서 옮긴다(`ed4Percent(ed4Plain(비율))` — 0.374 → 37.4%). 차이는 %p(U+2212).
  */
 import type { TaskType } from "../../../data/evaluationData";
 import type { ImbalanceEffect } from "../../../types/finalReport.types";
 import { difference } from "../judgedNumber";
-import { normalizeLabelText, trainingCounts, type DistributionShiftRow, type NarrativeFacts } from "../narrativeFacts";
+import {
+  evaluationSampleDenominator,
+  normalizeLabelText,
+  trainingCounts,
+  trainingSampleCount,
+  type DistributionShiftRow,
+  type NarrativeFacts,
+} from "../narrativeFacts";
 import type { ReportComposerInput } from "../reportMaterials";
 import { ed4Judged, ed4Percent, ed4PercentPoint, ed4Plain, ed4SignedJudged } from "./edition4Number";
 import { DISTRIBUTION_SENTENCE, fillTemplate, IMBALANCE_RATIO_SENTENCE } from "./edition4Text";
@@ -57,7 +67,8 @@ export interface DistributionEd4 {
   imbalanceSentence: string | null;
   /**
    * 학습·평가 비율 표. compared = 학습 분포가 평가 클래스를 모두 덮음, uncovered = 학습 분포에 없는 평가 클래스가 있음(그
-   * 클래스 칸은 "—"), not_provided = 학습 분포가 없음(부록 B16 — 표 대신 "제공되지 않음" 문장).
+   * 클래스 칸은 "—"), not_provided = 학습 분포가 없음(부록 B16 — 표 대신 "제공되지 않음" 문장), training_samples_not_provided =
+   * 멀티레이블인데 학습 표본 수가 없음(표 없음, 생략 이유만 — B16 문장이 아니다).
    */
   training: { status: NarrativeFacts["distribution_shift_status"]; rows: DistributionRowEd4[] };
 }
@@ -84,8 +95,15 @@ function comparedRow(row: DistributionShiftRow): DistributionRowEd4 {
   };
 }
 
-/** 학습 분포가 평가 클래스를 다 덮지 못할 때의 표 — 평가 클래스 ∪ 학습 칸, 학습에 없는 클래스는 "—". */
-function uncoveredRows(composer: ReportComposerInput | undefined, evaluation: Record<string, number>): DistributionRowEd4[] {
+/**
+ * 학습 분포가 평가 클래스를 다 덮지 못할 때의 표 — 평가 클래스 ∪ 학습 칸, 학습에 없는 클래스는 "—". 멀티레이블은 분모가
+ * 표본 수(`distributionShift` 와 같은 분모 — 이 갈래에 왔으면 학습 표본 수가 있다).
+ */
+function uncoveredRows(
+  composer: ReportComposerInput | undefined,
+  evaluation: Record<string, number>,
+  multilabelSamples: number | null,
+): DistributionRowEd4[] {
   const training = trainingCounts(composer);
   if (!training) return [];
   const evalCounts = new Map<string, number>();
@@ -93,8 +111,11 @@ function uncoveredRows(composer: ReportComposerInput | undefined, evaluation: Re
     const key = normalizeLabelText(name);
     evalCounts.set(key, (evalCounts.get(key) ?? 0) + count);
   }
-  const evalTotal = [...evalCounts.values()].reduce((a, b) => a + b, 0);
-  const trainTotal = [...training.values()].reduce((a, b) => a + b, 0);
+  const occurrences = [...evalCounts.values()].reduce((a, b) => a + b, 0);
+  const trainOccurrences = [...training.values()].reduce((a, b) => a + b, 0);
+  const sampleBasis = multilabelSamples !== null;
+  const evalTotal = sampleBasis ? evaluationSampleDenominator(multilabelSamples, occurrences) : occurrences;
+  const trainTotal = (sampleBasis ? trainingSampleCount(composer) : null) ?? trainOccurrences;
   const labels = [...new Set([...evalCounts.keys(), ...training.keys()])];
   return labels.map((label) => {
     const e = (evalCounts.get(label) ?? 0) / evalTotal;
@@ -152,7 +173,11 @@ export function buildDistributionEd4(input: DistributionEd4Input): DistributionE
         status === "compared"
           ? rows.map(comparedRow)
           : status === "uncovered"
-            ? uncoveredRows(input.composer, input.classDistribution)
+            ? uncoveredRows(
+                input.composer,
+                input.classDistribution,
+                input.taskType === "multilabel" ? (input.nSamples ?? 0) : null,
+              )
             : [],
     },
   };

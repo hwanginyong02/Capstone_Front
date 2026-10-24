@@ -2,7 +2,7 @@
  * 판 4 3.2 산정식 덮어쓰기 표(S3 ⑥, 대응표 11) — 글자 출처와, 판 4 run 의 저장값에만 들어가는지(매퍼 배선).
  *
  * - M2·M3·M4·M19 는 예시본 3.2 글자(아래 표에 옮겨 적음), M10 은 고정 문구 사본, M11~M13 은 부록 B6, M5 는 판 3 글에 부록 A9
- *   치환만 한 글이다(치환을 시험 안에서 다시 해 본다).
+ *   치환을 하고 "Fβ의" 로 붙여 쓴 글이다(치환을 시험 안에서 다시 해 본다).
  * - 판 3 run 은 지금 글(`METRICS.formula`) 그대로다.
  */
 import { readFileSync } from "node:fs";
@@ -64,9 +64,12 @@ describe("판 4 산정식 — 글자 출처", () => {
     for (const id of ["M11", "M12", "M13"]) expect([id, EDITION4_FORMULA_OVERRIDES[id]]).toEqual([id, b6[id]]);
   });
 
-  it("M5 = 판 3 글에 부록 A9 치환만", () => {
+  it("M5 = 판 3 글에 부록 A9 치환 + 'Fβ의' 붙여 쓰기(2026-10-24 사용자 승인)", () => {
     expect(formulaOf("M5")).toMatch(/binary/);
-    expect(EDITION4_FORMULA_OVERRIDES.M5).toBe(a9(formulaOf("M5")));
+    // 판 3 글은 "Fβ 의"(띄어 씀) — 판 4 는 예시본 M2~M4 의 "F1의" 처럼 붙여 쓴다. 그 밖은 A9 치환 그대로.
+    expect(formulaOf("M5")).toContain("Fβ 의");
+    expect(EDITION4_FORMULA_OVERRIDES.M5).toBe(a9(formulaOf("M5")).replace("Fβ 의", "Fβ의"));
+    expect(EDITION4_FORMULA_OVERRIDES.M5).toBe("이진: (1+β²)PR/(β²P+R) · 다중·멀티: 클래스별 Fβ의 매크로 평균");
   });
 
   it("덮어쓰는 지표는 정해진 열 개뿐이다", () => {
