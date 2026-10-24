@@ -106,3 +106,53 @@ export function derivationStatementEd4(fact: { method: string; threshold: number
   const threshold = typeof fact.threshold === "number" ? ed4Given(fact.threshold) : String(fact.threshold);
   return fillTemplate(FIXED_9_THRESHOLD_ED4, { threshold });
 }
+
+/* ------------------------------------------------------------------ *
+ * 렌더러(S4·S5) — 절·소절 제목(예시본 글자 그대로, 부록 A "절·소절 제목")
+ * ------------------------------------------------------------------ */
+
+/** 판 4 절·소절 제목. 절 제목은 "{번호}. {제목}", 소절 제목은 "{번호} {제목}" 으로 찍는다(`Ed4SectionTitle`·`Ed4SubsectionTitle`). */
+export const ED4_TITLES = {
+  "1": "시험 개요",
+  "1.1": "의뢰자와 시험기관",
+  "1.2": "시험 목적과 성적서 용도",
+  "1.3": "제약사항",
+  "2": "시험 대상",
+  "2.1": "대상 모델",
+  "2.2": "평가 데이터",
+  "2.3": "학습 데이터",
+  "3": "시험 방법",
+  "3.1": "의뢰자 요구사항",
+  "3.2": "시험항목과 산정식",
+  "3.3": "산출 기준",
+  "3.4": "판정 규칙",
+  "3.5": "시험 절차와 평가 환경",
+  "4": "시험 결과",
+  "4.1": "데이터 점검",
+  "4.2": "종합 판정",
+  "4.3": "지표별 결과",
+  "4.4": "오분류",
+  "4.5": "데이터 분포",
+  "4.6": "참조 범위 비교",
+  "4.7": "곡선",
+  "4.8": "응답시간",
+  "5": "분석 소견",
+  "5.1": "판정과 불확실성",
+  "5.2": "오분류",
+  "5.3": "데이터 분포",
+  "5.4": "참조 범위",
+  "5.5": "운영 위험",
+  "5.6": "추가 관찰",
+  "6": "개선 권고",
+  "6.1": "데이터",
+  "6.2": "모델과 운영",
+} as const;
+export type Ed4TitleNumber = keyof typeof ED4_TITLES;
+/**
+ * 절·소절 번호를 성적서 순서로(1, 1.1, 1.2, …, 6.2). 객체 키는 정수 꼴("1"…"6")이 먼저 열거되므로 순서는 이 목록으로 본다.
+ */
+export const ED4_TITLE_NUMBERS: ReadonlyArray<Ed4TitleNumber> = (Object.keys(ED4_TITLES) as Ed4TitleNumber[]).sort((a, b) => {
+  const [a1, a2 = 0] = a.split(".").map(Number);
+  const [b1, b2 = 0] = b.split(".").map(Number);
+  return a1 - b1 || a2 - b2;
+});

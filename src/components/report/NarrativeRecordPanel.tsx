@@ -9,7 +9,8 @@
  *   사용자 결정 1). 서술을 기다리는 중·만들지 못함이면 낡은 칸별 출처로 그리지 않는다(칸 배지와 같은 규칙).
  */
 import type { FinalReportData, NarrativeSectionSource } from "../../types/finalReport.types";
-import { usesSchema3 } from "../../lib/report/normalizeReportContent";
+import { usesSchema3, usesSchema4 } from "../../lib/report/normalizeReportContent";
+import { Ed4NarrativeRecord } from "./edition4/Ed4NarrativeRecord";
 
 /** 칸 번호와 성적서의 소절 이름(판 3 소절 제목과 같은 말 — 9 는 절 제목). 이 순서로 줄을 세운다. */
 export const NARRATIVE_RECORD_SECTIONS: ReadonlyArray<readonly [section: string, title: string]> = [
@@ -37,6 +38,7 @@ export function showsNarrativeRecord(data: FinalReportData): boolean {
 }
 
 export function NarrativeRecordPanel({ data }: { data: FinalReportData }) {
+  if (usesSchema4(data)) return <Ed4NarrativeRecord data={data} />;
   if (!showsNarrativeRecord(data)) return null;
   const sections = data.narrativeSections ?? {};
   const known = NARRATIVE_RECORD_SECTIONS.filter(([section]) => section in sections);
