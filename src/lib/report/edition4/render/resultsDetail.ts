@@ -99,17 +99,20 @@ export function confusionCountsTable(counts: ConfusionCounts | null | undefined)
 
 /**
  * 최약 클래스 표(F1 최저). F1 = `classF1TextEd4`(사실 시트 f1_text — 4.4·5절·사실 시트 같은 글자), 비율 = share_text 의 %(셋째
- * 자리 → 37.4%), 매크로 F1과의 차이 = gap_text. 클래스 이름 뒤 "(설명)". 멀티레이블은 단위 "레이블"과 비율 분모 설명(판 3).
+ * 자리 → 37.4%), 매크로 F1과의 차이 = gap_text. 클래스 이름 뒤 "(설명)". 멀티레이블은 단위 "레이블"(작업 유형으로 가름).
+ * 판 4 멀티레이블의 비율 분모는 4.5 와 같은 표본 수(S6 질문 4, `class_share_basis` "samples")라 분모 설명 줄이 없다. 분모가 레이블
+ * 등장 합으로 저장된 run(그 전에 만든 판 4 run·표본 수 없음)만 판 3 분모 설명 줄을 붙인다.
  */
 export function weakestClassTable(
   facts: Pick<NarrativeFacts, "weakest_class" | "class_share_basis"> | undefined,
   kpiResults: KpiResult[],
   descriptions: readonly ClassLabelInfo[] | undefined,
+  taskType?: TaskType,
 ): DetailTable | null {
   const w = facts?.weakest_class;
   if (!w) return null;
   const labelBasis = facts.class_share_basis === "label_occurrences";
-  const unit = labelBasis ? "레이블" : "클래스";
+  const unit = taskType === "multilabel" || labelBasis ? "레이블" : "클래스";
   const f1 = classF1TextEd4(w.label, w.f1, { weakest: w, kpiResults }) ?? ED4_DASH;
   return {
     title: fill(EX_4_4_WEAKEST_TITLE, "unit", unit),

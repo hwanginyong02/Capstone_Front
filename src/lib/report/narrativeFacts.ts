@@ -227,17 +227,23 @@ function isLowSupport(support: number, share: number): boolean {
  * 같은 클래스 가운데 엔진 순서 앞. 그리고 F1 의 판 4 글자 `f1_text` 를 `f1` 바로 뒤에 싣는다 — 판정 대상 지표(`kpiResults`)와
  * 같은 원값이면 그 value_text(D2), 아니면 클래스별 표의 다른 클래스 F1 과 달라 보일 때까지 늘린 표기(D3). 4.4 최약 클래스 표의
  * F1 칸도 이 글자다(그 판단은 여기 한 곳).
+ *
+ * `sampleDenominator`(판 4 멀티레이블만 — 평가 표본 수, S6 질문 4): 주면 비율(share)·작은 몫 판정의 분모가 레이블 등장 합 대신 그
+ * 표본 수다(4.5 분포 문장·학습·평가 비율 표와 같은 분모). 0 이하면 등장 합으로 대신한다(`evaluationSampleDenominator`). 판 3·이진·
+ * 다중은 주지 않는다(종전 그대로).
  */
 export function weakestClass(
   table: ClassReportTable | null | undefined,
   edition4 = false,
   kpiResults: KpiResult[] = [],
+  sampleDenominator: number | null = null,
 ): WeakestClassFact | null {
   const truth = groundTruthRows(table);
   if (truth.length < 2) return null;
   const weakest = weakestRow(truth, edition4);
   if (!weakest) return null;
-  const total = truth.reduce((sum, r) => sum + r.support!, 0);
+  const occurrences = truth.reduce((sum, r) => sum + r.support!, 0);
+  const total = sampleDenominator === null ? occurrences : evaluationSampleDenominator(sampleDenominator, occurrences);
   const support = weakest.support!;
   const share = support / total;
   const macro = averageRow(table, "매크로 평균")?.f1 ?? null;
@@ -270,14 +276,19 @@ function weakestRow(rows: ClassReportRow[], edition4 = false): ClassReportRow | 
   return rows.find((r) => r.f1 !== null && sameAtMaxDigits(r.f1, min.f1!)) ?? min;
 }
 
-/** 작은 표본 클래스 — 정답 클래스 중 support < 30 또는 전체의 5% 미만, 엔진 순서. 정답 클래스가 둘 미만이면 []. */
+/**
+ * 작은 표본 클래스 — 정답 클래스 중 support < 30 또는 전체의 5% 미만, 엔진 순서. 정답 클래스가 둘 미만이면 [].
+ * `sampleDenominator` 는 `weakestClass` 와 같다(판 4 멀티레이블의 표본 수 분모, S6 질문 4).
+ */
 export function lowSupportClasses(
   table: ClassReportTable | null | undefined,
   edition4 = false,
+  sampleDenominator: number | null = null,
 ): NarrativeFacts["low_support_classes"] {
   const truth = groundTruthRows(table);
   if (truth.length < 2) return [];
-  const total = truth.reduce((sum, r) => sum + r.support!, 0);
+  const occurrences = truth.reduce((sum, r) => sum + r.support!, 0);
+  const total = sampleDenominator === null ? occurrences : evaluationSampleDenominator(sampleDenominator, occurrences);
   return truth
     .filter((r) => isLowSupport(r.support!, r.support! / total))
     .map((r) => {
@@ -678,6 +689,9 @@ export function buildNarrativeFacts(input: NarrativeFactsInput & { nSamples: num
   const decl = declarations(composer, taskType);
   const positiveClass = taskType === "binary" ? input.positiveClass : null;
   const truth = groundTruthRows(classTable);
+  // 판 4 멀티레이블: 최약 레이블·작은 표본의 비율 분모 = 평가 표본 수(4.5 와 같은 분모, S6 질문 4). 판 3 은 레이블 등장 합 그대로.
+  // 표본 수가 0 이하(없음)면 4.5 처럼 등장 합으로 대신하고, 분모 이름(class_share_basis)도 그쪽으로 둔다.
+  const shareDenominator = edition4 && taskType === "multilabel" && input.nSamples > 0 ? input.nSamples : null;
   const shift = distributionShift(
     composer,
     input.evaluationDistribution,
@@ -688,15 +702,15 @@ export function buildNarrativeFacts(input: NarrativeFactsInput & { nSamples: num
     contract: FACTS_CONTRACT,
     positive_class: positiveClass,
     n_classes: truth.length > 0 ? truth.length : null,
-    class_share_basis: taskType === "multilabel" ? "label_occurrences" : "samples",
+    class_share_basis: taskType === "multilabel" && shareDenominator === null ? "label_occurrences" : "samples",
     report_purpose_label: input.reportPurpose ? REPORT_PURPOSE_LABEL[input.reportPurpose] ?? null : null,
     core_metrics_source: input.coreMetricsSource,
     selected_metrics: kpiResults.map((r) => r.metricId),
     declarations: decl,
     verdict_detail: verdictDetail(kpiResults, taskType, input.coreMetricIds),
     error_totals: errorTotals(taskType, confusionCounts, input.nSamples),
-    weakest_class: weakestClass(classTable, edition4, kpiResults),
-    low_support_classes: lowSupportClasses(classTable, edition4),
+    weakest_class: weakestClass(classTable, edition4, kpiResults, shareDenominator),
+    low_support_classes: lowSupportClasses(classTable, edition4, shareDenominator),
     top_confusion_pairs: taskType === "multiclass" ? topConfusionPairs(confusion) : [],
     prediction_bias: predictionBias(taskType, confusion, confusionCounts),
     declared_risk_errors: taskType === "binary" ? declaredRiskErrors(decl.risk_direction, confusionCounts, edition4) : null,

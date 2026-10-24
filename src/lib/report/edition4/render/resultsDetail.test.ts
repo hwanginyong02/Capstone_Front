@@ -129,6 +129,21 @@ describe("4.4 최약 클래스", () => {
     expect(t.rows[0][2]).toBe("1,234");
   });
 
+  it("판 4 멀티(분모 = 표본 수, class_share_basis samples) — 단위는 작업 유형으로 '레이블', 등장 합 설명 줄 없음(S6 질문 4)", () => {
+    const t = weakestClassTable(
+      { weakest_class: weakest({ label: "Class9", support: 80, share_text: "0.087" }), class_share_basis: "samples" },
+      [],
+      undefined,
+      "multilabel",
+    )!;
+    expect(t.title).toBe("최약 레이블(F1 최저)");
+    expect(t.columns[0]).toBe("레이블");
+    expect(t.rows[0]).toEqual(["Class9", "0.977", "80", "8.7%", "0.005", "아니오"]);
+    expect(t.notes).toEqual(["매크로 F1과의 차이 = 매크로 F1 − 이 레이블의 F1. 작은 표본은 표본 수 30건 미만 또는 전체의 5% 미만입니다."]);
+    // 이진·다중은 그대로 '클래스'
+    expect(weakestClassTable({ weakest_class: weakest(), class_share_basis: "samples" }, [], undefined, "multiclass")!.columns[0]).toBe("클래스");
+  });
+
   it("최약 클래스가 없으면 null", () => {
     expect(weakestClassTable({ weakest_class: null, class_share_basis: "samples" }, [], undefined)).toBeNull();
     expect(weakestClassTable(undefined, [], undefined)).toBeNull();

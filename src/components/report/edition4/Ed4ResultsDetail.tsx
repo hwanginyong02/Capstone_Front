@@ -110,7 +110,7 @@ export function Ed4ResultsDetail({ data }: Ed4PartProps) {
           <ConfusionMatrixChart data={data.charts.confusionMatrix} figureOnly />
         </div>
       )}
-      <DetailTableBlock table={weakestClassTable(facts, kpis, descriptions)} />
+      <DetailTableBlock table={weakestClassTable(facts, kpis, descriptions, taskType)} />
       <DetailTableBlock table={predictionBiasTable(facts, descriptions)} />
       <DetailTableBlock table={confusionPairsTable(facts, taskType, descriptions)} />
       <DetailTableBlock table={thresholdTable(ed4?.thresholdTable)} />

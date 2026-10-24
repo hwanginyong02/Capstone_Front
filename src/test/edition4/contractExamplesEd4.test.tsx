@@ -54,11 +54,13 @@ const EXAMPLE_OF: Record<Tag, string> = {
  * 같은 검토 D6(문제 근거 숫자도 판 4 글자 — 지표 근거 값 = value_text·목표 = ed4Target·마진 = margin_text, 최약 클래스 근거 =
  * f1_text·share_text·gap_text·매크로 F1(D2), 불균형 근거 display = 판 4 표기)으로 세 예시의 problems[].evidence 가 바뀌어 다시 떴다
  * (이진 core_near_target, 다중 core_near_target, 멀티 core_fail·imbalance_effect·weakest_class). 그 밖 바이트는 그대로.
+ * S6 질문 4(2026-10-24 사용자 답 "추천대로")로 멀티 예시만 다시 떴다 — 최약 레이블·작은 표본 비율의 분모가 표본 수(class_share_basis
+ * "samples", Class9 share 0.087·low_support false, low_support_classes 는 Class14 하나, 문제 근거 weakest_class 같이). 이진·다중 그대로.
  */
 const SHA256: Record<string, string> = {
   "fact_sheet_binary_ed4.json": "0f7da6dfc88870aec7cb18c3a02204319df8487b4a9e058c344ade8dc0d63f69",
   "fact_sheet_multiclass_ed4.json": "68277d563888fdc1fdb1f4c50a0cd373d264394026c0ede9e1c421bc91ef96a5",
-  "fact_sheet_multilabel_ed4.json": "260783d76d0cc4d876a2c7b22f18d2303977223ca32e55c58bc51c35d03d2d26",
+  "fact_sheet_multilabel_ed4.json": "a0cdd99d04ee1127c093731f893d197ac3f741439de5c05d161cd4ded957a9e6",
 };
 
 const UPDATE = process.env.UPDATE_CONTRACT === "1";

@@ -465,10 +465,14 @@ const STAGE1_CHANGES: Record<Tag, string[]> = {
     ".materialCheck.printed.notProvided",
     ".meta.title",
     ".metricFormulas[].formula",
+    // S6 질문 4 — 판 4 멀티레이블의 최약 레이블·작은 표본 비율 분모 = 표본 수(분모 이름·비율·작은 몫 판정, 작은 표본 목록이 달라짐)
+    ".narrativeFacts.class_share_basis",
     ".narrativeFacts.fixed_sentences[].text",
-    ".narrativeFacts.low_support_classes[].share_text",
+    ".narrativeFacts.low_support_classes",
     ".narrativeFacts.weakest_class.f1_text", // S2·S3 검토 D2·D3 — 판 4 전용 키
     ".narrativeFacts.weakest_class.gap_text",
+    ".narrativeFacts.weakest_class.low_support",
+    ".narrativeFacts.weakest_class.share",
     ".narrativeFacts.weakest_class.share_text",
     ".problems",
   ],

@@ -36,9 +36,11 @@ const SHARED = ["fact_sheet_contract_ed4.json", "number_wording_ed4.json", "narr
  * class_table 줄 다섯(others = [최약 F1]). 칸 대응표는 그대로(백엔드 인계 fu_BE.md).
  * 후속 검토(2026-10-24)로 명세만 다시 고침 — B33(초안) 사용자 승인: not_decided 의 B16 이유 질문을 decided 로 옮기고 승인 글자를
  * 옮겨 적음, edition4_meaning 의 distribution_shift_status 줄도 같이. 대조 표·칸 대응표는 그대로.
+ * S6 질문 4(2026-10-24 사용자 답 "추천대로")로 명세만 다시 고침 — 판 4 멀티레이블 최약 레이블·작은 표본 비율의 분모 = 표본 수:
+ * edition4_meaning 에 class_share_basis·weakest_class.share·weakest_class.low_support·low_support_classes 네 줄, decided 에 한 줄.
  */
 const SHA256: Record<(typeof SHARED)[number], string> = {
-  "fact_sheet_contract_ed4.json": "15fb4c3e4d507850c4594ed510cd29b34cbdaeadece9945a6ee1c171f16b5148",
+  "fact_sheet_contract_ed4.json": "f8516766cef76c0d504e21e78eb6cafe4edd6f1e6e7bedf373527d4477a80776",
   "number_wording_ed4.json": "6d4659d849363ceac749108c19b9a41662b18ce6e1f02bdc30586f54142466fb",
   "narrative_slots_ed4.json": "3c43ffa35357c8c7f4c8a30d182482a85dec51caefa872dc9e556ae51d5b7d35",
 };
