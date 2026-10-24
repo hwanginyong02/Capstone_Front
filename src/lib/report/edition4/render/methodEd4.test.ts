@@ -328,6 +328,12 @@ describe("3.3 산출 기준", () => {
       x.materialCheck!.purpose.lines.find((l) => l.id === "averaging")!.declared = "모르는 선언";
     });
     expect(averagingSentenceEd4(unknownLabel)).toBeNull();
+    // 점검 줄이 미충족인데 미충족 글이 저장되지 않은 어긋난 데이터 — 충족 글을 지어 그리지 않는다.
+    const unmetNoText = edit(digits(), (x) => {
+      x.materialCheck!.purpose.lines.find((l) => l.id === "averaging")!.met = false;
+    });
+    expect(averagingMetMaterialsEd4(unmetNoText)).toBeNull();
+    expect(averagingSentenceEd4(unmetNoText)).toBeNull();
   });
 
   it("M6 줄은 M6 을 골랐을 때만, 신뢰구간 방식은 저장 글이 있을 때만", () => {
