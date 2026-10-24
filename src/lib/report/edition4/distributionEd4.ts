@@ -8,7 +8,7 @@
  *   규칙(1.5 와 비교해 판정 쪽으로 늘림)이라 4.5 와 5.3 이 같은 글자를 쓴다.
  * - 멀티레이블은 비율의 분모가 표본 수다(S2·S3 검토 T3, 2026-10-24 사용자 답) — 평가 = 그 레이블이 붙은 평가 표본 / 평가 표본 수
  *   (분포 문장과 같은 숫자), 학습 = 그 레이블이 붙은 학습 표본 / 의뢰자가 준 학습 표본 수. 학습 표본 수가 없으면 표를 그리지 않는다
- *   (training_samples_not_provided — 부록 B16 과 이유가 달라 B16 문장을 쓰지 않는다. 고객 문장은 아직 정해지지 않았다).
+ *   (training_samples_not_provided — 부록 B16 과 이유가 달라 B16 문장을 쓰지 않는다. 4.5 고객 문장은 부록 B33(초안, 2026-10-24 사용자 승인)이고 S5 렌더러가 그린다).
  * - 백분율은 셋째 자리 표기에서 옮긴다(`ed4Percent(ed4Plain(비율))` — 0.374 → 37.4%). 차이는 %p(U+2212).
  */
 import type { TaskType } from "../../../data/evaluationData";
@@ -68,7 +68,7 @@ export interface DistributionEd4 {
   /**
    * 학습·평가 비율 표. compared = 학습 분포가 평가 클래스를 모두 덮음, uncovered = 학습 분포에 없는 평가 클래스가 있음(그
    * 클래스 칸은 "—"), not_provided = 학습 분포가 없음(부록 B16 — 표 대신 "제공되지 않음" 문장), training_samples_not_provided =
-   * 멀티레이블인데 학습 표본 수가 없음(표 없음, 생략 이유만 — B16 문장이 아니다).
+   * 멀티레이블인데 학습 표본 수가 없음(표 없음, 생략 이유만 — B16 문장이 아니다. 그 자리의 B33(초안) 문장은 S5 렌더러가 그린다).
    */
   training: { status: NarrativeFacts["distribution_shift_status"]; rows: DistributionRowEd4[] };
 }
