@@ -5,6 +5,7 @@
  * 한 줄 "| 칸1 | 칸2" 로):
  * - `screenText(data)` — 화면 본문(`ReportSections`, 번호 열기도 이것을 쓴다).
  * - `printText(data)` — 인쇄(`/report/:id/print` 의 `ReportPrint`, 인쇄 준비 신호까지 기다림, print:hidden 뺌). 서술이 끝난 run 으로 연다.
+ *   셋째 인자 `{ inspect }` 로 글로 읽기 전 인쇄 DOM(`[data-pdf-ready]`)을 받아 볼 수 있다.
  * - `byNumberText(content, issuance, { dropRecord })` — 번호로 연 페이지 전체(`/report/no/:번호` — 머리 상자·작성 기록 포함, dropRecord 면
  *   작성 기록 상자를 뺌). 서버 응답은 fetch 가짜. 이 도구들은 끝날 때 `vi.unstubAllGlobals()` 를 부른다(시험의 다른 전역 stub 도 풀림).
  *
@@ -120,6 +121,7 @@ function resetStores() {
 export async function printText(
   data: FinalReportData,
   narrative: RunNarrativeState = { status: "done", jobId: "job-ed4-render" },
+  options: { inspect?: (pdfRoot: Element) => void } = {},
 ): Promise<string> {
   const print = vi.fn();
   vi.stubGlobal("print", print);
@@ -157,6 +159,8 @@ export async function printText(
     );
     await waitFor(() => expect(view.container.querySelector("[data-pdf-ready]")).not.toBeNull());
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    // inspect — 글로 읽기 전(print:hidden 을 빼기 전) 인쇄 DOM 을 그대로 본다(페이지 나눔·숨긴 요소 단정용).
+    options.inspect?.(view.container.querySelector("[data-pdf-ready]")!);
     const text = blockText([view.container.querySelector("[data-pdf-ready]")!], { dropPrintHidden: true });
     view.unmount();
     return text;

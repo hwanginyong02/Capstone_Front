@@ -17,7 +17,8 @@ import { NO_PROBLEM_SENTENCE } from "../../../lib/report/reportConstants";
 import type { FinalReportData } from "../../../types/finalReport.types";
 import { draftReport } from "./draftEd4";
 import { loadEd4 } from "./ed4Fixtures";
-import { screenText } from "./renderEd4";
+import { SECTION_SOURCE_BADGE_TEXT } from "../../../components/report/shared/SectionSourceBadge";
+import { printText, screenText } from "./renderEd4";
 
 const after = (text: string, head: string) => text.slice(text.indexOf(`\n${head}\n`) + 1);
 const between = (text: string, head: string, next: string) => {
@@ -300,5 +301,29 @@ describe("지적 8 — 판 4 서술 문단의 홑 줄바꿈 보존(판 3 schema3
     expect(p).toBeTruthy();
     expect(p!.classList.contains("whitespace-pre-line")).toBe(true);
     view.unmount();
+  });
+});
+
+describe("rv2 지적 1 — 인쇄 입구(ReportPrint)가 판 4 를 mode=print 로 그린다", () => {
+  const inspectPrint = async (tag: "bc_strong" | "digits_strong") => {
+    let pageBreaks = -1;
+    let badges = -1;
+    await printText(loadEd4(tag, "issued"), undefined, {
+      inspect: (root) => {
+        pageBreaks = [...root.querySelectorAll("div")].filter((d) => d.style.pageBreakBefore === "always").length;
+        badges = [...root.querySelectorAll("*")].filter((el) => el.textContent === SECTION_SOURCE_BADGE_TEXT).length;
+      },
+    });
+    return { pageBreaks, badges };
+  };
+
+  it("digits_strong(8.1 규칙 기반 칸): ReportPrint 경로 DOM 에 PageBreak 6개, 칸 배지 요소 0개(print:hidden 으로 가린 것도 없음)", async () => {
+    // 같은 데이터의 화면에는 배지가 있다(위 0 단정이 빈 이빨이 아님).
+    expect(screenText(loadEd4("digits_strong", "issued"))).toContain(SECTION_SOURCE_BADGE_TEXT);
+    expect(await inspectPrint("digits_strong")).toEqual({ pageBreaks: 6, badges: 0 });
+  });
+
+  it("bc_strong: ReportPrint 경로 PageBreak 6개", async () => {
+    expect((await inspectPrint("bc_strong")).pageBreaks).toBe(6);
   });
 });
