@@ -49,12 +49,33 @@ describe("ed4RecommendLayout", () => {
     expect(layout.sides[1].rows).toHaveLength(1);
   });
 
-  it("문제 0개 → no_problem(문제 키가 없어도)", () => {
+  it("문제 0개(배열) → no_problem", () => {
     const data = copy(loadEd4("bc_strong", "issued"));
     data.problems = [];
     expect(ed4RecommendLayout(data)).toEqual({ kind: "no_problem" });
+  });
+
+  it("문제 키가 없으면(평가 전 초안) no_problem 이 아니라 판 3 초안 갈래 — 칸 자리표시, 표 없음, 권고 표 자리 안내(fix1 지적 1)", () => {
+    const data = copy(loadEd4("bc_strong", "issued"));
     delete data.problems;
-    expect(ed4RecommendLayout(data)).toEqual({ kind: "no_problem" });
+    data.recommendations = [];
+    data.recommendationNarrative = { dataQuality: "", modelOps: "" };
+    delete data.narrativeSource;
+    const layout = sides(data);
+    expect(layout.sides.map((s) => s.rows)).toEqual([null, null]);
+    expect(layout.sides.map((s) => s.body)).toEqual([
+      { kind: "placeholder", text: "자동 서술 생성 연동 예정 — 계산된 지표를 바탕으로 한 권고가 표시됩니다." },
+      { kind: "placeholder", text: "자동 서술 생성 연동 예정 — 계산된 지표를 바탕으로 한 권고가 표시됩니다." },
+    ]);
+    expect(layout.itemsPlaceholder).toBe("권고 항목은 자동 서술 생성 연동 시 표시됩니다.");
+    // 권고 행이 있으면 판 3 처럼 안내는 없다(문제 번호가 없는 권고는 찍지 않는다).
+    data.recommendations = loadEd4("bc_strong", "issued").recommendations;
+    expect(sides(data).itemsPlaceholder).toBeNull();
+    expect(sides(data).sides.map((s) => s.rows)).toEqual([null, null]);
+  });
+
+  it("문제가 있으면 권고 표 자리 안내는 없다", () => {
+    expect(sides(loadEd4("bc_strong", "issued")).itemsPlaceholder).toBeNull();
   });
 
   it("9 칸 fallback → 배지, 대기면 없음", () => {

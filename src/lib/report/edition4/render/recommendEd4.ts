@@ -7,17 +7,23 @@
  *   (`priorityLabelEd4` — 판 3 문제 표와 같이 문제의 값), 대응 문제 칸은 "P2 · {판 4 문제 이름}". 권고가 아직 없는 문제는 판 3 처럼
  *   자리표시 행. **문제 번호가 없거나 모르는 번호인 권고는 찍지 않는다**(계획 4절).
  * - 한쪽에 문제가 없으면 부록 B19 — 소제목과 그 칸 서술만, 표 없음. 문제가 하나도 없으면 고정 문구 6 만(판 3 9절과 같은 규칙 —
- *   6.1·6.2 소제목·서술 없음).
+ *   6.1·6.2 소제목·서술 없음). 0개 판정은 문제 목록(배열)이 **있을 때만**이다.
+ * - 문제 목록이 아직 없으면(`problems` 키 없음 — 평가 전 초안) 판 3 9절과 같은 갈래: 6.1·6.2 칸 자리표시, 표 없음, 권고가 없으면
+ *   그 아래 판 3 권고 표 자리 안내(`ED3_RECOMMEND_ITEMS_PLACEHOLDER`). 권고 행이 있어도 문제 번호가 없으니 찍지 않는다(위 규칙).
  * - 권고 분류(category)는 찍지 않는다(예시본에 열이 없음).
  */
 import type { FinalReportData, Problem } from "../../../../types/finalReport.types";
 import { sectionBadgeKind } from "../../../../components/report/shared/SectionSourceBadge";
-import { recommendationPlaceholder } from "../../../../components/report/shared/narrativePlaceholder";
+import {
+  draftPlaceholder,
+  narrativePlaceholder,
+  recommendationPlaceholder,
+} from "../../../../components/report/shared/narrativePlaceholder";
 import { priorityLabelEd4, problemLabel } from "../../problemList";
 import { ED4_DASH, type Ed4TitleNumber } from "../edition4Text";
 import { ED4_RECOMMEND_SECTIONS } from "../narrativeSlots";
 import { ed4SlotBody, type Ed4SlotBody } from "./findingsEd4";
-import { ED3_RECOMMEND_PLACEHOLDER, ED3_RECOMMENDATION_PENDING } from "./recommendText";
+import { ED3_RECOMMEND_ITEMS_PLACEHOLDER, ED3_RECOMMEND_PLACEHOLDER, ED3_RECOMMENDATION_PENDING } from "./recommendText";
 
 /** 권고 표 한 행(칸 글 넷 — 예시본 순서). */
 export type Ed4RecommendRow = readonly [priority: string, problem: string, action: string, impact: string];
@@ -32,7 +38,13 @@ export interface Ed4RecommendSide {
 
 export type Ed4RecommendLayout =
   | { kind: "no_problem" }
-  | { kind: "sides"; sides: Ed4RecommendSide[]; badge: "fallback" | null };
+  | {
+      kind: "sides";
+      sides: Ed4RecommendSide[];
+      badge: "fallback" | null;
+      /** 문제 목록이 없는 초안의 권고 표 자리 안내(판 3 글) — 그 밖에는 null. */
+      itemsPlaceholder: string | null;
+    };
 
 const NARRATIVE_OF: Record<string, (data: FinalReportData) => string | undefined> = {
   "9.1": (data) => data.recommendationNarrative?.dataQuality,
@@ -57,10 +69,10 @@ export function ed4RecommendRows(data: FinalReportData, problems: ReadonlyArray<
 
 /** 6절 배치. */
 export function ed4RecommendLayout(data: FinalReportData): Ed4RecommendLayout {
-  const problems = data.problems ?? [];
-  if (problems.length === 0) return { kind: "no_problem" };
+  const problems = data.problems;
+  if (problems !== undefined && problems.length === 0) return { kind: "no_problem" };
   const sides = ED4_RECOMMEND_SECTIONS.map(({ slot, edition4_place }) => {
-    const mine = problems.filter((p) => p.recommend_section === slot);
+    const mine = (problems ?? []).filter((p) => p.recommend_section === slot);
     return {
       place: edition4_place as Ed4TitleNumber,
       slot,
@@ -68,5 +80,14 @@ export function ed4RecommendLayout(data: FinalReportData): Ed4RecommendLayout {
       rows: mine.length > 0 ? ed4RecommendRows(data, mine) : null,
     };
   });
-  return { kind: "sides", sides, badge: sectionBadgeKind(true, data.narrativeSource, data.narrativeSections, "9") };
+  const itemsPlaceholder =
+    problems === undefined && (data.recommendations ?? []).length === 0
+      ? narrativePlaceholder(data.narrativeSource, draftPlaceholder(ED3_RECOMMEND_ITEMS_PLACEHOLDER, true))
+      : null;
+  return {
+    kind: "sides",
+    sides,
+    badge: sectionBadgeKind(true, data.narrativeSource, data.narrativeSections, "9"),
+    itemsPlaceholder,
+  };
 }

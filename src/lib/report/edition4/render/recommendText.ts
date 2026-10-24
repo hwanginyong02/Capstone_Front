@@ -18,3 +18,9 @@ export const ED3_RECOMMEND_PLACEHOLDER = "자동 서술 생성(LLM) 연동 예�
 
 /** 판 3 `RecommendSection` RECOMMENDATION_PENDING 그대로 — 문제는 있는데 묶인 권고가 아직 없을 때 권고 칸. */
 export const ED3_RECOMMENDATION_PENDING = "권고 생성 예정";
+
+/**
+ * 판 3 `RecommendSection` 의 권고 표 자리 안내 그대로 — 문제 목록이 아직 없는 평가 전 초안(판 3 은 `problems === undefined` 이고 권고가
+ * 없을 때 이 글). `draftPlaceholder` 가 "(LLM)" 을 지운다.
+ */
+export const ED3_RECOMMEND_ITEMS_PLACEHOLDER = "권고 항목은 자동 서술 생성(LLM) 연동 시 표시됩니다.";
