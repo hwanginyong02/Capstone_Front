@@ -14,6 +14,7 @@ import { DEFAULT_BETA, isBetaValid, newMetricDetail } from "../utils/domain/vali
 import { materialCheckFor, recommendedMetricIdsFor } from "../utils/domain/purposeRecommendation";
 import { unavailableMetricReasons } from "../utils/domain/metricAvailability";
 import { METRICS } from "../data/evaluationData";
+import { newRunContentSchema } from "../lib/report/reportEdition";
 import { Alert, AlertDescription } from "../components/ui/alert";
 
 /**
@@ -151,6 +152,8 @@ export function TestItems() {
         unavailableReasons={unavailableReasons}
         recommendedMetricIds={recommendedMetricIds}
         purposeLines={purposeLines}
+        // 목적별 점검 안내의 성적서 자리(판 4 = 1.3) — 새 run 의 판을 정하는 곳 하나(S6 질문 7).
+        edition4={newRunContentSchema() === 4}
         notice={
           droppedMetricIds.length > 0 ? (
             <Alert role="status">

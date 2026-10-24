@@ -8,7 +8,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TestItems } from "./TestItems";
 import { useWorkflowStore } from "../utils/stores/useWorkflowStore";
@@ -217,5 +217,25 @@ describe("지표 선택 이유 — 재료 선택 점검 2층(12번): 비어도 �
   it("'모름'을 고를 수 있다", () => {
     renderPage();
     expect(screen.getByRole("checkbox", { name: /모름/ })).toBeInTheDocument();
+  });
+});
+
+describe("목적별 점검 안내의 성적서 자리 — 새 run 의 판(newRunContentSchema)을 따른다(S6 질문 7)", () => {
+  // 실시간 사용을 밝혔는데 지연시간 컬럼이 없으면 목적별 점검 줄이 맞지 않아 안내 카드가 나온다.
+  const realTime = () =>
+    useWorkflowStore.setState({ composerPerspective: { usageMode: { text: "Real-time" } } });
+  const note = () => screen.getByText(/부족한 점으로 적힙니다/).textContent!.replace(/\s+/g, " ");
+
+  it("판 플래그 끔(테스트 기본 \"3\") — 1.4", () => {
+    realTime();
+    renderPage();
+    expect(note()).toMatch(/성적서 1\.4에 부족한 점으로 적힙니다\.$/);
+  });
+
+  it("판 플래그 4 — 1.3", () => {
+    vi.stubEnv("VITE_REPORT_EDITION", "4");
+    realTime();
+    renderPage();
+    expect(note()).toMatch(/성적서 1\.3에 부족한 점으로 적힙니다\.$/);
   });
 });

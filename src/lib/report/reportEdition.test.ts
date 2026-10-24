@@ -139,10 +139,11 @@ function sourceFiles(dir: string): string[] {
 }
 
 /**
- * `newRunContentSchema` 를 부를 수 있는 곳. 매퍼(옵션 기본값) 하나와, 만들면 검증 화면 생성 전 안내(B28, 표시 예측용 — P1).
- * B28 을 만들면 그 파일을 여기에 더한다. 그 밖은 찍힌 판(`usesSchema4`)만 읽는다.
+ * `newRunContentSchema` 를 부를 수 있는 곳. 매퍼(옵션 기본값)와, 지표 화면의 목적별 점검 안내(새 run 이 판 4 면 "성적서 1.3에" —
+ * S6 질문 7, 화면 문구 예측용). 검증 화면 생성 전 안내(B28)는 미리 만든 성적서에 찍힌 판을 읽어 여기 없다. 그 밖은 찍힌 판
+ * (`usesSchema4`)만 읽는다.
  */
-const ALLOWED_CALLERS = ["lib/report/mapWorkflowToFinalReport.ts"];
+const ALLOWED_CALLERS = ["lib/report/mapWorkflowToFinalReport.ts", "pages/TestItems.tsx"];
 
 describe("판을 정하는 곳은 한 군데(정적 시험)", () => {
   const files = sourceFiles(SRC).map((path) => [relative(SRC, path).split("\\").join("/"), readFileSync(path, "utf8")] as const);
@@ -170,7 +171,7 @@ describe("판을 정하는 곳은 한 군데(정적 시험)", () => {
     // 허용된 곳은 실제로 newRunContentSchema 를 가져다 쓴다(검사식이 import 를 놓치면 위가 빈 목록이 된다).
     for (const path of ALLOWED_CALLERS) {
       const text = files.find(([p]) => p === path)![1];
-      expect(text).toMatch(/import\s*\{\s*newRunContentSchema\s*\}\s*from\s*"\.\/reportEdition"/);
+      expect(text).toMatch(/import\s*\{\s*newRunContentSchema\s*\}\s*from\s*"(?:\.\/|(?:\.\.\/)+lib\/report\/)reportEdition"/);
     }
   });
 
