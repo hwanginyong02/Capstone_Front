@@ -2,7 +2,7 @@
 
 ML 모델 성능 평가 보고서("시험성적서")를 **KS X ISO/IEC TS 4213:2022** 표준에 따라 자동 생성하는 웹 애플리케이션의 프론트엔드입니다.
 
-> 이 README는 **디자인 시스템·컴포넌트 패턴** 위주입니다. 코드 구조/아키텍처는 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)와 [`docs/FRONTEND_DEVELOPMENT_GUIDELINE.md`](docs/FRONTEND_DEVELOPMENT_GUIDELINE.md)를, 지표·컬럼·검증 규칙은 [`SPEC.md`](SPEC.md)(프론트/백 공통 단일 진실 문서)를, 프로젝트 전체(프론트+백)는 백엔드 저장소(`Capstone_Back`)의 `docs/PROJECT_OVERVIEW.md`를 참고하세요. 성적서 서술·판(contentSchema)은 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §6.
+> 이 README는 **디자인 시스템·컴포넌트 패턴** 위주입니다. 코드 구조/아키텍처는 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)와 [`docs/FRONTEND_DEVELOPMENT_GUIDELINE.md`](docs/FRONTEND_DEVELOPMENT_GUIDELINE.md)를, 지표·컬럼·검증 규칙은 [`SPEC.md`](SPEC.md)(프론트/백 공통 단일 진실 문서)를, 프로젝트 전체(프론트+백)는 백엔드 저장소(`Capstone_Back`)의 `docs/PROJECT_OVERVIEW.md`를 참고하세요. 성적서 서술·판(contentSchema)은 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §6, 판 4 켜는 법은 §6.6.
 
 ## 프로젝트 구조 (요약)
 
@@ -31,6 +31,20 @@ src/
 - **확인과 생성**: 평가를 실행하고 성적서를 그린다. AI 서술은 백엔드 작업 경로(`POST /api/narrative/jobs` 로 작업 번호를 받고 조회해 기다림)로 받고, 키가 없거나 실패한 칸은 규칙 문장으로 채운다. 서술이 끝나야 인쇄·PDF·발급이 열린다. 발급한 성적서는 번호로 다시 연다(`/report/no/:reportNo`). 자세히는 `docs/ARCHITECTURE.md` §6.
 
 입력 화면 오른쪽의 세로 단계 표시줄(`StepRail`)이 진행을 보여 준다.
+
+## 성적서 판
+
+성적서 데이터에는 판 번호(`contentSchema`)가 찍히고, 성적서는 **찍힌 판의 모양으로** 그린다. 그래서 발급한 보관본은 코드가 바뀌어도 발급 당시 모양 그대로다.
+
+| 판 | 무엇 |
+|---|---|
+| 1 | 판 표시가 없는 옛 발급본(운영 main `d38890d` 시절) |
+| 2 | 서술 라운드 앞 dev 의 모양(운영에는 배포되지 않음) |
+| 3 | 지금 기본값. 소절 번호 1.1~9.2, 7·8·9절 서술 |
+| 4 | 목차를 대상·방법·결과·소견·권고(1~6절)로 다시 묶은 판. 플래그로 켜며, 운영에서는 아직 켜지 않았다 |
+
+- 새 성적서의 판은 run 을 만들 때 `src/lib/report/reportEdition.ts` 의 `newRunContentSchema()` 한 곳에서 정한다. 빌드 환경변수 `VITE_REPORT_EDITION` 이 꼭 `"4"` 일 때만 판 4, 그 밖(없음·빈 값·`"3"`·`"true"`)은 판 3 이다.
+- **판 4 를 켜려면 백엔드를 먼저 배포**하고(`/health` 의 `commit` 확인), Vercel 환경변수에 `VITE_REPORT_EDITION=4` 를 넣고 다시 배포한다. 켜기 전 확인 목록과 이유는 `docs/ARCHITECTURE.md` §6.6.
 
 ## 디자인 시스템
 
@@ -97,7 +111,7 @@ pnpm build            # 프로덕션 빌드
 ```
 `VITE_API_BASE_URL` 미설정 시 API 호출은 상대경로 → Vite 프록시로 전달됩니다.
 
-테스트 관례: 옆 저장소(`../Capstone_Back`)를 읽는 테스트는 `it.skipIf(!existsSync(…))` 로 둔다 — CI 는 이 저장소만 받는다. 판 1 보관본의 정답은 운영 main 이 그린 글(`src/test/archive/main_d38890d/`)이고 새 코드로 다시 뜨지 않는다(판 1·2 스냅샷이 바뀌면 그 판 분기를 고친다).
+테스트 관례: 옆 저장소(`../Capstone_Back`)를 읽는 테스트는 `it.skipIf(!existsSync(…))` 로 둔다 — CI 는 이 저장소만 받는다. 판 1 보관본의 정답은 운영 main 이 그린 글(`src/test/archive/main_d38890d/`)이고 새 코드로 다시 뜨지 않는다(판 1·2 스냅샷이 바뀌면 그 판 분기를 고친다). 판 2·3 보관본 정답(`src/test/archive/issued/`)과 판 3 새 성적서 정답(`src/test/edition3/newRun/`)도 고치지 않는다 — 실패하면 코드를 고친다. 판 4 시험 자료와 다시 뜨는 법은 `docs/ARCHITECTURE.md` §6.6.
 
 ## 중요 규칙
 
