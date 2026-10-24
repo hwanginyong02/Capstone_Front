@@ -431,4 +431,12 @@ describe("3.5 시험 절차와 평가 환경", () => {
     expect(rows[3]).toEqual({ label: "주요 라이브러리", value: "—" });
     expect(systemRowsEd4(edit(bc(), (x) => delete x.evalEnv.engineVersion))[5].value).toBe("—");
   });
+
+  it("평가 시각 없음 대체 날짜는 시험 기간 **끝** — 시작과 끝이 다른 날로 가림(rv2 지적 3)", () => {
+    const d = edit(bc(), (x) => {
+      delete x.evalEnv.environment;
+      x.meta.evaluationPeriod = { from: "2026-01-15", to: "2026-10-22" };
+    });
+    expect(systemRowsEd4(d)[4]).toEqual({ label: "평가 수행 일시", value: "2026-10-22 (시각 미기록)" });
+  });
 });
